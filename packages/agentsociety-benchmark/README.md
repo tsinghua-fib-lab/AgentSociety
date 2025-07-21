@@ -23,8 +23,8 @@ The DailyMobility benchmark evaluates agents' mobility behavior modeling capabil
 - Consider correlations between time, location, and activities
 - Simulate real-world mobility patterns
 
-### 3. HarricaneMobility
-The HarricaneMobility benchmark focuses on evaluating agents' behavior modeling capabilities in emergency situations. This benchmark tests how agents:
+### 3. HurricaneMobility
+The HurricaneMobility benchmark focuses on evaluating agents' behavior modeling capabilities in emergency situations. This benchmark tests how agents:
 - Make emergency decisions during natural disasters
 - Simulate crowd evacuation and shelter-seeking behaviors
 - Handle uncertainty and resource allocation in emergency situations
@@ -58,7 +58,7 @@ asbench list-tasks
 # Clone datasets for specific benchmarks, this will clone the datasets and install dependancies at the same time
 asbench clone BehaviorModeling
 asbench clone DailyMobility
-asbench clone HarricaneMobility
+asbench clone HurricaneMobility
 
 # View installed benchmarks
 asbench list-installed
