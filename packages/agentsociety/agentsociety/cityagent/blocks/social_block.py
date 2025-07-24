@@ -301,6 +301,7 @@ class MessageBlock(Block):
 
     name = "MessageBlock"
     description = "Send a message to someone"
+    NeedAgent = True
 
     def __init__(self, toolbox: AgentToolbox, agent_memory: Memory):
         super().__init__(
@@ -399,7 +400,8 @@ class MessageBlock(Block):
 
             # Send message
             serialized_message = self._serialize_message(message, 1)
-            await self.agent.send_message(target, serialized_message)
+            await self.agent.send_message_to_agent(target, serialized_message)
+
             node_id = await self.memory.stream.add(
                 topic="social", description=f"I sent a message to {target}: {message}"
             )
@@ -484,6 +486,10 @@ class SocialBlock(Block):
         """
         try:
             self.trigger_time += 1
+            
+            # make sure the message_block has the agent reference
+            if hasattr(self.message_block, 'NeedAgent') and self.message_block.NeedAgent:
+                self.message_block.set_agent(self.agent)
 
             context = agent_context | self.context
 
