@@ -26,6 +26,7 @@ To use this framework, you **need access to LLM APIs**. We support multiple prov
 - [ZhipuAI](https://chatglm.cn/)
 - [VolcEngine](https://www.volcengine.com/)
 - [vLLM](https://docs.vllm.ai/en/stable/)
+- [Ollama](https://ollama.ai/)
 
 Actually, the `vLLM` means any LLM inference engine with the [OpenAI API](https://platform.openai.com/docs/api-reference/introduction)-compatible interface.
 You can set the `base_url` and `api_key` in the `llm` section of the configuration to connect to any LLM inference engine or provider.
@@ -100,3 +101,38 @@ You can also use the `CUDA_VISIBLE_DEVICES` environment variable to specify the 
 You should set the `HF_ENDPOINT` environment to `https://hf-mirror.com` to avoid the model download problem if you are in China.
 
 After the vLLM server is running, you can set the `base_url` as the address of the vLLM server with path `/v1` (e.g. `http://your-server-ip:$PORT/v1`) to use it.
+
+### Self-hosted Models by Ollama
+
+Ollama is a lightweight, easy-to-use LLM inference engine that supports running models locally.
+You can use it to self-host your own LLM models for AgentSociety with minimal setup.
+
+Here is how to install and run Ollama:
+
+1. Install Ollama by following the instructions at [https://ollama.ai/](https://ollama.ai/)
+
+2. Download a model (e.g., Llama 2):
+```bash
+ollama pull llama2
+```
+
+3. Start the Ollama server:
+```bash
+ollama serve
+```
+
+4. The server will run on `http://localhost:11434` by default, with OpenAI-compatible API available at `http://localhost:11434/v1`
+
+```{admonition} Important
+:class: important
+Ollama provides an OpenAI-compatible API endpoint at `/v1` which works seamlessly with AgentSociety.
+You don't need to set an API key when using Ollama locally, but you must provide a dummy value in the configuration.
+```
+
+```{admonition} Note
+:class: note
+You can run Ollama on a different host or port by setting environment variables or command-line options.
+See the Ollama documentation for more details on advanced configuration.
+```
+
+After Ollama is running, you can use it in AgentSociety by setting `provider: "ollama"` in your configuration.

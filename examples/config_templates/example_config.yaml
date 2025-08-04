@@ -1,8 +1,8 @@
 llm:
 - api_key: <API-KEY> # LLM API key
-  base_url: <BASE-URL> # LLM base URL, used for VLLM
+  base_url: <BASE-URL> # LLM base URL, used for VLLM and Ollama (optional for Ollama, defaults to http://localhost:11434/v1)
   model: <YOUR-MODEL> # LLM model
-  provider: <PROVIDER> # LLM provider
+  provider: <PROVIDER> # LLM provider (options: openai, deepseek, qwen, zhipuai, siliconflow, volcengine, vllm, ollama)
   semaphore: 200 # Semaphore for LLM requests, control the max number of concurrent requests
 env:
   db:

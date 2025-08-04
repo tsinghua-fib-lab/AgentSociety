@@ -42,6 +42,7 @@ class LLMProviderType(str, Enum):
         - `ZHIPU`: Zhipu.
         - `SILICONFLOW`: SiliconFlow.
         - `VLLM`: VLLM.
+        - `OLLAMA`: Ollama local inference server.
     """
 
     OpenAI = "openai"
@@ -51,6 +52,7 @@ class LLMProviderType(str, Enum):
     SiliconFlow = "siliconflow"
     VolcEngine = "volcengine"
     VLLM = "vllm"
+    Ollama = "ollama"
 
 
 class LLMConfig(BaseModel):
@@ -80,7 +82,7 @@ class LLMConfig(BaseModel):
 
     @model_validator(mode="after")
     def validate_configuration(self):
-        if self.provider != LLMProviderType.VLLM and self.base_url is not None:
+        if self.provider not in (LLMProviderType.VLLM, LLMProviderType.Ollama) and self.base_url is not None:
             raise ValueError("base_url is not supported for this provider")
         return self
 
@@ -290,6 +292,9 @@ class LLM:
                 base_url = "https://api.siliconflow.cn/v1"
             elif config.provider == LLMProviderType.VLLM:
                 ...
+            elif config.provider == LLMProviderType.Ollama:
+                if base_url is None:
+                    base_url = "http://localhost:11434/v1"
             elif config.provider == LLMProviderType.ZhipuAI:
                 base_url = "https://open.bigmodel.cn/api/paas/v4/"
             elif config.provider == LLMProviderType.VolcEngine:

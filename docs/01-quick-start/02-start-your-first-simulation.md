@@ -34,7 +34,7 @@ An example configuration file is shown below, you can refer to it to create your
 ``` yaml
 llm:
 - api_key: <API-KEY> # LLM API key
-  base_url: <BASE-URL> # LLM base URL, used for VLLM
+  base_url: <BASE-URL> # LLM base URL, used for VLLM and Ollama
   model: <YOUR-MODEL> # LLM model
   provider: <PROVIDER> # LLM provider
   semaphore: 200 # Semaphore for LLM requests, control the max number of concurrent requests
@@ -56,6 +56,37 @@ exp:
   workflow:
   - day: 1 # The day of the workflow step
     type: run # The type of the workflow step
+```
+
+### Example Configuration for Ollama
+
+If you're using Ollama for local model inference, here's a specific example configuration:
+
+```yaml
+llm:
+- api_key: "dummy" # Ollama doesn't require a real API key, but field is required
+  base_url: "http://localhost:11434/v1" # Default Ollama endpoint (optional, will default to this)
+  model: "llama2" # Your downloaded Ollama model
+  provider: "ollama" # Set provider to ollama
+  semaphore: 200
+env:
+  db:
+    enabled: true
+    db_type: sqlite
+map:
+  file_path: "./data/beijing_map.pb"
+agents:
+  citizens:
+  - agent_class: citizen
+    number: 100
+exp:
+  name: ollama_test
+  environment:
+    start_tick: 28800
+    total_tick: 7200
+  workflow:
+  - day: 1
+    type: run
 ```
 
 ```{admonition} Hint
