@@ -15,7 +15,7 @@ import {
   Tooltip,
   Tag,
 } from 'antd';
-import { SaveOutlined, KeyOutlined, CheckCircleOutlined, RocketOutlined, QuestionCircleOutlined, ReloadOutlined, ApiOutlined, SettingOutlined, CloudServerOutlined } from '@ant-design/icons';
+import { SaveOutlined, KeyOutlined, CheckCircleOutlined, RocketOutlined, QuestionCircleOutlined, ReloadOutlined, SettingOutlined, CloudServerOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import type { VSCodeAPI, ConfigValues, WorkspaceInfo } from './types';
 import { useVscodeTheme } from '../theme';
@@ -168,19 +168,10 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
   // 计算配置统计
   const getConfigStats = () => {
     const values = currentValues;
-    const llmServices = [
-      { key: 'llm', name: 'Default LLM', hasKey: hasText(values.llmApiKey), hasBase: hasText(values.llmApiBase), hasModel: hasText(values.llmModel) },
-      { key: 'coder', name: 'Coder', hasKey: hasText(values.coderLlmApiKey), hasBase: hasText(values.coderLlmApiBase), hasModel: hasText(values.coderLlmModel) },
-      { key: 'nano', name: 'Nano', hasKey: hasText(values.nanoLlmApiKey), hasBase: hasText(values.nanoLlmApiBase), hasModel: hasText(values.nanoLlmModel) },
-      { key: 'analysis', name: 'Analysis', hasKey: hasText(values.analysisLlmApiKey), hasBase: hasText(values.analysisLlmApiBase), hasModel: hasText(values.analysisLlmModel) },
-      { key: 'embedding', name: 'Embedding', hasKey: hasText(values.embeddingApiKey), hasBase: hasText(values.embeddingApiBase), hasModel: hasText(values.embeddingModel) },
-    ];
-
-    const configuredServices = llmServices.filter(s => s.hasKey || (s.key === 'llm' && hasText(values.llmApiKey))).length;
     const validatedServices = Object.entries(validationState).filter(([key, state]) => state.valid === true).length;
     const hasPython = hasText(values.pythonPath);
 
-    return { configuredServices, validatedServices, hasPython, totalServices: llmServices.length };
+    return { validatedServices, hasPython };
   };
 
   const stats = getConfigStats();
@@ -510,7 +501,6 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
 
             {/* 统计卡片 */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-              {statPill('已配置服务', `${stats.configuredServices}/${stats.totalServices}`, <ApiOutlined />, palette.linkForeground)}
               {statPill('验证通过', stats.validatedServices, <CheckCircleOutlined />, palette.successForeground)}
               {statPill('Python 环境', stats.hasPython ? '已配置' : '默认', <CloudServerOutlined />)}
             </div>
