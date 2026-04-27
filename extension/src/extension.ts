@@ -470,17 +470,82 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
+  // 复制后端 URL 命令
+  const copyBackendUrlCommand = vscode.commands.registerCommand(
+    'aiSocialScientist.copyBackendUrl',
+    async () => {
+      if (backendManager) {
+        await backendManager.copyBackendUrl();
+      }
+    }
+  );
+
+  // 在浏览器中打开后端 URL 命令
+  const openBackendInBrowserCommand = vscode.commands.registerCommand(
+    'aiSocialScientist.openBackendInBrowser',
+    async () => {
+      if (backendManager) {
+        await backendManager.openInBrowser();
+      }
+    }
+  );
+
+  // 在浏览器中打开 API 文档命令
+  const openApiDocsCommand = vscode.commands.registerCommand(
+    'aiSocialScientist.openApiDocs',
+    async () => {
+      if (backendManager) {
+        await backendManager.openApiDocs();
+      }
+    }
+  );
+
   const backendStatusMenuCommand = vscode.commands.registerCommand(
     'aiSocialScientist.backendStatusMenu',
     async () => {
-      const items: BackendStatusMenuPick[] = [
-        { label: `$(refresh) ${localize('backendManager.statusBar.restart')}`, commandId: 'aiSocialScientist.restartBackend' },
-        { label: `$(stop) ${localize('backendManager.statusBar.stop')}`, commandId: 'aiSocialScientist.stopBackend' },
-        { label: `$(play) ${localize('backendManager.statusBar.start')}`, commandId: 'aiSocialScientist.startBackend' },
-        { label: `$(output) ${localize('backendManager.statusBar.logs')}`, commandId: 'aiSocialScientist.showBackendLogs' },
-        { label: `$(info) ${localize('backendManager.statusBar.status')}`, commandId: 'aiSocialScientist.showBackendStatus' },
-        { label: `$(settings) ${localize('backendManager.statusBar.config')}`, commandId: 'aiSocialScientist.openConfigPage' }
-      ];
+      const currentStatus = backendManager?.getCurrentStatus() ?? 'stopped';
+      const items: BackendStatusMenuPick[] = [];
+
+      // 根据运行状态动态构建菜单
+      if (currentStatus === 'running') {
+        // 运行中：显示复制URL、打开浏览器等选项
+        const url = backendManager?.getBackendUrl() ?? '';
+        items.push(
+          { label: `$(link) ${localize('backendManager.statusBar.copyUrl')}`, description: url, commandId: 'aiSocialScientist.copyBackendUrl' },
+          { label: `$(browser) ${localize('backendManager.statusBar.openInBrowser')}`, description: url, commandId: 'aiSocialScientist.openBackendInBrowser' },
+          { label: `$(book) Open API Docs`, description: `${url}/docs`, commandId: 'aiSocialScientist.openApiDocs' },
+          { label: `$(refresh) ${localize('backendManager.statusBar.restart')}`, commandId: 'aiSocialScientist.restartBackend' },
+          { label: `$(stop) ${localize('backendManager.statusBar.stop')}`, commandId: 'aiSocialScientist.stopBackend' }
+        );
+      } else if (currentStatus === 'starting') {
+        // 启动中：只显示日志和状态
+        items.push(
+          { label: `$(output) ${localize('backendManager.statusBar.logs')}`, commandId: 'aiSocialScientist.showBackendLogs' },
+          { label: `$(stop) ${localize('backendManager.statusBar.stop')}`, commandId: 'aiSocialScientist.stopBackend' }
+        );
+      } else if (currentStatus === 'error') {
+        // 错误状态：显示重启、日志、配置
+        items.push(
+          { label: `$(refresh) ${localize('backendManager.statusBar.restart')}`, commandId: 'aiSocialScientist.restartBackend' },
+          { label: `$(output) ${localize('backendManager.statusBar.logs')}`, commandId: 'aiSocialScientist.showBackendLogs' },
+          { label: `$(settings) ${localize('backendManager.statusBar.config')}`, commandId: 'aiSocialScientist.openConfigPage' }
+        );
+      } else {
+        // 已停止：显示启动、配置选项
+        items.push(
+          { label: `$(play) ${localize('backendManager.statusBar.start')}`, commandId: 'aiSocialScientist.startBackend' },
+          { label: `$(settings) ${localize('backendManager.statusBar.config')}`, commandId: 'aiSocialScientist.openConfigPage' }
+        );
+      }
+
+      // 所有状态都显示日志和配置（除了上面已经添加的情况）
+      if (currentStatus === 'running') {
+        items.push(
+          { label: `$(output) ${localize('backendManager.statusBar.logs')}`, commandId: 'aiSocialScientist.showBackendLogs' },
+          { label: `$(settings) ${localize('backendManager.statusBar.config')}`, commandId: 'aiSocialScientist.openConfigPage' }
+        );
+      }
+
       const selected = await vscode.window.showQuickPick(items, {
         placeHolder: localize('backendManager.statusBar.placeholder'),
         matchOnDescription: true
@@ -934,6 +999,9 @@ export function activate(context: vscode.ExtensionContext) {
     showBackendLogsCommand,
     showBackendStatusCommand,
     backendStatusMenuCommand,
+    copyBackendUrlCommand,
+    openBackendInBrowserCommand,
+    openApiDocsCommand,
     openConfigPageCommand,
     openSkillMarketplaceCommand,
     openSkillSourcesSettingsCommand,

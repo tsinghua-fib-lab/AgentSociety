@@ -13,11 +13,9 @@ import {
   Select,
   Spin,
   Alert,
-  Statistic,
-  Row,
-  Col,
   Empty,
   Popconfirm,
+  Layout,
   message,
 } from 'antd';
 import {
@@ -28,11 +26,14 @@ import {
   UserOutlined,
   EnvironmentOutlined,
   EditOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
 } from '@ant-design/icons';
 import type { VSCodeAPI, InitConfig, EnvModuleConfig, AgentConfig } from './types';
 import { useVscodeTheme } from '../theme';
 import '../i18n';
 
+const { Content } = Layout;
 const { Title, Text } = Typography;
 const { Panel } = Collapse;
 
@@ -57,7 +58,8 @@ const ParamEditor: React.FC<{
   value: any;
   onChange: (value: any) => void;
   depth?: number;
-}> = ({ value, onChange, depth = 0 }) => {
+  palette: any;
+}> = ({ value, onChange, depth = 0, palette }) => {
   if (value === null || value === undefined) {
     return <Text type="secondary">null</Text>;
   }
@@ -123,6 +125,7 @@ const ParamEditor: React.FC<{
                 onChange(newArr);
               }}
               depth={depth + 1}
+              palette={palette}
             />
             <Button
               size="small"
@@ -150,7 +153,7 @@ const ParamEditor: React.FC<{
       <div
         style={{
           paddingLeft: depth > 0 ? 12 : 0,
-          borderLeft: depth > 0 ? '2px solid var(--vscode-panel-border, #d9d9d9)' : 'none',
+          borderLeft: depth > 0 ? `2px solid ${palette.panelBorder}` : 'none',
         }}
       >
         {keys.map((key) => (
@@ -162,6 +165,7 @@ const ParamEditor: React.FC<{
               value={value[key]}
               onChange={(v) => onChange({ ...value, [key]: v })}
               depth={depth + 1}
+              palette={palette}
             />
           </div>
         ))}
@@ -254,243 +258,295 @@ export const InitConfigApp: React.FC<InitConfigAppProps> = ({ vscode, initialCon
     setConfig({ ...config, agents: newAgents });
   };
 
+  // 统计卡片
+  const statPill = (label: string, value: string | number, icon: React.ReactNode, accent?: string) => (
+    <div
+      style={{
+        flex: '1 1 120px',
+        minWidth: 100,
+        padding: '14px 18px',
+        borderRadius: 10,
+        border: `1px solid ${palette.panelBorder}`,
+        background: `linear-gradient(135deg, ${palette.surfaceBackground} 0%, ${palette.editorBackground} 100%)`,
+        transition: 'all 0.2s ease',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        <span style={{ color: accent ?? palette.linkForeground }}>{icon}</span>
+        <span style={{ fontSize: 11, color: palette.descriptionForeground, fontWeight: 500 }}>{label}</span>
+      </div>
+      <div style={{ fontSize: 24, fontWeight: 700, color: accent ?? palette.editorForeground, lineHeight: 1 }}>
+        {value}
+      </div>
+    </div>
+  );
+
   if (loading) {
     return (
       <ConfigProvider theme={themeConfig}>
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            alignItems: 'center',
-            height: '100vh',
-            gap: 16,
-          }}
-        >
-          <Spin size="large" />
-          <Text>加载配置中...</Text>
-        </div>
+        <Layout style={{ minHeight: '100vh', background: 'transparent' }}>
+          <Content style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh', gap: 16 }}>
+            <Spin size="large" />
+            <Text>加载配置中...</Text>
+          </Content>
+        </Layout>
       </ConfigProvider>
     );
   }
 
   const envModules = config.env_modules || [];
   const agents = config.agents || [];
+  const isComplete = envModules.length > 0 && agents.length > 0;
 
   return (
     <ConfigProvider theme={themeConfig}>
-      <div
-        style={{
-          padding: 24,
-          minHeight: '100vh',
-          backgroundColor: palette.editorBackground,
-          color: palette.editorForeground,
-        }}
-      >
-        <Title level={2} style={{ marginBottom: 24 }}>
-          实验初始化配置
-        </Title>
-
-        {saved && (
-          <Alert
-            message="配置已保存"
-            type="success"
-            showIcon
-            closable
-            style={{ marginBottom: 16 }}
-            onClose={() => setSaved(false)}
-          />
-        )}
-
-        {/* 统计卡片 */}
-        <Row gutter={16} style={{ marginBottom: 24 }}>
-          <Col span={8}>
-            <Card>
-              <Statistic
-                title="环境模块"
-                value={envModules.length}
-                prefix={<EnvironmentOutlined />}
-              />
-            </Card>
-          </Col>
-          <Col span={8}>
-            <Card>
-              <Statistic
-                title="Agent 数量"
-                value={agents.length}
-                prefix={<UserOutlined />}
-              />
-            </Card>
-          </Col>
-          <Col span={8}>
-            <Card>
-              <Statistic
-                title="配置状态"
-                value={envModules.length > 0 && agents.length > 0 ? '完整' : '不完整'}
-                valueStyle={{
-                  color: envModules.length > 0 && agents.length > 0
-                    ? palette.successForeground
-                    : palette.warningForeground,
-                }}
-              />
-            </Card>
-          </Col>
-        </Row>
-
-        {/* 环境模块区域 */}
-        <Card
-          title={
-            <Space>
-              <EnvironmentOutlined />
-              环境模块配置
-              <Tag color="blue">{envModules.length}</Tag>
-            </Space>
-          }
-          style={{ marginBottom: 24 }}
-        >
-          {envModules.length === 0 ? (
-            <Empty description="暂无环境模块配置" />
-          ) : (
-            <Collapse accordion>
-              {envModules.map((module, index) => (
-                <Panel
-                  header={
-                    <Space>
-                      <Tag color="green">{module.module_type}</Tag>
-                      <Text type="secondary">
-                        {Object.keys(module.kwargs || {}).length} 个参数
-                      </Text>
-                    </Space>
-                  }
-                  key={index}
-                  extra={
-                    <Popconfirm
-                      title="确定删除此模块？"
-                      onConfirm={() => deleteEnvModule(index)}
-                      okText="确定"
-                      cancelText="取消"
-                    >
-                      <Button
-                        size="small"
-                        danger
-                        icon={<DeleteOutlined />}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                    </Popconfirm>
-                  }
-                >
-                  <div style={{ padding: '12px 0' }}>
-                    <Text strong style={{ display: 'block', marginBottom: 12 }}>
-                      模块类型: {module.module_type}
-                    </Text>
-                    <Card size="small" title="参数配置" style={{ marginBottom: 12 }}>
-                      <ParamEditor
-                        value={module.kwargs}
-                        onChange={(newKwargs) => updateEnvModule(index, { kwargs: newKwargs })}
-                      />
-                    </Card>
-                  </div>
-                </Panel>
-              ))}
-            </Collapse>
-          )}
-        </Card>
-
-        {/* Agent 区域 */}
-        <Card
-          title={
-            <Space>
-              <UserOutlined />
-              Agent 配置
-              <Tag color="blue">{agents.length}</Tag>
-            </Space>
-          }
-          style={{ marginBottom: 24 }}
-        >
-          {agents.length === 0 ? (
-            <Empty description="暂无 Agent 配置" />
-          ) : (
-            <Table
-              dataSource={agents.map((agent, index) => ({ ...agent, _index: index }))}
-              rowKey="agent_id"
-              pagination={false}
-              size="small"
-              expandable={{
-                expandedRowRender: (record) => (
-                  <div style={{ padding: 12 }}>
-                    <Card size="small" title="Kwargs 参数" style={{ marginBottom: 12 }}>
-                      <ParamEditor
-                        value={record.kwargs}
-                        onChange={(newKwargs) => updateAgent(record._index, { kwargs: newKwargs })}
-                      />
-                    </Card>
-                    {record.kwargs?.profile && (
-                      <Card size="small" title="Profile">
-                        <ParamEditor
-                          value={record.kwargs.profile}
-                          onChange={(newProfile) =>
-                            updateAgentKwargs(record._index, 'profile', newProfile)
-                          }
-                        />
-                      </Card>
-                    )}
-                  </div>
-                ),
+      <Layout style={{ minHeight: '100vh', background: 'transparent' }}>
+        <Content style={{ padding: '20px 22px 28px' }}>
+          <div style={{ maxWidth: 1180, margin: '0 auto' }}>
+            {/* 头部区域 */}
+            <div
+              style={{
+                marginBottom: 20,
+                padding: '24px 28px',
+                borderRadius: 16,
+                border: `1px solid ${palette.panelBorder}`,
+                background: `linear-gradient(180deg, ${palette.surfaceBackground} 0%, ${palette.editorBackground} 100%)`,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
               }}
-              columns={[
-                {
-                  title: 'ID',
-                  dataIndex: 'agent_id',
-                  width: 60,
-                },
-                {
-                  title: '类型',
-                  dataIndex: 'agent_type',
-                  width: 180,
-                  render: (text) => <Tag color="blue">{text}</Tag>,
-                },
-                {
-                  title: '名称',
-                  dataIndex: ['kwargs', 'name'],
-                  ellipsis: true,
-                },
-                {
-                  title: '角色',
-                  dataIndex: ['kwargs', 'role'],
-                  width: 100,
-                  render: (text) => text && <Tag>{text}</Tag>,
-                },
-                {
-                  title: '操作',
-                  width: 80,
-                  render: (_, record) => (
-                    <Popconfirm
-                      title="确定删除此 Agent？"
-                      onConfirm={() => deleteAgent(record._index)}
-                      okText="确定"
-                      cancelText="取消"
-                    >
-                      <Button size="small" danger icon={<DeleteOutlined />} />
-                    </Popconfirm>
-                  ),
-                },
-              ]}
-            />
-          )}
-        </Card>
+            >
+              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 20 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 42,
+                      height: 42,
+                      borderRadius: 12,
+                      background: `linear-gradient(135deg, ${palette.linkForeground}20 0%, ${palette.linkForeground}10 100%)`,
+                      color: palette.linkForeground,
+                    }}
+                  >
+                    <SettingOutlined style={{ fontSize: 20 }} />
+                  </span>
+                  <div>
+                    <Title level={4} style={{ margin: 0 }}>实验初始化配置</Title>
+                    <Text type="secondary" style={{ fontSize: 12 }}>配置实验的环境模块和 Agent 参数</Text>
+                  </div>
+                </div>
+                <Space>
+                  <Button onClick={() => setConfig(initialConfig || {})}>
+                    重置
+                  </Button>
+                  <Button type="primary" icon={<SaveOutlined />} onClick={handleSave}>
+                    保存配置
+                  </Button>
+                </Space>
+              </div>
 
-        {/* 保存按钮 */}
-        <div style={{ textAlign: 'center', padding: '16px 0' }}>
-          <Space>
-            <Button size="large" onClick={() => setConfig(initialConfig || {})}>
-              重置
-            </Button>
-            <Button type="primary" size="large" icon={<SaveOutlined />} onClick={handleSave}>
-              保存配置
-            </Button>
-          </Space>
-        </div>
-      </div>
+              {/* 统计卡片 */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+                {statPill('环境模块', envModules.length, <EnvironmentOutlined />, palette.linkForeground)}
+                {statPill('Agent 数量', agents.length, <UserOutlined />, palette.successForeground)}
+                {statPill('配置状态', isComplete ? '完整' : '不完整', isComplete ? <CheckCircleOutlined /> : <CloseCircleOutlined />, isComplete ? palette.successForeground : palette.warningForeground)}
+              </div>
+            </div>
+
+            {saved && (
+              <Alert
+                message="配置已保存"
+                type="success"
+                showIcon
+                closable
+                style={{ marginBottom: 16 }}
+                onClose={() => setSaved(false)}
+              />
+            )}
+
+            {/* 环境模块区域 */}
+            <Card
+              style={{
+                marginBottom: 16,
+                borderRadius: 12,
+                border: `1px solid ${palette.panelBorder}`,
+                background: palette.surfaceMuted,
+              }}
+              styles={{ body: { padding: '16px 20px' } }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <EnvironmentOutlined style={{ color: palette.linkForeground }} />
+                <Text strong style={{ fontSize: 14 }}>环境模块配置</Text>
+                <Tag color="blue" style={{ marginLeft: 'auto' }}>{envModules.length}</Tag>
+              </div>
+              {envModules.length === 0 ? (
+                <Empty description="暂无环境模块配置" style={{ padding: 20 }} />
+              ) : (
+                <Collapse accordion style={{ background: 'transparent' }}>
+                  {envModules.map((module, index) => (
+                    <Panel
+                      header={
+                        <Space>
+                          <Tag color="green" style={{ margin: 0 }}>{module.module_type}</Tag>
+                          <Text type="secondary" style={{ fontSize: 12 }}>
+                            {Object.keys(module.kwargs || {}).length} 个参数
+                          </Text>
+                        </Space>
+                      }
+                      key={index}
+                      extra={
+                        <Popconfirm
+                          title="确定删除此模块？"
+                          onConfirm={() => deleteEnvModule(index)}
+                          okText="确定"
+                          cancelText="取消"
+                        >
+                          <Button
+                            size="small"
+                            danger
+                            icon={<DeleteOutlined />}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </Popconfirm>
+                      }
+                    >
+                      <div style={{ padding: '12px 0' }}>
+                        <Text strong style={{ display: 'block', marginBottom: 12 }}>
+                          模块类型: {module.module_type}
+                        </Text>
+                        <Card
+                          size="small"
+                          title="参数配置"
+                          style={{
+                            borderRadius: 8,
+                            background: palette.editorBackground,
+                            border: `1px solid ${palette.panelBorder}`,
+                          }}
+                          styles={{ body: { padding: 12 } }}
+                        >
+                          <ParamEditor
+                            value={module.kwargs}
+                            onChange={(newKwargs) => updateEnvModule(index, { kwargs: newKwargs })}
+                            palette={palette}
+                          />
+                        </Card>
+                      </div>
+                    </Panel>
+                  ))}
+                </Collapse>
+              )}
+            </Card>
+
+            {/* Agent 区域 */}
+            <Card
+              style={{
+                marginBottom: 16,
+                borderRadius: 12,
+                border: `1px solid ${palette.panelBorder}`,
+                background: palette.surfaceMuted,
+              }}
+              styles={{ body: { padding: '16px 20px' } }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <UserOutlined style={{ color: palette.successForeground }} />
+                <Text strong style={{ fontSize: 14 }}>Agent 配置</Text>
+                <Tag color="green" style={{ marginLeft: 'auto' }}>{agents.length}</Tag>
+              </div>
+              {agents.length === 0 ? (
+                <Empty description="暂无 Agent 配置" style={{ padding: 20 }} />
+              ) : (
+                <Table
+                  dataSource={agents.map((agent, index) => ({ ...agent, _index: index }))}
+                  rowKey="agent_id"
+                  pagination={false}
+                  size="small"
+                  expandable={{
+                    expandedRowRender: (record) => (
+                      <div style={{ padding: 12 }}>
+                        <Card
+                          size="small"
+                          title="Kwargs 参数"
+                          style={{
+                            marginBottom: 12,
+                            borderRadius: 8,
+                            background: palette.editorBackground,
+                            border: `1px solid ${palette.panelBorder}`,
+                          }}
+                          styles={{ body: { padding: 12 } }}
+                        >
+                          <ParamEditor
+                            value={record.kwargs}
+                            onChange={(newKwargs) => updateAgent(record._index, { kwargs: newKwargs })}
+                            palette={palette}
+                          />
+                        </Card>
+                        {record.kwargs?.profile && (
+                          <Card
+                            size="small"
+                            title="Profile"
+                            style={{
+                              borderRadius: 8,
+                              background: palette.editorBackground,
+                              border: `1px solid ${palette.panelBorder}`,
+                            }}
+                            styles={{ body: { padding: 12 } }}
+                          >
+                            <ParamEditor
+                              value={record.kwargs.profile}
+                              onChange={(newProfile) =>
+                                updateAgentKwargs(record._index, 'profile', newProfile)
+                              }
+                              palette={palette}
+                            />
+                          </Card>
+                        )}
+                      </div>
+                    ),
+                  }}
+                  columns={[
+                    {
+                      title: 'ID',
+                      dataIndex: 'agent_id',
+                      width: 60,
+                    },
+                    {
+                      title: '类型',
+                      dataIndex: 'agent_type',
+                      width: 180,
+                      render: (text) => <Tag color="blue" style={{ margin: 0 }}>{text}</Tag>,
+                    },
+                    {
+                      title: '名称',
+                      dataIndex: ['kwargs', 'name'],
+                      ellipsis: true,
+                    },
+                    {
+                      title: '角色',
+                      dataIndex: ['kwargs', 'role'],
+                      width: 100,
+                      render: (text) => text && <Tag style={{ margin: 0 }}>{text}</Tag>,
+                    },
+                    {
+                      title: '操作',
+                      width: 80,
+                      render: (_, record) => (
+                        <Popconfirm
+                          title="确定删除此 Agent？"
+                          onConfirm={() => deleteAgent(record._index)}
+                          okText="确定"
+                          cancelText="取消"
+                        >
+                          <Button size="small" danger icon={<DeleteOutlined />} />
+                        </Popconfirm>
+                      ),
+                    },
+                  ]}
+                />
+              )}
+            </Card>
+          </div>
+        </Content>
+      </Layout>
     </ConfigProvider>
   );
 };

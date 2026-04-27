@@ -230,6 +230,10 @@ const translations: Record<string, Record<string, string>> = {
     'backendManager.statusBar.config': '打开配置',
     'backendManager.statusBar.tooltip': '点击展开操作菜单',
     'backendManager.statusBar.placeholder': '选择操作',
+    'backendManager.statusBar.copyUrl': '复制 URL',
+    'backendManager.statusBar.openInBrowser': '在浏览器中打开',
+    'backendManager.statusBar.urlCopied': '后端 URL 已复制到剪贴板: {0}',
+    'backendManager.statusBar.runningInfo': '后端运行中\n端口: {0}\nURL: {1}\n\n点击展开操作菜单',
 
     // configPageViewProvider.ts
     'configPage.title': 'AI Social Scientist 配置',
@@ -548,6 +552,10 @@ const translations: Record<string, Record<string, string>> = {
     'backendManager.statusBar.config': 'Open Configuration',
     'backendManager.statusBar.tooltip': 'Click to show action menu',
     'backendManager.statusBar.placeholder': 'Select action',
+    'backendManager.statusBar.copyUrl': 'Copy URL',
+    'backendManager.statusBar.openInBrowser': 'Open in Browser',
+    'backendManager.statusBar.urlCopied': 'Backend URL copied to clipboard: {0}',
+    'backendManager.statusBar.runningInfo': 'Backend Running\nPort: {0}\nURL: {1}\n\nClick to show action menu',
 
     // configPageViewProvider.ts
     'configPage.title': 'AI Social Scientist Configuration',

@@ -232,6 +232,10 @@ class SkillRegistry:
                 and self._skills[info.name].source == "builtin"
             ):
                 continue
+            # Preserve enabled state if skill already exists
+            if info.name in self._skills:
+                existing = self._skills[info.name]
+                info.enabled = existing.enabled
             self._skills[info.name] = info
             new_names.append(info.name)
         return new_names
@@ -263,6 +267,10 @@ class SkillRegistry:
                 and self._skills[info.name].source == "builtin"
             ):
                 continue
+            # Preserve enabled state if skill already exists
+            if info.name in self._skills:
+                existing = self._skills[info.name]
+                info.enabled = existing.enabled
             self._skills[info.name] = info
             new_names.append(info.name)
         return new_names

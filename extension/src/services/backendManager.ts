@@ -46,6 +46,7 @@ export class BackendManager {
   private healthCheckInterval: NodeJS.Timeout | null = null;
   private isStarting = false;
   private allocatedPort: number | null = null; // Track dynamically allocated port
+  private currentStatus: 'running' | 'stopped' | 'starting' | 'error' = 'stopped';
 
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
@@ -55,7 +56,6 @@ export class BackendManager {
       100
     );
     this.statusBarItem.command = 'aiSocialScientist.backendStatusMenu';
-    this.statusBarItem.tooltip = localize('backendManager.statusBar.tooltip');
     this.config = this.loadConfig();
 
     // 注意：不再监听 .env 文件变化来自动重启后端
@@ -129,7 +129,7 @@ export class BackendManager {
                 // 后端仍在运行，保留PID记录
                 this.log(`Existing backend process found (PID: ${pid}, Port: ${port})`);
                 this.allocatedPort = port;
-                this.updateStatusBar('running');
+                this.updateStatusBar('running', port);
                 this.startHealthCheck();
               } else {
                 // 健康检查失败，清理记录
@@ -278,26 +278,43 @@ export class BackendManager {
 
   /**
    * 更新状态栏
+   * @param status 状态类型
+   * @param port 可选的端口号，运行状态时显示
    */
-  private updateStatusBar(status: 'running' | 'stopped' | 'starting' | 'error'): void {
+  private updateStatusBar(status: 'running' | 'stopped' | 'starting' | 'error', port?: number): void {
+    this.currentStatus = status;
+    const effectivePort = port ?? this.allocatedPort;
+    const backendUrl = effectivePort ? `http://localhost:${effectivePort}` : '';
+
     switch (status) {
       case 'running':
-        this.statusBarItem.text = '$(server) Backend: Running';
+        // 运行时显示端口号，方便用户快速查看
+        this.statusBarItem.text = `$(check) Backend:${effectivePort ?? ''}`;
+        // 使用 Markdown 格式的 tooltip，显示更丰富的信息
+        const runningTooltip = new vscode.MarkdownString();
+        runningTooltip.appendMarkdown(`**${localize('extension.backend.statusOn', String(effectivePort ?? '?'))}**\n\n`);
+        runningTooltip.appendMarkdown(`- URL: \`${backendUrl}\`\n`);
+        runningTooltip.appendMarkdown(`- API Docs: \`${backendUrl}/docs\`\n\n`);
+        runningTooltip.appendMarkdown(`*${localize('backendManager.statusBar.tooltip')}*`);
+        this.statusBarItem.tooltip = runningTooltip;
         this.statusBarItem.backgroundColor = undefined;
         this.statusBarItem.show();
         break;
       case 'starting':
         this.statusBarItem.text = '$(sync~spin) Backend: Starting...';
+        this.statusBarItem.tooltip = localize('backendManager.statusBar.tooltip');
         this.statusBarItem.backgroundColor = undefined;
         this.statusBarItem.show();
         break;
       case 'error':
         this.statusBarItem.text = '$(error) Backend: Error';
+        this.statusBarItem.tooltip = localize('backendManager.statusBar.tooltip');
         this.statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.errorBackground');
         this.statusBarItem.show();
         break;
       case 'stopped':
-        this.statusBarItem.text = '$(server) Backend: Stopped';
+        this.statusBarItem.text = '$(circle-slash) Backend: Stopped';
+        this.statusBarItem.tooltip = localize('backendManager.statusBar.tooltip');
         this.statusBarItem.backgroundColor = undefined;
         this.statusBarItem.show();
         break;
@@ -502,7 +519,7 @@ export class BackendManager {
         if (await this.healthCheck()) {
           this.log('Backend service started successfully');
           this.isStarting = false;
-          this.updateStatusBar('running');
+          this.updateStatusBar('running', this.allocatedPort ?? undefined);
           this.startHealthCheck();
           return true;
         }
@@ -812,6 +829,64 @@ export class BackendManager {
     const envManager = new EnvManager();
     const envConfig = envManager.readEnv();
     return getBackendPort(envConfig);
+  }
+
+  /**
+   * 获取后端 URL
+   */
+  getBackendUrl(): string | null {
+    const port = this.allocatedPort;
+    if (!port) {
+      return null;
+    }
+    return `http://localhost:${port}`;
+  }
+
+  /**
+   * 获取当前状态
+   */
+  getCurrentStatus(): 'running' | 'stopped' | 'starting' | 'error' {
+    return this.currentStatus;
+  }
+
+  /**
+   * 复制后端 URL 到剪贴板
+   */
+  async copyBackendUrl(): Promise<boolean> {
+    const url = this.getBackendUrl();
+    if (!url) {
+      vscode.window.showWarningMessage(localize('extension.backend.statusOff'));
+      return false;
+    }
+    await vscode.env.clipboard.writeText(url);
+    vscode.window.showInformationMessage(localize('backendManager.statusBar.urlCopied', url));
+    return true;
+  }
+
+  /**
+   * 在浏览器中打开后端 URL
+   */
+  async openInBrowser(): Promise<boolean> {
+    const url = this.getBackendUrl();
+    if (!url) {
+      vscode.window.showWarningMessage(localize('extension.backend.statusOff'));
+      return false;
+    }
+    await vscode.env.openExternal(vscode.Uri.parse(url));
+    return true;
+  }
+
+  /**
+   * 在浏览器中打开 API 文档
+   */
+  async openApiDocs(): Promise<boolean> {
+    const url = this.getBackendUrl();
+    if (!url) {
+      vscode.window.showWarningMessage(localize('extension.backend.statusOff'));
+      return false;
+    }
+    await vscode.env.openExternal(vscode.Uri.parse(`${url}/docs`));
+    return true;
   }
 
   /**

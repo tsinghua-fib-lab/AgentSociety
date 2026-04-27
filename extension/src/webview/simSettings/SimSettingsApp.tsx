@@ -1,12 +1,13 @@
 import * as React from 'react';
-import { ConfigProvider, Transfer, Button, Space, Typography, Card, Alert, Spin, Modal, Tag } from 'antd';
-import { SaveOutlined, ReloadOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { ConfigProvider, Transfer, Button, Space, Typography, Card, Alert, Spin, Modal, Tag, Layout, Tooltip } from 'antd';
+import { SaveOutlined, ReloadOutlined, InfoCircleOutlined, SettingOutlined, RobotOutlined, CloudServerOutlined, AppstoreOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import type { VSCodeAPI, SimSettings, AgentInfo, EnvModuleInfo } from './types';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
 import { useVscodeTheme } from '../theme';
 import '../i18n';
 
+const { Content } = Layout;
 const { Title, Text } = Typography;
 
 // 截取描述预览文本
@@ -161,6 +162,34 @@ export const SimSettingsApp: React.FC<SimSettingsAppProps> = ({
     is_custom: envModules[type].is_custom || false,
   }));
 
+  // 统计卡片样式
+  const statPill = (label: string, value: string | number, accent?: string) => (
+    <div
+      style={{
+        flex: '1 1 120px',
+        minWidth: 100,
+        padding: '12px 16px',
+        borderRadius: 8,
+        border: `1px solid ${palette.panelBorder}`,
+        background: `linear-gradient(135deg, ${palette.surfaceBackground} 0%, ${palette.editorBackground} 100%)`,
+        transition: 'all 0.2s ease',
+      }}
+    >
+      <div style={{ fontSize: 11, color: palette.descriptionForeground, marginBottom: 6, fontWeight: 500, letterSpacing: 0.3 }}>{label}</div>
+      <div
+        style={{
+          fontSize: 22,
+          fontWeight: 700,
+          fontVariantNumeric: 'tabular-nums',
+          color: accent ?? palette.editorForeground,
+          lineHeight: 1,
+        }}
+      >
+        {value}
+      </div>
+    </div>
+  );
+
   // 自定义渲染函数 - Agent Classes
   const renderAgentItem = (item: typeof agentDataSource[0]) => {
     const preview = getDescriptionPreview(item.description);
@@ -172,38 +201,41 @@ export const SimSettingsApp: React.FC<SimSettingsAppProps> = ({
           marginBottom: '8px',
           cursor: item.description ? 'pointer' : 'default',
           backgroundColor: item.is_custom ? palette.surfaceBackground : palette.surfaceMuted,
+          borderRadius: 8,
+          border: `1px solid ${palette.panelBorder}`,
         }}
-        bodyStyle={{
-          padding: '12px',
-        }}
+        styles={{ body: { padding: '10px 12px' } }}
         onClick={() => {
           if (item.description) {
             handleViewDescription(item.key, true);
           }
         }}
       >
-        <Space direction="vertical" size="small" style={{ width: '100%' }}>
+        <Space direction="vertical" size={4} style={{ width: '100%' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <Text strong style={{ fontSize: '13px' }}>
               {item.title}
             </Text>
-            <Space size="small">
+            <Space size={4}>
               {item.is_custom && (
-                <Tag color="blue" style={{ fontSize: '11px', margin: 0 }}>
+                <Tag color="blue" style={{ fontSize: '10px', margin: 0, lineHeight: '16px' }}>
                   {t('simSettings.custom') || 'Custom'}
                 </Tag>
               )}
               {item.description && (
-                <InfoCircleOutlined
-                  style={{
-                    fontSize: '14px',
-                    flexShrink: 0,
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleViewDescription(item.key, true);
-                  }}
-                />
+                <Tooltip title={t('simSettings.agentClasses.viewDescription')}>
+                  <InfoCircleOutlined
+                    style={{
+                      fontSize: '14px',
+                      flexShrink: 0,
+                      color: palette.linkForeground,
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleViewDescription(item.key, true);
+                    }}
+                  />
+                </Tooltip>
               )}
             </Space>
           </div>
@@ -214,9 +246,12 @@ export const SimSettingsApp: React.FC<SimSettingsAppProps> = ({
             <Text
               type="secondary"
               style={{
-                fontSize: '12px',
+                fontSize: '11px',
                 display: 'block',
                 lineHeight: '1.4',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
               }}
             >
               {preview}
@@ -238,38 +273,41 @@ export const SimSettingsApp: React.FC<SimSettingsAppProps> = ({
           marginBottom: '8px',
           cursor: item.description ? 'pointer' : 'default',
           backgroundColor: item.is_custom ? palette.surfaceBackground : palette.surfaceMuted,
+          borderRadius: 8,
+          border: `1px solid ${palette.panelBorder}`,
         }}
-        bodyStyle={{
-          padding: '12px',
-        }}
+        styles={{ body: { padding: '10px 12px' } }}
         onClick={() => {
           if (item.description) {
             handleViewDescription(item.key, false);
           }
         }}
       >
-        <Space direction="vertical" size="small" style={{ width: '100%' }}>
+        <Space direction="vertical" size={4} style={{ width: '100%' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <Text strong style={{ fontSize: '13px' }}>
               {item.title}
             </Text>
-            <Space size="small">
+            <Space size={4}>
               {item.is_custom && (
-                <Tag color="blue" style={{ fontSize: '11px', margin: 0 }}>
+                <Tag color="blue" style={{ fontSize: '10px', margin: 0, lineHeight: '16px' }}>
                   {t('simSettings.custom') || 'Custom'}
                 </Tag>
               )}
               {item.description && (
-                <InfoCircleOutlined
-                  style={{
-                    fontSize: '14px',
-                    flexShrink: 0,
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleViewDescription(item.key, false);
-                  }}
-                />
+                <Tooltip title={t('simSettings.envModules.viewDescription')}>
+                  <InfoCircleOutlined
+                    style={{
+                      fontSize: '14px',
+                      flexShrink: 0,
+                      color: palette.linkForeground,
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleViewDescription(item.key, false);
+                    }}
+                  />
+                </Tooltip>
               )}
             </Space>
           </div>
@@ -280,9 +318,12 @@ export const SimSettingsApp: React.FC<SimSettingsAppProps> = ({
             <Text
               type="secondary"
               style={{
-                fontSize: '12px',
+                fontSize: '11px',
                 display: 'block',
                 lineHeight: '1.4',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
               }}
             >
               {preview}
@@ -293,66 +334,105 @@ export const SimSettingsApp: React.FC<SimSettingsAppProps> = ({
     );
   };
 
+  // 统计
+  const customAgentCount = Object.values(agentClasses).filter(a => a.is_custom).length;
+  const customEnvCount = Object.values(envModules).filter(e => e.is_custom).length;
+
   if (loading) {
     return (
       <ConfigProvider theme={themeConfig}>
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            alignItems: 'center',
-            height: '100vh',
-            gap: '16px',
-          }}
-        >
-          <Spin size="large" />
-          <Text>{t('simSettings.loading')}</Text>
-        </div>
+        <Layout style={{ minHeight: '100vh', background: 'transparent' }}>
+          <Content style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh', gap: 16 }}>
+            <Spin size="large" />
+            <Text>{t('simSettings.loading')}</Text>
+          </Content>
+        </Layout>
       </ConfigProvider>
     );
   }
 
   return (
     <ConfigProvider theme={themeConfig}>
-      <div
-        style={{
-          padding: '20px',
-          minHeight: '100vh',
-          backgroundColor: palette.editorBackground,
-          color: palette.editorForeground,
-        }}
-      >
-        <Title level={2} style={{ marginBottom: '16px' }}>
-          {t('simSettings.title')}
-        </Title>
+      <Layout style={{ minHeight: '100vh', background: 'transparent' }}>
+        <Content style={{ padding: '20px 22px 28px' }}>
+          <div style={{ maxWidth: 1180, margin: '0 auto' }}>
+            {/* 头部区域 */}
+            <div
+              style={{
+                marginBottom: 20,
+                padding: '24px 28px',
+                borderRadius: 16,
+                border: `1px solid ${palette.panelBorder}`,
+                background: `linear-gradient(180deg, ${palette.surfaceBackground} 0%, ${palette.editorBackground} 100%)`,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+              }}
+            >
+              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 20 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 42,
+                      height: 42,
+                      borderRadius: 12,
+                      background: `linear-gradient(135deg, ${palette.linkForeground}20 0%, ${palette.linkForeground}10 100%)`,
+                      color: palette.linkForeground,
+                    }}
+                  >
+                    <SettingOutlined style={{ fontSize: 20 }} />
+                  </span>
+                  <div>
+                    <Title level={4} style={{ margin: 0 }}>{t('simSettings.title')}</Title>
+                    <Text type="secondary" style={{ fontSize: 12 }}>{t('simSettings.description')}</Text>
+                  </div>
+                </div>
+                <Space size="small">
+                  <Button icon={<ReloadOutlined />} onClick={handleLoadDefaults} size="small">
+                    {t('simSettings.loadDefaults')}
+                  </Button>
+                  <Button type="primary" icon={<SaveOutlined />} onClick={handleSave} size="small">
+                    {t('simSettings.save')}
+                  </Button>
+                </Space>
+              </div>
 
-        <Alert
-          message={t('simSettings.description')}
-          description={t('simSettings.descriptionDetail')}
-          type="info"
-          showIcon
-          style={{ marginBottom: '24px' }}
-        />
+              {/* 统计卡片 */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+                {statPill(t('simSettings.agentClasses.title'), Object.keys(agentClasses).length, palette.linkForeground)}
+                {statPill(t('simSettings.envModules.title'), Object.keys(envModules).length, palette.successForeground)}
+                {statPill(t('simSettings.custom'), customAgentCount + customEnvCount)}
+              </div>
+            </div>
 
-        {saved && (
-          <Alert
-            message={t('simSettings.saved')}
-            type="success"
-            showIcon
-            closable
-            style={{ marginBottom: '16px' }}
-            onClose={() => setSaved(false)}
-          />
-        )}
+            {saved && (
+              <Alert
+                message={t('simSettings.saved')}
+                type="success"
+                showIcon
+                closable
+                style={{ marginBottom: 16 }}
+                onClose={() => setSaved(false)}
+              />
+            )}
 
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
-          {/* Agent Classes Selection */}
-          <Card
-            title={t('simSettings.agentClasses.title')}
-          >
-            <Space direction="vertical" style={{ width: '100%' }}>
-              <Text type="secondary" style={{ fontSize: '13px', marginBottom: '8px' }}>
+            {/* Agent Classes Selection */}
+            <Card
+              style={{
+                marginBottom: 16,
+                borderRadius: 12,
+                border: `1px solid ${palette.panelBorder}`,
+                background: palette.surfaceMuted,
+              }}
+              styles={{ body: { padding: '16px 20px' } }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <RobotOutlined style={{ color: palette.linkForeground }} />
+                <Text strong style={{ fontSize: 14 }}>{t('simSettings.agentClasses.title')}</Text>
+                <Tag color="blue" style={{ marginLeft: 'auto' }}>{agentClassesList.length} / {Object.keys(agentClasses).length}</Tag>
+              </div>
+              <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 12 }}>
                 {t('simSettings.agentClasses.description')}
               </Text>
               <div style={{ width: '100%', overflow: 'hidden' }}>
@@ -377,25 +457,31 @@ export const SimSettingsApp: React.FC<SimSettingsAppProps> = ({
                   ]}
                   listStyle={{
                     width: 'calc(50% - 80px)',
-                    height: 400,
+                    height: 350,
                   }}
                   style={{
                     width: '100%',
                   }}
                 />
               </div>
-              <Text type="secondary" style={{ fontSize: '12px' }}>
-                {t('simSettings.agentClasses.hint')}
-              </Text>
-            </Space>
-          </Card>
+            </Card>
 
-          {/* Environment Modules Selection */}
-          <Card
-            title={t('simSettings.envModules.title')}
-          >
-            <Space direction="vertical" style={{ width: '100%' }}>
-              <Text type="secondary" style={{ fontSize: '13px', marginBottom: '8px' }}>
+            {/* Environment Modules Selection */}
+            <Card
+              style={{
+                marginBottom: 16,
+                borderRadius: 12,
+                border: `1px solid ${palette.panelBorder}`,
+                background: palette.surfaceMuted,
+              }}
+              styles={{ body: { padding: '16px 20px' } }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <CloudServerOutlined style={{ color: palette.successForeground }} />
+                <Text strong style={{ fontSize: 14 }}>{t('simSettings.envModules.title')}</Text>
+                <Tag color="green" style={{ marginLeft: 'auto' }}>{envModulesList.length} / {Object.keys(envModules).length}</Tag>
+              </div>
+              <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 12 }}>
                 {t('simSettings.envModules.description')}
               </Text>
               <div style={{ width: '100%', overflow: 'hidden' }}>
@@ -420,91 +506,76 @@ export const SimSettingsApp: React.FC<SimSettingsAppProps> = ({
                   ]}
                   listStyle={{
                     width: 'calc(50% - 80px)',
-                    height: 400,
+                    height: 350,
                   }}
                   style={{
                     width: '100%',
                   }}
                 />
               </div>
-              <Text type="secondary" style={{ fontSize: '12px' }}>
-                {t('simSettings.envModules.hint')}
-              </Text>
-            </Space>
-          </Card>
+            </Card>
 
-          {/* Action Buttons */}
-          <Space>
-            <Button
-              type="primary"
-              icon={<SaveOutlined />}
-              onClick={handleSave}
-              size="large"
+            {/* Info Card */}
+            <Card
+              style={{
+                borderRadius: 12,
+                border: `1px solid ${palette.panelBorder}`,
+                background: palette.surfaceMuted,
+                borderLeft: `3px solid ${palette.linkForeground}`,
+              }}
+              styles={{ body: { padding: '16px 20px' } }}
             >
-              {t('simSettings.save')}
-            </Button>
-            <Button
-              icon={<ReloadOutlined />}
-              onClick={handleLoadDefaults}
-              size="large"
-            >
-              {t('simSettings.loadDefaults')}
-            </Button>
-          </Space>
+              <Space direction="vertical" size={8}>
+                <Text strong style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <InfoCircleOutlined style={{ color: palette.linkForeground }} />
+                  {t('simSettings.note.title')}
+                </Text>
+                <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
+                  {t('simSettings.note.text1')}
+                </Text>
+                <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
+                  {t('simSettings.note.text2')}
+                </Text>
+                <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
+                  {t('simSettings.note.text3')}
+                </Text>
+              </Space>
+            </Card>
+          </div>
 
-          {/* Info Card */}
-          <Card
+          {/* Description Modal */}
+          <Modal
+            title={currentDescription?.title || t('simSettings.descriptionModal.title')}
+            open={descriptionModalVisible}
+            onCancel={handleCloseDescriptionModal}
+            footer={[
+              <Button key="close" onClick={handleCloseDescriptionModal}>
+                {t('simSettings.close') || 'Close'}
+              </Button>,
+            ]}
+            width={800}
             style={{
-              borderLeftWidth: '3px',
+              top: 20,
+            }}
+            styles={{
+              body: {
+                maxHeight: '70vh',
+                overflow: 'auto',
+                padding: '24px',
+              },
             }}
           >
-            <Space direction="vertical" size="small">
-              <Text strong>{t('simSettings.note.title')}</Text>
-              <Text>
-                {t('simSettings.note.text1')}
-              </Text>
-              <Text>
-                {t('simSettings.note.text2')}
-              </Text>
-              <Text>
-                {t('simSettings.note.text3')}
-              </Text>
-            </Space>
-          </Card>
-        </Space>
-
-        {/* Description Modal */}
-        <Modal
-          title={currentDescription?.title || t('simSettings.descriptionModal.title')}
-          open={descriptionModalVisible}
-          onCancel={handleCloseDescriptionModal}
-          footer={[
-            <Button key="close" onClick={handleCloseDescriptionModal}>
-              {t('simSettings.close') || 'Close'}
-            </Button>,
-          ]}
-          width={800}
-          style={{
-            top: 20,
-          }}
-          styles={{
-            body: {
-              maxHeight: '70vh',
-              overflow: 'auto',
-              padding: '24px',
-            },
-          }}
-        >
-          {currentDescription?.content ? (
-            <MarkdownRenderer
-              content={currentDescription.content}
-              isDark={isDark}
-            />
-          ) : (
-            <Text type="secondary">{t('simSettings.descriptionModal.noDescription')}</Text>
-          )}
-        </Modal>
-      </div>
+            {currentDescription?.content ? (
+              <MarkdownRenderer
+                content={currentDescription.content}
+                isDark={isDark}
+              />
+            ) : (
+              <Text type="secondary">{t('simSettings.descriptionModal.noDescription')}</Text>
+            )}
+          </Modal>
+        </Content>
+      </Layout>
     </ConfigProvider>
   );
 };
