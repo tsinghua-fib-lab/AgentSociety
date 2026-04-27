@@ -157,6 +157,7 @@ class PersistenceConfig:
     wal_max_entries: int = 1000
     llm_history_max_entries: int = 100
     enable_llm_history: bool = False
+    archive_after_days: int = 30
 
 
 @dataclass

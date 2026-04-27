@@ -60,6 +60,9 @@ from typing import Any, Optional
 from .config import AgentConfig
 from .tool.utils import jr_dumps as _jr_dumps, jr_parse
 
+RUNTIME_DIR = ".runtime"
+RUNTIME_LOG_DIR = f"{RUNTIME_DIR}/logs"
+
 
 def _compute_checksum(data: dict[str, Any]) -> str:
     """计算数据的校验和。"""
@@ -98,7 +101,7 @@ class Checkpoint:
     def __init__(self, workspace: Path, config: AgentConfig):
         self.workspace = workspace
         self.config = config
-        self.dir = workspace / "checkpoints"
+        self.dir = workspace / RUNTIME_DIR / "checkpoints"
         self.dir.mkdir(parents=True, exist_ok=True)
 
     def _path(self, tick: int) -> Path:
@@ -193,8 +196,8 @@ class WriteAheadLog:
         :param workspace: 工作区根目录。
         :param max_entries: 最大保留条目数。
         """
-        self.path = workspace / "wal" / "wal.jsonl"
-        self.index_path = workspace / "wal" / "index.json"
+        self.path = workspace / RUNTIME_DIR / "wal" / "wal.jsonl"
+        self.index_path = workspace / RUNTIME_DIR / "wal" / "index.json"
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.max_entries = max_entries
         self._counter = 0
@@ -435,7 +438,7 @@ class WorkspaceCleaner:
         stats = {"files_removed": 0, "bytes_freed": 0}
 
         # 清理日志
-        log_dir = self.workspace / "logs"
+        log_dir = self.workspace / RUNTIME_LOG_DIR
         if log_dir.exists():
             logs = sorted(
                 log_dir.glob("*.log"), key=lambda p: p.stat().st_mtime, reverse=True
@@ -462,7 +465,7 @@ class WorkspaceCleaner:
                 stats["files_removed"] += 1
 
         # 清理检查点
-        cp_dir = self.workspace / "checkpoints"
+        cp_dir = self.workspace / RUNTIME_DIR / "checkpoints"
         if cp_dir.exists():
             cps = sorted(
                 cp_dir.glob("checkpoint_*.json"),
@@ -475,7 +478,7 @@ class WorkspaceCleaner:
                 stats["files_removed"] += 1
 
         # 清理 WAL 已完成记录
-        wal_dir = self.workspace / "wal"
+        wal_dir = self.workspace / RUNTIME_DIR / "wal"
         if wal_dir.exists():
             wal = WriteAheadLog(self.workspace, self.config.persistence.wal_max_entries)
             cleaned = wal.clear_completed()
@@ -485,7 +488,7 @@ class WorkspaceCleaner:
         archive_threshold = datetime.now() - timedelta(
             days=self.config.persistence.archive_after_days
         )
-        archive_dir = self.workspace / "archive"
+        archive_dir = self.workspace / RUNTIME_DIR / "archive"
         archive_dir.mkdir(exist_ok=True)
 
         if log_dir.exists():
@@ -541,7 +544,7 @@ class SessionRecovery:
             if latest < current_tick:
                 parts.append(f"**Ticks Since**: {current_tick - latest}")
 
-        ctx_path = self.workspace / "AGENT_CONTEXT.md"
+        ctx_path = self.workspace / "AGENT.md"
         if ctx_path.exists():
             content = ctx_path.read_text(encoding="utf-8")
             if content:

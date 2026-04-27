@@ -1,12 +1,6 @@
 ---
 name: plan
 description: Execute intentions through the environment.
-priority: 30
-inputs:
-  - state/intention.json
-  - state/observation.txt
-outputs:
-  - state/plan_state.json
 ---
 
 # Plan

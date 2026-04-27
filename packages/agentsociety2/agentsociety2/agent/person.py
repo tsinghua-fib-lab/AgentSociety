@@ -14,6 +14,7 @@ import threading
 import re
 import shlex
 import difflib
+import time
 from collections import OrderedDict
 from collections.abc import Mapping
 from datetime import datetime
@@ -172,7 +173,7 @@ class PersonAgent(AgentBase):
         # 上下文利用率追踪
         self._last_utilization: float = 0.0
         self._compact_count: int = 0
-        # 跨压缩轮次的滚动摘要（增量合并，持久化见 thread_compact_state.json）
+        # 跨压缩轮次的滚动摘要（增量合并，持久化见 .runtime/logs/thread_compact_state.json）
         self._rolling_thread_summary: str = ""
 
         # ── 系统提示词缓存（使用单一版本号简化逻辑）──
@@ -194,6 +195,11 @@ class PersonAgent(AgentBase):
         # ── 并发控制 ──
         self._parallel_executor = ParallelExecutor(self._config)
         self._rate_limiter = RateLimiter(self._config.concurrency.rate_limit_rps)
+
+        # ── 当前工具 trace 上下文（仅用于统一观测，不进入业务逻辑）──
+        self._current_trace_id: str | None = None
+        self._current_tool_span_id: str | None = None
+        self._current_tool_started_at: float | None = None
 
     def _update_workspace_cache(self, path: str, content: str) -> None:
         """更新缓存并执行 LRU 淘汰。
@@ -339,16 +345,18 @@ class PersonAgent(AgentBase):
 
         workspace_context: dict[str, Any] = {}
         json_paths = [
-            "emotion.json",
-            "intention.json",
-            "plan_state.json",
-            "session_state.json",
-            "observation_ctx.json",
+            "state/emotion.json",
+            "state/intention.json",
+            "state/plan_state.json",
+            "state/needs.json",
+            "state/observation_ctx.json",
+            ".runtime/logs/session_state.json",
         ]
         text_paths = [
-            "observation.txt",
-            "thought.txt",
-            "current_need.txt",
+            "state/observation.txt",
+            "state/thought.txt",
+            "state/current_need.txt",
+            "AGENT.md",
         ]
 
         for path in json_paths:
@@ -361,11 +369,18 @@ class PersonAgent(AgentBase):
                 if text:
                     workspace_context[path] = self._truncate_text(text, max_len=3000)
 
-        if self._skill_runtime.workspace_exists("memory.jsonl"):
-            workspace_context["memory_recent"] = self._tail_jsonl(
-                self._skill_runtime.workspace_read("memory.jsonl"),
-                limit=10,
-            )
+        for memory_path in [
+            "state/memory.jsonl",
+            "memory/memory.jsonl",
+            "memory.jsonl",
+        ]:
+            if self._skill_runtime.workspace_exists(memory_path):
+                workspace_context["memory_recent"] = self._tail_jsonl(
+                    self._skill_runtime.workspace_read(memory_path),
+                    limit=10,
+                )
+                workspace_context["memory_path"] = memory_path
+                break
 
         recent_tool_logs = self._skill_runtime.read_recent_tool_logs(limit=8)
         if recent_tool_logs:
@@ -633,6 +648,66 @@ class PersonAgent(AgentBase):
         thread_messages.append({"role": "user", "content": content})
         if len(thread_messages) > self._ctx_config.thread_max_messages:
             thread_messages = thread_messages[-self._ctx_config.thread_max_messages :]
+
+        trace_id = self._current_trace_id
+        span_id = self._current_tool_span_id
+        if trace_id and span_id:
+            duration_ms = None
+            if self._current_tool_started_at is not None:
+                duration_ms = int(
+                    (time.monotonic() - self._current_tool_started_at) * 1000
+                )
+            output_summary = self._summarize_tool_result(enriched)
+            self._skill_runtime.emit_behavior_event(
+                "tool_result",
+                {
+                    "action": str(enriched.get("action", "")),
+                    "workspace_state_version": self._workspace_state_version,
+                },
+                tick=tick,
+                trace_id=trace_id,
+                span_id=span_id,
+                parent_span_id="step",
+                name=str(enriched.get("action", "")) or None,
+                output_summary=output_summary,
+                error=(
+                    str(enriched.get("error", ""))[:300]
+                    if not bool(enriched.get("ok", False)) and enriched.get("error")
+                    else None
+                ),
+                duration_ms=duration_ms,
+            )
+
+    @staticmethod
+    def _summarize_tool_result(result: dict[str, Any]) -> dict[str, Any]:
+        """生成工具结果摘要，避免把大内容写入 trace。"""
+        summary: dict[str, Any] = {
+            "ok": bool(result.get("ok", False)),
+        }
+        for key in [
+            "action",
+            "skill_name",
+            "path",
+            "exit_code",
+            "error_type",
+            "count",
+            "size",
+            "workspace_state_version",
+        ]:
+            if key in result:
+                summary[key] = result[key]
+        if "artifacts" in result:
+            artifacts = result.get("artifacts") or []
+            summary["artifacts_count"] = (
+                len(artifacts) if isinstance(artifacts, list) else 0
+            )
+        if "returned_chars" in result:
+            summary["returned_chars"] = result.get("returned_chars")
+        if "has_more" in result:
+            summary["has_more"] = result.get("has_more")
+        if not summary["ok"] and result.get("error"):
+            summary["error"] = str(result.get("error"))[:300]
+        return summary
 
     def _prepare_prompt_sidecars(self) -> None:
         """准备 prompt 侧车数据。
@@ -1336,7 +1411,7 @@ class PersonAgent(AgentBase):
         - _step_context: 步骤上下文（step 开始时构建）
         - _memory: 记忆内容（从 memory/ 目录读取）
         - _structured_summary: 结构化摘要（从文件读取）
-        - _rolling_thread_summary: 滚动摘要（从 thread_compact_state.json 读取）
+        - _rolling_thread_summary: 滚动摘要（从 .runtime/logs/thread_compact_state.json 读取）
 
         :param tick: 检查点的 tick 值。
         :return: 是否成功恢复。
@@ -1472,12 +1547,16 @@ class PersonAgent(AgentBase):
         # 清空 thread 消息文件
         if self._skill_runtime._agent_work_dir is not None:
             thread_file = (
-                self._skill_runtime._agent_work_dir / "logs" / "thread_messages.jsonl"
+                self._skill_runtime._agent_work_dir
+                / ".runtime"
+                / "logs"
+                / "thread_messages.jsonl"
             )
             if thread_file.exists():
                 thread_file.unlink()
             compact_state = (
                 self._skill_runtime._agent_work_dir
+                / ".runtime"
                 / "logs"
                 / "thread_compact_state.json"
             )
@@ -1744,6 +1823,24 @@ class PersonAgent(AgentBase):
         logs: list[str] = []
         history: list[dict[str, Any]] = []
         thread_messages = self._skill_runtime.read_recent_thread_messages(limit=40)
+        trace_id = f"agent_{self.id}_tick_{tick}"
+        step_start = time.monotonic()
+        self._skill_runtime.emit_behavior_event(
+            "step_start",
+            {
+                "active_skills": sorted(self._activated_skills),
+                "visible_skill_count": len(self._all_visible_skill_names()),
+                "workspace_state_version": self._workspace_state_version,
+            },
+            tick=tick,
+            trace_id=trace_id,
+            span_id="step",
+            name="person_step",
+            input_summary={
+                "thread_messages": len(thread_messages),
+                "max_tool_rounds": self._max_tool_rounds,
+            },
+        )
 
         # 每步重置循环检测器
         self._loop_detector.reset()
@@ -1791,6 +1888,10 @@ class PersonAgent(AgentBase):
             action = decision.tool_name.strip()
             args = self._coerce_llm_dict(decision.arguments)
             skill_name = str(args.get("skill_name", "")).strip()
+            span_id = f"tool_{i + 1}"
+            self._current_trace_id = trace_id
+            self._current_tool_span_id = span_id
+            self._current_tool_started_at = time.monotonic()
 
             # ── tool_name 语义校验（避免 Pydantic 校验失败导致重试） ────────────────
             # 允许模型犯错：把错误变成 TOOL_RESULT_JSON，给模型在同一步内纠正的机会。
@@ -1843,6 +1944,15 @@ class PersonAgent(AgentBase):
                     "args_summary": {k: str(v)[:50] for k, v in list(args.items())[:5]},
                 },
                 tick=tick,
+                trace_id=trace_id,
+                span_id=span_id,
+                parent_span_id="step",
+                name=action,
+                input_summary={
+                    "skill_name": skill_name,
+                    "done": bool(getattr(decision, "done", False)),
+                    "args_keys": sorted(args.keys())[:12],
+                },
             )
 
             # ── 循环检测 ──
@@ -2082,6 +2192,12 @@ class PersonAgent(AgentBase):
                             "args": activation_raw[:100] if activation_raw else "",
                         },
                         tick=tick,
+                        trace_id=trace_id,
+                        span_id=f"{span_id}.skill_activate",
+                        parent_span_id=span_id,
+                        name=skill_name,
+                        input_summary={"arguments": activation_raw[:100]},
+                        output_summary={"content_chars": len(content)},
                     )
                 result_obj = {
                     "action": action,
@@ -2248,7 +2364,7 @@ class PersonAgent(AgentBase):
                             "path": ws_read_path,
                             "ok": False,
                             "error": "file not found",
-                            "hint": "Call workspace_list(path) to inspect available files, or read AGENT_FILES.md for a generated file index.",
+                            "hint": "Call workspace_list(path) to inspect available files, or read AGENT.md for the generated file index.",
                             "suggestions": close,
                             "files_sample": sample,
                         }
@@ -2531,6 +2647,25 @@ class PersonAgent(AgentBase):
                 logs.append(f"done:{decision.summary or 'step_complete'}")
                 break
 
+        duration_ms = int((time.monotonic() - step_start) * 1000)
+        self._skill_runtime.emit_behavior_event(
+            "step_end",
+            {
+                "log_count": len(logs),
+                "tool_count": len(history),
+                "workspace_state_version": self._workspace_state_version,
+            },
+            tick=tick,
+            trace_id=trace_id,
+            span_id="step",
+            name="person_step",
+            output_summary={
+                "logs": logs[-5:],
+                "tool_count": len(history),
+                "activated_skills": sorted(self._activated_skills),
+            },
+            duration_ms=duration_ms,
+        )
         return logs, history
 
     # ── Public API ────────────────────────────────────────────────────────────

@@ -747,7 +747,7 @@ def load_rolling_summary_from_workspace(read_json: Callable[[str, Any], Any]) ->
     :return: 当前滚动摘要字符串（可能为空）。
     :rtype: str
     """
-    raw = read_json("logs/thread_compact_state.json", {})
+    raw = read_json(".runtime/logs/thread_compact_state.json", {})
     if isinstance(raw, dict):
         return str(raw.get("rolling_summary", "") or "")
     return ""
@@ -774,7 +774,7 @@ def save_thread_compact_state(
     :rtype: None
     """
     workspace_write(
-        "logs/thread_compact_state.json",
+        ".runtime/logs/thread_compact_state.json",
         _jr_dumps(
             {
                 "rolling_summary": rolling_summary,
@@ -810,7 +810,7 @@ def save_thread_history_before_compact(
     :param compact_count: 当前压缩次数（用于文件命名）。
     :return: 保存的历史文件路径。
     """
-    history_path = f"logs/thread_history/compact_{compact_count:04d}.jsonl"
+    history_path = f".runtime/logs/thread_history/compact_{compact_count:04d}.jsonl"
     lines = []
     for m in thread_messages:
         lines.append(_jr_dumps(m, indent=None))
@@ -1111,7 +1111,7 @@ async def run_thread_compaction(
 
 
 class AgentContext:
-    """Unified context manager (AGENT_CONTEXT.md).
+    """Unified context manager (AGENT.md).
 
     Designed after Claude Code's CLAUDE.md best practices:
     - Concise (under 300 lines, ideally 60)
@@ -1156,7 +1156,7 @@ class AgentContext:
     MAX_BODY_CHARS = 2000
 
     def __init__(self, workspace_path: Path):
-        self.path = workspace_path / "AGENT_CONTEXT.md"
+        self.path = workspace_path / "AGENT.md"
         self._frontmatter: dict[str, Any] = {
             "current_focus": "",
             "tick": 0,

@@ -10,6 +10,7 @@ JSON 容错策略：
 from __future__ import annotations
 
 import asyncio
+import json
 from collections.abc import Mapping
 from typing import Any
 
@@ -81,7 +82,8 @@ def jr_dumps(obj: Any, indent: int | None = 2) -> str:
     :return: JSON 字符串。
     """
     serialized = _serialize_for_json(obj)
-    return json_repair.dumps(serialized, indent=indent, ensure_ascii=False)
+    json_text = json.dumps(serialized, indent=indent, ensure_ascii=False)
+    return json_repair.repair_json(json_text, indent=indent, ensure_ascii=False)
 
 
 def jr_parse(text: str) -> Any:

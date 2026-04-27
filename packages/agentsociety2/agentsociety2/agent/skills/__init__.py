@@ -183,9 +183,10 @@ class SkillRegistry:
     """
 
     def __init__(self) -> None:
-        """Initialize an empty skill registry."""
+        """Initialize a skill registry with built-in skills loaded."""
         self._skills: dict[str, SkillInfo] = {}
         self._builtin_scanned = False
+        self.scan_builtin()
 
     def copy_from(self, other: "SkillRegistry") -> None:
         """从另一个 registry 复制所有技能。
