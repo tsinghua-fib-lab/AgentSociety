@@ -105,6 +105,11 @@
         "icon": "$(settings)"
       },
       {
+        "command": "aiSocialScientist.openHelpPage",
+        "title": "AI Social Scientist: Help & Guide",
+        "icon": "$(book)"
+      },
+      {
         "command": "aiSocialScientist.openSkillMarketplace",
         "title": "AI Social Scientist: Skills",
         "icon": "$(extensions)"

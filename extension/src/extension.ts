@@ -27,6 +27,7 @@ import { InitConfigEditorProvider } from './initConfigEditorProvider';
 import { PrefillParamsViewProvider } from './prefillParamsViewProvider';
 import { ReplayWebviewProvider } from './replayWebviewProvider';
 import { ConfigPageViewProvider } from './configPageViewProvider';
+import { HelpPageViewProvider } from './helpPageViewProvider';
 import { ApiClient } from './apiClient';
 import { ProjectDragAndDropController } from './dragAndDropController';
 import { localize } from './i18n';
@@ -576,6 +577,14 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
+  // ========== Help Page ==========
+  const openHelpPageCommand = vscode.commands.registerCommand(
+    'aiSocialScientist.openHelpPage',
+    () => {
+      HelpPageViewProvider.createOrShow(context, vscode.ViewColumn.One);
+    }
+  );
+
   // ========== Skill Marketplace（编辑器区域面板，避免侧边栏过窄） ==========
   const skillMarketplaceOutputChannel = vscode.window.createOutputChannel('Skill Marketplace');
   context.subscriptions.push(skillMarketplaceOutputChannel);
@@ -1003,6 +1012,7 @@ export function activate(context: vscode.ExtensionContext) {
     openBackendInBrowserCommand,
     openApiDocsCommand,
     openConfigPageCommand,
+    openHelpPageCommand,
     openSkillMarketplaceCommand,
     openSkillSourcesSettingsCommand,
     openClaudeSkillSourcesSettingsCommand,

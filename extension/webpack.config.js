@@ -8,6 +8,7 @@ const entries = {
   configPage: './src/webview/configPage/index.tsx',
   initConfig: './src/webview/initConfig/index.tsx',
   skillMarketplace: './src/webview/skillMarketplace/index.tsx',
+  helpPage: './src/webview/helpPage/index.tsx',
 };
 
 const createConfig = (name, entry) => ({
