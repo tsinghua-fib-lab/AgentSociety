@@ -213,6 +213,15 @@ export class SkillMarketplacePanel {
             await this._saveSkillSources(payload.target, payload.sources);
             break;
           }
+          case 'getGithubToken': {
+            await this._getGithubToken();
+            break;
+          }
+          case 'saveGithubToken': {
+            const payload = data.payload as { token: string };
+            await this._saveGithubToken(payload.token);
+            break;
+          }
           case 'getSkillUpdateDiff': {
             const payload = data.payload as { skill: MarketplaceSkill } | undefined;
             if (payload?.skill) {
@@ -671,10 +680,6 @@ export class SkillMarketplacePanel {
     const agentRaw = vscode.workspace.getConfiguration('agentSkills').get<unknown>('skillSources');
     const claudeRaw = vscode.workspace.getConfiguration('agentSkills').get<unknown>('claudeSkillSources');
 
-    // 调试日志
-    this._outputChannel.appendLine(`[SkillMarketplace] agentRaw: ${JSON.stringify(agentRaw)}`);
-    this._outputChannel.appendLine(`[SkillMarketplace] claudeRaw: ${JSON.stringify(claudeRaw)}`);
-
     // 如果配置为空或非数组，使用默认值
     const agentSources = normalizeSkillSources(
       Array.isArray(agentRaw) && agentRaw.length > 0 ? agentRaw : DEFAULT_AGENT_SKILL_SOURCES
@@ -682,9 +687,6 @@ export class SkillMarketplacePanel {
     const claudeSources = normalizeSkillSources(
       Array.isArray(claudeRaw) && claudeRaw.length > 0 ? claudeRaw : DEFAULT_CLAUDE_SKILL_SOURCES
     );
-
-    this._outputChannel.appendLine(`[SkillMarketplace] agentSources: ${JSON.stringify(agentSources)}`);
-    this._outputChannel.appendLine(`[SkillMarketplace] claudeSources: ${JSON.stringify(claudeSources)}`);
 
     const loadOneChannel = async (
       sources: SkillSource[],
@@ -1074,6 +1076,30 @@ export class SkillMarketplacePanel {
         type: 'skillSourcesError',
         payload: { target, error: error.message || String(error) },
       });
+    }
+  }
+
+  private async _getGithubToken(): Promise<void> {
+    const token = vscode.workspace.getConfiguration('agentSkills').get<string>('githubToken', '');
+    await this._postMessage({
+      type: 'githubTokenLoaded',
+      payload: { token },
+    });
+  }
+
+  private async _saveGithubToken(token: string): Promise<void> {
+    try {
+      await vscode.workspace.getConfiguration('agentSkills').update(
+        'githubToken',
+        token,
+        vscode.ConfigurationTarget.Global
+      );
+      await this._postMessage({
+        type: 'githubTokenSaved',
+        payload: { success: true },
+      });
+    } catch (error: any) {
+      this._outputChannel.appendLine(`[SkillManagement] Save GitHub token failed: ${error.message}`);
     }
   }
 

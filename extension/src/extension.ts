@@ -544,6 +544,14 @@ export function activate(context: vscode.ExtensionContext) {
 
   // ========== Custom Module Commands ==========
 
+  const refreshProjectViewCommand = vscode.commands.registerCommand(
+    'aiSocialScientist.refreshProjectView',
+    () => {
+      projectStructureProvider.refresh();
+      vscode.window.showInformationMessage(localize('projectView.refreshed'));
+    }
+  );
+
   const scanCustomModulesCommand = vscode.commands.registerCommand(
     'aiSocialScientist.scanCustomModules',
     async () => {
@@ -930,6 +938,7 @@ export function activate(context: vscode.ExtensionContext) {
     openSkillMarketplaceCommand,
     openSkillSourcesSettingsCommand,
     openClaudeSkillSourcesSettingsCommand,
+    refreshProjectViewCommand,
     scanCustomModulesCommand,
     testCustomModulesCommand,
     listCustomModulesCommand,

@@ -125,6 +125,11 @@
         "icon": "$(refresh)"
       },
       {
+        "command": "aiSocialScientist.refreshProjectView",
+        "title": "AI Social Scientist: Refresh Project View",
+        "icon": "$(refresh)"
+      },
+      {
         "command": "aiSocialScientist.testCustomModules",
         "title": "AI Social Scientist: Test Custom Modules",
         "icon": "$(play)"
@@ -192,6 +197,11 @@
     ],
     "menus": {
       "view/title": [
+        {
+          "command": "aiSocialScientist.refreshProjectView",
+          "when": "view == projectStructureView && workspaceFolderCount > 0",
+          "group": "navigation@0"
+        },
         {
           "command": "aiSocialScientist.openSkillMarketplace",
           "when": "view == projectStructureView && workspaceFolderCount > 0",

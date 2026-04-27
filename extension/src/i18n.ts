@@ -236,6 +236,9 @@ const translations: Record<string, Record<string, string>> = {
     'configPage.noWorkspace': '请先打开一个工作区文件夹。配置将保存在当前工作区中。',
     'configPage.openWorkspace': '打开工作区',
 
+    // projectView
+    'projectView.refreshed': '工作区视图已刷新',
+
     // customModules
     'customModules.noWorkspace': '未找到工作区文件夹',
     'customModules.scanning': '正在扫描自定义模块...',
@@ -550,6 +553,9 @@ const translations: Record<string, Record<string, string>> = {
     'configPage.title': 'AI Social Scientist Configuration',
     'configPage.noWorkspace': 'Please open a workspace folder first. Configuration will be saved in the current workspace.',
     'configPage.openWorkspace': 'Open Workspace',
+
+    // projectView
+    'projectView.refreshed': 'Project view refreshed',
 
     // customModules
     'customModules.noWorkspace': 'Workspace folder not found',

@@ -3,7 +3,3 @@
  */
 export { SkillDetailCollapse } from './SkillDetailCollapse';
 export type { SkillDetailCollapseProps } from './SkillDetailCollapse';
-
-export { UpdateDiffModal } from './UpdateDiffModal';
-
-export { SkillSourcesPanel } from './SkillSourcesPanel';

@@ -173,7 +173,7 @@ export function normalizeSkillSources(sources: unknown[]): SkillSource[] {
     const owner = String(raw.owner ?? '').trim();
     const repo = String(raw.repo ?? '').trim();
     const branch = String(raw.branch ?? 'main').trim() || 'main';
-    const skillsPath = String(raw.skillsPath ?? raw.path ?? '')
+    const skillsPath = String(raw.skillsPath ?? '')
       .trim()
       .replace(/^\/+|\/+$/g, '');
     const platform = raw.platform === 'gitlab' || raw.platform === 'gitee'

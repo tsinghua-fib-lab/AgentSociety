@@ -209,6 +209,8 @@ export interface ExtensionMessage {
   // 市场源配置
   | 'getSkillSources'          // 获取市场源配置
   | 'saveSkillSources'         // 保存市场源配置
+  | 'getGithubToken'           // 获取 GitHub Token
+  | 'saveGithubToken'          // 保存 GitHub Token
   // 更新差异预览
   | 'getSkillUpdateDiff'       // 获取技能更新差异
   | 'confirmSkillUpdate';      // 确认更新技能
@@ -245,6 +247,9 @@ export interface WebviewMessage {
   | 'skillSourcesLoaded'       // 市场源配置加载完成
   | 'skillSourcesSaved'        // 市场源配置保存完成
   | 'skillSourcesError'        // 市场源配置操作错误
+  // GitHub Token
+  | 'githubTokenLoaded'        // GitHub Token 加载完成
+  | 'githubTokenSaved'         // GitHub Token 保存完成
   // 通用
   | 'error';
   payload?: unknown;
@@ -299,7 +304,36 @@ export interface RawSkillSourceConfig {
   repo?: unknown;
   branch?: unknown;
   skillsPath?: unknown;
-  path?: unknown;  // 别名
   platform?: unknown;
   baseUrl?: unknown;
 }
+
+// ============ 默认市场源配置 ============
+
+/** 默认 Claude 技能源（内置） */
+export const DEFAULT_CLAUDE_SOURCES: SkillSourceConfig[] = [
+  {
+    owner: 'anthropics',
+    repo: 'skills',
+    branch: 'main',
+    skillsPath: 'skills',
+    platform: 'github',
+  },
+  {
+    owner: 'obra',
+    repo: 'superpowers',
+    branch: 'main',
+    skillsPath: 'skills',
+    platform: 'github',
+  },
+  {
+    owner: 'affaan-m',
+    repo: 'everything-claude-code',
+    branch: 'main',
+    skillsPath: '.agents/skills',
+    platform: 'github',
+  },
+];
+
+/** 默认 Agent 技能源（无内置） */
+export const DEFAULT_AGENT_SOURCES: SkillSourceConfig[] = [];
