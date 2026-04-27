@@ -776,14 +776,25 @@ export class SkillMarketplacePanel {
 
       const catInfo = CATEGORY_MAP[skillName] || { id: 'other', name: 'Other', nameZh: '其他' };
 
-      // 获取本地已安装版本
-      const installedVersion = this._getLocalSkillVersion(skillName, installTarget);
+      // 获取本地已安装版本和内容
+      const { version: installedVersion, content: localContent } = this._getLocalSkillInfo(skillName, installTarget);
 
       // 比较版本，检测是否有更新
       const remoteVersion = frontmatter.version || '1.0.0';
-      const updateAvailable = installedVersion
-        ? this._compareVersions(remoteVersion, installedVersion) > 0
-        : false;
+      let updateAvailable = false;
+
+      if (installedVersion) {
+        // 版本号比较
+        const versionDiff = this._compareVersions(remoteVersion, installedVersion);
+        if (versionDiff > 0) {
+          updateAvailable = true;
+        } else if (versionDiff === 0 && localContent) {
+          // 版本号相同，比较内容哈希检测内容变化
+          const localHash = this._hashContent(localContent);
+          const remoteHash = this._hashContent(content);
+          updateAvailable = localHash !== remoteHash;
+        }
+      }
 
       return {
         id: skillName,
@@ -817,12 +828,12 @@ export class SkillMarketplacePanel {
   }
 
   /**
-   * 获取本地已安装技能的版本
+   * 获取本地已安装技能的版本和内容
    */
-  private _getLocalSkillVersion(skillId: string, installTarget: 'agent' | 'claudeCode'): string | undefined {
+  private _getLocalSkillInfo(skillId: string, installTarget: 'agent' | 'claudeCode'): { version?: string; content?: string } {
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     if (!workspaceFolder) {
-      return undefined;
+      return {};
     }
 
     let skillDir: string;
@@ -834,16 +845,30 @@ export class SkillMarketplacePanel {
 
     const skillMdPath = path.join(skillDir, 'SKILL.md');
     if (!fs.existsSync(skillMdPath)) {
-      return undefined;
+      return {};
     }
 
     try {
       const content = fs.readFileSync(skillMdPath, 'utf-8');
       const frontmatter = parseFrontmatter(content);
-      return frontmatter.version;
+      return { version: frontmatter.version, content };
     } catch {
-      return undefined;
+      return {};
     }
+  }
+
+  /**
+   * 计算内容的简单哈希（用于检测内容变化）
+   */
+  private _hashContent(content: string): string {
+    // 使用简单的字符串哈希算法
+    let hash = 0;
+    for (let i = 0; i < content.length; i++) {
+      const char = content.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    return hash.toString(16);
   }
 
   /**
