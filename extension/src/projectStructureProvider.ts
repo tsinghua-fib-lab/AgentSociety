@@ -346,7 +346,7 @@ export class ProjectStructureProvider implements vscode.TreeDataProvider<Project
   private refreshTimer: NodeJS.Timeout | undefined;
 
   // 防抖延迟时间（毫秒）- 200ms内多次刷新请求会被合并为一次
-  private readonly DEBOUNCE_DELAY = 200;
+  private readonly DEBOUNCE_DELAY = 2000;  // 2秒防抖延迟，避免实验运行时频繁刷新
 
   // 输出通道 - 用于显示调试日志
   // 用户可以在"输出"面板中查看这些日志

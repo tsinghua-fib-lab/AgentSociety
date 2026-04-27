@@ -403,7 +403,7 @@
     "agentTabIntroBody": "Same capabilities the simulation uses. “Built-in” ships with the product; “Workspace” lists skills you imported or installed from the marketplace. The toggle controls whether a skill loads at runtime. Archive moves a skill out of regular use without deleting its files.",
     "claudeTabIntroTitle": "Claude folder skills",
     "claudeTabIntroBody": "One combined list: bundled templates appear first—use Sync to workspace to copy them into the project. Other rows are folders already on your machine. Syncing does not remove skills you installed from the marketplace.",
-    "claudeUnifiedListTitle": "Claude skills",
+    "claudeUnifiedListTitle": "Claude Directory Skills",
     "syncVsixToWorkspace": "Sync to workspace",
     "resyncVsixToWorkspace": "Sync again",
     "vsixWorkspaceSynced": "In workspace",

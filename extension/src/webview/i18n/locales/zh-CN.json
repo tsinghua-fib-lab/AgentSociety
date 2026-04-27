@@ -403,7 +403,7 @@
     "agentTabIntroBody": "此处与模拟运行时使用的能力保持一致。「内置」随软件提供；「工作区」包含您导入或从市场安装的技能。开关决定是否在运行时加载。「归档」会将技能移出常用目录并停止使用，但不会删除您磁盘上的原始文件。",
     "claudeTabIntroTitle": "Claude 目录技能",
     "claudeTabIntroBody": "下列为合并列表：扩展自带的模板会排在前面，可使用「同步到工作区」拷贝到当前项目；其余为您本机已有的技能文件夹。同步不会删除您已从市场安装的其它技能。",
-    "claudeUnifiedListTitle": "Claude 技能一览",
+    "claudeUnifiedListTitle": "Claude 目录技能",
     "syncVsixToWorkspace": "同步到工作区",
     "resyncVsixToWorkspace": "重新同步",
     "vsixWorkspaceSynced": "已在工作区",
