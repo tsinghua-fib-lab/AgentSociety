@@ -500,7 +500,7 @@
     "clean-webview": "node -e \"const fs=require('fs'); fs.rmSync('out/webview', { recursive: true, force: true }); fs.mkdirSync('out/webview', { recursive: true });\"",
     "build-webview": "npm run clean-webview && NODE_ENV=production NODE_OPTIONS=--max-old-space-size=8192 node ./node_modules/webpack/bin/webpack.js --mode production",
     "watch-webview": "NODE_ENV=development NODE_OPTIONS=--max-old-space-size=4096 webpack --mode development --watch",
-    "package": "npx @vscode/vsce package -o ai-social-scientist.vsix",
+    "package": "vsce package -o ai-social-scientist.vsix",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src",
     "test": "node ./out/test/runTest.js"
@@ -512,8 +512,9 @@
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "@types/vscode": "^1.80.0",
-    "css-loader": "^6.8.1",
+    "@vscode/vsce": "^3.9.1",
     "concurrently": "^9.2.1",
+    "css-loader": "^6.8.1",
     "eslint": "^9.0.0",
     "globals": "^17.4.0",
     "less": "^4.2.0",
@@ -548,17 +549,17 @@
   "overrides": {
     "serialize-javascript": ">=7.0.3",
     "minimist": ">=1.0.0",
-    "minimatch": ">=9.0.7",
     "diff": ">=3.5.1",
-    "uuid": ">=14.0.0"
+    "mermaid": {
+      "uuid": ">=14.0.0"
+    }
   },
   "pnpm": {
     "overrides": {
       "serialize-javascript": ">=7.0.3",
       "minimist": ">=1.0.0",
-      "minimatch": ">=9.0.7",
       "diff": ">=3.5.1",
-      "uuid": ">=14.0.0"
+      "mermaid>uuid": ">=14.0.0"
     }
   }
 }
