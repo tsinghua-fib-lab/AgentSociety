@@ -171,6 +171,11 @@ extension/
 - 支持外部 URL 打开
 - 自定义 Markdown 样式适配 VSCode 主题
 
+实现要点：
+
+- Webview 通过 `window.HELP_CONTENT` 注入 `HELP.md` 文本，再由 React 渲染
+- 由于 CSP 默认禁用内联脚本，注入脚本需使用 `nonce`（见 `helpPageViewProvider.ts`）
+
 ### 4. 后端管理器 (BackendManager)
 
 **文件**: `src/services/backendManager.ts`
@@ -183,6 +188,17 @@ extension/
 - 进程 PID 管理
 - 状态栏显示服务状态和端口
 - 日志输出到专用 OutputChannel
+
+#### 端口与状态检测逻辑
+
+- **端口来源**：工作区 `.env` 的 `BACKEND_PORT`
+- **插件启动后端**：若 `BACKEND_PORT` 可用就使用；若被占用则自动分配可用端口，并写回 `.env`
+- **手动启动后端**：插件不会扫描端口；只会按 `.env` 的 `BACKEND_PORT` 进行 `/health` 检测与连接
+
+#### 后端状态查询命令
+
+- `aiSocialScientist.showBackendStatus`：弹出信息提示（用于交互提示）
+- `aiSocialScientist.getBackendStatus`：返回结构化状态对象（用于 Webview/配置页等需要“数据源一致”的场景）
 
 ### 5. 技能市场 (SkillMarketplaceProvider)
 
