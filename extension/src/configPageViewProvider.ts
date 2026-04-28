@@ -24,6 +24,7 @@ import { localize } from './i18n';
 import type { ConfigValues, WorkspaceInfo } from './webview/configPage/types';
 import { EnvManager, EnvConfig } from './envManager';
 import { LLMValidator, PythonValidator, LLMType } from './services/llmValidator';
+import { requestJson } from './services/httpClient';
 
 /** Build EasyPaper agents YAML content from AgentSociety2 config (LLM/VLM). API Base uses llmApiBase. */
 function buildEasyPaperYaml(config: Partial<EnvConfig>): string {
@@ -486,7 +487,10 @@ export class ConfigPageViewProvider {
 
       // 首先检查健康状态
       const healthUrl = `${baseUrl}/health`;
-      const healthResponse = await fetch(healthUrl, { method: 'GET' });
+      const healthResponse = await requestJson(healthUrl, {
+        method: 'GET',
+        timeoutMs: 10000,
+      });
 
       if (!healthResponse.ok) {
         this._panel.webview.postMessage({
@@ -499,9 +503,10 @@ export class ConfigPageViewProvider {
 
       // 尝试获取数据源状态（验证认证）
       const statsUrl = `${baseUrl}/api/stats`;
-      const statsResponse = await fetch(statsUrl, {
+      const statsResponse = await requestJson<{ sources?: Record<string, unknown> }>(statsUrl, {
         method: 'GET',
         headers: apiKey ? { 'Authorization': `Bearer ${apiKey}` } : {},
+        timeoutMs: 10000,
       });
 
       if (statsResponse.status === 401 || statsResponse.status === 403) {
@@ -524,11 +529,10 @@ export class ConfigPageViewProvider {
         return;
       }
 
-      const statsData = await statsResponse.json() as { sources?: Record<string, unknown> };
       this._panel.webview.postMessage({
         command: 'literatureValidationResult',
         success: true,
-        sources: statsData.sources,
+        sources: statsResponse.data.sources,
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '未知错误';
