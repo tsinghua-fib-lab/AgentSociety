@@ -157,6 +157,25 @@ npm run lint         # ESLint 检查
 npm run package      # 打包 vsix
 ```
 
+### “Preview/预览”插件（最短路径）
+
+- 在 VSCode 里按 `F5`（Run Extension）启动 **Extension Development Host**，这就是“预览/调试插件”。  
+- 开发时推荐边改边编译：
+
+```bash
+npm run watch         # TS 增量编译（out/extension.js）
+npm run watch-webview # Webview 增量打包（out/webview）
+```
+
+### Node.js 版本
+
+本插件依赖链（`@ant-design/x -> mermaid -> langium -> chevrotain`）要求 **Node >= 22**。仓库已提供 `extension/.nvmrc`，使用 nvm 的话：
+
+```bash
+nvm install
+nvm use
+```
+
 ### 技术栈
 
 - TypeScript

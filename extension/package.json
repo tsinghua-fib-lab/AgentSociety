@@ -9,6 +9,7 @@
     "url": "https://github.com/tsinghua-fib-lab/agentsociety.git"
   },
   "engines": {
+    "node": "^22.13.0 || >=24",
     "vscode": "^1.80.0"
   },
   "categories": [
@@ -504,14 +505,14 @@
     "test": "node ./out/test/runTest.js"
   },
   "devDependencies": {
-    "@eslint/js": "^10.0.1",
+    "@eslint/js": "^9.0.0",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^20.0.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "@types/vscode": "^1.80.0",
     "css-loader": "^6.8.1",
-    "eslint": "^10.1.0",
+    "eslint": "^9.0.0",
     "globals": "^17.4.0",
     "less": "^4.2.0",
     "less-loader": "^12.2.0",
@@ -546,14 +547,16 @@
     "serialize-javascript": ">=7.0.3",
     "minimist": ">=1.0.0",
     "minimatch": ">=9.0.7",
-    "diff": ">=3.5.1"
+    "diff": ">=3.5.1",
+    "uuid": ">=14.0.0"
   },
   "pnpm": {
     "overrides": {
       "serialize-javascript": ">=7.0.3",
       "minimist": ">=1.0.0",
       "minimatch": ">=9.0.7",
-      "diff": ">=3.5.1"
+      "diff": ">=3.5.1",
+      "uuid": ">=14.0.0"
     }
   }
 }
