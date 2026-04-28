@@ -47,6 +47,12 @@ export const HelpPageApp: React.FC<HelpPageAppProps> = ({ vscode }) => {
         command: 'openCommand',
         commandId,
       });
+    } else if (href.startsWith('#')) {
+      // 锚点链接 - 滚动到对应位置
+      const element = document.getElementById(href.substring(1));
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     } else if (href.startsWith('http://') || href.startsWith('https://')) {
       // 外部URL
       vscode.postMessage({
@@ -149,45 +155,60 @@ export const HelpPageApp: React.FC<HelpPageAppProps> = ({ vscode }) => {
         {children}
       </td>
     ),
-    h1: ({ children }: React.HTMLAttributes<HTMLHeadingElement>) => (
-      <h1
-        style={{
-          fontSize: 28,
-          fontWeight: 700,
-          marginBottom: 24,
-          paddingBottom: 16,
-          borderBottom: `1px solid ${palette.panelBorder}`,
-        }}
-      >
-        {children}
-      </h1>
-    ),
-    h2: ({ children }: React.HTMLAttributes<HTMLHeadingElement>) => (
-      <h2
-        style={{
-          fontSize: 22,
-          fontWeight: 600,
-          marginTop: 32,
-          marginBottom: 16,
-          paddingBottom: 8,
-          borderBottom: `1px solid ${palette.panelBorder}60`,
-        }}
-      >
-        {children}
-      </h2>
-    ),
-    h3: ({ children }: React.HTMLAttributes<HTMLHeadingElement>) => (
-      <h3
-        style={{
-          fontSize: 18,
-          fontWeight: 600,
-          marginTop: 24,
-          marginBottom: 12,
-        }}
-      >
-        {children}
-      </h3>
-    ),
+    h1: ({ children }: React.HTMLAttributes<HTMLHeadingElement>) => {
+      const text = typeof children === 'string' ? children : '';
+      const id = text.replace(/\s+/g, '-');
+      return (
+        <h1
+          id={id || undefined}
+          style={{
+            fontSize: 28,
+            fontWeight: 700,
+            marginBottom: 24,
+            paddingBottom: 16,
+            borderBottom: `1px solid ${palette.panelBorder}`,
+          }}
+        >
+          {children}
+        </h1>
+      );
+    },
+    h2: ({ children }: React.HTMLAttributes<HTMLHeadingElement>) => {
+      const text = typeof children === 'string' ? children : '';
+      const id = text.replace(/\s+/g, '-');
+      return (
+        <h2
+          id={id || undefined}
+          style={{
+            fontSize: 22,
+            fontWeight: 600,
+            marginTop: 32,
+            marginBottom: 16,
+            paddingBottom: 8,
+            borderBottom: `1px solid ${palette.panelBorder}60`,
+          }}
+        >
+          {children}
+        </h2>
+      );
+    },
+    h3: ({ children }: React.HTMLAttributes<HTMLHeadingElement>) => {
+      const text = typeof children === 'string' ? children : '';
+      const id = text.replace(/\s+/g, '-');
+      return (
+        <h3
+          id={id || undefined}
+          style={{
+            fontSize: 18,
+            fontWeight: 600,
+            marginTop: 24,
+            marginBottom: 12,
+          }}
+        >
+          {children}
+        </h3>
+      );
+    },
     p: ({ children }: React.HTMLAttributes<HTMLParagraphElement>) => (
       <p style={{ marginBottom: 16, lineHeight: 1.7 }}>{children}</p>
     ),
