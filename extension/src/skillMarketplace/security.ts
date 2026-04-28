@@ -13,7 +13,7 @@ import { getPlatformAdapter, type SkillSource } from '../platforms';
  */
 export function isValidGitBranch(branch: string): boolean {
   // Git 分支名规则：不能以 . 或 - 开头，不能包含 .., ~, ^, :, ?, *, [, \, 空格等
-  const validBranchPattern = /^[a-zA-Z0-9][a-zA-Z0-9._\/-]*$/;
+  const validBranchPattern = /^[a-zA-Z0-9][a-zA-Z0-9._/-]*$/;
   return validBranchPattern.test(branch) &&
     !branch.includes('..') &&
     !branch.endsWith('/') &&

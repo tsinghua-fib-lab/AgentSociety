@@ -23,6 +23,7 @@ export const SkillDetailCollapse: React.FC<SkillDetailCollapseProps> = ({
     ghost
     size="small"
     style={{ marginTop: 8, borderTop: `1px solid ${borderColor}`, paddingTop: 8 }}
+    destroyInactivePanel
     onChange={(keys) => {
       const arr = Array.isArray(keys) ? keys : keys != null ? [keys as string] : [];
       if (arr.includes('detail')) {
@@ -32,7 +33,6 @@ export const SkillDetailCollapse: React.FC<SkillDetailCollapseProps> = ({
     items={[
       {
         key: 'detail',
-        forceRender: true,
         label: <span style={{ fontSize: 12 }}>{panelLabel}</span>,
         children: loading ? (
           <div style={{ padding: 8 }}>

@@ -103,7 +103,7 @@ export function skillMdPathInDir(skillDir: string): string | null {
  * 提取 Markdown 正文（移除 YAML frontmatter）
  */
 export function markdownBodyForPreview(full: string): string {
-  const normalized = full.replace(/^﻿/, '').replace(/\r\n/g, '\n');
+  const normalized = full.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n');
   const match = normalized.match(/^---\n[\s\S]*?\n---\s*\n?/);
   if (match && match.index === 0) {
     return normalized.slice(match[0].length).trim();
@@ -116,7 +116,7 @@ export function markdownBodyForPreview(full: string): string {
  */
 export function parseFrontmatter(content: string): SkillFrontmatter {
   const result: SkillFrontmatter = {};
-  const normalized = content.replace(/^﻿/, '').replace(/\r\n/g, '\n');
+  const normalized = content.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n');
   const frontmatterMatch = normalized.match(/^---\n([\s\S]*?)\n---/);
 
   if (!frontmatterMatch) {

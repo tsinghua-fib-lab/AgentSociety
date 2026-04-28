@@ -26,6 +26,7 @@ const { Search } = Input;
 const { Panel } = Collapse;
 
 const MARKETPLACE_PAGE_SIZE = 10;
+const SEARCH_DEBOUNCE_MS = 200;
 
 interface SkillManagementAppProps { vscode: VSCodeAPI; }
 type SkillTab = 'agent' | 'claudeCode';
@@ -47,6 +48,7 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
   const [claudeMarketplaceLoadErrors, setClaudeMarketplaceLoadErrors] = React.useState<MarketplaceLoadError[]>([]);
   const [agentMarketPage, setAgentMarketPage] = React.useState(1);
   const [claudeMarketPage, setClaudeMarketPage] = React.useState(1);
+  const [searchInput, setSearchInput] = React.useState('');
   const [searchQuery, setSearchQuery] = React.useState('');
   const [installingSkills, setInstallingSkills] = React.useState<Set<string>>(new Set());
   const [agentSkillDetails, setAgentSkillDetails] = React.useState<Record<string, AgentSkillDetailPayload>>({});
@@ -105,6 +107,13 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
   const [sourcesModalTarget, setSourcesModalTarget] = React.useState<'agent' | 'claudeCode' | null>(null);
   // GitHub Token 状态
   const [githubToken, setGithubToken] = React.useState('');
+
+  React.useEffect(() => {
+    const handle = setTimeout(() => {
+      setSearchQuery(searchInput);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(handle);
+  }, [searchInput]);
 
   React.useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -1095,9 +1104,13 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
                 disabled={installing || alreadyInstalled}
                 loading={installing}
               >
-                {installTarget === 'agent'
-                  ? t('skillManagement.installAgent')
-                  : t('skillManagement.installClaudeCode')}
+                {installing
+                  ? t('skillManagement.installing')
+                  : alreadyInstalled
+                    ? t('skillManagement.installed')
+                    : installTarget === 'agent'
+                      ? t('skillManagement.installAgent')
+                      : t('skillManagement.installClaudeCode')}
               </Button>
             )}
           </Space>
@@ -1719,8 +1732,8 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
                 allowClear
                 enterButton
                 size="middle"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
+                value={searchInput}
+                onChange={e => setSearchInput(e.target.value)}
               />
             </div>
             <Tabs

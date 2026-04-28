@@ -47,6 +47,7 @@ export class BackendManager {
   private isStarting = false;
   private allocatedPort: number | null = null; // Track dynamically allocated port
   private currentStatus: 'running' | 'stopped' | 'starting' | 'error' = 'stopped';
+  private externalBackend = false;
 
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
@@ -216,36 +217,36 @@ export class BackendManager {
     env.WORKSPACE_PATH = workspaceFolder.uri.fsPath;
 
     // LLM 配置
-    if (envConfig.llmApiKey) {env.AGENTSOCIETY_LLM_API_KEY = envConfig.llmApiKey;}
-    if (envConfig.llmApiBase) {env.AGENTSOCIETY_LLM_API_BASE = envConfig.llmApiBase;}
-    if (envConfig.llmModel) {env.AGENTSOCIETY_LLM_MODEL = envConfig.llmModel;}
+    if (envConfig.llmApiKey) { env.AGENTSOCIETY_LLM_API_KEY = envConfig.llmApiKey; }
+    if (envConfig.llmApiBase) { env.AGENTSOCIETY_LLM_API_BASE = envConfig.llmApiBase; }
+    if (envConfig.llmModel) { env.AGENTSOCIETY_LLM_MODEL = envConfig.llmModel; }
 
     // Coder LLM 配置
-    if (envConfig.coderLlmApiKey) {env.AGENTSOCIETY_CODER_LLM_API_KEY = envConfig.coderLlmApiKey;}
-    if (envConfig.coderLlmApiBase) {env.AGENTSOCIETY_CODER_LLM_API_BASE = envConfig.coderLlmApiBase;}
-    if (envConfig.coderLlmModel) {env.AGENTSOCIETY_CODER_LLM_MODEL = envConfig.coderLlmModel;}
+    if (envConfig.coderLlmApiKey) { env.AGENTSOCIETY_CODER_LLM_API_KEY = envConfig.coderLlmApiKey; }
+    if (envConfig.coderLlmApiBase) { env.AGENTSOCIETY_CODER_LLM_API_BASE = envConfig.coderLlmApiBase; }
+    if (envConfig.coderLlmModel) { env.AGENTSOCIETY_CODER_LLM_MODEL = envConfig.coderLlmModel; }
 
     // Nano LLM 配置
-    if (envConfig.nanoLlmApiKey) {env.AGENTSOCIETY_NANO_LLM_API_KEY = envConfig.nanoLlmApiKey;}
-    if (envConfig.nanoLlmApiBase) {env.AGENTSOCIETY_NANO_LLM_API_BASE = envConfig.nanoLlmApiBase;}
-    if (envConfig.nanoLlmModel) {env.AGENTSOCIETY_NANO_LLM_MODEL = envConfig.nanoLlmModel;}
+    if (envConfig.nanoLlmApiKey) { env.AGENTSOCIETY_NANO_LLM_API_KEY = envConfig.nanoLlmApiKey; }
+    if (envConfig.nanoLlmApiBase) { env.AGENTSOCIETY_NANO_LLM_API_BASE = envConfig.nanoLlmApiBase; }
+    if (envConfig.nanoLlmModel) { env.AGENTSOCIETY_NANO_LLM_MODEL = envConfig.nanoLlmModel; }
 
     // Embedding 配置
-    if (envConfig.embeddingApiKey) {env.AGENTSOCIETY_EMBEDDING_API_KEY = envConfig.embeddingApiKey;}
-    if (envConfig.embeddingApiBase) {env.AGENTSOCIETY_EMBEDDING_API_BASE = envConfig.embeddingApiBase;}
-    if (envConfig.embeddingModel) {env.AGENTSOCIETY_EMBEDDING_MODEL = envConfig.embeddingModel;}
-    if (envConfig.embeddingDims) {env.AGENTSOCIETY_EMBEDDING_DIMS = String(envConfig.embeddingDims);}
+    if (envConfig.embeddingApiKey) { env.AGENTSOCIETY_EMBEDDING_API_KEY = envConfig.embeddingApiKey; }
+    if (envConfig.embeddingApiBase) { env.AGENTSOCIETY_EMBEDDING_API_BASE = envConfig.embeddingApiBase; }
+    if (envConfig.embeddingModel) { env.AGENTSOCIETY_EMBEDDING_MODEL = envConfig.embeddingModel; }
+    if (envConfig.embeddingDims) { env.AGENTSOCIETY_EMBEDDING_DIMS = String(envConfig.embeddingDims); }
 
     // Web Search 配置
-    if (envConfig.webSearchApiUrl) {env.WEB_SEARCH_API_URL = envConfig.webSearchApiUrl;}
-    if (envConfig.webSearchApiToken) {env.WEB_SEARCH_API_TOKEN = envConfig.webSearchApiToken;}
-    if (envConfig.miroflowDefaultLlm) {env.MIROFLOW_DEFAULT_LLM = envConfig.miroflowDefaultLlm;}
-    if (envConfig.miroflowDefaultAgent) {env.MIROFLOW_DEFAULT_AGENT = envConfig.miroflowDefaultAgent;}
+    if (envConfig.webSearchApiUrl) { env.WEB_SEARCH_API_URL = envConfig.webSearchApiUrl; }
+    if (envConfig.webSearchApiToken) { env.WEB_SEARCH_API_TOKEN = envConfig.webSearchApiToken; }
+    if (envConfig.miroflowDefaultLlm) { env.MIROFLOW_DEFAULT_LLM = envConfig.miroflowDefaultLlm; }
+    if (envConfig.miroflowDefaultAgent) { env.MIROFLOW_DEFAULT_AGENT = envConfig.miroflowDefaultAgent; }
 
     // EasyPaper (for generate_paper tool)
-    if (envConfig.easypaperApiUrl) {env.EASYPAPER_API_URL = envConfig.easypaperApiUrl;}
-    if (envConfig.literatureSearchApiUrl) {env.LITERATURE_SEARCH_API_URL = envConfig.literatureSearchApiUrl;}
-    if (envConfig.literatureSearchApiKey) {env.LITERATURE_SEARCH_API_KEY = envConfig.literatureSearchApiKey;}
+    if (envConfig.easypaperApiUrl) { env.EASYPAPER_API_URL = envConfig.easypaperApiUrl; }
+    if (envConfig.literatureSearchApiUrl) { env.LITERATURE_SEARCH_API_URL = envConfig.literatureSearchApiUrl; }
+    if (envConfig.literatureSearchApiKey) { env.LITERATURE_SEARCH_API_KEY = envConfig.literatureSearchApiKey; }
 
     return {
       pythonPath,
@@ -287,7 +288,7 @@ export class BackendManager {
     const backendUrl = effectivePort ? `http://localhost:${effectivePort}` : '';
 
     switch (status) {
-      case 'running':
+      case 'running': {
         // 运行时显示端口号，方便用户快速查看
         this.statusBarItem.text = `$(check) Backend:${effectivePort ?? ''}`;
         // 使用 Markdown 格式的 tooltip，显示更丰富的信息
@@ -300,6 +301,7 @@ export class BackendManager {
         this.statusBarItem.backgroundColor = undefined;
         this.statusBarItem.show();
         break;
+      }
       case 'starting':
         this.statusBarItem.text = '$(sync~spin) Backend: Starting...';
         this.statusBarItem.tooltip = localize('backendManager.statusBar.tooltip');
@@ -348,7 +350,7 @@ export class BackendManager {
   async healthCheck(): Promise<boolean> {
     const envManager = new EnvManager();
     const envConfig = envManager.readEnv();
-    const backendUrl = getBackendAccessUrl(envConfig);
+    const backendUrl = this.allocatedPort ? `http://localhost:${this.allocatedPort}` : getBackendAccessUrl(envConfig);
 
     try {
       const response = await fetch(`${backendUrl}/health`, {
@@ -357,6 +359,26 @@ export class BackendManager {
       });
       return response.ok;
     } catch (error) {
+      return false;
+    }
+  }
+
+  private async detectExternalBackend(): Promise<boolean> {
+    const envManager = new EnvManager();
+    const envConfig = envManager.readEnv();
+    const configuredPort = getBackendPort(envConfig);
+    const url = `http://localhost:${configuredPort}`;
+    try {
+      const resp = await fetch(`${url}/health`, { method: 'GET', signal: AbortSignal.timeout(1200) });
+      if (!resp.ok) {
+        return false;
+      }
+      this.allocatedPort = configuredPort;
+      this.externalBackend = true;
+      this.updateStatusBar('running', configuredPort);
+      this.startHealthCheck();
+      return true;
+    } catch {
       return false;
     }
   }
@@ -571,7 +593,11 @@ export class BackendManager {
    */
   async stop(): Promise<void> {
     if (!this.process) {
-      this.log('Backend is not running', 'warn');
+      if (this.externalBackend) {
+        vscode.window.showWarningMessage('检测到后端并非由插件启动，插件无法停止该进程；请在终端中手动结束。');
+      } else {
+        this.log('Backend is not running', 'warn');
+      }
       return;
     }
 
@@ -617,6 +643,7 @@ export class BackendManager {
 
     this.process = null;
     this.allocatedPort = null;
+    this.externalBackend = false;
 
     // 清理.env文件中的后端相关字段
     this.cleanupBackendEnv();
@@ -629,6 +656,10 @@ export class BackendManager {
    */
   async restart(): Promise<boolean> {
     this.log('Restarting backend service...');
+    if (!this.process && this.externalBackend) {
+      vscode.window.showWarningMessage('检测到后端并非由插件启动，插件无法重启该进程；请在终端中手动重启，或在插件里“启动后端”启动一份新的后端实例。');
+      return false;
+    }
     await this.stop();
     await new Promise((resolve) => setTimeout(resolve, 1000)); // 等待1秒
     return await this.start();
@@ -642,9 +673,15 @@ export class BackendManager {
 
     this.healthCheckInterval = setInterval(async () => {
       const isHealthy = await this.healthCheck();
-      if (!isHealthy && this.process && !this.process.killed) {
-        this.log('Health check failed, but process is still running', 'warn');
-        // 可以选择重启或只是记录警告
+      if (!isHealthy) {
+        if (this.process && !this.process.killed) {
+          this.log('Health check failed, but process is still running', 'warn');
+        } else if (this.externalBackend) {
+          this.externalBackend = false;
+          this.allocatedPort = null;
+          this.updateStatusBar('stopped');
+          this.stopHealthCheck();
+        }
       }
     }, 10000); // 每10秒检查一次
   }
@@ -811,9 +848,17 @@ export class BackendManager {
    * 获取后端状态
    */
   async getStatus(): Promise<BackendStatus> {
-    const isRunning = await this.isRunning();
+    let isRunning = await this.isRunning();
     // 使用动态分配的端口，如果未分配则读取.env中的配置
-    const port = this.allocatedPort ?? await this.getPortFromEnv();
+    let port = this.allocatedPort ?? await this.getPortFromEnv();
+
+    if (!isRunning) {
+      const detected = await this.detectExternalBackend();
+      if (detected) {
+        isRunning = true;
+        port = this.allocatedPort ?? port;
+      }
+    }
 
     return {
       isRunning,

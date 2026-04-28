@@ -514,7 +514,7 @@ export function activate(context: vscode.ExtensionContext) {
         items.push(
           { label: `$(link) ${localize('backendManager.statusBar.copyUrl')}`, description: url, commandId: 'aiSocialScientist.copyBackendUrl' },
           { label: `$(browser) ${localize('backendManager.statusBar.openInBrowser')}`, description: url, commandId: 'aiSocialScientist.openBackendInBrowser' },
-          { label: `$(book) Open API Docs`, description: `${url}/docs`, commandId: 'aiSocialScientist.openApiDocs' },
+          { label: `$(book) ${localize('backendManager.statusBar.openApiDocs')}`, description: `${url}/docs`, commandId: 'aiSocialScientist.openApiDocs' },
           { label: `$(refresh) ${localize('backendManager.statusBar.restart')}`, commandId: 'aiSocialScientist.restartBackend' },
           { label: `$(stop) ${localize('backendManager.statusBar.stop')}`, commandId: 'aiSocialScientist.stopBackend' }
         );
@@ -522,6 +522,7 @@ export function activate(context: vscode.ExtensionContext) {
         // 启动中：只显示日志和状态
         items.push(
           { label: `$(output) ${localize('backendManager.statusBar.logs')}`, commandId: 'aiSocialScientist.showBackendLogs' },
+          { label: `$(settings) ${localize('backendManager.statusBar.config')}`, commandId: 'aiSocialScientist.openConfigPage' },
           { label: `$(stop) ${localize('backendManager.statusBar.stop')}`, commandId: 'aiSocialScientist.stopBackend' }
         );
       } else if (currentStatus === 'error') {
@@ -567,6 +568,16 @@ export function activate(context: vscode.ExtensionContext) {
           : localize('extension.backend.statusOff');
         vscode.window.showInformationMessage(message);
       }
+    }
+  );
+
+  const getBackendStatusCommand = vscode.commands.registerCommand(
+    'aiSocialScientist.getBackendStatus',
+    async () => {
+      if (!backendManager) {
+        return { isRunning: false };
+      }
+      return await backendManager.getStatus();
     }
   );
 
@@ -1007,6 +1018,7 @@ export function activate(context: vscode.ExtensionContext) {
     restartBackendCommand,
     showBackendLogsCommand,
     showBackendStatusCommand,
+    getBackendStatusCommand,
     backendStatusMenuCommand,
     copyBackendUrlCommand,
     openBackendInBrowserCommand,

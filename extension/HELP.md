@@ -1,129 +1,93 @@
 # AI Social Scientist 使用指南
 
-AI Social Scientist 是一个基于大语言模型的智能体模拟框架，支持构建复杂的城市模拟和社会实验。
+面向用户的“最短路径”：**先把配置填好 → 启动后端 → 装/管理技能 → 开始使用**。
 
-## 快速开始
+## 一键入口（推荐先点这里）
 
-### 1. 配置 API 密钥
+- **配置页面**：[打开配置页面](command:aiSocialScientist.openConfigPage)
+- **技能管理/市场**：[打开技能管理](command:aiSocialScientist.openSkillMarketplace)
+- **后端状态菜单**：[打开后端菜单](command:aiSocialScientist.backendStatusMenu)
+- **预填充参数**：[打开预填充参数](command:agentsociety.viewPrefillParams)
 
-首次使用需要配置 LLM API 密钥。点击状态栏或运行命令 [打开配置页面](command:aiSocialScientist.openConfigPage)，填写必填的 API Key 和 API Base。
+## 3 分钟上手
 
-> **必填项**：Default LLM 的 API Key 和 API Base
+### 1) 先完成配置（必做）
 
-### 2. 启动后端服务
+打开 [配置页面](command:aiSocialScientist.openConfigPage)，按页面提示填写 **Default LLM** 的 3 项：
 
-配置完成后，点击状态栏的"启动后端"按钮，或运行 [后端状态菜单](command:aiSocialScientist.backendStatusMenu)。后端服务是运行实验和管理数据的核心。
+- **API Key（必填）**：你的模型服务密钥
+- **API Base（必填）**：例如 `https://api.openai.com/v1`
+- **Model（可选）**：不填会使用默认值（如 `gpt-5.4`）
 
-- 默认端口：`8001`
-- API 文档：`http://localhost:8001/docs`
+填完后，建议点击一次“验证”，确认 API 可用。
 
-### 3. 管理技能
+### 2) 启动后端（必做）
 
-通过 [技能市场](command:aiSocialScientist.openSkillMarketplace) 查看和安装 Agent 技能或 Claude 技能。技能是插件的核心功能单元。
+配置完成后，通过 [后端状态菜单](command:aiSocialScientist.backendStatusMenu) 启动后端。
 
-- **Agent 技能**：用于模拟实验中的智能体行为
-- **Claude 技能**：用于扩展 Claude Code 的能力
+你会在状态栏看到类似提示：
 
-### 4. 配置实验
+- `✓ Backend:xxxx`：已运行（端口可能不是 8001，属正常）
+- `○ Backend: Stopped`：未运行
+- `✕ Backend: Error`：启动失败（先点“查看日志”，再回到配置页检查）
 
-在 [环境和智能体页面](command:aiSocialScientist.openEnvAgentPage) 选择要使用的模块，然后配置 [初始化配置](command:aiSocialScientist.openInitConfig) 和 [预填充参数](command:agentsociety.viewPrefillParams)。
+### 3) 打开技能管理（常用）
 
-### 5. 运行与回放
+在 [技能管理](command:aiSocialScientist.openSkillMarketplace) 里你会看到三块内容：
 
-实验运行后，可以通过 [回放功能](command:aiSocialScientist.openReplay) 查看 Agent 的行为轨迹和对话记录。
+- **Agent 运行时技能**：模拟运行时使用（安装在 `custom/skills/`）
+- **Claude 目录技能**：写入 `.claude/skills/`，用于 IDE/Claude 工作流
+- **市场**：从你配置的仓库源拉取可安装技能
 
----
+## 技能管理：最常用的几个动作
 
-## 主要功能
+### 安装来源（市场源）怎么配？
 
-### 技能管理
+技能市场条目来自 VSCode 设置里的两个列表（互不影响）：
 
-管理 Agent 技能和 Claude 技能。
+- `agentSkills.skillSources`：Agent 技能市场源（安装到 `custom/skills/`）
+- `agentSkills.claudeSkillSources`：Claude 技能市场源（安装到 `.claude/skills/`）
 
-- 可以从远程仓库安装技能
-- 支持本地自定义技能开发
-- 技能可以启用/禁用/更新
+若遇到 GitHub API 限流，可在设置里填写 `agentSkills.githubToken`。
 
-### 后端服务管理
+### “关闭/归档/删除”分别是什么意思？
 
-管理实验后端服务，包括启动、停止、重启、查看日志等操作。
+- **关闭（Claude 技能）**：不删除文件，只是让 Claude 不加载该目录（可再启用）
+- **归档（Agent 技能）**：从常用目录移走并停止使用（文件仍保留在磁盘）
+- **永久删除**：从磁盘删除，通常不可恢复（谨慎使用）
 
-- 状态栏显示当前服务状态
-- 支持一键打开 API 文档
-- 可以复制服务 URL 到剪贴板
+## 预填充参数：什么时候需要？
 
-### 实验配置
+当你需要为某些 Agent/环境模块设置默认参数时，打开 [预填充参数](command:agentsociety.viewPrefillParams)。
 
-配置实验的环境模块和 Agent 参数。支持预填充参数配置，简化实验初始化流程。
+- 这里是 **只读预览 + 快速打开配置文件** 的组合
+- 如果页面提示后端未连接，先去 [后端状态菜单](command:aiSocialScientist.backendStatusMenu) 启动后端
 
-### 模拟回放
+## 常见问题（先看这几条）
 
-可视化回放实验过程，查看 Agent 的位置移动、对话记录和行为轨迹。
+### 后端启动失败/状态是 Error
 
----
+1. 先点 [查看后端日志](command:aiSocialScientist.showBackendLogs)
+2. 再回到 [配置页面](command:aiSocialScientist.openConfigPage) 检查：API Key/Base/Model 是否正确
+3. 若提示端口占用：重启后端即可自动换端口
 
-## 页面说明
+### API 验证失败
 
-| 页面 | 说明 | 快捷入口 |
-|------|------|----------|
-| 配置页面 | 配置 LLM API、Python 环境、文献检索等服务 | [打开](command:aiSocialScientist.openConfigPage) |
-| 技能市场 | 浏览和管理技能，支持搜索、安装、更新 | [打开](command:aiSocialScientist.openSkillMarketplace) |
-| 环境和智能体 | 选择实验中要使用的环境模块和 Agent 类型 | [打开](command:aiSocialScientist.openEnvAgentPage) |
-| 初始化配置 | 查看和编辑实验的初始化配置 | [打开](command:aiSocialScientist.openInitConfig) |
-| 预填充参数 | 为环境模块和 Agent 配置预填充参数 | [打开](command:agentsociety.viewPrefillParams) |
-| 回放页面 | 可视化回放实验过程 | [打开](command:aiSocialScientist.openReplay) |
+常见原因：
 
----
+- Key 过期/权限不足
+- Base URL 不完整（缺 `/v1` 等路径）
+- 网络无法访问对应域名
+- Model 名称与服务端不匹配
 
-## 使用技巧
+### 技能市场为空 / 装完不显示
 
-### 命令面板快捷访问
-
-按 `Ctrl+Shift+P` (Windows/Linux) 或 `Cmd+Shift+P` (Mac) 打开命令面板，输入 `AI Social` 或 `AgentSociety` 快速找到所有相关命令。
-
-### 状态栏快速操作
-
-点击状态栏的 AI Social Scientist 图标，可以快速访问后端服务菜单，包括启动/停止/重启/查看日志等。
-
-### 自定义 Python 环境
-
-如果需要使用特定的 Python 环境，可以在配置页面设置 Python 路径。留空则使用系统默认 Python。
-
-### 验证配置
-
-在配置页面中，每个服务配置旁边都有验证按钮，可以快速检测配置是否正确。
-
-### 自定义技能开发
-
-在 `workspace/custom/` 目录下可以开发自定义技能，插件会自动扫描并加载。
-
----
-
-## 常见问题
-
-### 后端启动失败怎么办？
-
-1. 检查 Python 环境是否正确安装
-2. 检查端口是否被占用
-3. 查看后端日志获取详细错误信息
-4. 确保所有依赖包已安装
-
-### API 验证失败怎么办？
-
-1. 检查 API Key 是否正确
-2. 检查 API Base URL 是否正确（一些 API 服务需要添加 `/v1` 后缀）
-3. 检查网络连接是否正常
-4. 确认 API 服务是否支持配置的模型
-
-### 技能安装后不显示？
-
-1. 点击刷新按钮重新扫描
-2. 检查技能目录结构是否正确
-3. 查看 `SKILL.md` 文件是否包含正确的元数据
-
----
+1. 打开 [技能管理](command:aiSocialScientist.openSkillMarketplace) 点“刷新”
+2. 检查是否已配置市场源（见上文“安装来源怎么配？”）
+3. 若技能在磁盘上已存在：可用“扫描工作区 Agent 技能”重新发现
 
 ## 更多资源
 
-- [项目文档](https://github.com/tsinghua-fib-lab/agentsociety)
+- [项目仓库](https://github.com/tsinghua-fib-lab/agentsociety)
 - [问题反馈](https://github.com/tsinghua-fib-lab/agentsociety/issues)
+- 开发指南：`extension/DEVELOPMENT.md`

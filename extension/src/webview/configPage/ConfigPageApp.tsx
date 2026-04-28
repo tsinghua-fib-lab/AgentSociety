@@ -188,6 +188,22 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
 
   const stats = getConfigStats();
 
+  const saveDisabledReason = React.useMemo((): string | null => {
+    if (!workspaceInfo.hasWorkspace) {
+      return t('configPage.noWorkspaceHint');
+    }
+    if (!hasText(currentValues.llmApiKey)) {
+      return t('configPage.notifications.apiKeyMissing');
+    }
+    if (!hasText(currentValues.llmApiBase)) {
+      return t('configPage.notifications.apiBaseMissing');
+    }
+    return null;
+  }, [currentValues.llmApiBase, currentValues.llmApiKey, t, workspaceInfo.hasWorkspace]);
+
+  const canSave = !saveDisabledReason;
+  const canSaveAndStart = canSave && !startingBackend;
+
   // Reset to default values
   const handleResetDefaults = () => {
     form.setFieldsValue(DEFAULT_VALUES);
@@ -370,11 +386,19 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
 
     const values = form.getFieldsValue();
 
-    // Require LLM API key to save
+    // Require LLM API key/base to save
     if (!values.llmApiKey) {
       notification.warning({
         message: t('configPage.notifications.llmKeyRequired'),
         description: t('configPage.notifications.llmKeyRequiredDesc'),
+      });
+      return;
+    }
+    if (!values.llmApiBase) {
+      notification.warning({
+        message: t('configPage.validationFailed'),
+        description: t('configPage.notifications.apiBaseMissing'),
+        placement: 'top',
       });
       return;
     }
@@ -402,6 +426,14 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
       notification.warning({
         message: t('configPage.notifications.llmKeyRequired'),
         description: t('configPage.notifications.llmKeyRequiredDesc'),
+      });
+      return;
+    }
+    if (!values.llmApiBase) {
+      notification.warning({
+        message: t('configPage.validationFailed'),
+        description: t('configPage.notifications.apiBaseMissing'),
+        placement: 'top',
       });
       return;
     }
@@ -1000,19 +1032,24 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
             {/* ========== 操作按钮 - 玻璃态 ========== */}
             <div
               style={{
+                position: 'sticky',
+                bottom: 16,
+                zIndex: 10,
                 textAlign: 'center',
-                padding: '20px',
+                padding: '14px 16px',
                 borderRadius: 12,
                 border: `1px solid ${palette.panelBorder}`,
                 background: isDark
-                  ? 'rgba(37, 37, 38, 0.6)'
-                  : 'rgba(255, 255, 255, 0.5)',
-                backdropFilter: 'blur(16px)',
-                WebkitBackdropFilter: 'blur(16px)',
-                boxShadow: '0 2px 10px rgba(0,0,0,0.06)',
+                  ? 'rgba(37, 37, 38, 0.72)'
+                  : 'rgba(255, 255, 255, 0.72)',
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
+                boxShadow: isDark
+                  ? '0 10px 30px rgba(0,0,0,0.25)'
+                  : '0 10px 30px rgba(0,0,0,0.12)',
               }}
             >
-              <Space size="middle">
+              <Space size="middle" wrap>
                 <Button
                   size="large"
                   icon={<ReloadOutlined />}
@@ -1020,24 +1057,29 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
                 >
                   {t('configPage.resetDefaults')}
                 </Button>
-                <Button
-                  size="large"
-                  icon={<SaveOutlined />}
-                  onClick={handleSave}
-                  disabled={Boolean(defaultValidateDisabledReason)}
-                  loading={loading}
-                >
-                  {t('configPage.save')}
-                </Button>
-                <Button
-                  type="primary"
-                  size="large"
-                  icon={<RocketOutlined />}
-                  onClick={handleSaveAndStart}
-                  loading={startingBackend}
-                >
-                  {startingBackend ? t('configPage.starting') : t('configPage.saveAndStart')}
-                </Button>
+                <Tooltip title={saveDisabledReason || ''}>
+                  <Button
+                    size="large"
+                    icon={<SaveOutlined />}
+                    onClick={handleSave}
+                    disabled={!canSave}
+                    loading={loading}
+                  >
+                    {t('configPage.save')}
+                  </Button>
+                </Tooltip>
+                <Tooltip title={saveDisabledReason || ''}>
+                  <Button
+                    type="primary"
+                    size="large"
+                    icon={<RocketOutlined />}
+                    onClick={handleSaveAndStart}
+                    loading={startingBackend}
+                    disabled={!canSaveAndStart}
+                  >
+                    {startingBackend ? t('configPage.starting') : t('configPage.saveAndStart')}
+                  </Button>
+                </Tooltip>
               </Space>
             </div>
           </Form>

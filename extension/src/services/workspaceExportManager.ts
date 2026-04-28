@@ -412,7 +412,9 @@ export class WorkspaceExportManager implements vscode.Disposable {
    * 格式化文件大小为人类可读格式
    */
   private formatSize(bytes: number): string {
-    if (bytes === 0) return '0 B';
+    if (bytes === 0) {
+      return '0 B';
+    }
     const units = ['B', 'KB', 'MB', 'GB'];
     const k = 1024;
     const i = Math.floor(Math.log(bytes) / Math.log(k));

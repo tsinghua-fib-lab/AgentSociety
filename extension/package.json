@@ -101,27 +101,27 @@
       },
       {
         "command": "aiSocialScientist.openConfigPage",
-        "title": "AI Social Scientist: Open Configuration",
+        "title": "AI Social Scientist: 打开配置",
         "icon": "$(settings)"
       },
       {
         "command": "aiSocialScientist.openHelpPage",
-        "title": "AI Social Scientist: Help & Guide",
+        "title": "AI Social Scientist: 使用指南",
         "icon": "$(book)"
       },
       {
         "command": "aiSocialScientist.openSkillMarketplace",
-        "title": "AI Social Scientist: Skills",
+        "title": "AI Social Scientist: 技能管理",
         "icon": "$(extensions)"
       },
       {
         "command": "aiSocialScientist.openSkillSourcesSettings",
-        "title": "AI Social Scientist: Agent Skill Marketplace Sources (Settings)",
+        "title": "AI Social Scientist: Agent 技能源（设置）",
         "icon": "$(repo)"
       },
       {
         "command": "aiSocialScientist.openClaudeSkillSourcesSettings",
-        "title": "AI Social Scientist: Claude Skill Marketplace Sources (Settings)",
+        "title": "AI Social Scientist: Claude 技能源（设置）",
         "icon": "$(repo)"
       },
       {
@@ -166,12 +166,12 @@
       },
       {
         "command": "aiSocialScientist.copyFilePath",
-        "title": "AI Social Scientist: Copy File Path",
+        "title": "AI Social Scientist: 复制路径",
         "icon": "$(copy)"
       },
       {
         "command": "aiSocialScientist.copyAtReference",
-        "title": "AI Social Scientist: Copy @Reference",
+        "title": "AI Social Scientist: 复制 @引用",
         "icon": "$(quote)"
       },
       {
@@ -186,17 +186,17 @@
       },
       {
         "command": "aiSocialScientist.openInExplorer",
-        "title": "AI Social Scientist: Open in Explorer",
+        "title": "AI Social Scientist: 在系统中打开",
         "icon": "$(folder)"
       },
       {
         "command": "aiSocialScientist.copyFileName",
-        "title": "AI Social Scientist: Copy File Name",
+        "title": "AI Social Scientist: 复制文件名",
         "icon": "$(symbol-text)"
       },
       {
         "command": "aiSocialScientist.exportWorkspaceZip",
-        "title": "AI Social Scientist: Export Workspace ZIP",
+        "title": "AI Social Scientist: 导出工作区 ZIP",
         "icon": "$(cloud-download)"
       }
     ],
@@ -456,8 +456,8 @@
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "clean-webview": "node -e \"const fs=require('fs'); fs.rmSync('out/webview', { recursive: true, force: true }); fs.mkdirSync('out/webview', { recursive: true });\"",
-    "build-webview": "npm run clean-webview && node ./node_modules/webpack/bin/webpack.js --mode production",
-    "watch-webview": "webpack --mode development --watch",
+    "build-webview": "npm run clean-webview && NODE_ENV=production NODE_OPTIONS=--max-old-space-size=8192 node ./node_modules/webpack/bin/webpack.js --mode production",
+    "watch-webview": "NODE_ENV=development NODE_OPTIONS=--max-old-space-size=4096 webpack --mode development --watch",
     "package": "npx @vscode/vsce package -o ai-social-scientist.vsix",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src",

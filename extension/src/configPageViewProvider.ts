@@ -265,7 +265,7 @@ export class ConfigPageViewProvider {
    */
   private async _getBackendStatus(): Promise<{ isRunning: boolean; port?: number; url?: string }> {
     try {
-      const status = await vscode.commands.executeCommand<{ isRunning: boolean; port?: number }>('aiSocialScientist.showBackendStatus');
+      const status = await vscode.commands.executeCommand<{ isRunning: boolean; port?: number }>('aiSocialScientist.getBackendStatus');
       if (status && status.isRunning && status.port) {
         return {
           isRunning: true,

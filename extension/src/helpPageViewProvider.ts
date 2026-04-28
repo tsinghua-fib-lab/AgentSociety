@@ -107,10 +107,11 @@ export class HelpPageViewProvider {
       vscode.Uri.file(path.join(this.extensionUri.fsPath, 'out', 'webview', 'helpPage.js'))
     );
 
+    const nonce = Math.random().toString(36).slice(2);
     const csp = [
       "default-src 'none'",
       `style-src ${this.panel.webview.cspSource} 'unsafe-inline'`,
-      `script-src ${this.panel.webview.cspSource}`,
+      `script-src ${this.panel.webview.cspSource} 'nonce-${nonce}'`,
       `font-src ${this.panel.webview.cspSource}`,
     ].join('; ');
 
@@ -155,8 +156,8 @@ export class HelpPageViewProvider {
 </head>
 <body>
     <div id="root"></div>
-    <script>window.HELP_CONTENT = \`${escapedContent}\`;</script>
-    <script src="${scriptUri}"></script>
+    <script nonce="${nonce}">window.HELP_CONTENT = \`${escapedContent}\`;</script>
+    <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>
 </html>`;
   }

@@ -9,7 +9,7 @@ import {
   message,
 } from 'antd';
 import { BookOutlined, ExportOutlined } from '@ant-design/icons';
-import { Markdown } from '@ant-design/x-markdown';
+import { XMarkdown } from '@ant-design/x-markdown';
 import { useVscodeTheme } from '../theme';
 import '../i18n';
 import type { VSCodeAPI } from './types';
@@ -59,24 +59,59 @@ export const HelpPageApp: React.FC<HelpPageAppProps> = ({ vscode }) => {
   // 自定义 Markdown 组件
   const markdownComponents = {
     a: ({ href, children }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
-      <a
-        onClick={(e) => {
-          e.preventDefault();
-          if (href) {
-            handleLinkClick(href);
-          }
-        }}
-        style={{
+      (() => {
+        const isCommand = Boolean(href && href.startsWith('command:'));
+        const isExternal = Boolean(href && (href.startsWith('http://') || href.startsWith('https://')));
+        const baseStyle: React.CSSProperties = {
           color: palette.linkForeground,
           cursor: 'pointer',
           textDecoration: 'none',
-        }}
-      >
-        {children}
-        {href && (href.startsWith('http://') || href.startsWith('https://')) && (
-          <ExportOutlined style={{ marginLeft: 4, fontSize: 12 }} />
-        )}
-      </a>
+        };
+        const commandStyle: React.CSSProperties = isCommand
+          ? {
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '3px 10px',
+            borderRadius: 999,
+            border: `1px solid ${palette.panelBorder}`,
+            background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+            lineHeight: 1.6,
+            userSelect: 'none',
+            whiteSpace: 'nowrap',
+          }
+          : {};
+        return (
+          <a
+            href={href}
+            tabIndex={0}
+            role="link"
+            onClick={(e) => {
+              e.preventDefault();
+              if (href) {
+                handleLinkClick(href);
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                if (href) {
+                  handleLinkClick(href);
+                }
+              }
+            }}
+            style={{
+              ...baseStyle,
+              ...commandStyle,
+            }}
+          >
+            {children}
+            {isExternal && (
+              <ExportOutlined style={{ marginLeft: 4, fontSize: 12 }} />
+            )}
+          </a>
+        );
+      })()
     ),
     table: ({ children }: React.HTMLAttributes<HTMLTableElement>) => (
       <div style={{ overflowX: 'auto', margin: '16px 0' }}>
@@ -281,7 +316,7 @@ export const HelpPageApp: React.FC<HelpPageAppProps> = ({ vscode }) => {
             style={glassCardStyle}
             styles={{ body: { padding: '24px 32px' } }}
           >
-            <Markdown
+            <XMarkdown
               components={markdownComponents}
               style={{
                 color: palette.editorForeground,
@@ -290,7 +325,7 @@ export const HelpPageApp: React.FC<HelpPageAppProps> = ({ vscode }) => {
               }}
             >
               {helpContent}
-            </Markdown>
+            </XMarkdown>
           </Card>
 
           {/* 底部信息 */}

@@ -211,21 +211,21 @@ export class ProjectItem extends vscode.TreeItem {
         // HTML 报告文件使用默认浏览器打开（不依赖 Live Preview 扩展）
         this.command = {
           command: 'livePreview.start.preview.atFile',
-          title: 'Open HTML Report',
+          title: '打开 HTML 报告',
           arguments: [vscode.Uri.file(filePath)]
         };
       } else if (type === 'reportMd' && isMarkdown) {
         // Markdown 报告默认以预览模式打开
         this.command = {
           command: 'markdown.showPreview',
-          title: 'Open Preview',
+          title: '打开预览',
           arguments: [vscode.Uri.file(filePath)]
         };
       } else if (isMarkdown) {
         // Markdown 文件默认以预览模式打开
         this.command = {
           command: 'markdown.showPreview',  // VSCode内置命令：预览 Markdown 文件
-          title: 'Open Preview',
+          title: '打开预览',
           arguments: [vscode.Uri.file(filePath)]  // 传递文件URI作为参数
         };
       } else if (isJson) {
@@ -240,14 +240,14 @@ export class ProjectItem extends vscode.TreeItem {
           // 有自定义编辑器的文件：让 VSCode 自动选择
           this.command = {
             command: 'vscode.open',
-            title: 'Open File',
+            title: '打开文件',
             arguments: [vscode.Uri.file(filePath)]
           };
         } else {
           // 其他 JSON 文件：使用通用可视化查看器
           this.command = {
             command: 'aiSocialScientist.viewJsonFile',
-            title: 'View JSON',
+            title: '查看 JSON',
             arguments: [filePath]
           };
         }
@@ -255,14 +255,14 @@ export class ProjectItem extends vscode.TreeItem {
         // YAML 文件：使用通用可视化查看器
         this.command = {
           command: 'aiSocialScientist.viewYamlFile',
-          title: 'View YAML',
+          title: '查看 YAML',
           arguments: [filePath]
         };
       } else {
         // 其他文件使用默认打开方式
         this.command = {
           command: 'vscode.open',  // VSCode内置命令：打开文件
-          title: 'Open File',
+          title: '打开文件',
           arguments: [vscode.Uri.file(filePath)]  // 传递文件URI作为参数
         };
       }
@@ -270,7 +270,7 @@ export class ProjectItem extends vscode.TreeItem {
       // 环境与智能体节点：点击时打开统一的管理界面
       this.command = {
         command: 'agentsociety.viewPrefillParams',
-        title: 'View Environment & Agents Management',
+        title: '预填充参数',
       };
     } else if (type === 'settings') {
       // 配置设置节点：点击时打开配置页（而非 VS Code 设置）
@@ -991,7 +991,7 @@ export class ProjectStructureProvider implements vscode.TreeDataProvider<Project
                 } else if (st === 'failed') {
                   failedExperiments++;
                 }
-              } catch { }
+              } catch { void 0; }
             }
           }
 
@@ -1159,7 +1159,7 @@ export class ProjectStructureProvider implements vscode.TreeDataProvider<Project
                 const subPath = path.join(fullPath, sub);
                 return fs.statSync(subPath).isFile();
               }).length;
-            } catch { }
+            } catch { void 0; }
             directories.push({ name: entry, path: fullPath, count: fileCount });
           }
         }
@@ -1182,11 +1182,11 @@ export class ProjectStructureProvider implements vscode.TreeDataProvider<Project
             fileItem.contextValue = 'paper json literatureIndex';
             fileItem.command = {
               command: 'aiSocialScientist.viewLiteratureIndex',
-              title: 'View Literature Index',
+              title: '查看文献索引',
               arguments: [{ filePath: literatureIndexFile.path }]
             };
             items.push(fileItem);
-          } catch { }
+          } catch { void 0; }
         }
 
         // PDF 文献组
@@ -1698,7 +1698,7 @@ export class ProjectStructureProvider implements vscode.TreeDataProvider<Project
             fileItem.contextValue = 'yaml stepsYaml';
             fileItem.command = {
               command: 'aiSocialScientist.viewStepsYaml',
-              title: 'View Steps Timeline',
+              title: '查看步骤时间线',
               arguments: [{ filePath: filePath }]
             };
           }
@@ -1755,7 +1755,7 @@ export class ProjectStructureProvider implements vscode.TreeDataProvider<Project
         resultsItem.contextValue = 'json experimentResults';
         resultsItem.command = {
           command: 'aiSocialScientist.viewExperimentResults',
-          title: 'View Experiment Results',
+          title: '查看实验结果',
           arguments: [{ filePath: resultsFile }]
         };
         items.push(resultsItem);
@@ -1781,11 +1781,11 @@ export class ProjectStructureProvider implements vscode.TreeDataProvider<Project
           pidItem.contextValue = 'pidJson';
           pidItem.command = {
             command: 'aiSocialScientist.viewPidStatus',
-            title: 'View PID Status',
+            title: '查看运行状态',
             arguments: [{ filePath: pidFile }]
           };
           items.push(pidItem);
-        } catch { }
+        } catch { void 0; }
       }
 
       return items;

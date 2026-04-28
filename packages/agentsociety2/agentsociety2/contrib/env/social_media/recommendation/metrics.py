@@ -6,12 +6,7 @@ import numpy as np
 from typing import List, Tuple
 from dataclasses import dataclass
 
-try:
-    from sklearn.metrics import roc_auc_score
-    SKLEARN_AVAILABLE = True
-except ImportError:
-    SKLEARN_AVAILABLE = False
-    print("⚠️  scikit-learn未安装，AUC/UAUC指标将不可用")
+from sklearn.metrics import roc_auc_score
 
 
 @dataclass
@@ -168,9 +163,6 @@ class MetricsCalculator:
         Returns:
             全局AUC值
         """
-        if not SKLEARN_AVAILABLE:
-            return 0.0
-
         if len(predictions) == 0 or len(labels) == 0:
             return 0.0
 
@@ -181,12 +173,8 @@ class MetricsCalculator:
         if len(np.unique(labels)) < 2:
             return 0.0
 
-        try:
-            auc = roc_auc_score(labels, predictions)
-            return float(auc)
-        except Exception as e:
-            print(f"⚠️  AUC计算失败: {e}")
-            return 0.0
+        auc = roc_auc_score(labels, predictions)
+        return float(auc)
 
     def calculate_uauc(
         self,
@@ -205,9 +193,6 @@ class MetricsCalculator:
         Returns:
             (uauc, computed_users): UAUC值和成功计算的用户数
         """
-        if not SKLEARN_AVAILABLE:
-            return 0.0, 0
-
         if len(user_ids) == 0 or len(predictions) == 0 or len(labels) == 0:
             return 0.0, 0
 

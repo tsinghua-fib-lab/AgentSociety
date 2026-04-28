@@ -1256,9 +1256,13 @@ export class SkillMarketplacePanel {
     flushFile();
 
     for (const f of fileDiffs) {
-      if (f.status === 'added') filesAdded.push(f.path);
-      else if (f.status === 'deleted') filesDeleted.push(f.path);
-      else filesModified.push(f.path);
+      if (f.status === 'added') {
+        filesAdded.push(f.path);
+      } else if (f.status === 'deleted') {
+        filesDeleted.push(f.path);
+      } else {
+        filesModified.push(f.path);
+      }
     }
 
     return { filesAdded, filesDeleted, filesModified, fileDiffs };
