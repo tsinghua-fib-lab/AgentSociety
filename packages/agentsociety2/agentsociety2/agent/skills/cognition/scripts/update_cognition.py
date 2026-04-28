@@ -25,7 +25,15 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--state-dir", default="state")
     parser.add_argument("--tick", type=int, default=None)
+    parser.add_argument("--args-json", default="{}")
     return parser.parse_args()
+
+
+def runtime_args(raw: str) -> dict[str, Any]:
+    payload = json.loads(raw)
+    if not isinstance(payload, dict):
+        raise TypeError("--args-json must decode to an object")
+    return payload
 
 
 def read_json(path: Path, default: Any) -> Any:
@@ -373,7 +381,10 @@ def choose_intention(
 
 def main() -> int:
     args = parse_args()
-    state = Path(args.state_dir)
+    payload = runtime_args(args.args_json)
+    state = Path(str(payload.get("state_dir", args.state_dir)))
+    tick = args.tick if args.tick is not None else payload.get("tick")
+    tick = int(tick) if tick is not None else None
     state.mkdir(parents=True, exist_ok=True)
 
     observation = read_text(state / "observation.txt")
@@ -387,12 +398,12 @@ def main() -> int:
         observation, needs, norms, affordances, economy, previous_emotion
     )
     emotion = derive_emotion(appraisal, previous_emotion)
-    if args.tick is not None:
-        emotion["tick"] = args.tick
+    if tick is not None:
+        emotion["tick"] = tick
 
     intention = choose_intention(emotion, needs, norms, affordances)
-    if args.tick is not None:
-        intention["tick"] = args.tick
+    if tick is not None:
+        intention["tick"] = tick
 
     (state / "emotion.json").write_text(
         json.dumps(emotion, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"

@@ -1041,7 +1041,24 @@ class PersonAgent(AgentBase):
             readonly=False,
             template_mode=template_mode,
         )
-        return {"ok": True, "stdout": answer, "stderr": "", "ctx": updated_ctx}
+        status = ""
+        if isinstance(updated_ctx, Mapping):
+            raw_status = updated_ctx.get("status")
+            if raw_status is None:
+                raw_obs = updated_ctx.get("observations")
+                if isinstance(raw_obs, Mapping):
+                    raw_status = raw_obs.get("status")
+            status = str(raw_status or "").strip().lower()
+        ok = status not in {"fail", "failed", "error"}
+        result: dict[str, Any] = {
+            "ok": ok,
+            "stdout": answer,
+            "stderr": "" if ok else answer,
+            "ctx": updated_ctx,
+        }
+        if status:
+            result["status"] = status
+        return result
 
     def _glob_in_workspace(self, pattern: str, root: str) -> dict[str, Any]:
         """在 workspace 内做 glob 检索（带路径越界保护）。
@@ -2547,6 +2564,8 @@ class PersonAgent(AgentBase):
                     "stderr": trunc_str(ce, self._ctx_config.stderr_max_chars),
                     "workspace_state_version": self._workspace_state_version,
                 }
+                if out.get("status"):
+                    result_obj["status"] = str(out.get("status"))
                 if out.get("ctx") is not None:
                     ctx_str = jr_dumps(out["ctx"])
                     result_obj["ctx"] = trunc_str(ctx_str, max_len=4000)
@@ -2556,6 +2575,16 @@ class PersonAgent(AgentBase):
                 )
                 self._append_tool_result_to_thread(thread_messages, tick, t, result_obj)
                 logs.append(f"codegen:{'ok' if ok else 'fail'}")
+                if str(out.get("status", "")).lower() == "in_progress":
+                    logs.append("done:environment_in_progress")
+                    break
+                if not ok:
+                    loop_result = self._loop_detector.check_error_loop(
+                        str(result_obj.get("stderr") or result_obj.get("stdout") or "")
+                    )
+                    if loop_result.is_loop:
+                        logs.append(f"loop_detected:{loop_result.loop_type}")
+                        break
                 if decision.done:
                     logs.append(f"done:{decision.summary or 'step_complete'}")
                     break

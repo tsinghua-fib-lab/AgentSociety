@@ -18,13 +18,21 @@ def clamp(value: float, lower: float = 0.0, upper: float = 1.0) -> float:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--memory-file", required=True)
-    parser.add_argument("--current-tick", type=int, required=True)
+    parser.add_argument("--memory-file", default=None)
+    parser.add_argument("--current-tick", type=int, default=None)
     parser.add_argument("--strength", type=float, default=None)
     parser.add_argument("--decay", type=float, default=None)
     parser.add_argument("--retrieval-threshold", type=float, default=None)
     parser.add_argument("--max-entries", type=int, default=None)
+    parser.add_argument("--args-json", default="{}")
     return parser.parse_args()
+
+
+def runtime_args(raw: str) -> dict[str, Any]:
+    payload = json.loads(raw)
+    if not isinstance(payload, dict):
+        raise TypeError("--args-json must decode to an object")
+    return payload
 
 
 def read_jsonl(path: Path) -> list[dict[str, Any]]:
@@ -126,7 +134,17 @@ def retention_value(
 
 def main() -> int:
     args = parse_args()
-    path = Path(args.memory_file)
+    payload = runtime_args(args.args_json)
+    memory_file = args.memory_file or payload.get("memory_file") or "state/memory.jsonl"
+    current_tick = (
+        args.current_tick
+        if args.current_tick is not None
+        else payload.get("current_tick")
+    )
+    current_tick = int(
+        current_tick if current_tick is not None else payload.get("tick", 0)
+    )
+    path = Path(str(memory_file))
 
     strength = args.strength
     if strength is None:
@@ -163,7 +181,7 @@ def main() -> int:
 
     for row in rows:
         r, ebbinghaus, activation, retrieval_probability = retention_value(
-            args.current_tick,
+            current_tick,
             row,
             strength,
             decay,

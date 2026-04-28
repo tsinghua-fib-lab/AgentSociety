@@ -21,7 +21,8 @@ class SubmitInvestmentResponse(BaseModel):
 
     trustor_name: str = Field(..., description="Trustor name")
     investment: int = Field(..., description="Investment amount")
-    status: str = Field(..., description="Status: 'submitted'")
+    status: str = Field(..., description="Status: 'success' if submitted successfully")
+    message: str = Field(default="", description="Human-readable message about the submission")
 
 
 class SubmitReturnResponse(BaseModel):
@@ -29,7 +30,8 @@ class SubmitReturnResponse(BaseModel):
 
     trustee_name: str = Field(..., description="Trustee name")
     return_amount: int = Field(..., description="Return amount")
-    status: str = Field(..., description="Status: 'submitted' or 'round_executed'")
+    status: str = Field(..., description="Status: 'success' if submitted successfully")
+    message: str = Field(default="", description="Human-readable message about the return")
 
 
 class GetPairDataResponse(BaseModel):
@@ -271,7 +273,8 @@ class TrustGameEnv(EnvBase):
             return SubmitInvestmentResponse(
                 trustor_name=normalized_name,
                 investment=investment,
-                status="submitted",
+                status="success",
+                message=f"Investment of {investment} coins submitted successfully. Wait for your partner (trustee) to respond.",
             )
 
     @tool(readonly=False)
@@ -336,7 +339,8 @@ class TrustGameEnv(EnvBase):
             return SubmitReturnResponse(
                 trustee_name=normalized_name,
                 return_amount=return_amount,
-                status="submitted",
+                status="success",
+                message=f"Return of {return_amount} coins submitted successfully. The round will execute when all submissions are complete.",
             )
 
     @tool(readonly=True)
