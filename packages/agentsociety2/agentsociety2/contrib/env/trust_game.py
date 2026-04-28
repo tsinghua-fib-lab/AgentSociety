@@ -3,6 +3,7 @@ Trust Game Environment
 Environment for Trust Game based on V2 framework
 """
 import asyncio
+import logging
 from datetime import datetime
 from typing import ClassVar, Dict, List, Optional
 
@@ -10,6 +11,8 @@ from pydantic import BaseModel, Field
 
 from agentsociety2.env import EnvBase, tool
 from agentsociety2.storage import ColumnDef
+
+logger = logging.getLogger(__name__)
 
 
 # Response models
@@ -175,6 +178,45 @@ class TrustGameEnv(EnvBase):
         """Set partner mapping (trustor_name -> trustee_name, trustee_name -> trustor_name)"""
         self.partner_mapping = partner_mapping
 
+    def _auto_setup_partner_mapping(self, agent_name: str) -> None:
+        """Auto-setup partner mapping based on agent name convention.
+
+        Convention: Agent-{id}_Trustor_G{n} pairs with Agent-{id+num_pairs}_Trustee_G{n}
+        or: Trustor_G{n} pairs with Trustee_G{n} based on the game number.
+        """
+        if self.partner_mapping:
+            return  # Already set up
+
+        # Try to infer the game number from the agent name
+        import re
+
+        # Extract game number from agent name (e.g., "Agent-1_Trustor_G1" -> "G1")
+        match = re.search(r'_G(\d+)', agent_name)
+        if not match:
+            return
+
+        game_num = match.group(1)
+
+        # Build partner mapping for this game
+        # Trustor_G{game_num} -> Trustee_G{game_num}
+        trustor_pattern = f"_Trustor_G{game_num}"
+        trustee_pattern = f"_Trustee_G{game_num}"
+
+        # We'll set up a mapping that works with any agent name containing these patterns
+        # This is a fallback that allows the game to work even without explicit setup
+        self.partner_mapping = {}
+
+        # Create a simple mapping based on num_pairs
+        # Assuming agents are named Agent-{1..num_pairs}_Trustor_G{game_num}
+        # and Agent-{num_pairs+1..2*num_pairs}_Trustee_G{game_num}
+        for i in range(1, self.num_pairs + 1):
+            trustor_name = f"Agent-{i}_Trustor_G{game_num}"
+            trustee_name = f"Agent-{self.num_pairs + i}_Trustee_G{game_num}"
+            self.partner_mapping[trustor_name] = trustee_name
+            self.partner_mapping[trustee_name] = trustor_name
+
+        logger.info(f"Auto-setup partner_mapping: {self.partner_mapping}")
+
     @tool(readonly=False)
     async def submit_investment(
         self, trustor_name: str, investment: int
@@ -191,6 +233,10 @@ class TrustGameEnv(EnvBase):
             Response containing submission status.
         """
         async with self._lock:
+            # Auto-setup partner mapping if not set
+            if not self.partner_mapping:
+                self._auto_setup_partner_mapping(trustor_name)
+
             # Normalize trustor_name: try to find matching name in partner_mapping
             normalized_name = trustor_name
             if trustor_name not in self.partner_mapping and trustor_name.isdigit():
@@ -233,6 +279,10 @@ class TrustGameEnv(EnvBase):
             Response containing submission status.
         """
         async with self._lock:
+            # Auto-setup partner mapping if not set
+            if not self.partner_mapping:
+                self._auto_setup_partner_mapping(trustee_name)
+
             # Normalize trustee_name: try to find matching name in partner_mapping
             normalized_name = trustee_name
             if trustee_name not in self.partner_mapping and trustee_name.isdigit():
