@@ -57,7 +57,9 @@ def previous_intensities(previous: dict[str, Any]) -> dict[str, int]:
     return {k: clamp10(float(raw.get(k, 3))) for k in EMOTION_KEYS}
 
 
-def apply_continuity(prev: dict[str, int], target: dict[str, float], max_delta: int = 2) -> dict[str, int]:
+def apply_continuity(
+    prev: dict[str, int], target: dict[str, float], max_delta: int = 2
+) -> dict[str, int]:
     out: dict[str, int] = {}
     for key in EMOTION_KEYS:
         old = prev.get(key, 3)
@@ -81,20 +83,87 @@ def build_appraisal(
     social_satisfaction = clamp(float(need_map.get("social", 0.7) or 0.7))
 
     threat = max(
-        keyword_score(text, ["danger", "threat", "unsafe", "attack", "accident", "risk", "紧急", "危险", "威胁"]),
+        keyword_score(
+            text,
+            [
+                "danger",
+                "threat",
+                "unsafe",
+                "attack",
+                "accident",
+                "risk",
+                "紧急",
+                "危险",
+                "威胁",
+            ],
+        ),
         1.0 - safety_satisfaction,
     )
-    obstacle = keyword_score(text, ["blocked", "fail", "late", "cannot", "closed", "refused", "阻碍", "失败", "迟到"])
-    reward = keyword_score(text, ["success", "helped", "good", "accepted", "paid", "finished", "成功", "顺利", "被帮助"])
-    novelty = keyword_score(text, ["new", "unexpected", "surprise", "suddenly", "unknown", "突然", "意外", "陌生"])
-    conflict = keyword_score(text, ["conflict", "argue", "angry", "insult", "betray", "争吵", "冲突", "羞辱"])
+    obstacle = keyword_score(
+        text,
+        [
+            "blocked",
+            "fail",
+            "late",
+            "cannot",
+            "closed",
+            "refused",
+            "阻碍",
+            "失败",
+            "迟到",
+        ],
+    )
+    reward = keyword_score(
+        text,
+        [
+            "success",
+            "helped",
+            "good",
+            "accepted",
+            "paid",
+            "finished",
+            "成功",
+            "顺利",
+            "被帮助",
+        ],
+    )
+    novelty = keyword_score(
+        text,
+        [
+            "new",
+            "unexpected",
+            "surprise",
+            "suddenly",
+            "unknown",
+            "突然",
+            "意外",
+            "陌生",
+        ],
+    )
+    conflict = keyword_score(
+        text, ["conflict", "argue", "angry", "insult", "betray", "争吵", "冲突", "羞辱"]
+    )
 
-    active_norms = norms.get("active_norms", []) if isinstance(norms.get("active_norms"), list) else []
+    active_norms = (
+        norms.get("active_norms", [])
+        if isinstance(norms.get("active_norms"), list)
+        else []
+    )
     norm_pressure = max(
-        [float(n.get("pressure", 0.0) or 0.0) for n in active_norms if isinstance(n, dict)] + [0.0]
+        [
+            float(n.get("pressure", 0.0) or 0.0)
+            for n in active_norms
+            if isinstance(n, dict)
+        ]
+        + [0.0]
     )
     violation_risk = max(
-        [float(n.get("violation_risk", 0.0) or 0.0) for n in active_norms if isinstance(n, dict)] + [0.0]
+        [
+            float(n.get("violation_risk", 0.0) or 0.0)
+            for n in active_norms
+            if isinstance(n, dict)
+        ]
+        + [0.0]
     )
 
     perceived_control = float(affordances.get("perceived_control_hint", 0.65) or 0.65)
@@ -103,13 +172,26 @@ def build_appraisal(
     if float(economy.get("scarcity_pressure", 0.0) or 0.0) > 0.6:
         perceived_control -= 0.1
 
-    prev_valence = float(previous_emotion.get("valence", 0.0) or 0.0) if isinstance(previous_emotion, dict) else 0.0
-    pleasantness = clamp(0.5 + 0.35 * reward - 0.3 * obstacle - 0.3 * threat - 0.15 * conflict + 0.1 * prev_valence)
+    prev_valence = (
+        float(previous_emotion.get("valence", 0.0) or 0.0)
+        if isinstance(previous_emotion, dict)
+        else 0.0
+    )
+    pleasantness = clamp(
+        0.5
+        + 0.35 * reward
+        - 0.3 * obstacle
+        - 0.3 * threat
+        - 0.15 * conflict
+        + 0.1 * prev_valence
+    )
 
     return {
         "novelty": novelty,
         "pleasantness": pleasantness,
-        "goal_conduciveness": clamp(0.5 + 0.35 * reward - 0.35 * obstacle - 0.2 * urgency),
+        "goal_conduciveness": clamp(
+            0.5 + 0.35 * reward - 0.35 * obstacle - 0.2 * urgency
+        ),
         "urgency": urgency,
         "threat": threat,
         "social_disconnection": 1.0 - social_satisfaction,
@@ -120,20 +202,50 @@ def build_appraisal(
     }
 
 
-def derive_emotion(appraisal: dict[str, float], previous: dict[str, Any]) -> dict[str, Any]:
+def derive_emotion(
+    appraisal: dict[str, float], previous: dict[str, Any]
+) -> dict[str, Any]:
     prev = previous_intensities(previous)
     target = {
-        "joy": 2 + 6 * appraisal["pleasantness"] + 1.5 * appraisal["goal_conduciveness"],
-        "fear": 2 + 6 * appraisal["threat"] + 1.5 * appraisal["urgency"] - 1.5 * appraisal["perceived_control"],
-        "anger": 2 + 5 * appraisal["conflict"] + 3 * (1 - appraisal["goal_conduciveness"]) - appraisal["perceived_control"],
-        "sadness": 2 + 4 * (1 - appraisal["pleasantness"]) + 2 * appraisal["social_disconnection"],
-        "disgust": 1 + 3 * appraisal["norm_violation_risk"] + 2 * keyword_score(str(appraisal), ["contamination"]),
+        "joy": 2
+        + 6 * appraisal["pleasantness"]
+        + 1.5 * appraisal["goal_conduciveness"],
+        "fear": 2
+        + 6 * appraisal["threat"]
+        + 1.5 * appraisal["urgency"]
+        - 1.5 * appraisal["perceived_control"],
+        "anger": 2
+        + 5 * appraisal["conflict"]
+        + 3 * (1 - appraisal["goal_conduciveness"])
+        - appraisal["perceived_control"],
+        "sadness": 2
+        + 4 * (1 - appraisal["pleasantness"])
+        + 2 * appraisal["social_disconnection"],
+        "disgust": 1
+        + 3 * appraisal["norm_violation_risk"]
+        + 2 * keyword_score(str(appraisal), ["contamination"]),
         "surprise": 1 + 7 * appraisal["novelty"],
     }
     intensities = apply_continuity(prev, target)
 
-    valence = clamp((intensities["joy"] - max(intensities["sadness"], intensities["anger"], intensities["fear"])) / 10, -1, 1)
-    arousal = clamp((intensities["fear"] + intensities["anger"] + intensities["surprise"] + appraisal["urgency"] * 10) / 40)
+    valence = clamp(
+        (
+            intensities["joy"]
+            - max(intensities["sadness"], intensities["anger"], intensities["fear"])
+        )
+        / 10,
+        -1,
+        1,
+    )
+    arousal = clamp(
+        (
+            intensities["fear"]
+            + intensities["anger"]
+            + intensities["surprise"]
+            + appraisal["urgency"] * 10
+        )
+        / 40
+    )
 
     primary = "Hope"
     strongest = max(EMOTION_KEYS, key=lambda k: intensities[k])
@@ -148,7 +260,9 @@ def derive_emotion(appraisal: dict[str, float], previous: dict[str, Any]) -> dic
     elif intensities["surprise"] >= 6:
         primary = "Surprise"
 
-    prev_mood = previous.get("mood", {}) if isinstance(previous.get("mood"), dict) else {}
+    prev_mood = (
+        previous.get("mood", {}) if isinstance(previous.get("mood"), dict) else {}
+    )
     mood_valence = 0.85 * float(prev_mood.get("valence", 0.0) or 0.0) + 0.15 * valence
     mood_arousal = 0.85 * float(prev_mood.get("arousal", 0.5) or 0.5) + 0.15 * arousal
 
@@ -181,7 +295,9 @@ def choose_intention(
 ) -> dict[str, Any]:
     current_need = str(needs.get("current_need", "") or "").strip()
     urgency = clamp(float(needs.get("urgency", 0.0) or 0.0))
-    perceived_control_hint = clamp(float(affordances.get("perceived_control_hint", 0.65) or 0.65))
+    perceived_control_hint = clamp(
+        float(affordances.get("perceived_control_hint", 0.65) or 0.65)
+    )
     norm_pressure = max(
         [
             float(n.get("pressure", 0.0) or 0.0)
@@ -192,7 +308,11 @@ def choose_intention(
     )
 
     feasible = affordances.get("feasible_actions", [])
-    feasible_text = ", ".join(feasible[:3]) if isinstance(feasible, list) and feasible else "available low-risk action"
+    feasible_text = (
+        ", ".join(feasible[:3])
+        if isinstance(feasible, list) and feasible
+        else "available low-risk action"
+    )
 
     if current_need in {"eat", "drink", "sleep", "rest", "safety"} and urgency > 0.45:
         label = f"Address urgent need: {current_need}"
@@ -263,7 +383,9 @@ def main() -> int:
     economy = read_json(state / "economy.json", {})
     previous_emotion = read_json(state / "emotion.json", {})
 
-    appraisal = build_appraisal(observation, needs, norms, affordances, economy, previous_emotion)
+    appraisal = build_appraisal(
+        observation, needs, norms, affordances, economy, previous_emotion
+    )
     emotion = derive_emotion(appraisal, previous_emotion)
     if args.tick is not None:
         emotion["tick"] = args.tick
@@ -272,10 +394,23 @@ def main() -> int:
     if args.tick is not None:
         intention["tick"] = args.tick
 
-    (state / "emotion.json").write_text(json.dumps(emotion, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    (state / "intention.json").write_text(json.dumps(intention, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    (state / "emotion.json").write_text(
+        json.dumps(emotion, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    (state / "intention.json").write_text(
+        json.dumps(intention, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
 
-    print(json.dumps({"ok": True, "primary": emotion["primary"], "intention": intention["intention"]}, ensure_ascii=False))
+    print(
+        json.dumps(
+            {
+                "ok": True,
+                "primary": emotion["primary"],
+                "intention": intention["intention"],
+            },
+            ensure_ascii=False,
+        )
+    )
     return 0
 
 

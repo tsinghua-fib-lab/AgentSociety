@@ -53,12 +53,14 @@ from agentsociety2.agent.tool import (
     jr_parse,
     json_dumps_tool_result_for_thread,
     pagination_from_args,
+    slice_text_page,
     trunc_str,
     BashSecurityChecker,
+    ToolPolicy,
+    ToolPolicyContext,
 )
 from agentsociety2.agent.tool.loop_detection import (
     LoopDetectionService,
-    LoopDetectionConfig,
 )
 from agentsociety2.env import (
     PersonStepConstraints,
@@ -195,6 +197,7 @@ class PersonAgent(AgentBase):
         # ── 并发控制 ──
         self._parallel_executor = ParallelExecutor(self._config)
         self._rate_limiter = RateLimiter(self._config.concurrency.rate_limit_rps)
+        self._tool_policy = ToolPolicy()
 
         # ── 当前工具 trace 上下文（仅用于统一观测，不进入业务逻辑）──
         self._current_trace_id: str | None = None
@@ -797,44 +800,6 @@ class PersonAgent(AgentBase):
             return False
         return not bool(getattr(info, "disable_model_invocation", False))
 
-    @staticmethod
-    def _normalize_allowed_tools(raw: list[str]) -> set[str]:
-        """将 skill frontmatter 的 allowed-tools 归一到 PersonAgent 的 tool_name 集合。
-
-        :param raw: 原始 allowed-tools 列表。
-        :return: 标准化后的 tool_name 集合。
-        """
-        if not raw:
-            return set()
-
-        mapping = {
-            "read": "workspace_read",
-            "write": "workspace_write",
-            "workspace_read": "workspace_read",
-            "workspace_write": "workspace_write",
-            "workspace_list": "workspace_list",
-            "activate_skill": "activate_skill",
-            "read_skill": "read_skill",
-            "execute_skill": "execute_skill",
-            "bash": "bash",
-            "grep": "grep",
-            "glob": "glob",
-            "codegen": "codegen",
-            "batch": "batch",
-            "enable_skill": "enable_skill",
-            "disable_skill": "disable_skill",
-            "done": "done",
-        }
-        out: set[str] = set()
-        for item in raw:
-            s = str(item).strip()
-            if not s:
-                continue
-            base = s.split("(", 1)[0].strip().lower()
-            if base in mapping:
-                out.add(mapping[base])
-        return out
-
     def _allowed_tools_for_active_scope(self) -> set[str] | None:
         """获取当前 scope 的 allowed-tools。
 
@@ -846,37 +811,7 @@ class PersonAgent(AgentBase):
         info = self._skill_registry.get_skill_info(name, load_content=False)
         if info is None:
             return None
-        raw_list = getattr(info, "allowed_tools", []) or []
-        if not raw_list:
-            return None
-        return self._normalize_allowed_tools(raw_list)
-
-    def _check_allowed_tools_for_action(self, action: str) -> dict[str, Any] | None:
-        """统一处理 allowed-tools 拦截。
-
-        :param action: 工具名称。
-        :returns: ``None`` 表示允许，否则返回错误对象。
-        """
-        guarded_actions = {
-            "workspace_read",
-            "workspace_write",
-            "workspace_list",
-            "bash",
-            "glob",
-            "grep",
-            "codegen",
-            "batch",
-        }
-        if action not in guarded_actions:
-            return None
-        allowed = self._allowed_tools_for_active_scope()
-        if allowed is None or action in allowed:
-            return None
-        return {
-            "action": action,
-            "ok": False,
-            "error": f"blocked by allowed-tools of active skill: {self._active_skill_scope}",
-        }
+        return ToolPolicy.allowed_tools_for_scope(info)
 
     @staticmethod
     def _split_skill_arguments(raw: Any) -> tuple[str, list[str]]:
@@ -931,8 +866,6 @@ class PersonAgent(AgentBase):
         :param content: 包含 !`cmd` 占位符的 skill 内容。
         :return: 渲染后的内容。
         """
-        from agentsociety2.agent.tool.security import BashSecurityChecker
-
         security_checker = BashSecurityChecker()
         pattern = re.compile(r"!\`([^`\n]+)\`")
         rendered = content
@@ -1616,31 +1549,30 @@ class PersonAgent(AgentBase):
         """
         results: list[dict[str, Any]] = []
 
-        for op in operations:
-            tool_name = op.get("tool_name", "")
-            args = op.get("arguments", {})
-            blocked_obj = self._check_allowed_tools_for_action(str(tool_name).strip())
-            if blocked_obj is not None:
-                results.append(
-                    {
-                        "tool_name": tool_name,
-                        "ok": False,
-                        "error": blocked_obj.get("error", "blocked"),
-                    }
-                )
-                continue
+        # 先做 policy 阻断 + 再并行化只读工具（workspace_write 仍顺序执行）
+        work_dir = str(self._skill_runtime.workspace_root())
 
+        async def exec_one(tool_name: str, args: dict[str, Any]) -> dict[str, Any]:
+            policy_ctx = ToolPolicyContext(
+                active_skill_scope=self._active_skill_scope,
+                allowed_tools=self._allowed_tools_for_active_scope(),
+                workspace_root=work_dir,
+            )
+            blocked = self._tool_policy.check(
+                action=tool_name, args=args, ctx=policy_ctx
+            )
+            if blocked is not None:
+                return {"tool_name": tool_name, **blocked}
+
+            # 复用当前 batch 内既有实现（仅覆盖只读工具；写入保持顺序）
             if tool_name == "workspace_read":
-                # 支持批量读取
                 paths = args.get("paths", [])
                 if not paths:
                     path = args.get("path", "")
                     if path:
                         paths = [path]
-
                 cap = self._workspace_read_chunk_cap()
                 off, lim = pagination_from_args(args, cap)
-
                 read_results: dict[str, Any] = {}
                 for p in paths:
                     p = str(p).strip()
@@ -1657,106 +1589,45 @@ class PersonAgent(AgentBase):
                         read_results[p] = {"ok": True, "cached": False, **page}
                     else:
                         read_results[p] = {"ok": False, "error": "file not found"}
+                return {
+                    "tool_name": "workspace_read",
+                    "ok": all(r.get("ok", False) for r in read_results.values()),
+                    "files": read_results,
+                    "count": len(read_results),
+                }
 
-                results.append(
-                    {
-                        "tool_name": "workspace_read",
-                        "ok": all(r.get("ok", False) for r in read_results.values()),
-                        "files": read_results,
-                        "count": len(read_results),
-                    }
-                )
+            if tool_name == "workspace_list":
+                root = str(args.get("path", ".") or ".")
+                listed = self._skill_runtime.workspace_list(root)
+                return {
+                    "tool_name": "workspace_list",
+                    "ok": True,
+                    "path": root,
+                    "files": listed,
+                }
 
-            elif tool_name == "workspace_write":
-                # 支持批量写入
-                writes = args.get("writes", {})
-                if not writes:
-                    path = args.get("path", "")
-                    content = args.get("content", "")
-                    if path:
-                        writes = {path: content}
-
-                written_paths: list[str] = []
-                write_errors: list[str] = []
-                for p, content in writes.items():
-                    p = str(p).strip()
-                    if not p:
-                        continue
-                    try:
-                        self._skill_runtime.workspace_write(p, str(content))
-                        written_paths.append(p)
-                        # 失效缓存
-                        self._invalidate_workspace_cache(p)
-                        self._bump_workspace_state_version()
-                    except Exception as e:
-                        write_errors.append(f"{p}: {str(e)}")
-
-                results.append(
-                    {
-                        "tool_name": "workspace_write",
-                        "ok": len(write_errors) == 0,
-                        "written_paths": written_paths,
-                        "errors": write_errors if write_errors else None,
-                        "count": len(written_paths),
-                    }
-                )
-
-            elif tool_name == "workspace_list":
-                paths = args.get("paths", [])
-                if not paths:
-                    path = args.get("path", ".")
-                    paths = [path]
-
-                list_results: dict[str, Any] = {}
-                for p in paths:
-                    p = str(p).strip() or "."
-                    try:
-                        files = self._skill_runtime.workspace_list(p)
-                        list_results[p] = {
-                            "ok": True,
-                            "files": files[:100],
-                            "count": len(files),
-                        }
-                    except Exception as e:
-                        list_results[p] = {"ok": False, "error": str(e)}
-
-                results.append(
-                    {
-                        "tool_name": "workspace_list",
-                        "ok": all(r.get("ok", False) for r in list_results.values()),
-                        "directories": list_results,
-                    }
-                )
-
-            elif tool_name == "glob":
+            if tool_name == "glob":
                 patterns = args.get("patterns", [])
                 if not patterns:
-                    pattern = args.get("pattern", "**/*")
-                    patterns = [pattern]
-                root = str(args.get("path", "."))
-
+                    pattern = args.get("pattern", "")
+                    if pattern:
+                        patterns = [pattern]
+                root = str(args.get("root", ".") or ".")
                 glob_results: dict[str, Any] = {}
                 for pattern in patterns:
-                    pattern = str(pattern).strip() or "**/*"
-                    try:
-                        parsed = self._glob_in_workspace(pattern=pattern, root=root)
-                        glob_results[pattern] = {
-                            "ok": True,
-                            "count": parsed.get("count", 0),
-                            "matches": parsed.get("matches", [])[:100],
-                        }
-                    except Exception as e:
-                        glob_results[pattern] = {"ok": False, "error": str(e)}
+                    pattern = str(pattern).strip()
+                    if not pattern:
+                        continue
+                    glob_results[pattern] = self._glob_in_workspace(
+                        pattern=pattern, root=root
+                    )
+                return {
+                    "tool_name": "glob",
+                    "ok": all(r.get("ok", False) for r in glob_results.values()),
+                    "patterns": glob_results,
+                }
 
-                results.append(
-                    {
-                        "tool_name": "glob",
-                        "ok": all(r.get("ok", False) for r in glob_results.values()),
-                        "patterns": glob_results,
-                    }
-                )
-
-            elif tool_name == "grep":
+            if tool_name == "grep":
                 patterns = args.get("patterns", [])
                 if not patterns:
                     pattern = args.get("pattern", "")
@@ -1764,40 +1635,97 @@ class PersonAgent(AgentBase):
                         patterns = [pattern]
                 root = str(args.get("path", "."))
                 file_glob = str(args.get("glob", ""))
-
                 grep_results: dict[str, Any] = {}
                 for pattern in patterns:
                     pattern = str(pattern).strip()
                     if not pattern:
                         continue
-                    try:
-                        parsed = self._grep_in_workspace(
-                            pattern=pattern, root=root, file_glob=file_glob
-                        )
-                        grep_results[pattern] = {
-                            "ok": True,
-                            "count": parsed.get("count", 0),
-                            "matches": parsed.get("matches", [])[:100],
-                        }
-                    except Exception as e:
-                        grep_results[pattern] = {"ok": False, "error": str(e)}
+                    grep_results[pattern] = self._grep_in_workspace(
+                        pattern=pattern, root=root, file_glob=file_glob
+                    )
+                return {
+                    "tool_name": "grep",
+                    "ok": all(r.get("ok", False) for r in grep_results.values()),
+                    "patterns": grep_results,
+                }
 
-                results.append(
-                    {
-                        "tool_name": "grep",
-                        "ok": all(r.get("ok", False) for r in grep_results.values()),
-                        "patterns": grep_results,
-                    }
-                )
+            # 其他工具不在 batch 内并行执行范围，保守返回不支持
+            return {
+                "tool_name": tool_name,
+                "ok": False,
+                "error": (
+                    "unsupported tool in batch. Supported: workspace_read, workspace_list, glob, grep. "
+                    "workspace_write is handled sequentially outside the parallel set."
+                ),
+            }
 
+        parallel_ops: list[tuple[str, dict[str, Any]]] = []
+        sequential_writes: list[dict[str, Any]] = []
+
+        for op in operations:
+            tool_name = str(op.get("tool_name", "") or "").strip()
+            args = self._coerce_llm_dict(op.get("arguments", {}))
+            if tool_name == "workspace_write":
+                sequential_writes.append({"tool_name": tool_name, "arguments": args})
             else:
-                results.append(
-                    {
-                        "tool_name": tool_name,
-                        "ok": False,
-                        "error": f"unsupported tool in batch: {tool_name}. Supported: workspace_read, workspace_write, workspace_list, glob, grep",
-                    }
-                )
+                parallel_ops.append((tool_name, args))
+
+        if parallel_ops:
+            # 并行执行只读工具
+            outcomes = await self._parallel_executor.execute(
+                parallel_ops,
+                executor=lambda tname, a: exec_one(
+                    str(tname), self._coerce_llm_dict(a)
+                ),
+            )
+            results.extend(outcomes)
+
+        # workspace_write：顺序执行（有副作用，且需要逐条 bump 版本/失效缓存）
+        for op in sequential_writes:
+            tool_name = op.get("tool_name", "")
+            args = self._coerce_llm_dict(op.get("arguments", {}))
+            policy_ctx = ToolPolicyContext(
+                active_skill_scope=self._active_skill_scope,
+                allowed_tools=self._allowed_tools_for_active_scope(),
+                workspace_root=work_dir,
+            )
+            blocked = self._tool_policy.check(
+                action=tool_name, args=args, ctx=policy_ctx
+            )
+            if blocked is not None:
+                results.append({"tool_name": tool_name, **blocked})
+                continue
+
+            writes = args.get("writes", {})
+            if not writes:
+                path = args.get("path", "")
+                content = args.get("content", "")
+                if path:
+                    writes = {path: content}
+
+            written_paths: list[str] = []
+            write_errors: list[str] = []
+            for p, content in writes.items():
+                p = str(p).strip()
+                if not p:
+                    continue
+                try:
+                    self._skill_runtime.workspace_write(p, str(content))
+                    written_paths.append(p)
+                    self._invalidate_workspace_cache(p)
+                    self._bump_workspace_state_version()
+                except Exception as e:
+                    write_errors.append(f"{p}: {str(e)}")
+
+            results.append(
+                {
+                    "tool_name": "workspace_write",
+                    "ok": len(write_errors) == 0,
+                    "written_paths": written_paths,
+                    "errors": write_errors if write_errors else None,
+                    "count": len(written_paths),
+                }
+            )
 
         return {
             "action": "batch",
@@ -1846,6 +1774,9 @@ class PersonAgent(AgentBase):
         self._loop_detector.reset()
 
         for i in range(self._max_tool_rounds):
+            # 全局节流：避免短时间内过度请求（LLM/子进程/IO）导致 429 或资源争用
+            await self._rate_limiter.acquire()
+
             # 滑动摘要：当 thread 过长时压缩旧消息
             thread_messages = await self._compact_thread_if_needed(
                 thread_messages, tick, t
@@ -2122,14 +2053,21 @@ class PersonAgent(AgentBase):
                 logs.append(f"{action}:{skill_name}:rejected")
                 continue
 
-            # ── allowed-tools gate ──
-            blocked_obj = self._check_allowed_tools_for_action(action)
+            # ── ToolPolicy gate（allowed-tools/bash security/等） ──
+            policy_ctx = ToolPolicyContext(
+                active_skill_scope=self._active_skill_scope,
+                allowed_tools=self._allowed_tools_for_active_scope(),
+                workspace_root=str(self._skill_runtime.workspace_root()),
+            )
+            blocked_obj = self._tool_policy.check(
+                action=action, args=args, ctx=policy_ctx
+            )
             if blocked_obj is not None:
                 history.append(blocked_obj)
                 self._append_tool_result_to_thread(
                     thread_messages, tick, t, blocked_obj
                 )
-                logs.append(f"{action}:blocked_allowed_tools")
+                logs.append(f"{action}:blocked_policy")
                 continue
 
             # ── activate_skill ──

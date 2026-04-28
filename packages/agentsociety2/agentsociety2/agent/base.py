@@ -37,7 +37,6 @@ Example::
 import asyncio
 import json
 import logging
-import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -169,7 +168,7 @@ class AgentBase(ABC):
         if cls is AgentBase:
             description = f"""{cls.__name__}: Abstract base class for agents.
 
-**Description:** {cls.__doc__ or 'No description available'}
+**Description:** {cls.__doc__ or "No description available"}
 
 **Initialization Parameters:**
 - id (int): The unique identifier for the agent.
@@ -199,7 +198,7 @@ class AgentBase(ABC):
             # For subclasses that don't override this method
             description = f"""{cls.__name__}: Agent class.
 
-**Description:** {cls.__doc__ or 'No description available'}
+**Description:** {cls.__doc__ or "No description available"}
 
 **Initialization Parameters:**
 - id (int): The unique identifier for the agent.
@@ -254,9 +253,9 @@ class AgentBase(ABC):
         if not enabled:
             return
 
-        assert (
-            self._router is not None and self._model_name is not None
-        ), "LLM is not initialized"
+        assert self._router is not None and self._model_name is not None, (
+            "LLM is not initialized"
+        )
 
         history_record = LLMInteractionHistory(
             agent_id=self._id,
@@ -465,9 +464,9 @@ class AgentBase(ABC):
         :param stream: 是否启用流式响应。默认 ``False``。
         :returns: ``ModelResponse`` 或 ``CustomStreamWrapper``，取决于 ``stream`` 参数。
         """
-        assert (
-            self._router is not None and self._model_name is not None
-        ), "LLM is not initialized"
+        assert self._router is not None and self._model_name is not None, (
+            "LLM is not initialized"
+        )
         response = await self._router.acompletion(
             model=self._model_name,
             messages=messages,
@@ -495,11 +494,13 @@ class AgentBase(ABC):
         :param t: 当前仿真时间。
         :returns: LLM 响应对象。
         """
-        assert (
-            self._router is not None and self._model_name is not None
-        ), "LLM is not initialized"
+        assert self._router is not None and self._model_name is not None, (
+            "LLM is not initialized"
+        )
         system_prompt = self.get_system_prompt(tick, t)
-        request_messages: list[AllMessageValues] = [{"role": "system", "content": system_prompt}] + messages.copy()  # type: ignore
+        request_messages: list[AllMessageValues] = [
+            {"role": "system", "content": system_prompt}
+        ] + messages.copy()  # type: ignore
         response = await self._router.acompletion(
             model=self._model_name,
             messages=request_messages,
@@ -541,7 +542,7 @@ class AgentBase(ABC):
 ## Time and Simulation Context
 
 You are operating in a discrete-time simulation environment:
-- **Current Time (t)**: {t.strftime('%Y-%m-%d %H:%M:%S')} (Weekday: {t.strftime('%A')})
+- **Current Time (t)**: {t.strftime("%Y-%m-%d %H:%M:%S")} (Weekday: {t.strftime("%A")})
 - **Time Scale (tick)**: {time_scale_desc} ({tick} seconds)
   - This represents the duration of ONE decision cycle/iteration
   - Your actions and decisions in each step should be appropriate for this time scale
@@ -720,9 +721,9 @@ Remember: You are simulating a real person living in a simulated world. Your beh
            二进制指数退避仅在检测到 429（速率限制）错误时应用。
            对于验证错误和其他非速率限制错误，函数立即重试以向 LLM 提供更快的反馈。
         """
-        assert (
-            self._router is not None and self._model_name is not None
-        ), "LLM is not initialized"
+        assert self._router is not None and self._model_name is not None, (
+            "LLM is not initialized"
+        )
 
         # Get JSON schema for the model
         model_schema = model_type.model_json_schema()

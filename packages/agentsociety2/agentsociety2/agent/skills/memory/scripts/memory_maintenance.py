@@ -152,7 +152,9 @@ def main() -> int:
     retrieval_threshold = args.retrieval_threshold
     if retrieval_threshold is None:
         try:
-            retrieval_threshold = float(os.getenv("AGENT_MEMORY_RETRIEVAL_THRESHOLD", "-2.5"))
+            retrieval_threshold = float(
+                os.getenv("AGENT_MEMORY_RETRIEVAL_THRESHOLD", "-2.5")
+            )
         except ValueError:
             retrieval_threshold = -2.5
 

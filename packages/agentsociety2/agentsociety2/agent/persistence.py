@@ -433,7 +433,7 @@ class WorkspaceCleaner:
         self.workspace = workspace
         self.config = config
 
-    def cleanup(self) -> dict[str, Any]:
+    async def cleanup(self) -> dict[str, Any]:
         """执行清理。"""
         stats = {"files_removed": 0, "bytes_freed": 0}
 
@@ -463,6 +463,33 @@ class WorkspaceCleaner:
                 stats["bytes_freed"] += hf.stat().st_size
                 hf.unlink()
                 stats["files_removed"] += 1
+
+        # 轮转 jsonl：避免长跑实验无限增长（保留最近 N 行）
+        # 这些文件是可裁剪的运行时日志；关键事实应由 thread compaction / AGENT.md 索引承载。
+        jsonl_keep = int(getattr(self.config.context, "thread_max_messages", 50) * 50)
+        jsonl_targets = [
+            log_dir / "thread_messages.jsonl",
+            log_dir / "tool_calls.jsonl",
+            log_dir / "session_state_history.jsonl",
+            log_dir / "step_replay.jsonl",
+        ]
+        for p in jsonl_targets:
+            if not p.exists() or not p.is_file():
+                continue
+            try:
+                lines = p.read_text(encoding="utf-8", errors="ignore").splitlines()
+                if len(lines) <= jsonl_keep:
+                    continue
+                kept = lines[-jsonl_keep:]
+                before = p.stat().st_size
+                p.write_text("\n".join(kept) + "\n", encoding="utf-8")
+                after = p.stat().st_size
+                freed = max(0, before - after)
+                if freed:
+                    stats["bytes_freed"] += freed
+            except Exception:
+                # 清理失败不应影响仿真主流程
+                pass
 
         # 清理检查点
         cp_dir = self.workspace / RUNTIME_DIR / "checkpoints"

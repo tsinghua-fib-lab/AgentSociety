@@ -45,8 +45,6 @@
 """
 
 from __future__ import annotations
-
-import json
 import logging
 from collections import deque
 from datetime import datetime, timezone
@@ -495,8 +493,13 @@ class AgentSkillRuntime:
 
                     yaml = YAML(typ="safe")
                     metadata = yaml.load(parts[1]) or {}
-                except Exception:
-                    pass
+                except Exception as e:
+                    # 不静默回落：记录解析错误，保留 body 以便人工修复
+                    logger.warning("AGENT.md YAML frontmatter parse failed: %s", e)
+                    metadata = {
+                        "_agent_md_parse_error": str(e),
+                        "_agent_md_parse_error_type": type(e).__name__,
+                    }
                 body = parts[2].strip()
 
         return {"metadata": metadata, "content": body}
@@ -571,7 +574,13 @@ class AgentSkillRuntime:
                 if existing_content
                 else f"## [{timestamp}]\n{notes}\n"
             )
-            self.set_agent_context_content(new_content.strip())
+            # 对标 CLAUDE.md：保持简洁，避免无限增长
+            max_chars = 2000
+            if self._state_config is not None:
+                max_chars = int(
+                    getattr(self._state_config, "agent_md_max_chars", max_chars)
+                )
+            self.set_agent_context_content(new_content.strip()[:max_chars])
 
     @staticmethod
     def _flatten_summary_value(value: Any, max_len: int = 100) -> str:
