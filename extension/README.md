@@ -167,6 +167,12 @@ npm run watch         # TS 增量编译（out/extension.js）
 npm run watch-webview # Webview 增量打包（out/webview）
 ```
 
+也可以用一个命令同时启动两者：
+
+```bash
+npm run dev
+```
+
 ### Node.js 版本
 
 本插件依赖链（`@ant-design/x -> mermaid -> langium -> chevrotain`）要求 **Node >= 22**。仓库已提供 `extension/.nvmrc`，使用 nvm 的话：
