@@ -12,6 +12,15 @@ interface ExperimentResults {
 export class ExperimentResultsViewer {
   private static currentPanel: vscode.WebviewPanel | undefined;
 
+  private static getNonce(): string {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let nonce = '';
+    for (let i = 0; i < 32; i++) {
+      nonce += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return nonce;
+  }
+
   public static async show(context: vscode.ExtensionContext, filePath: string): Promise<void> {
     let data: ExperimentResults;
     try {
@@ -64,10 +73,10 @@ export class ExperimentResultsViewer {
   ): void {
     const isChinese = vscode.env.language.startsWith('zh');
 
-    panel.webview.html = this.getHtml(data, isChinese);
+    panel.webview.html = this.getHtml(data, isChinese, panel.webview.cspSource);
   }
 
-  private static getHtml(data: ExperimentResults, isChinese: boolean): string {
+  private static getHtml(data: ExperimentResults, isChinese: boolean, cspSource: string): string {
     // 提取摘要字段
     const summaryFields: Array<{ key: string; value: any }> = [];
     Object.entries(data).forEach(([key, value]) => {
@@ -85,13 +94,21 @@ export class ExperimentResultsViewer {
       }
     });
 
+    const nonce = this.getNonce();
+    const csp = [
+      "default-src 'none'",
+      `img-src ${cspSource} data:`,
+      `style-src ${cspSource} 'unsafe-inline'`,
+      `script-src ${cspSource} 'nonce-${nonce}'`,
+    ].join('; ');
+
     return `<!DOCTYPE html>
 <html lang="${isChinese ? 'zh-CN' : 'en'}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="${csp}">
   <title>${isChinese ? '实验结果可视化' : 'Experiment Results'}</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root {
       --results-surface: var(--vscode-editor-background);
@@ -162,7 +179,7 @@ export class ExperimentResultsViewer {
     <div class="json-viewer" id="jsonViewer"></div>
   </div>
 
-  <script>
+  <script nonce="${nonce}">
     const data = ${JSON.stringify(data)};
     const summaryFields = ${JSON.stringify(summaryFields)};
     const arrayFields = ${JSON.stringify(arrayFields.map(f => ({ key: f.key, data: f.data })))};
@@ -277,119 +294,82 @@ export class ExperimentResultsViewer {
       return html;
     }
 
+    // Minimal inlined chart renderer (no remote CDN / external scripts)
     function renderCharts(key, arr, theme) {
       const container = document.getElementById('charts_' + key);
       if (!container || !arr || arr.length === 0) return;
+      container.innerHTML = '';
 
       const firstItem = arr[0];
       Object.keys(firstItem).forEach(col => {
         const val = firstItem[col];
-        if (val && typeof val === 'object' && !Array.isArray(val)) {
-          // 字典类型的数值（如 trustor_investments）
-          createMultiLineChart(container, arr, col, val, theme);
-        } else if (typeof val === 'number') {
-          // 单个数值
-          createSingleLineChart(container, arr, col, theme);
+        if (typeof val === 'number') {
+          container.appendChild(buildLineChartSvg(arr.map((item, i) => item[col] || 0), col, theme));
+        } else if (val && typeof val === 'object' && !Array.isArray(val)) {
+          const subKeys = Object.keys(val);
+          for (const subKey of subKeys.slice(0, 6)) {
+            const series = arr.map((item) => (item[col] && item[col][subKey]) || 0);
+            container.appendChild(buildLineChartSvg(series, String(col) + '.' + String(subKey), theme));
+          }
         }
       });
     }
 
-    function createMultiLineChart(container, arr, col, firstVal, theme) {
-      const subKeys = Object.keys(firstVal);
-      const labels = arr.map((item, i) => item.round || i + 1);
+    function buildLineChartSvg(values, title, theme) {
+      const width = 560;
+      const height = 180;
+      const pad = 24;
+      const min = Math.min(...values);
+      const max = Math.max(...values);
+      const range = max - min || 1;
+      const n = values.length;
 
-      const datasets = subKeys.map((k, i) => ({
-        label: k,
-        data: arr.map(item => (item[col] && item[col][k]) || 0),
-        borderColor: theme.palette[i % theme.palette.length],
-        backgroundColor: theme.palette[i % theme.palette.length],
-        fill: false,
-        tension: 0.3
-      }));
-
-      const wrapper = document.createElement('div');
-      wrapper.style.height = '260px';
-      wrapper.style.marginBottom = '12px';
-      const canvas = document.createElement('canvas');
-      wrapper.appendChild(canvas);
-      container.appendChild(wrapper);
-
-      chartInstances.push(new Chart(canvas, {
-        type: 'line',
-        data: { labels: labels, datasets: datasets },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              position: 'top',
-              labels: { color: theme.text }
-            },
-            title: {
-              display: true,
-              text: col,
-              color: theme.text
-            }
-          },
-          scales: {
-            x: {
-              ticks: { color: theme.description },
-              grid: { color: theme.grid }
-            },
-            y: {
-              beginAtZero: true,
-              ticks: { color: theme.description },
-              grid: { color: theme.grid }
-            }
-          }
-        }
-      }));
-    }
-
-    function createSingleLineChart(container, arr, col, theme) {
-      const labels = arr.map((item, i) => item.round || i + 1);
-      const values = arr.map(item => item[col] || 0);
+      const pts = values.map((v, i) => {
+        const x = pad + (i / Math.max(n - 1, 1)) * (width - pad * 2);
+        const y = pad + (1 - (v - min) / range) * (height - pad * 2);
+        return [x, y];
+      });
+      const d = pts
+        .map((p, i) => (i === 0 ? 'M' : 'L') + p[0].toFixed(2) + ',' + p[1].toFixed(2))
+        .join(' ');
 
       const wrapper = document.createElement('div');
-      wrapper.style.height = '200px';
+      wrapper.style.border = '1px solid var(--vscode-panel-border)';
+      wrapper.style.borderRadius = '8px';
+      wrapper.style.padding = '10px 12px';
       wrapper.style.marginBottom = '12px';
-      const canvas = document.createElement('canvas');
-      wrapper.appendChild(canvas);
-      container.appendChild(wrapper);
+      wrapper.style.background = 'var(--results-surface)';
 
-      chartInstances.push(new Chart(canvas, {
-        type: 'line',
-        data: {
-          labels: labels,
-          datasets: [{
-            label: col,
-            data: values,
-            borderColor: theme.accent,
-            backgroundColor: theme.accentFill,
-            fill: true,
-            tension: 0.3
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { labels: { color: theme.text } },
-            title: { display: true, text: col, color: theme.text }
-          },
-          scales: {
-            x: {
-              ticks: { color: theme.description },
-              grid: { color: theme.grid }
-            },
-            y: {
-              beginAtZero: true,
-              ticks: { color: theme.description },
-              grid: { color: theme.grid }
-            }
-          }
-        }
-      }));
+      const header = document.createElement('div');
+      header.textContent = title;
+      header.style.fontSize = '12px';
+      header.style.fontWeight = '600';
+      header.style.marginBottom = '8px';
+      wrapper.appendChild(header);
+
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('viewBox', '0 0 ' + String(width) + ' ' + String(height));
+      svg.setAttribute('width', '100%');
+      svg.setAttribute('height', '180');
+
+      const grid = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      grid.setAttribute('x1', String(pad));
+      grid.setAttribute('y1', String(height - pad));
+      grid.setAttribute('x2', String(width - pad));
+      grid.setAttribute('y2', String(height - pad));
+      grid.setAttribute('stroke', theme.grid);
+      grid.setAttribute('stroke-width', '1');
+      svg.appendChild(grid);
+
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', d);
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke', theme.accent);
+      path.setAttribute('stroke-width', '2');
+      svg.appendChild(path);
+
+      wrapper.appendChild(svg);
+      return wrapper;
     }
 
     function showTab(tabId) {

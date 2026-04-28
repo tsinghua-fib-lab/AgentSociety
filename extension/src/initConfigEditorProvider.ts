@@ -124,12 +124,21 @@ export class InitConfigEditorProvider implements vscode.CustomTextEditorProvider
     scriptUri: vscode.Uri,
     initialConfig: any
   ): string {
+    const nonce = Array.from({ length: 32 }, () => Math.random().toString(36)[2]).join('');
+    const csp = [
+      "default-src 'none'",
+      `img-src ${webview.cspSource} data:`,
+      `style-src ${webview.cspSource} 'unsafe-inline'`,
+      `script-src ${webview.cspSource} 'nonce-${nonce}'`,
+      `connect-src ${webview.cspSource} http://127.0.0.1:* http://localhost:*`,
+    ].join('; ');
+
     return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src ${webview.cspSource} 'unsafe-eval' 'unsafe-inline'; connect-src *;">
+  <meta http-equiv="Content-Security-Policy" content="${csp}">
   <title>Init Config Editor</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -145,10 +154,10 @@ export class InitConfigEditorProvider implements vscode.CustomTextEditorProvider
 </head>
 <body>
   <div id="root"></div>
-  <script>
+  <script nonce="${nonce}">
     window.initialConfig = ${JSON.stringify(initialConfig)};
   </script>
-  <script src="${scriptUri}"></script>
+  <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>
 </html>`;
   }

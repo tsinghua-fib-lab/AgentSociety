@@ -324,6 +324,22 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
+  const openHtmlFileCommand = vscode.commands.registerCommand(
+    'aiSocialScientist.openHtmlFile',
+    async (filePathOrItem: string | any) => {
+      const filePath = typeof filePathOrItem === 'string' ? filePathOrItem : filePathOrItem?.filePath;
+      if (!filePath || !fs.existsSync(filePath)) {
+        vscode.window.showErrorMessage(localize('extension.noFilePath'));
+        return;
+      }
+      const lower = filePath.toLowerCase();
+      if (!lower.endsWith('.html') && !lower.endsWith('.htm')) {
+        return;
+      }
+      await vscode.env.openExternal(vscode.Uri.file(filePath));
+    }
+  );
+
   // Register custom editor for SIM_SETTINGS.json
   context.subscriptions.push(
     vscode.window.registerCustomEditorProvider(
@@ -1013,6 +1029,7 @@ export function activate(context: vscode.ExtensionContext) {
     renameLiteratureCommand,
     openMarkdownInEditorCommand,
     openChatCommand,
+    openHtmlFileCommand,
     startBackendCommand,
     stopBackendCommand,
     restartBackendCommand,

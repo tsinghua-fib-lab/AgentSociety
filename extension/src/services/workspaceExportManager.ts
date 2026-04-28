@@ -738,28 +738,33 @@ export class WorkspaceExportManager implements vscode.Disposable {
    * 获取 Codex 相关导出候选项
    */
   private getCodexCandidate(workspacePath: string): ExportCandidate | null {
-    const codexPath = path.join(os.homedir(), '.codex');
-    if (!fs.existsSync(codexPath)) {
+    const codexRoot = path.join(os.homedir(), '.codex');
+    if (!fs.existsSync(codexRoot)) {
       return null;
     }
 
-    const stats = fs.lstatSync(codexPath);
+    const stats = fs.lstatSync(codexRoot);
     if (!stats.isDirectory()) {
       return null;
     }
 
-    // 创建一个以工作区命名的子目录名
+    // 安全性：不要默认导出整个 ~/.codex（可能包含大量与当前工作区无关的敏感内容）。
+    // 仅在存在“与当前工作区对应”的子目录时提供导出候选项。
     const encodedWorkspacePath = this.encodeClaudeProjectPath(workspacePath);
+    const workspaceScopedDir = path.join(codexRoot, 'projects', encodedWorkspacePath);
+    if (!fs.existsSync(workspaceScopedDir) || !fs.lstatSync(workspaceScopedDir).isDirectory()) {
+      return null;
+    }
 
     return {
-      label: `.codex (${localize('workspaceExport.pick.codexDetail')})`,
-      archivePath: path.posix.join('.codex', encodedWorkspacePath),
-      sourcePath: codexPath,
-      allowedRoot: codexPath,
+      label: `.codex/projects/${encodedWorkspacePath} (${localize('workspaceExport.pick.codexDetail')})`,
+      archivePath: path.posix.join('.codex', 'projects', encodedWorkspacePath),
+      sourcePath: workspaceScopedDir,
+      allowedRoot: workspaceScopedDir,
       isDefault: false,
       kind: 'directory',
       detail: localize('workspaceExport.pick.codexDetail'),
-      size: this.getDirectorySize(codexPath),
+      size: this.getDirectorySize(workspaceScopedDir),
     };
   }
 

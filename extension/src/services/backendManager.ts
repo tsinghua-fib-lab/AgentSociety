@@ -79,8 +79,12 @@ export class BackendManager {
     context.subscriptions.push(this.statusBarItem);
     this.updateStatusBar('stopped');
 
-    // 检查并清理可能存在的遗留后端进程
-    this.checkAndCleanupOrphanedProcess();
+    // 避免在构造阶段做 IO / 网络请求，延后到激活后的空闲时段执行
+    setTimeout(() => {
+      void this.checkAndCleanupOrphanedProcess().catch((error) => {
+        this.log(`Failed to cleanup orphaned backend process: ${String(error)}`, 'warn');
+      });
+    }, 2000);
   }
 
   private reloadConfig(reason: string): void {
