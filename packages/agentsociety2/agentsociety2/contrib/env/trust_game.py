@@ -187,30 +187,19 @@ class TrustGameEnv(EnvBase):
         if self.partner_mapping:
             return  # Already set up
 
-        # Try to infer the game number from the agent name
-        import re
-
-        # Extract game number from agent name (e.g., "Agent-1_Trustor_G1" -> "G1")
-        match = re.search(r'_G(\d+)', agent_name)
-        if not match:
-            return
-
-        game_num = match.group(1)
-
-        # Build partner mapping for this specific game number
-        # We need to find all Trustor_G{game_num} and Trustee_G{game_num} pairs
+        # Build partner mapping for ALL game numbers at once
         self.partner_mapping = {}
 
-        # Create mapping for all agents with the same game number
-        # Trustor with G{game_num} pairs with Trustee with G{game_num}
-        # Assuming agent IDs are sequential: Trustors are 1..num_pairs, Trustees are num_pairs+1..2*num_pairs
-        # But we pair by game number, not by sequential ID
-        trustor_name = f"Agent-{game_num}_Trustor_G{game_num}"
-        trustee_name = f"Agent-{int(game_num) + self.num_pairs}_Trustee_G{game_num}"
-        self.partner_mapping[trustor_name] = trustee_name
-        self.partner_mapping[trustee_name] = trustor_name
+        # Create mapping for all games (G1 to G{num_pairs})
+        for game_num in range(1, self.num_pairs + 1):
+            # Trustor with G{game_num} pairs with Trustee with G{game_num}
+            # Agent IDs: Trustors are 1..num_pairs, Trustees are num_pairs+1..2*num_pairs
+            trustor_name = f"Agent-{game_num}_Trustor_G{game_num}"
+            trustee_name = f"Agent-{game_num + self.num_pairs}_Trustee_G{game_num}"
+            self.partner_mapping[trustor_name] = trustee_name
+            self.partner_mapping[trustee_name] = trustor_name
 
-        logger.info(f"Auto-setup partner_mapping for G{game_num}: {trustor_name} <-> {trustee_name}")
+        logger.info(f"Auto-setup partner_mapping for all games: {self.partner_mapping}")
 
     @tool(readonly=False)
     async def submit_investment(
