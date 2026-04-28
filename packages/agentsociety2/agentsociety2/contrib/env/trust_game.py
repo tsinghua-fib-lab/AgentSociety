@@ -181,8 +181,8 @@ class TrustGameEnv(EnvBase):
     def _auto_setup_partner_mapping(self, agent_name: str) -> None:
         """Auto-setup partner mapping based on agent name convention.
 
-        Convention: Agent-{id}_Trustor_G{n} pairs with Agent-{id+num_pairs}_Trustee_G{n}
-        or: Trustor_G{n} pairs with Trustee_G{n} based on the game number.
+        Convention: Agent-{id}_Trustor_G{n} pairs with Agent-{id'}_Trustee_G{n}
+        where both have the same game number G{n}.
         """
         if self.partner_mapping:
             return  # Already set up
@@ -197,25 +197,20 @@ class TrustGameEnv(EnvBase):
 
         game_num = match.group(1)
 
-        # Build partner mapping for this game
-        # Trustor_G{game_num} -> Trustee_G{game_num}
-        trustor_pattern = f"_Trustor_G{game_num}"
-        trustee_pattern = f"_Trustee_G{game_num}"
-
-        # We'll set up a mapping that works with any agent name containing these patterns
-        # This is a fallback that allows the game to work even without explicit setup
+        # Build partner mapping for this specific game number
+        # We need to find all Trustor_G{game_num} and Trustee_G{game_num} pairs
         self.partner_mapping = {}
 
-        # Create a simple mapping based on num_pairs
-        # Assuming agents are named Agent-{1..num_pairs}_Trustor_G{game_num}
-        # and Agent-{num_pairs+1..2*num_pairs}_Trustee_G{game_num}
-        for i in range(1, self.num_pairs + 1):
-            trustor_name = f"Agent-{i}_Trustor_G{game_num}"
-            trustee_name = f"Agent-{self.num_pairs + i}_Trustee_G{game_num}"
-            self.partner_mapping[trustor_name] = trustee_name
-            self.partner_mapping[trustee_name] = trustor_name
+        # Create mapping for all agents with the same game number
+        # Trustor with G{game_num} pairs with Trustee with G{game_num}
+        # Assuming agent IDs are sequential: Trustors are 1..num_pairs, Trustees are num_pairs+1..2*num_pairs
+        # But we pair by game number, not by sequential ID
+        trustor_name = f"Agent-{game_num}_Trustor_G{game_num}"
+        trustee_name = f"Agent-{int(game_num) + self.num_pairs}_Trustee_G{game_num}"
+        self.partner_mapping[trustor_name] = trustee_name
+        self.partner_mapping[trustee_name] = trustor_name
 
-        logger.info(f"Auto-setup partner_mapping: {self.partner_mapping}")
+        logger.info(f"Auto-setup partner_mapping for G{game_num}: {trustor_name} <-> {trustee_name}")
 
     @tool(readonly=False)
     async def submit_investment(
