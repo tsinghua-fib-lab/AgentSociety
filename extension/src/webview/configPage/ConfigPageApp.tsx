@@ -15,9 +15,9 @@ import {
   Tooltip,
   Tag,
 } from 'antd';
-import { SaveOutlined, KeyOutlined, CheckCircleOutlined, RocketOutlined, QuestionCircleOutlined, ReloadOutlined, SettingOutlined, CloudServerOutlined } from '@ant-design/icons';
+import { SaveOutlined, KeyOutlined, CheckCircleOutlined, RocketOutlined, QuestionCircleOutlined, ReloadOutlined, SettingOutlined, CloudServerOutlined, LinkOutlined, StopOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
-import type { VSCodeAPI, ConfigValues, WorkspaceInfo } from './types';
+import type { VSCodeAPI, ConfigValues, WorkspaceInfo, BackendStatus } from './types';
 import { useVscodeTheme } from '../theme';
 import 'antd/dist/reset.css';
 
@@ -165,13 +165,25 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
     literature: { validating: false, valid: null, error: null },
   });
 
-  // 计算配置统计
+  // 后端状态
+  const [backendStatus, setBackendStatus] = React.useState<BackendStatus>({ isRunning: false });
+
+  // 计算配置统计 - 改为显示已配置的服务数量
   const getConfigStats = () => {
     const values = currentValues;
-    const validatedServices = Object.entries(validationState).filter(([key, state]) => state.valid === true).length;
+    // 检查核心配置是否已填写
+    const hasLlmKey = hasText(values.llmApiKey);
     const hasPython = hasText(values.pythonPath);
+    // 统计已配置的可选服务
+    const configuredOptionalServices = [
+      hasText(values.coderLlmApiKey) || hasDefaultLlmKey,  // Coder 可使用默认 key
+      hasText(values.nanoLlmApiKey) || hasDefaultLlmKey,   // Nano 可使用默认 key
+      hasText(values.analysisLlmApiKey) || hasDefaultLlmKey, // Analysis 可使用默认 key
+      hasText(values.embeddingApiKey) || hasDefaultLlmKey,   // Embedding 可使用默认 key
+      hasText(values.literatureSearchApiUrl),  // 文献检索
+    ].filter(Boolean).length;
 
-    return { validatedServices, hasPython };
+    return { hasLlmKey, hasPython, configuredOptionalServices };
   };
 
   const stats = getConfigStats();
@@ -284,6 +296,8 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
         });
       } else if (message.command === 'workspaceInfo') {
         setWorkspaceInfo(message.workspaceInfo || { hasWorkspace: false });
+      } else if (message.command === 'backendStatus') {
+        setBackendStatus(message.backendStatus || { isRunning: false });
       } else if (message.command === 'saveResult') {
         const msg = message as { success?: boolean; error?: string };
         setLoading(false);
@@ -499,9 +513,45 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
               </div>
             </div>
 
-            {/* 统计卡片 */}
+            {/* 统计卡片 - 显示后端状态和配置概览 */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-              {statPill('验证通过', stats.validatedServices, <CheckCircleOutlined />, palette.successForeground)}
+              {/* 后端状态卡片 */}
+              <div
+                style={{
+                  flex: '1 1 140px',
+                  minWidth: 120,
+                  padding: '12px 16px',
+                  borderRadius: 10,
+                  border: `1px solid ${palette.panelBorder}`,
+                  background: backendStatus.isRunning
+                    ? (isDark ? 'rgba(34, 139, 34, 0.15)' : 'rgba(34, 139, 34, 0.08)')
+                    : (isDark ? 'rgba(37, 37, 38, 0.6)' : 'rgba(255, 255, 255, 0.55)'),
+                  backdropFilter: 'blur(16px)',
+                  WebkitBackdropFilter: 'blur(16px)',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                  <span style={{ color: backendStatus.isRunning ? palette.successForeground : palette.descriptionForeground }}>
+                    {backendStatus.isRunning ? <CheckCircleOutlined /> : <StopOutlined />}
+                  </span>
+                  <span style={{ fontSize: 11, color: palette.descriptionForeground, fontWeight: 500 }}>后端服务</span>
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: backendStatus.isRunning ? palette.successForeground : palette.editorForeground, lineHeight: 1 }}>
+                  {backendStatus.isRunning ? `运行中 :${backendStatus.port}` : '已停止'}
+                </div>
+                {backendStatus.isRunning && backendStatus.url && (
+                  <div style={{ marginTop: 4, fontSize: 11, color: palette.linkForeground, cursor: 'pointer' }}
+                    onClick={() => { if (backendStatus.url) { vscode.postMessage({ command: 'openUrl', url: backendStatus.url }); } }}
+                  >
+                    <LinkOutlined style={{ marginRight: 4 }} />{backendStatus.url}
+                  </div>
+                )}
+              </div>
+              {/* LLM 配置状态 */}
+              {statPill('LLM 配置', stats.hasLlmKey ? '已配置' : '未配置', <KeyOutlined />, stats.hasLlmKey ? palette.successForeground : palette.errorForeground)}
+              {/* Python 环境 */}
               {statPill('Python 环境', stats.hasPython ? '已配置' : '默认', <CloudServerOutlined />)}
             </div>
           </div>

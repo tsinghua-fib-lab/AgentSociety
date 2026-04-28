@@ -156,7 +156,7 @@ export class ConfigPageViewProvider {
     this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
 
     this._panel.webview.onDidReceiveMessage(
-      async (message: { command: string; config?: Partial<ConfigValues>; llmType?: string }) => {
+      async (message: { command: string; config?: Partial<ConfigValues>; llmType?: string; url?: string }) => {
         switch (message.command) {
           case 'requestConfig':
             await this._sendInitialConfig();
@@ -184,6 +184,11 @@ export class ConfigPageViewProvider {
             break;
           case 'openFolder':
             await vscode.commands.executeCommand('workbench.action.files.openFolder');
+            break;
+          case 'openUrl':
+            if (message.url) {
+              await vscode.env.openExternal(vscode.Uri.parse(message.url));
+            }
             break;
         }
       },
@@ -236,6 +241,9 @@ export class ConfigPageViewProvider {
       workspacePath: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath
     };
 
+    // 获取后端状态
+    const backendStatus = await this._getBackendStatus();
+
     this._panel.webview.postMessage({
       command: 'initialConfig',
       config: configValues
@@ -245,6 +253,38 @@ export class ConfigPageViewProvider {
       command: 'workspaceInfo',
       workspaceInfo: workspaceInfo
     });
+
+    this._panel.webview.postMessage({
+      command: 'backendStatus',
+      backendStatus: backendStatus
+    });
+  }
+
+  /**
+   * 获取后端状态信息
+   */
+  private async _getBackendStatus(): Promise<{ isRunning: boolean; port?: number; url?: string }> {
+    try {
+      const status = await vscode.commands.executeCommand<{ isRunning: boolean; port?: number }>('aiSocialScientist.showBackendStatus');
+      if (status && status.isRunning && status.port) {
+        return {
+          isRunning: true,
+          port: status.port,
+          url: `http://localhost:${status.port}`
+        };
+      }
+    } catch {
+      // 命令不存在或执行失败，忽略
+    }
+
+    // 尝试从 .env 文件获取端口配置
+    const envConfig = this._envManager.readEnv();
+    const configuredPort = envConfig.backendPort ?? 8001;
+    return {
+      isRunning: false,
+      port: configuredPort,
+      url: `http://localhost:${configuredPort}`
+    };
   }
 
   private async _handleSaveConfig(config: Partial<ConfigValues>): Promise<void> {

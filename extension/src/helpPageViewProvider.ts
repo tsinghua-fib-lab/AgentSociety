@@ -2,14 +2,20 @@
  * HelpPageViewProvider - Help Page Webview Provider
  *
  * Provides a webview for displaying plugin usage guide and help information.
+ * Reads content from HELP.md file for easy maintenance.
+ *
+ * 关联文件：
+ * - @extension/HELP.md - 帮助文档源文件（Markdown格式）
  */
 
 import * as vscode from 'vscode';
 import * as path from 'path';
+import * as fs from 'fs';
 
 export class HelpPageViewProvider {
   private readonly panel: vscode.WebviewPanel;
   private readonly extensionUri: vscode.Uri;
+  private readonly helpMdPath: string;
   private disposables: vscode.Disposable[] = [];
 
   /**
@@ -33,37 +39,70 @@ export class HelpPageViewProvider {
   private constructor(panel: vscode.WebviewPanel, context: vscode.ExtensionContext) {
     this.panel = panel;
     this.extensionUri = context.extensionUri;
+    this.helpMdPath = path.join(context.extensionPath, 'HELP.md');
 
     // Set webview content
-    this.panel.webview.html = this.getHtmlForWebview();
+    this.updateWebviewContent();
 
     // Register event listeners
     this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
 
     this.panel.webview.onDidReceiveMessage(
-      (message) => this.handleMessage(message),
+      async (message: { command: string; commandId?: string; url?: string }) => {
+        switch (message.command) {
+          case 'openCommand':
+            if (message.commandId) {
+              await vscode.commands.executeCommand(message.commandId);
+            }
+            break;
+          case 'openUrl':
+            if (message.url) {
+              await vscode.env.openExternal(vscode.Uri.parse(message.url));
+            }
+            break;
+        }
+      },
       null,
       this.disposables
     );
   }
 
   /**
-   * Handle messages from webview
+   * Read help content from HELP.md file
    */
-  private async handleMessage(message: { command: string; [key: string]: unknown }): Promise<void> {
-    switch (message.command) {
-      case 'openCommand':
-        if (typeof message.commandId === 'string') {
-          await vscode.commands.executeCommand(message.commandId);
-        }
-        break;
+  private readHelpContent(): string {
+    try {
+      if (fs.existsSync(this.helpMdPath)) {
+        return fs.readFileSync(this.helpMdPath, 'utf-8');
+      }
+    } catch (error) {
+      console.error('Failed to read HELP.md:', error);
     }
+    // Fallback content
+    return `# AI Social Scientist 使用指南
+
+帮助文档加载失败，请查看 [README.md](https://github.com/tsinghua-fib-lab/agentsociety) 获取更多信息。
+
+## 快速入口
+
+- [打开配置页面](command:aiSocialScientist.openConfigPage)
+- [打开技能市场](command:aiSocialScientist.openSkillMarketplace)
+- [后端状态菜单](command:aiSocialScientist.backendStatusMenu)
+`;
+  }
+
+  /**
+   * Update webview content
+   */
+  private updateWebviewContent(): void {
+    const helpContent = this.readHelpContent();
+    this.panel.webview.html = this.getHtmlForWebview(helpContent);
   }
 
   /**
    * Generate HTML for webview
    */
-  private getHtmlForWebview(): string {
+  private getHtmlForWebview(helpContent: string): string {
     const scriptUri = this.panel.webview.asWebviewUri(
       vscode.Uri.file(path.join(this.extensionUri.fsPath, 'out', 'webview', 'helpPage.js'))
     );
@@ -74,6 +113,12 @@ export class HelpPageViewProvider {
       `script-src ${this.panel.webview.cspSource}`,
       `font-src ${this.panel.webview.cspSource}`,
     ].join('; ');
+
+    // Escape the help content for embedding in JavaScript
+    const escapedContent = helpContent
+      .replace(/\\/g, '\\\\')
+      .replace(/`/g, '\\`')
+      .replace(/\$/g, '\\$');
 
     return `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -110,6 +155,7 @@ export class HelpPageViewProvider {
 </head>
 <body>
     <div id="root"></div>
+    <script>window.HELP_CONTENT = \`${escapedContent}\`;</script>
     <script src="${scriptUri}"></script>
 </body>
 </html>`;

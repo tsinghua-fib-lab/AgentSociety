@@ -216,6 +216,11 @@
           "command": "aiSocialScientist.openConfigPage",
           "when": "view == projectStructureView && workspaceFolderCount > 0",
           "group": "navigation@2"
+        },
+        {
+          "command": "aiSocialScientist.openHelpPage",
+          "when": "view == projectStructureView && workspaceFolderCount > 0",
+          "group": "navigation@3"
         }
       ],
       "view/item/context": [
