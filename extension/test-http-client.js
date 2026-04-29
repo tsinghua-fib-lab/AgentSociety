@@ -44,3 +44,24 @@ test('requestJson posts JSON without relying on global fetch', async () => {
     await new Promise(resolve => server.close(resolve));
   }
 });
+
+test('requestJson resolves http://localhost via 127.0.0.1', async () => {
+  const server = http.createServer((req, res) => {
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({ ping: 1 }));
+  });
+
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+
+  try {
+    const address = server.address();
+    const response = await requestJson(`http://localhost:${address.port}/health`, {
+      method: 'GET',
+      timeoutMs: 2000,
+    });
+    assert.equal(response.ok, true);
+    assert.deepEqual(response.data, { ping: 1 });
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+  }
+});

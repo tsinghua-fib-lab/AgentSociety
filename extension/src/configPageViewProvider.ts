@@ -25,6 +25,7 @@ import type { ConfigValues, WorkspaceInfo } from './webview/configPage/types';
 import { EnvManager, EnvConfig } from './envManager';
 import { LLMValidator, PythonValidator, LLMType } from './services/llmValidator';
 import { requestJson } from './services/httpClient';
+import { CONFIG_PAGE_API_VALIDATE_TIMEOUT_MS } from './services/validateTimeouts';
 
 /** Build EasyPaper agents YAML content from AgentSociety2 config (LLM/VLM). API Base uses llmApiBase. */
 function buildEasyPaperYaml(config: Partial<EnvConfig>): string {
@@ -474,23 +475,41 @@ export class ConfigPageViewProvider {
     });
   }
 
-  /**
-   * 处理文献检索 API 验证请求
-   */
+  private async _literatureValidateHttpGet(
+    url: string,
+    headerMap: Record<string, string> | undefined
+  ): Promise<{ ok: boolean; status: number; json: () => Promise<unknown> }> {
+    const headers = headerMap ?? {};
+    if (typeof globalThis.fetch === 'function') {
+      const res = await fetch(url, { method: 'GET', headers });
+      return {
+        ok: res.ok,
+        status: res.status,
+        json: () => res.json(),
+      };
+    }
+    const jr = await requestJson(url, {
+      method: 'GET',
+      headers,
+      timeoutMs: CONFIG_PAGE_API_VALIDATE_TIMEOUT_MS,
+    });
+    const data = jr.data;
+    return {
+      ok: jr.ok,
+      status: jr.status,
+      json: async () => data,
+    };
+  }
+
   private async _handleValidateLiteratureSearch(config: Partial<ConfigValues>): Promise<void> {
     const apiUrl = config.literatureSearchApiUrl || '';
     const apiKey = config.literatureSearchApiKey || '';
 
     try {
-      // 从 API URL 中提取基础 URL（去掉 /api/search 部分）
       const baseUrl = apiUrl.replace(/\/api\/search\/?$/, '').replace(/\/$/, '');
 
-      // 首先检查健康状态
       const healthUrl = `${baseUrl}/health`;
-      const healthResponse = await requestJson(healthUrl, {
-        method: 'GET',
-        timeoutMs: 10000,
-      });
+      const healthResponse = await this._literatureValidateHttpGet(healthUrl, undefined);
 
       if (!healthResponse.ok) {
         this._panel.webview.postMessage({
@@ -501,16 +520,13 @@ export class ConfigPageViewProvider {
         return;
       }
 
-      // 尝试获取数据源状态（验证认证）
       const statsUrl = `${baseUrl}/api/stats`;
-      const statsResponse = await requestJson<{ sources?: Record<string, unknown> }>(statsUrl, {
-        method: 'GET',
-        headers: apiKey ? { 'Authorization': `Bearer ${apiKey}` } : {},
-        timeoutMs: 10000,
-      });
+      const statsResponse = await this._literatureValidateHttpGet(
+        statsUrl,
+        apiKey ? { Authorization: `Bearer ${apiKey}` } : {}
+      );
 
       if (statsResponse.status === 401 || statsResponse.status === 403) {
-        // 需要 API Key 或 API Key 无效
         const errorMsg = apiKey ? 'API Key 无效' : '需要输入 API Key';
         this._panel.webview.postMessage({
           command: 'literatureValidationResult',
@@ -529,10 +545,11 @@ export class ConfigPageViewProvider {
         return;
       }
 
+      const statsData = (await statsResponse.json()) as { sources?: Record<string, unknown> };
       this._panel.webview.postMessage({
         command: 'literatureValidationResult',
         success: true,
-        sources: statsResponse.data.sources,
+        sources: statsData.sources,
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '未知错误';
