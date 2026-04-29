@@ -1,12 +1,6 @@
 ---
 name: plan
 description: Execute intentions through the environment.
-priority: 30
-inputs:
-  - state/intention.json
-  - state/observation.txt
-outputs:
-  - state/plan_state.json
 ---
 
 # Plan
@@ -202,12 +196,14 @@ For habitual actions, add to `intention.json`:
 4. Generate or continue plan execution
 5. Call `codegen` with action instruction
 6. Update `plan_state.json`
-7. Re-observe after action if needed
+7. End the step after one meaningful environment action; observe on the next tick.
 
 ## Guidelines
 
 - One meaningful action per tick
 - Actions must match AVAILABLE ACTIONS from observation
+- If `codegen` returns `status: "success"` or `status: "in_progress"` after an environment action, call `done`
+- If `codegen` returns `status: "fail"`, either try one clearly different correction or call `done` with the failure summary
 - Handle idle gracefully with `done`
 - Mark plan as `failed` after 3 consecutive failures
 - Prefer System 1 for routines, System 2 for novel goals
@@ -218,6 +214,6 @@ For habitual actions, add to `intention.json`:
 After each `codegen` action:
 
 1. Check the result
-2. Call `codegen` with `<observe>` to get updated state
-3. Update `state/observation.txt`
-4. Continue reasoning
+2. If the action was accepted or is pending, call `done`
+3. Observe on the next tick
+4. Continue only when the result failed and there is a specific correction to try

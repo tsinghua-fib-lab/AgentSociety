@@ -124,7 +124,7 @@ class LoopDetectionService:
             if len(set(recent)) == 1:
                 return LoopDetectionResult(
                     is_loop=True,
-                    loop_type="tool_repeat",
+                    loop_type="tool",
                     details=f"Tool '{tool_name}' called {self._config.max_tool_repeats} times with same arguments",
                     root_cause=f"The tool '{tool_name}' is not producing the expected result, causing repeated attempts.",
                     alternative_actions=[
@@ -148,8 +148,8 @@ class LoopDetectionService:
                 tools = [fp.split(":")[0] for fp in set(last_6)]
                 return LoopDetectionResult(
                     is_loop=True,
-                    loop_type="tool_alternating",
-                    details=f"Alternating pattern detected between tools",
+                    loop_type="tool",
+                    details="Alternating pattern detected between tools",
                     root_cause=f"Tools {tools[0]} and {tools[1]} are alternating without progress. This usually means a condition is not being met or a state is not changing as expected.",
                     alternative_actions=[
                         "Check if there's a prerequisite step missing",
@@ -170,7 +170,7 @@ class LoopDetectionService:
                 if count >= self._config.overuse_threshold:
                     return LoopDetectionResult(
                         is_loop=True,
-                        loop_type="tool_overuse",
+                        loop_type="tool",
                         details=f"Tool '{name}' used {count} times in last {self._config.history_size} calls",
                         root_cause=f"Tool '{name}' is being used excessively. This may indicate the task is too complex or the approach is not efficient.",
                         alternative_actions=[

@@ -691,6 +691,18 @@ ctx = {repr(ctx)}
 - Do NOT use dangerous operations. ALWAYS USE `await` TO CALL TOOLS (ASYNC FUNCTIONS).
 - NEVER forget to set results['status'] at the END of your code!
 
+## CRITICAL: Status Handling
+When calling environment tools:
+- Check the return value for a 'status' field
+- If the tool returns successfully, set results['status'] = 'success'
+- If the tool indicates an error or failure, set results['status'] = 'fail'
+- If the operation is ongoing, set results['status'] = 'in_progress'
+- Example code pattern:
+  response = await modules["ModuleName"].some_tool(arg1, arg2)
+  print("Tool response:", response)
+  results["response"] = response
+  results["status"] = response.get("status", "success") if isinstance(response, dict) else "success"
+
 ## Output Format
 Generate ONLY the Python code, without markdown. Start directly with Python statements.
 

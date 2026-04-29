@@ -1,9 +1,6 @@
 ---
 name: observation
 description: Fetch the current world observation for this tick.
-outputs:
-  - state/observation.txt
-  - state/observation_ctx.json
 ---
 
 # Observation
@@ -62,14 +59,14 @@ The observation text typically includes:
 
 ## Re-observation After Actions
 
-After performing any action via `codegen`, always re-observe to get the updated environment state:
+Do not re-observe repeatedly in the same step. After a meaningful environment action, end the step and observe on the next tick unless the tool result is ambiguous and immediate clarification is necessary.
 
-1. Execute action via `codegen`
-2. Check the response status
-3. Call `codegen` with `"<observe>"` again
-4. Update `state/observation.txt` and `state/observation_ctx.json`
+1. Execute action via `codegen`.
+2. Check the response status.
+3. If status is `success` or `in_progress`, call `done`.
+4. Observe again on the next tick and update `state/observation.txt` / `state/observation_ctx.json`.
 
-This ensures the agent's internal state matches the environment state.
+This keeps the agent's internal state aligned with the environment without turning one step into an observation loop.
 
 ## Observation Context Structure
 

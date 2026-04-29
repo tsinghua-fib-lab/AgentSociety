@@ -183,9 +183,10 @@ class SkillRegistry:
     """
 
     def __init__(self) -> None:
-        """Initialize an empty skill registry."""
+        """Initialize a skill registry with built-in skills loaded."""
         self._skills: dict[str, SkillInfo] = {}
         self._builtin_scanned = False
+        self.scan_builtin()
 
     def copy_from(self, other: "SkillRegistry") -> None:
         """从另一个 registry 复制所有技能。
@@ -231,6 +232,10 @@ class SkillRegistry:
                 and self._skills[info.name].source == "builtin"
             ):
                 continue
+            # Preserve enabled state if skill already exists
+            if info.name in self._skills:
+                existing = self._skills[info.name]
+                info.enabled = existing.enabled
             self._skills[info.name] = info
             new_names.append(info.name)
         return new_names
@@ -262,6 +267,10 @@ class SkillRegistry:
                 and self._skills[info.name].source == "builtin"
             ):
                 continue
+            # Preserve enabled state if skill already exists
+            if info.name in self._skills:
+                existing = self._skills[info.name]
+                info.enabled = existing.enabled
             self._skills[info.name] = info
             new_names.append(info.name)
         return new_names

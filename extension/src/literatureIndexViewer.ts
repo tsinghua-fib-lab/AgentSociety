@@ -82,12 +82,19 @@ export class LiteratureIndexViewer {
           try {
             const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
             if (workspaceFolder && message.filePath) {
-              // 处理相对路径
-              const filePath = message.filePath.startsWith('/')
-                ? message.filePath
-                : path.join(workspaceFolder.uri.fsPath, message.filePath);
+              const workspaceRoot = workspaceFolder.uri.fsPath;
+              // 仅允许打开工作区内文件：防止通过 ../ 进行路径穿越
+              const requested = String(message.filePath);
+              const candidatePath = path.isAbsolute(requested)
+                ? path.normalize(requested)
+                : path.normalize(path.join(workspaceRoot, requested));
+              const relative = path.relative(workspaceRoot, candidatePath);
+              const isInside = relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+              if (!isInside) {
+                throw new Error('Refused to open a path outside the workspace');
+              }
 
-              const uri = vscode.Uri.file(filePath);
+              const uri = vscode.Uri.file(candidatePath);
               const doc = await vscode.workspace.openTextDocument(uri);
               await vscode.window.showTextDocument(doc, vscode.ViewColumn.One);
             }
@@ -97,7 +104,12 @@ export class LiteratureIndexViewer {
         } else if (message.command === 'openUrl') {
           // 打开外部链接（DOI、URL 等）
           if (message.url) {
-            vscode.env.openExternal(vscode.Uri.parse(message.url));
+            const url = String(message.url);
+            if (!/^https?:\/\//i.test(url)) {
+              vscode.window.showWarningMessage('Blocked non-http(s) URL');
+              return;
+            }
+            vscode.env.openExternal(vscode.Uri.parse(url));
           }
         } else if (message.command === 'copyAtReference') {
           const wf = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;

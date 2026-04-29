@@ -8,11 +8,14 @@ const entries = {
   configPage: './src/webview/configPage/index.tsx',
   initConfig: './src/webview/initConfig/index.tsx',
   skillMarketplace: './src/webview/skillMarketplace/index.tsx',
+  helpPage: './src/webview/helpPage/index.tsx',
 };
+
+const isProd = process.env.NODE_ENV === 'production';
 
 const createConfig = (name, entry) => ({
   target: 'web',
-  mode: 'development',
+  mode: isProd ? 'production' : 'development',
   entry: {
     [name]: entry,
   },
@@ -20,6 +23,13 @@ const createConfig = (name, entry) => ({
     path: path.resolve(__dirname, 'out', 'webview'),
     filename: '[name].js',
   },
+  cache: {
+    type: 'filesystem',
+    buildDependencies: {
+      config: [__filename],
+    },
+  },
+  parallelism: 2,
   resolve: {
     extensions: ['.ts', '.tsx', '.js', '.jsx'],
   },
@@ -31,6 +41,8 @@ const createConfig = (name, entry) => ({
           loader: 'ts-loader',
           options: {
             configFile: path.resolve(__dirname, 'src/webview/tsconfig.json'),
+            transpileOnly: true,
+            happyPackMode: true,
           },
         },
         exclude: /node_modules/,
@@ -60,10 +72,11 @@ const createConfig = (name, entry) => ({
       },
     ],
   },
-  devtool: 'source-map',
+  devtool: isProd ? false : 'source-map',
   optimization: {
     runtimeChunk: false,
     splitChunks: false,
+    minimize: isProd,
   },
   plugins: [
     new webpack.optimize.LimitChunkCountPlugin({

@@ -277,6 +277,14 @@ export class PrefillParamsViewProvider {
     const scriptUri = webview.asWebviewUri(
       vscode.Uri.file(path.join(this._extensionPath, 'out', 'webview', 'prefillParams.js'))
     );
+    const nonce = Array.from({ length: 32 }, () => Math.random().toString(36)[2]).join('');
+    const csp = [
+      "default-src 'none'",
+      `img-src ${webview.cspSource} data:`,
+      `style-src ${webview.cspSource} 'unsafe-inline'`,
+      `script-src ${webview.cspSource} 'nonce-${nonce}'`,
+      `connect-src ${webview.cspSource} http://127.0.0.1:* http://localhost:*`,
+    ].join('; ');
 
     // 使用非空断言，因为我们知道这些文件会被webpack生成
     return `<!DOCTYPE html>
@@ -284,7 +292,7 @@ export class PrefillParamsViewProvider {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src ${webview.cspSource} 'unsafe-eval' 'unsafe-inline'; connect-src ${webview.cspSource};">
+    <meta http-equiv="Content-Security-Policy" content="${csp}">
     <title>Prefill Parameters</title>
     <style>
       * {
@@ -306,7 +314,7 @@ export class PrefillParamsViewProvider {
 </head>
 <body>
     <div id="root"></div>
-    <script src="${scriptUri}"></script>
+    <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>
 </html>`;
   }

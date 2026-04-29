@@ -1,18 +1,18 @@
 ---
 name: cognition
 description: Produce emotion.json and intention.json from workspace context.
-inputs:
-  - state/observation.txt
-  - state/needs.json
-  - state/memory.jsonl
-outputs:
-  - state/emotion.json
-  - state/intention.json
+script: scripts/update_cognition.py
 ---
 
 # Cognition
 
 Read available workspace context and produce `state/emotion.json` and `state/intention.json`.
+
+Research basis: `references/research_basis.md`.
+
+## Internal Logic (One Sentence)
+
+Appraise the current tick for novelty, pleasantness, goal conduciveness, urgency, controllability, norm pressure, and need pressure, then write bounded emotion/mood state to `state/emotion.json` and the highest-scoring TPB intention to `state/intention.json`.
 
 ## Output Files
 
@@ -39,6 +39,14 @@ Also use **Agent Identity** from the system prompt. Other JSON in the workspace 
 1. Integrate whatever inputs exist into one appraisal.
 2. Write `state/emotion.json`: `primary`, `mood`, dimensional `intensities`, plus `valence` / `arousal` / `note`.
 3. Write `state/intention.json`: one chosen goal with TPB scores.
+
+If deterministic baseline is preferred, run `scripts/update_cognition.py` first, then optionally refine labels, reasoning, and candidate goals with LLM context.
+
+```bash
+python skills/cognition/scripts/update_cognition.py --state-dir state --tick 120
+```
+
+The script uses Scherer-style appraisal checks and TPB scoring. It is intentionally conservative: it clamps emotion changes per tick and records appraisal values for debugging.
 
 ## Emotion Layers
 
@@ -128,7 +136,7 @@ Dimensions: `sadness`, `joy`, `fear`, `disgust`, `anger`, `surprise`
 
 Exactly **one** English label, case-sensitive, from:
 
-`Joy`, `Distress`, `Resentment`, `Pity`, `Hope`, `Fear`, `Satisfaction`, `Relief`, `Disappointment`, `Pride`, `Admiration`, `Shame`, `Reproach`, `Liking`, `Disliking`, `Gratitude`, `Anger`, `Gratification`, `Remorse`, `Love`, `Hate`
+`Joy`, `Distress`, `Resentment`, `Pity`, `Hope`, `Fear`, `Satisfaction`, `Relief`, `Disappointment`, `Pride`, `Admiration`, `Shame`, `Reproach`, `Liking`, `Disliking`, `Gratitude`, `Anger`, `Gratification`, `Remorse`, `Love`, `Hate`, `Surprise`
 
 ## Intention (Theory of Planned Behavior)
 
@@ -217,6 +225,11 @@ Final scores:
 
 ```json
 {
+  "_meta": {
+    "skill": "cognition",
+    "purpose": "Current appraised emotion and mood state."
+  },
+  "_summary": "Hope with valence 0.5 and arousal 0.4.",
   "primary": "Hope",
   "valence": 0.5,
   "arousal": 0.4,
@@ -233,6 +246,14 @@ Final scores:
     "anger": 1,
     "surprise": 3
   },
+  "appraisal": {
+    "novelty": 0.1,
+    "pleasantness": 0.65,
+    "goal_conduciveness": 0.7,
+    "urgency": 0.2,
+    "perceived_control": 0.8,
+    "norm_pressure": 0.4
+  },
   "note": "Brief first-person gloss"
 }
 ```
@@ -241,6 +262,11 @@ Final scores:
 
 ```json
 {
+  "_meta": {
+    "skill": "cognition",
+    "purpose": "Current top-level intention selected from appraisal, needs, norms, and affordances."
+  },
+  "_summary": "Have lunch at the café",
   "intention": "Have lunch at the café",
   "priority": 1,
   "attitude": 0.9,

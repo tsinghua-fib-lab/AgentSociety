@@ -24,6 +24,7 @@ import { localize } from './i18n';
 import type { ConfigValues, WorkspaceInfo } from './webview/configPage/types';
 import { EnvManager, EnvConfig } from './envManager';
 import { LLMValidator, PythonValidator, LLMType } from './services/llmValidator';
+import { requestJson } from './services/httpClient';
 
 /** Build EasyPaper agents YAML content from AgentSociety2 config (LLM/VLM). API Base uses llmApiBase. */
 function buildEasyPaperYaml(config: Partial<EnvConfig>): string {
@@ -156,7 +157,7 @@ export class ConfigPageViewProvider {
     this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
 
     this._panel.webview.onDidReceiveMessage(
-      async (message: { command: string; config?: Partial<ConfigValues>; llmType?: string }) => {
+      async (message: { command: string; config?: Partial<ConfigValues>; llmType?: string; url?: string }) => {
         switch (message.command) {
           case 'requestConfig':
             await this._sendInitialConfig();
@@ -184,6 +185,11 @@ export class ConfigPageViewProvider {
             break;
           case 'openFolder':
             await vscode.commands.executeCommand('workbench.action.files.openFolder');
+            break;
+          case 'openUrl':
+            if (message.url) {
+              await vscode.env.openExternal(vscode.Uri.parse(message.url));
+            }
             break;
         }
       },
@@ -236,6 +242,9 @@ export class ConfigPageViewProvider {
       workspacePath: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath
     };
 
+    // 获取后端状态
+    const backendStatus = await this._getBackendStatus();
+
     this._panel.webview.postMessage({
       command: 'initialConfig',
       config: configValues
@@ -245,6 +254,38 @@ export class ConfigPageViewProvider {
       command: 'workspaceInfo',
       workspaceInfo: workspaceInfo
     });
+
+    this._panel.webview.postMessage({
+      command: 'backendStatus',
+      backendStatus: backendStatus
+    });
+  }
+
+  /**
+   * 获取后端状态信息
+   */
+  private async _getBackendStatus(): Promise<{ isRunning: boolean; port?: number; url?: string }> {
+    try {
+      const status = await vscode.commands.executeCommand<{ isRunning: boolean; port?: number }>('aiSocialScientist.getBackendStatus');
+      if (status && status.isRunning && status.port) {
+        return {
+          isRunning: true,
+          port: status.port,
+          url: `http://localhost:${status.port}`
+        };
+      }
+    } catch {
+      // 命令不存在或执行失败，忽略
+    }
+
+    // 尝试从 .env 文件获取端口配置
+    const envConfig = this._envManager.readEnv();
+    const configuredPort = envConfig.backendPort ?? 8001;
+    return {
+      isRunning: false,
+      port: configuredPort,
+      url: `http://localhost:${configuredPort}`
+    };
   }
 
   private async _handleSaveConfig(config: Partial<ConfigValues>): Promise<void> {
@@ -446,7 +487,10 @@ export class ConfigPageViewProvider {
 
       // 首先检查健康状态
       const healthUrl = `${baseUrl}/health`;
-      const healthResponse = await fetch(healthUrl, { method: 'GET' });
+      const healthResponse = await requestJson(healthUrl, {
+        method: 'GET',
+        timeoutMs: 10000,
+      });
 
       if (!healthResponse.ok) {
         this._panel.webview.postMessage({
@@ -459,9 +503,10 @@ export class ConfigPageViewProvider {
 
       // 尝试获取数据源状态（验证认证）
       const statsUrl = `${baseUrl}/api/stats`;
-      const statsResponse = await fetch(statsUrl, {
+      const statsResponse = await requestJson<{ sources?: Record<string, unknown> }>(statsUrl, {
         method: 'GET',
         headers: apiKey ? { 'Authorization': `Bearer ${apiKey}` } : {},
+        timeoutMs: 10000,
       });
 
       if (statsResponse.status === 401 || statsResponse.status === 403) {
@@ -484,11 +529,10 @@ export class ConfigPageViewProvider {
         return;
       }
 
-      const statsData = await statsResponse.json() as { sources?: Record<string, unknown> };
       this._panel.webview.postMessage({
         command: 'literatureValidationResult',
         success: true,
-        sources: statsData.sources,
+        sources: statsResponse.data.sources,
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '未知错误';
@@ -505,12 +549,21 @@ export class ConfigPageViewProvider {
       vscode.Uri.file(path.join(this._extensionPath, 'out', 'webview', 'configPage.js'))
     );
 
+    const nonce = Array.from({ length: 32 }, () => Math.random().toString(36)[2]).join('');
+    const csp = [
+      "default-src 'none'",
+      `img-src ${webview.cspSource} data:`,
+      `style-src ${webview.cspSource} 'unsafe-inline'`,
+      `script-src ${webview.cspSource} 'nonce-${nonce}'`,
+      `connect-src ${webview.cspSource} http://127.0.0.1:* http://localhost:*`,
+    ].join('; ');
+
     return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src ${webview.cspSource} 'unsafe-eval' 'unsafe-inline'; connect-src *;">
+  <meta http-equiv="Content-Security-Policy" content="${csp}">
   <title>${localize('configPage.title')}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -526,7 +579,7 @@ export class ConfigPageViewProvider {
 </head>
 <body>
   <div id="root"></div>
-  <script src="${scriptUri}"></script>
+  <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>
 </html>`;
   }

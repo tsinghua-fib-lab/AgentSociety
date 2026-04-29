@@ -9,13 +9,49 @@
     "url": "https://github.com/tsinghua-fib-lab/agentsociety.git"
   },
   "engines": {
+    "node": "^22.13.0 || >=24",
     "vscode": "^1.80.0"
   },
   "categories": [
     "Other"
   ],
   "activationEvents": [
-    "onStartupFinished"
+    "onView:projectStructureView",
+    "onCustomEditor:aiSocialScientist.simSettings",
+    "onCustomEditor:aiSocialScientist.initConfig",
+    "onCommand:aiSocialScientist.initProject",
+    "onCommand:aiSocialScientist.openChat",
+    "onCommand:aiSocialScientist.deleteLiterature",
+    "onCommand:aiSocialScientist.renameLiterature",
+    "onCommand:aiSocialScientist.openMarkdownInEditor",
+    "onCommand:aiSocialScientist.openHtmlFile",
+    "onCommand:agentsociety.viewPrefillParams",
+    "onCommand:aiSocialScientist.openReplay",
+    "onCommand:aiSocialScientist.startBackend",
+    "onCommand:aiSocialScientist.stopBackend",
+    "onCommand:aiSocialScientist.restartBackend",
+    "onCommand:aiSocialScientist.showBackendLogs",
+    "onCommand:aiSocialScientist.showBackendStatus",
+    "onCommand:aiSocialScientist.openConfigPage",
+    "onCommand:aiSocialScientist.openHelpPage",
+    "onCommand:aiSocialScientist.openSkillMarketplace",
+    "onCommand:aiSocialScientist.openSkillSourcesSettings",
+    "onCommand:aiSocialScientist.openClaudeSkillSourcesSettings",
+    "onCommand:aiSocialScientist.scanCustomModules",
+    "onCommand:aiSocialScientist.refreshProjectView",
+    "onCommand:aiSocialScientist.testCustomModules",
+    "onCommand:aiSocialScientist.listCustomModules",
+    "onCommand:aiSocialScientist.formatJsonFile",
+    "onCommand:aiSocialScientist.viewLiteratureIndex",
+    "onCommand:aiSocialScientist.viewStepsYaml",
+    "onCommand:aiSocialScientist.viewExperimentResults",
+    "onCommand:aiSocialScientist.copyFilePath",
+    "onCommand:aiSocialScientist.copyAtReference",
+    "onCommand:aiSocialScientist.viewJsonFile",
+    "onCommand:aiSocialScientist.viewYamlFile",
+    "onCommand:aiSocialScientist.openInExplorer",
+    "onCommand:aiSocialScientist.copyFileName",
+    "onCommand:aiSocialScientist.exportWorkspaceZip"
   ],
   "icon": "resources/icon128.png",
   "main": "./out/extension.js",
@@ -65,6 +101,11 @@
         "icon": "$(edit)"
       },
       {
+        "command": "aiSocialScientist.openHtmlFile",
+        "title": "AI Social Scientist: Open HTML",
+        "icon": "$(browser)"
+      },
+      {
         "command": "agentsociety.viewPrefillParams",
         "title": "AI Social Scientist: View Prefill Parameters",
         "icon": "$(settings)"
@@ -101,27 +142,37 @@
       },
       {
         "command": "aiSocialScientist.openConfigPage",
-        "title": "AI Social Scientist: Open Configuration",
+        "title": "AI Social Scientist: 打开配置",
         "icon": "$(settings)"
       },
       {
+        "command": "aiSocialScientist.openHelpPage",
+        "title": "AI Social Scientist: 使用指南",
+        "icon": "$(book)"
+      },
+      {
         "command": "aiSocialScientist.openSkillMarketplace",
-        "title": "AI Social Scientist: Skills",
+        "title": "AI Social Scientist: 技能管理",
         "icon": "$(extensions)"
       },
       {
         "command": "aiSocialScientist.openSkillSourcesSettings",
-        "title": "AI Social Scientist: Agent Skill Marketplace Sources (Settings)",
+        "title": "AI Social Scientist: Agent 技能源（设置）",
         "icon": "$(repo)"
       },
       {
         "command": "aiSocialScientist.openClaudeSkillSourcesSettings",
-        "title": "AI Social Scientist: Claude Skill Marketplace Sources (Settings)",
+        "title": "AI Social Scientist: Claude 技能源（设置）",
         "icon": "$(repo)"
       },
       {
         "command": "aiSocialScientist.scanCustomModules",
         "title": "AI Social Scientist: Scan Custom Modules",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "aiSocialScientist.refreshProjectView",
+        "title": "AI Social Scientist: Refresh Project View",
         "icon": "$(refresh)"
       },
       {
@@ -156,12 +207,12 @@
       },
       {
         "command": "aiSocialScientist.copyFilePath",
-        "title": "AI Social Scientist: Copy File Path",
+        "title": "AI Social Scientist: 复制路径",
         "icon": "$(copy)"
       },
       {
         "command": "aiSocialScientist.copyAtReference",
-        "title": "AI Social Scientist: Copy @Reference",
+        "title": "AI Social Scientist: 复制 @引用",
         "icon": "$(quote)"
       },
       {
@@ -176,22 +227,27 @@
       },
       {
         "command": "aiSocialScientist.openInExplorer",
-        "title": "AI Social Scientist: Open in Explorer",
+        "title": "AI Social Scientist: 在系统中打开",
         "icon": "$(folder)"
       },
       {
         "command": "aiSocialScientist.copyFileName",
-        "title": "AI Social Scientist: Copy File Name",
+        "title": "AI Social Scientist: 复制文件名",
         "icon": "$(symbol-text)"
       },
       {
         "command": "aiSocialScientist.exportWorkspaceZip",
-        "title": "AI Social Scientist: Export Workspace ZIP",
+        "title": "AI Social Scientist: 导出工作区 ZIP",
         "icon": "$(cloud-download)"
       }
     ],
     "menus": {
       "view/title": [
+        {
+          "command": "aiSocialScientist.refreshProjectView",
+          "when": "view == projectStructureView && workspaceFolderCount > 0",
+          "group": "navigation@0"
+        },
         {
           "command": "aiSocialScientist.openSkillMarketplace",
           "when": "view == projectStructureView && workspaceFolderCount > 0",
@@ -201,6 +257,11 @@
           "command": "aiSocialScientist.openConfigPage",
           "when": "view == projectStructureView && workspaceFolderCount > 0",
           "group": "navigation@2"
+        },
+        {
+          "command": "aiSocialScientist.openHelpPage",
+          "when": "view == projectStructureView && workspaceFolderCount > 0",
+          "group": "navigation@3"
         }
       ],
       "view/item/context": [
@@ -435,23 +496,26 @@
     "build": "npm run compile && npm run build-webview",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
+    "dev": "concurrently -k -n tsc,webview \"npm:watch\" \"npm:watch-webview\"",
     "clean-webview": "node -e \"const fs=require('fs'); fs.rmSync('out/webview', { recursive: true, force: true }); fs.mkdirSync('out/webview', { recursive: true });\"",
-    "build-webview": "npm run clean-webview && node ./node_modules/webpack/bin/webpack.js --mode production",
-    "watch-webview": "webpack --mode development --watch",
-    "package": "npx @vscode/vsce package -o ai-social-scientist.vsix",
+    "build-webview": "npm run clean-webview && NODE_ENV=production NODE_OPTIONS=--max-old-space-size=8192 node ./node_modules/webpack/bin/webpack.js --mode production",
+    "watch-webview": "NODE_ENV=development NODE_OPTIONS=--max-old-space-size=4096 webpack --mode development --watch",
+    "package": "vsce package -o ai-social-scientist.vsix",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src",
     "test": "node ./out/test/runTest.js"
   },
   "devDependencies": {
-    "@eslint/js": "^10.0.1",
+    "@eslint/js": "^9.0.0",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^20.0.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "@types/vscode": "^1.80.0",
+    "@vscode/vsce": "^3.9.1",
+    "concurrently": "^9.2.1",
     "css-loader": "^6.8.1",
-    "eslint": "^10.1.0",
+    "eslint": "^9.0.0",
     "globals": "^17.4.0",
     "less": "^4.2.0",
     "less-loader": "^12.2.0",
@@ -485,15 +549,17 @@
   "overrides": {
     "serialize-javascript": ">=7.0.3",
     "minimist": ">=1.0.0",
-    "minimatch": ">=9.0.7",
-    "diff": ">=3.5.1"
+    "diff": ">=3.5.1",
+    "mermaid": {
+      "uuid": ">=14.0.0"
+    }
   },
   "pnpm": {
     "overrides": {
       "serialize-javascript": ">=7.0.3",
       "minimist": ">=1.0.0",
-      "minimatch": ">=9.0.7",
-      "diff": ">=3.5.1"
+      "diff": ">=3.5.1",
+      "mermaid>uuid": ">=14.0.0"
     }
   }
 }

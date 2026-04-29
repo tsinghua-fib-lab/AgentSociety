@@ -516,8 +516,6 @@ export class WorkspaceManager {
     // Get extension skills directory - handle different execution contexts
     // In production: __dirname = extension/out/, skills = extension/skills/
     // In development: __dirname might vary, so we try multiple paths
-    let sourceSkillsDir: string;
-
     // Try common paths for skills directory, based on actual __dirname structure
     const possiblePaths = [
       path.join(__dirname, '..', 'skills'),                  // extension/out/ -> extension/skills/
@@ -527,7 +525,7 @@ export class WorkspaceManager {
       path.join(process.cwd(), 'extension', 'skills'),        // alternative
     ];
 
-    sourceSkillsDir = possiblePaths.find(p => fs.existsSync(p)) || '';
+    const sourceSkillsDir = possiblePaths.find(p => fs.existsSync(p)) || '';
 
     // Verify extension skills directory exists
     if (!sourceSkillsDir) {

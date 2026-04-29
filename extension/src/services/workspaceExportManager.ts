@@ -26,6 +26,7 @@ interface ExportCandidate {
   isDefault: boolean;
   kind: 'file' | 'directory';
   detail?: string;
+  size?: number; // 文件大小（字节）
 }
 
 interface ExportPickItem extends vscode.QuickPickItem {
@@ -140,15 +141,21 @@ export class WorkspaceExportManager implements vscode.Disposable {
         this.getUriDisplayName(saveUri),
         summary.copiedFiles,
       );
-      const action = await vscode.window.showInformationMessage(
-        message,
-        localize('workspaceExport.reveal'),
-        localize('workspaceExport.copyPath'),
-      );
+
+      // 根据环境提供不同的操作选项
+      const isRemote = vscode.env.remoteName !== undefined;
+      const actions = isRemote
+        ? [localize('workspaceExport.openInEditor'), localize('workspaceExport.copyPath')]
+        : [localize('workspaceExport.reveal'), localize('workspaceExport.openInEditor'), localize('workspaceExport.copyPath')];
+
+      const action = await vscode.window.showInformationMessage(message, ...actions);
 
       try {
         if (action === localize('workspaceExport.reveal')) {
           await vscode.commands.executeCommand('revealFileInOS', saveUri);
+        } else if (action === localize('workspaceExport.openInEditor')) {
+          // 在编辑器中打开 ZIP 文件，远程环境下可通过 VSCode 下载
+          await vscode.commands.executeCommand('vscode.open', saveUri);
         } else if (action === localize('workspaceExport.copyPath')) {
           await vscode.env.clipboard.writeText(this.getUriClipboardText(saveUri));
         }
@@ -187,20 +194,23 @@ export class WorkspaceExportManager implements vscode.Disposable {
       throw new Error(localize('workspaceExport.empty'));
     }
 
-    const items: ExportPickItem[] = candidates.map((candidate) => ({
-      label: candidate.label,
-      description: candidate.isDefault
-        ? localize('workspaceExport.pick.defaultDescription')
-        : localize('workspaceExport.pick.optionalDescription'),
-      detail: candidate.detail || (
-        candidate.kind === 'directory'
-          ? localize('workspaceExport.pick.directoryDetail')
-          : localize('workspaceExport.pick.fileDetail')
-      ),
-      picked: candidate.isDefault,
-      relativePath: candidate.archivePath,
-      candidate,
-    }));
+    const items: ExportPickItem[] = candidates.map((candidate) => {
+      const sizeStr = candidate.size !== undefined ? this.formatSize(candidate.size) : '';
+      return {
+        label: candidate.label,
+        description: candidate.isDefault
+          ? localize('workspaceExport.pick.defaultDescription')
+          : localize('workspaceExport.pick.optionalDescription'),
+        detail: candidate.detail || (
+          candidate.kind === 'directory'
+            ? `${localize('workspaceExport.pick.directoryDetail')}${sizeStr ? ` · ${sizeStr}` : ''}`
+            : `${localize('workspaceExport.pick.fileDetail')}${sizeStr ? ` · ${sizeStr}` : ''}`
+        ),
+        picked: candidate.isDefault,
+        relativePath: candidate.archivePath,
+        candidate,
+      };
+    });
 
     const selectedItems = await vscode.window.showQuickPick<ExportPickItem>(items, {
       canPickMany: true,
@@ -271,55 +281,78 @@ export class WorkspaceExportManager implements vscode.Disposable {
     const candidates: ExportCandidate[] = [];
     const defaultRoots = new Set<string>();
 
+    // 工作区根文件
     for (const relativeFile of ROOT_EXPORT_FILES) {
       if (this.shouldOfferTopLevelEntry(workspacePath, relativeFile)) {
+        const sourcePath = path.join(workspacePath, relativeFile);
         candidates.push({
           label: relativeFile,
           archivePath: relativeFile,
-          sourcePath: path.join(workspacePath, relativeFile),
+          sourcePath,
           allowedRoot: workspacePath,
           isDefault: true,
           kind: 'file',
+          size: this.getFileSize(sourcePath),
         });
         defaultRoots.add(relativeFile);
       }
     }
 
+    // 工作区根目录
     for (const relativeDir of ROOT_EXPORT_DIRECTORIES) {
       if (this.shouldOfferTopLevelEntry(workspacePath, relativeDir)) {
+        const sourcePath = path.join(workspacePath, relativeDir);
         candidates.push({
           label: relativeDir,
           archivePath: relativeDir,
-          sourcePath: path.join(workspacePath, relativeDir),
+          sourcePath,
           allowedRoot: workspacePath,
           isDefault: true,
           kind: 'directory',
+          size: this.getDirectorySize(sourcePath),
         });
         defaultRoots.add(relativeDir);
       }
     }
 
+    // 动态 hypothesis 目录
     const dynamicRoots = fs.readdirSync(workspacePath, { withFileTypes: true })
       .filter((entry) => entry.isDirectory() && /^hypothesis_[^/\\]+$/.test(entry.name))
       .sort((a, b) => a.name.localeCompare(b.name));
 
     for (const entry of dynamicRoots) {
+      const sourcePath = path.join(workspacePath, entry.name);
       candidates.push({
         label: entry.name,
         archivePath: entry.name,
-        sourcePath: path.join(workspacePath, entry.name),
+        sourcePath,
         allowedRoot: workspacePath,
         isDefault: true,
         kind: 'directory',
+        size: this.getDirectorySize(sourcePath),
       });
       defaultRoots.add(entry.name);
     }
 
+    // Claude Code 对话记录（项目级别）
     const claudeConversationCandidate = this.getClaudeConversationCandidate(workspacePath);
     if (claudeConversationCandidate) {
       candidates.push(claudeConversationCandidate);
     }
 
+    // Claude Code 全局历史记录
+    const claudeHistoryCandidate = this.getClaudeHistoryCandidate();
+    if (claudeHistoryCandidate) {
+      candidates.push(claudeHistoryCandidate);
+    }
+
+    // Codex 相关导出
+    const codexCandidate = this.getCodexCandidate(workspacePath);
+    if (codexCandidate) {
+      candidates.push(codexCandidate);
+    }
+
+    // 可选的其他文件/目录
     const optionalRoots = fs.readdirSync(workspacePath, { withFileTypes: true })
       .filter((entry) => !defaultRoots.has(entry.name))
       .filter((entry) => !ALWAYS_EXCLUDED_ROOTS.has(entry.name))
@@ -327,17 +360,66 @@ export class WorkspaceExportManager implements vscode.Disposable {
       .sort((a, b) => a.name.localeCompare(b.name));
 
     for (const entry of optionalRoots) {
+      const sourcePath = path.join(workspacePath, entry.name);
       candidates.push({
         label: entry.name,
         archivePath: entry.name,
-        sourcePath: path.join(workspacePath, entry.name),
+        sourcePath,
         allowedRoot: workspacePath,
         isDefault: false,
         kind: entry.isDirectory() ? 'directory' : 'file',
+        size: entry.isDirectory() ? this.getDirectorySize(sourcePath) : this.getFileSize(sourcePath),
       });
     }
 
     return candidates;
+  }
+
+  /**
+   * 获取文件大小
+   */
+  private getFileSize(filePath: string): number {
+    try {
+      const stats = fs.statSync(filePath);
+      return stats.size;
+    } catch {
+      return 0;
+    }
+  }
+
+  /**
+   * 获取目录大小（递归计算）
+   */
+  private getDirectorySize(dirPath: string): number {
+    try {
+      let totalSize = 0;
+      const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+      for (const entry of entries) {
+        const fullPath = path.join(dirPath, entry.name);
+        if (entry.isDirectory()) {
+          totalSize += this.getDirectorySize(fullPath);
+        } else if (entry.isFile()) {
+          totalSize += this.getFileSize(fullPath);
+        }
+      }
+      return totalSize;
+    } catch {
+      return 0;
+    }
+  }
+
+  /**
+   * 格式化文件大小为人类可读格式
+   */
+  private formatSize(bytes: number): string {
+    if (bytes === 0) {
+      return '0 B';
+    }
+    const units = ['B', 'KB', 'MB', 'GB'];
+    const k = 1024;
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    const size = parseFloat((bytes / Math.pow(k, i)).toFixed(1));
+    return `${size} ${units[i]}`;
   }
 
   private copyEntry(
@@ -627,6 +709,62 @@ export class WorkspaceExportManager implements vscode.Disposable {
       isDefault: true,
       kind: 'directory',
       detail: localize('workspaceExport.pick.claudeConversationDetail'),
+      size: this.getDirectorySize(conversationPath),
+    };
+  }
+
+  /**
+   * 获取 Claude Code 全局历史记录导出候选项
+   */
+  private getClaudeHistoryCandidate(): ExportCandidate | null {
+    const historyPath = path.join(os.homedir(), '.claude', 'history.jsonl');
+    if (!fs.existsSync(historyPath)) {
+      return null;
+    }
+
+    return {
+      label: '.claude/history.jsonl',
+      archivePath: '.claude/history.jsonl',
+      sourcePath: historyPath,
+      allowedRoot: path.dirname(historyPath),
+      isDefault: false,
+      kind: 'file',
+      detail: localize('workspaceExport.pick.claudeHistoryDetail'),
+      size: this.getFileSize(historyPath),
+    };
+  }
+
+  /**
+   * 获取 Codex 相关导出候选项
+   */
+  private getCodexCandidate(workspacePath: string): ExportCandidate | null {
+    const codexRoot = path.join(os.homedir(), '.codex');
+    if (!fs.existsSync(codexRoot)) {
+      return null;
+    }
+
+    const stats = fs.lstatSync(codexRoot);
+    if (!stats.isDirectory()) {
+      return null;
+    }
+
+    // 安全性：不要默认导出整个 ~/.codex（可能包含大量与当前工作区无关的敏感内容）。
+    // 仅在存在“与当前工作区对应”的子目录时提供导出候选项。
+    const encodedWorkspacePath = this.encodeClaudeProjectPath(workspacePath);
+    const workspaceScopedDir = path.join(codexRoot, 'projects', encodedWorkspacePath);
+    if (!fs.existsSync(workspaceScopedDir) || !fs.lstatSync(workspaceScopedDir).isDirectory()) {
+      return null;
+    }
+
+    return {
+      label: `.codex/projects/${encodedWorkspacePath} (${localize('workspaceExport.pick.codexDetail')})`,
+      archivePath: path.posix.join('.codex', 'projects', encodedWorkspacePath),
+      sourcePath: workspaceScopedDir,
+      allowedRoot: workspaceScopedDir,
+      isDefault: false,
+      kind: 'directory',
+      detail: localize('workspaceExport.pick.codexDetail'),
+      size: this.getDirectorySize(workspaceScopedDir),
     };
   }
 

@@ -56,6 +56,18 @@ export interface SkillCategory {
   icon: string;
 }
 
+/** 市场源配置（支持多平台） */
+export interface SkillSourceConfig {
+  owner: string;
+  repo: string;
+  branch?: string;
+  skillsPath?: string;
+  /** 平台类型，默认 github */
+  platform?: 'github' | 'gitlab' | 'gitee';
+  /** GitLab/Gitee 自定义域名（自托管时使用） */
+  baseUrl?: string;
+}
+
 export interface MarketplaceSkill {
   id: string;
   name: string;
@@ -71,6 +83,10 @@ export interface MarketplaceSkill {
   version?: string;
   homepage?: string;
   installTarget: 'agent' | 'claudeCode';
+  // 新增：已安装状态
+  installedVersion?: string;      // 本地已安装版本
+  updateAvailable?: boolean;      // 是否有更新可用
+  skillMdContent?: string;        // 远程 SKILL.md 内容（用于预览）
 }
 
 export type MarketplaceLoadError =
@@ -145,6 +161,10 @@ export interface SkillManagementState {
   claudeCodeMarketplaceSkills: MarketplaceSkill[];
   marketplaceLoading: boolean;
   marketplaceError: string | null;
+  // 市场源配置
+  agentSkillSources: SkillSourceConfig[];
+  claudeSkillSources: SkillSourceConfig[];
+  skillSourcesLoading: boolean;
   // 通用
   isLoading: boolean;
   error: string | null;
@@ -185,7 +205,15 @@ export interface ExtensionMessage {
   | 'openClaudeSkillSourcesSettings'
   | 'syncOneClaudeSkillFromVsix'
   | 'setClaudeSkillActive'
-  | 'purgeClaudeCodeSkill';
+  | 'purgeClaudeCodeSkill'
+  // 市场源配置
+  | 'getSkillSources'          // 获取市场源配置
+  | 'saveSkillSources'         // 保存市场源配置
+  | 'getGithubToken'           // 获取 GitHub Token
+  | 'saveGithubToken'          // 保存 GitHub Token
+  // 更新差异预览
+  | 'getSkillUpdateDiff'       // 获取技能更新差异
+  | 'confirmSkillUpdate';      // 确认更新技能
   payload?: unknown;
 }
 
@@ -212,7 +240,100 @@ export interface WebviewMessage {
   | 'installProgress'
   | 'installComplete'
   | 'installFailed'
+  // 更新相关
+  | 'skillUpdateDiffLoaded'
+  | 'skillUpdateDiffError'
+  // 市场源配置
+  | 'skillSourcesLoaded'       // 市场源配置加载完成
+  | 'skillSourcesSaved'        // 市场源配置保存完成
+  | 'skillSourcesError'        // 市场源配置操作错误
+  // GitHub Token
+  | 'githubTokenLoaded'        // GitHub Token 加载完成
+  | 'githubTokenSaved'         // GitHub Token 保存完成
   // 通用
   | 'error';
   payload?: unknown;
 }
+
+// ============ 更新差异预览 ============
+
+export interface SkillFileDiff {
+  path: string;                   // 文件相对路径
+  status: 'added' | 'deleted' | 'modified';
+  hunks: DiffHunk[];              // diff 块
+}
+
+export interface DiffHunk {
+  oldStart: number;
+  oldLines: number;
+  newStart: number;
+  newLines: number;
+  lines: string[];                // diff 行 (以 +/-/空格 开头)
+}
+
+export interface SkillUpdateDiff {
+  skillId: string;
+  skillName: string;
+  localVersion: string;
+  remoteVersion: string;
+  filesAdded: string[];
+  filesDeleted: string[];
+  filesModified: string[];
+  fileDiffs: SkillFileDiff[];
+  changelog?: string;             // 可选的更新日志
+}
+
+// ============ SKILL.md Frontmatter ============
+
+export interface SkillFrontmatter {
+  name?: string;
+  description?: string;
+  descriptionZh?: string;
+  version?: string;
+  author?: string;
+  tags?: string[];
+  priority?: number;
+  requires?: string[];
+  provides?: string[];
+}
+
+// ============ 原始配置类型（用于类型安全解析） ============
+
+export interface RawSkillSourceConfig {
+  owner?: unknown;
+  repo?: unknown;
+  branch?: unknown;
+  skillsPath?: unknown;
+  platform?: unknown;
+  baseUrl?: unknown;
+}
+
+// ============ 默认市场源配置 ============
+
+/** 默认 Claude 技能源（内置） */
+export const DEFAULT_CLAUDE_SOURCES: SkillSourceConfig[] = [
+  {
+    owner: 'anthropics',
+    repo: 'skills',
+    branch: 'main',
+    skillsPath: 'skills',
+    platform: 'github',
+  },
+  {
+    owner: 'obra',
+    repo: 'superpowers',
+    branch: 'main',
+    skillsPath: 'skills',
+    platform: 'github',
+  },
+  {
+    owner: 'affaan-m',
+    repo: 'everything-claude-code',
+    branch: 'main',
+    skillsPath: '.agents/skills',
+    platform: 'github',
+  },
+];
+
+/** 默认 Agent 技能源（无内置） */
+export const DEFAULT_AGENT_SOURCES: SkillSourceConfig[] = [];

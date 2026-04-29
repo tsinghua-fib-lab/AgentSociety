@@ -10,9 +10,9 @@
 - **Workspace 管理**: 独立工作区、文件读写、路径安全检查
 - **Skill 执行**: 技能激活、读取、执行
 - **日志管理**: Thread 消息、工具调用、会话状态持久化
-- **上下文维护**: AGENT_CONTEXT.md 自动更新、状态同步
+- **上下文维护**: AGENT.md 自动更新、状态同步
 - **行为追踪**: 仿真行为事件记录与统计
-- **文件发现**: 自动生成 AGENT_FILES.md 文件清单
+- **文件发现**: 在 AGENT.md 中自动维护文件索引
 
 类结构
 ======
@@ -45,8 +45,6 @@
 """
 
 from __future__ import annotations
-
-import json
 import logging
 from collections import deque
 from datetime import datetime, timezone
@@ -57,6 +55,12 @@ from agentsociety2.agent.skills import SkillRegistry
 from agentsociety2.agent.tool import jr_dumps, jr_parse
 
 logger = logging.getLogger(__name__)
+
+AGENT_DOCUMENT = "AGENT.md"
+RUNTIME_DIR = ".runtime"
+RUNTIME_LOG_DIR = f"{RUNTIME_DIR}/logs"
+FILE_INDEX_START = "<!-- AGENT_FILE_INDEX_START -->"
+FILE_INDEX_END = "<!-- AGENT_FILE_INDEX_END -->"
 
 
 class AgentSkillRuntime:
@@ -117,12 +121,13 @@ class AgentSkillRuntime:
         - ``state/`` - Skills 状态文件
         - ``memory/`` - 长期记忆
         - ``input/`` - 外部输入
-        - ``logs/`` - 日志
+        - ``custom/skills/`` - 自定义技能
+        - ``.runtime/logs/`` - 运行时日志
         """
         if self._agent_work_dir is None:
             raise RuntimeError("Agent workspace is not initialized")
 
-        standard_dirs = ["state", "memory", "input", "logs"]
+        standard_dirs = ["state", "memory", "input", "custom/skills", RUNTIME_LOG_DIR]
         for dir_name in standard_dirs:
             dir_path = self._agent_work_dir / dir_name
             try:
@@ -256,17 +261,14 @@ class AgentSkillRuntime:
             "selected_skills": sorted(selected_skills),
             "activated_skills": sorted(activated_skills or set()),
         }
-        self.workspace_write(
-            "logs/session_state.json",
-            jr_dumps(state),
-        )
+        self.workspace_write(f"{RUNTIME_LOG_DIR}/session_state.json", jr_dumps(state))
         self.append_session_state_event(state)
 
     def append_session_state_event(self, state: dict[str, Any]) -> None:
-        """追加 session_state 事件到 ``logs/session_state_history.jsonl``。"""
+        """追加 session_state 事件到 runtime 日志。"""
         if self._agent_work_dir is None:
             raise RuntimeError("Agent workspace is not initialized")
-        path = self._agent_work_dir / "logs" / "session_state_history.jsonl"
+        path = self._agent_work_dir / RUNTIME_LOG_DIR / "session_state_history.jsonl"
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a", encoding="utf-8") as f:
             f.write(jr_dumps(state, indent=None) + "\n")
@@ -275,7 +277,7 @@ class AgentSkillRuntime:
         """追加单条工具调用日志（jsonl）。"""
         if self._agent_work_dir is None:
             raise RuntimeError("Agent workspace is not initialized")
-        log_path = self._agent_work_dir / "logs" / "tool_calls.jsonl"
+        log_path = self._agent_work_dir / RUNTIME_LOG_DIR / "tool_calls.jsonl"
         log_path.parent.mkdir(parents=True, exist_ok=True)
         with log_path.open("a", encoding="utf-8") as f:
             f.write(jr_dumps(entry, indent=None) + "\n")
@@ -290,7 +292,7 @@ class AgentSkillRuntime:
         """追加 step 回放记录（jsonl）。"""
         if self._agent_work_dir is None:
             raise RuntimeError("Agent workspace is not initialized")
-        replay_path = self._agent_work_dir / "logs" / "step_replay.jsonl"
+        replay_path = self._agent_work_dir / RUNTIME_LOG_DIR / "step_replay.jsonl"
         replay_path.parent.mkdir(parents=True, exist_ok=True)
         record = {
             "tick": tick,
@@ -312,7 +314,7 @@ class AgentSkillRuntime:
         """读取最近 N 条工具调用日志。"""
         if self._agent_work_dir is None:
             raise RuntimeError("Agent workspace is not initialized")
-        path = self._agent_work_dir / "logs" / "tool_calls.jsonl"
+        path = self._agent_work_dir / RUNTIME_LOG_DIR / "tool_calls.jsonl"
         if not path.exists():
             return []
         if limit > 0:
@@ -336,14 +338,14 @@ class AgentSkillRuntime:
         *,
         tool_result_full: Optional[dict[str, Any]] = None,
     ) -> None:
-        """追加 thread 消息到 ``logs/thread_messages.jsonl``。
+        """追加 thread 消息到 runtime thread 日志。
 
         ``content`` 为喂给 LLM 的文本；若提供 ``tool_result_full``，则同条记录落盘完整工具结果
         （读取 thread 时仍只用 ``content`` 构造 messages）。
         """
         if self._agent_work_dir is None:
             raise RuntimeError("Agent workspace is not initialized")
-        path = self._agent_work_dir / "logs" / "thread_messages.jsonl"
+        path = self._agent_work_dir / RUNTIME_LOG_DIR / "thread_messages.jsonl"
         path.parent.mkdir(parents=True, exist_ok=True)
         entry: dict[str, Any] = {
             "tick": tick,
@@ -360,7 +362,7 @@ class AgentSkillRuntime:
         """读取最近 N 条 thread 消息并转换为 LLM messages 结构。"""
         if self._agent_work_dir is None:
             raise RuntimeError("Agent workspace is not initialized")
-        path = self._agent_work_dir / "logs" / "thread_messages.jsonl"
+        path = self._agent_work_dir / RUNTIME_LOG_DIR / "thread_messages.jsonl"
         if not path.exists():
             return []
         if limit > 0:
@@ -385,7 +387,7 @@ class AgentSkillRuntime:
         return messages
 
     def build_workspace_structure_prompt(self) -> str:
-        """构建 workspace 结构说明（Cursor风格：极简 + 动态发现）。
+        """构建 workspace 结构说明（Claude/Cursor 风格：极简 + 动态发现）。
 
         不维护复杂的 manifest/registry，只提供目录约定，让 Agent 自己探索。
         状态文件示例从配置或实际文件动态生成。
@@ -397,15 +399,20 @@ class AgentSkillRuntime:
             "",
             'All files are in the workspace root. Use `workspace_list(".")` to see what exists.',
             "",
+            "### Generated Context Files",
+            "- `AGENT.md` - concise agent context and generated file index",
+            "",
             "### Directory Convention",
             "- `state/` - Skill state files (dynamically discovered)",
-            "- `memory/` - Long-term memory (memory.jsonl)",
+            "- `state/*.json` - current structured state",
+            "- `state/*.jsonl` - event/history streams",
+            "- `memory/` - optional long-term memory directory",
             "- `input/` - External input from environment",
-            "- `logs/` - Execution logs (thread_messages.jsonl, tool_calls.jsonl, etc.)",
+            "- `.runtime/` - Runtime internals (logs, checkpoints, WAL)",
             "",
             "### Quick Discovery",
             '- `workspace_list("state/")` - See all skill state files',
-            '- `workspace_read("memory/memory.jsonl")` - Read last N memories',
+            '- `workspace_read("AGENT.md")` - Read concise current context and file index',
             "",
             "Let the agent discover what it needs dynamically.",
         ]
@@ -427,29 +434,50 @@ class AgentSkillRuntime:
 
         return "\n".join(lines)
 
+    @staticmethod
+    def _replace_generated_file_index(content: str, manifest: str) -> str:
+        """替换 AGENT.md 中的自动文件索引块，保留人工内容。"""
+        block = f"{FILE_INDEX_START}\n{manifest.rstrip()}\n{FILE_INDEX_END}"
+        if FILE_INDEX_START in content and FILE_INDEX_END in content:
+            before, _, rest = content.partition(FILE_INDEX_START)
+            _, _, after = rest.partition(FILE_INDEX_END)
+            return f"{before.rstrip()}\n\n{block}\n{after.lstrip()}".strip()
+        if content.strip():
+            return f"{content.rstrip()}\n\n{block}"
+        return block
+
     def refresh_workspace_documents(self) -> None:
         """同步工作区动态文档。"""
         self.sync_state_to_context()
         self.write_file_manifest()
+        self.emit_behavior_event(
+            "state_sync",
+            {
+                "document": AGENT_DOCUMENT,
+                "workspace_files": len(self.workspace_list(".")),
+            },
+            name="refresh_workspace_documents",
+            output_summary={"document": AGENT_DOCUMENT},
+        )
 
-    # ==================== AGENT_CONTEXT.md Support ====================
+    # ==================== AGENT.md Support ====================
 
     def read_agent_context(self) -> dict[str, Any]:
-        """读取 AGENT_CONTEXT.md 文件内容。
+        """读取 AGENT.md 文件内容。
 
         该文件是agent的自我声明文件，包含当前任务、重要上下文等信息。
         使用YAML frontmatter格式，便于程序解析。
 
         :returns: 解析后的上下文字典，包含metadata和content两部分。
         """
-        content = self.workspace_read("AGENT_CONTEXT.md")
+        content = self.workspace_read(AGENT_DOCUMENT)
         if not content:
             return {"metadata": {}, "content": ""}
 
         return self._parse_context_md(content)
 
     def _parse_context_md(self, content: str) -> dict[str, Any]:
-        """解析 AGENT_CONTEXT.md 文件（YAML frontmatter + markdown）。
+        """解析 AGENT.md 文件（YAML frontmatter + markdown）。
 
         :param content: 文件原始内容。
         :returns: {"metadata": {...}, "content": "markdown内容"}
@@ -465,14 +493,19 @@ class AgentSkillRuntime:
 
                     yaml = YAML(typ="safe")
                     metadata = yaml.load(parts[1]) or {}
-                except Exception:
-                    pass
+                except Exception as e:
+                    # 不静默回落：记录解析错误，保留 body 以便人工修复
+                    logger.warning("AGENT.md YAML frontmatter parse failed: %s", e)
+                    metadata = {
+                        "_agent_md_parse_error": str(e),
+                        "_agent_md_parse_error_type": type(e).__name__,
+                    }
                 body = parts[2].strip()
 
         return {"metadata": metadata, "content": body}
 
     def update_agent_context(self, updates: dict[str, Any]) -> None:
-        """更新 AGENT_CONTEXT.md（合并而非覆盖）。
+        """更新 AGENT.md（合并而非覆盖）。
 
         :param updates: 要更新的metadata字段。
         """
@@ -481,7 +514,7 @@ class AgentSkillRuntime:
         self._write_agent_context(existing["metadata"], existing["content"])
 
     def set_agent_context_content(self, content: str) -> None:
-        """设置 AGENT_CONTEXT.md 的内容部分（保留metadata）。
+        """设置 AGENT.md 的内容部分（保留metadata）。
 
         :param content: 新的markdown内容。
         """
@@ -489,7 +522,7 @@ class AgentSkillRuntime:
         self._write_agent_context(existing["metadata"], content)
 
     def _write_agent_context(self, metadata: dict[str, Any], content: str) -> None:
-        """写入 AGENT_CONTEXT.md 文件。"""
+        """写入 AGENT.md 文件。"""
         from ruamel.yaml import YAML
         from io import StringIO
 
@@ -502,7 +535,7 @@ class AgentSkillRuntime:
         stream.write("---\n\n")
         stream.write(content)
 
-        self.workspace_write("AGENT_CONTEXT.md", stream.getvalue())
+        self.workspace_write(AGENT_DOCUMENT, stream.getvalue())
 
     def auto_update_agent_context(
         self,
@@ -511,7 +544,7 @@ class AgentSkillRuntime:
         priority: str | None = None,
         notes: str | None = None,
     ) -> None:
-        """自动更新 AGENT_CONTEXT.md（仿真人行为追踪）。
+        """自动更新 AGENT.md（仿真人行为追踪）。
 
         根据仿真人当前状态自动维护上下文文件，支持跨会话持久化。
 
@@ -541,72 +574,196 @@ class AgentSkillRuntime:
                 if existing_content
                 else f"## [{timestamp}]\n{notes}\n"
             )
-            self.set_agent_context_content(new_content.strip())
+            # 对标 CLAUDE.md：保持简洁，避免无限增长
+            max_chars = 2000
+            if self._state_config is not None:
+                max_chars = int(
+                    getattr(self._state_config, "agent_md_max_chars", max_chars)
+                )
+            self.set_agent_context_content(new_content.strip()[:max_chars])
+
+    @staticmethod
+    def _flatten_summary_value(value: Any, max_len: int = 100) -> str:
+        """将状态字段压缩成适合放入上下文的短文本。"""
+        if value is None:
+            return ""
+        if isinstance(value, str):
+            return value[:max_len]
+        if isinstance(value, bool):
+            return str(value).lower()
+        if isinstance(value, (int, float)):
+            return f"{value:.3g}" if isinstance(value, float) else str(value)
+        if isinstance(value, list):
+            parts = [
+                AgentSkillRuntime._flatten_summary_value(v, max_len=40)
+                for v in value[:3]
+            ]
+            text = ", ".join(p for p in parts if p)
+            if len(value) > 3:
+                text += f", +{len(value) - 3} more"
+            return text[:max_len]
+        if isinstance(value, dict):
+            parts: list[str] = []
+            for k, v in list(value.items())[:4]:
+                flattened = AgentSkillRuntime._flatten_summary_value(v, max_len=40)
+                if flattened:
+                    parts.append(f"{k}={flattened}")
+            return "; ".join(parts)[:max_len]
+        return str(value)[:max_len]
+
+    @classmethod
+    def _summarize_state_json(
+        cls,
+        data: Any,
+        *,
+        summary_field: str = "",
+        max_len: int = 100,
+    ) -> str:
+        """从任意 JSON 状态中提取通用短摘要。
+
+        运行时不理解具体 skill 的字段语义。技能若希望被稳定摘要，可写入
+        ``_summary`` 或 ``summary``；否则这里只展示少量顶层结构，帮助定位文件。
+        """
+        if not isinstance(data, dict) or not data:
+            return ""
+        if summary_field:
+            value = data.get(summary_field)
+            text = cls._flatten_summary_value(value, max_len=max_len)
+            if text:
+                return text
+
+        for key in ("_summary", "summary"):
+            if key in data:
+                text = cls._flatten_summary_value(data[key], max_len=max_len)
+                if text:
+                    return text[:max_len]
+
+        scalar_parts: list[str] = []
+        structural_parts: list[str] = []
+        for key, value in data.items():
+            if key.startswith("_"):
+                continue
+            if isinstance(value, (str, int, float, bool)) or value is None:
+                text = cls._flatten_summary_value(value, max_len=32)
+                if text:
+                    scalar_parts.append(f"{key}={text}")
+            elif isinstance(value, list):
+                structural_parts.append(f"{key}[{len(value)}]")
+            elif isinstance(value, dict):
+                structural_parts.append(f"{key}{{{len(value)}}}")
+            if len(scalar_parts) >= 3:
+                break
+        if scalar_parts:
+            return "; ".join(scalar_parts)[:max_len]
+
+        if structural_parts:
+            return "; ".join(structural_parts[:4])[:max_len]
+        return ""
+
+    @classmethod
+    def _describe_state_json(cls, data: Any, max_len: int = 100) -> str:
+        """从自描述状态文件中提取文件用途。
+
+        只读取通用元数据，不解释任何具体 skill 字段。
+        推荐技能写入 ``_meta.purpose`` 或 ``_meta.description``。
+        """
+        if not isinstance(data, dict):
+            return ""
+        meta = data.get("_meta")
+        if not isinstance(meta, dict):
+            return ""
+        for key in ("purpose", "description", "owner", "skill"):
+            text = cls._flatten_summary_value(meta.get(key), max_len=max_len)
+            if text:
+                return text
+        return ""
+
+    def _memory_file_candidates(self) -> list[Path]:
+        """返回当前 workspace 中可能的长期记忆文件路径。"""
+        if self._agent_work_dir is None:
+            return []
+        return [
+            self._agent_work_dir / "state" / "memory.jsonl",
+            self._agent_work_dir / "memory" / "memory.jsonl",
+            self._agent_work_dir / "memory.jsonl",
+        ]
+
+    @staticmethod
+    def _count_nonempty_lines(path: Path) -> int:
+        """统计非空行数。"""
+        try:
+            with path.open("r", encoding="utf-8") as f:
+                return sum(1 for line in f if line.strip())
+        except Exception:
+            return 0
 
     def sync_state_to_context(self) -> None:
-        """将当前状态同步到 AGENT_CONTEXT.md。
+        """将当前状态同步到 AGENT.md。
 
-        从 state 目录动态发现并读取状态文件，自动更新上下文。
-        支持：
-        1. 内置状态文件（emotion, intention, needs, plan）
-        2. 用户扩展的状态文件（通过 state_config.extra_states 配置）
-        3. 自动发现 state/ 目录下的所有 JSON 文件
+        只做通用文件发现和短摘要，不理解具体 skill 的字段语义。
         """
         if self._agent_work_dir is None:
             return
 
-        updates: dict[str, Any] = {}
+        context = self.read_agent_context()
+        metadata = dict(context.get("metadata", {}) or {})
+        state_summary: dict[str, str] = {}
+        state_purpose: dict[str, str] = {}
+        state_files_index: list[str] = []
         max_len = 100
         if self._state_config is not None:
             max_len = getattr(self._state_config, "summary_max_length", 100)
 
-        # 获取状态文件定义
-        state_definitions: dict[str, tuple[str, str]] = {}
-        if self._state_config is not None:
-            state_definitions = self._state_config.get_all_states()
-            auto_discover = getattr(self._state_config, "auto_discover", True)
-        else:
-            # 默认内置状态
-            state_definitions = {
-                "emotion": ("emotion.json", "primary"),
-                "intention": ("intention.json", "intention"),
-                "needs": ("needs.json", "current_need"),
-                "plan": ("plan_state.json", "target"),
-            }
-            auto_discover = True
+        state_dir = self._agent_work_dir / "state"
+        if state_dir.exists() and state_dir.is_dir():
+            state_files_index = sorted(
+                p.relative_to(self._agent_work_dir).as_posix()
+                for p in state_dir.rglob("*")
+                if p.is_file()
+                and p.suffix in {".json", ".jsonl", ".txt"}
+                and not any(
+                    part.startswith(".")
+                    for part in p.relative_to(self._agent_work_dir).parts
+                )
+            )
+            for state_file in sorted(state_dir.rglob("*.json")):
+                rel_path = state_file.relative_to(self._agent_work_dir).as_posix()
+                data = self.read_json(rel_path, {})
+                if data:
+                    purpose = self._describe_state_json(data, max_len=max_len)
+                    if purpose:
+                        state_purpose[rel_path] = purpose
+                    summary = self._summarize_state_json(data, max_len=max_len)
+                    if summary:
+                        state_summary[rel_path] = summary
 
-        # 读取已定义的状态文件
-        for state_name, (filename, summary_field) in state_definitions.items():
-            state_path = f"state/{filename}"
-            data = self.read_json(state_path, {})
-            if data:
-                value = data.get(summary_field, "")
-                if value:
-                    updates[state_name] = str(value)[:max_len]
-
-        # 自动发现其他状态文件
-        if auto_discover:
+        if not state_files_index and self._agent_work_dir is not None:
             state_dir = self._agent_work_dir / "state"
             if state_dir.exists() and state_dir.is_dir():
-                known_files = {
-                    f"state/{fn}" for _, (fn, _) in state_definitions.items()
-                }
-                for state_file in state_dir.glob("*.json"):
-                    relative_path = f"state/{state_file.name}"
-                    if relative_path not in known_files:
-                        data = self.read_json(relative_path, {})
-                        if data:
-                            # 使用文件名（去掉扩展名）作为键
-                            key = state_file.stem
-                            # 尝试找第一个非嵌套的字符串值作为摘要
-                            for v in data.values():
-                                if isinstance(v, str) and v:
-                                    updates[key] = v[:max_len]
-                                    break
+                state_files_index = sorted(
+                    f"state/{p.name}"
+                    for p in state_dir.iterdir()
+                    if p.is_file()
+                    and p.suffix in {".json", ".jsonl", ".txt"}
+                    and not p.name.startswith(".")
+                )
 
-        if updates:
-            updates["last_sync"] = datetime.now(timezone.utc).isoformat()
-            self.update_agent_context(updates)
+        memory_counts = {
+            str(path.relative_to(self._agent_work_dir)): self._count_nonempty_lines(
+                path
+            )
+            for path in self._memory_file_candidates()
+            if path.exists()
+        }
+
+        if state_summary or state_files_index or memory_counts:
+            metadata["state_summary"] = state_summary
+            metadata["state_purpose"] = state_purpose
+            metadata["state_files"] = state_files_index[:80]
+            if memory_counts:
+                metadata["memory_files"] = memory_counts
+            metadata["last_sync"] = datetime.now(timezone.utc).isoformat()
+            self._write_agent_context(metadata, str(context.get("content", "")))
 
     def build_workspace_summary(self) -> str:
         """生成 workspace 内容摘要。
@@ -621,62 +778,37 @@ class AgentSkillRuntime:
 
         summary = []
 
-        # 1. AGENT_CONTEXT.md
         context = self.read_agent_context()
         if context.get("metadata"):
             task = context["metadata"].get("current_task", "")
             if task:
                 summary.append(f"**Current Task**: {task}")
 
-        # 2. 获取状态文件定义
-        state_definitions: dict[str, tuple[str, str]] = {}
-        if self._state_config is not None:
-            state_definitions = self._state_config.get_all_states()
-
-        # 3. State文件摘要（动态发现）
         state_dir = self._agent_work_dir / "state"
         if state_dir.exists():
-            state_files = list(state_dir.glob("*.json"))
+            state_files = sorted(state_dir.rglob("*.json"))
             if state_files:
                 summary.append(f"**state/**: {len(state_files)} files")
-
-                # 先处理已定义的状态文件
-                processed = set()
-                for state_name, (filename, summary_field) in state_definitions.items():
-                    path = state_dir / filename
-                    if path.exists():
-                        processed.add(filename)
-                        try:
-                            data = jr_parse(path.read_text())
-                            value = data.get(summary_field, "")
-                            if value:
-                                display_name = state_name.replace("_", " ").title()
-                                summary.append(f"  - {display_name}: {str(value)[:50]}")
-                        except Exception:
-                            pass
-
-                # 再处理其他状态文件
                 for state_file in state_files:
-                    if state_file.name not in processed:
-                        try:
-                            data = jr_parse(state_file.read_text())
-                            # 找第一个字符串值作为摘要
-                            for v in data.values():
-                                if isinstance(v, str) and v:
-                                    key = state_file.stem.replace("_", " ").title()
-                                    summary.append(f"  - {key}: {v[:50]}")
-                                    break
-                        except Exception:
-                            pass
+                    try:
+                        data = jr_parse(state_file.read_text())
+                        value = self._summarize_state_json(data, max_len=80)
+                        if value:
+                            key = state_file.relative_to(
+                                self._agent_work_dir
+                            ).as_posix()
+                            summary.append(f"  - {key}: {value}")
+                    except Exception:
+                        pass
 
-        # 4. Memory摘要
-        memory_file = self._agent_work_dir / "memory" / "memory.jsonl"
-        if memory_file.exists():
-            try:
-                line_count = sum(1 for _ in memory_file.open())
-                summary.append(f"**memory.jsonl**: {line_count} entries")
-            except Exception:
-                pass
+        memory_parts = []
+        for memory_file in self._memory_file_candidates():
+            if memory_file.exists():
+                rel = memory_file.relative_to(self._agent_work_dir)
+                line_count = self._count_nonempty_lines(memory_file)
+                memory_parts.append(f"`{rel.as_posix()}`: {line_count} entries")
+        if memory_parts:
+            summary.append("**memory**: " + "; ".join(memory_parts))
 
         return "\n".join(summary) if summary else ""
 
@@ -687,14 +819,31 @@ class AgentSkillRuntime:
         event_type: str,
         data: dict[str, Any],
         tick: int | None = None,
+        *,
+        trace_id: str | None = None,
+        span_id: str | None = None,
+        parent_span_id: str | None = None,
+        name: str | None = None,
+        input_summary: dict[str, Any] | None = None,
+        output_summary: dict[str, Any] | None = None,
+        error: str | None = None,
+        duration_ms: int | None = None,
     ) -> None:
-        """发送行为事件到追踪日志。
+        """发送结构化行为事件到追踪日志。
 
-        用于仿真行为分析和可观测性。
+        采用通用 trace/span 形态，不绑定具体 skill 语义。
 
         :param event_type: 事件类型（如 "tool_call", "skill_activate", "decision"）。
         :param data: 事件数据。
         :param tick: 当前 tick（可选）。
+        :param trace_id: 当前 step/run 的追踪 ID。
+        :param span_id: 当前操作 span ID。
+        :param parent_span_id: 父 span ID。
+        :param name: 操作名称。
+        :param input_summary: 输入摘要，不写大内容或隐私内容。
+        :param output_summary: 输出摘要。
+        :param error: 错误摘要。
+        :param duration_ms: 操作耗时毫秒。
         """
         if self._agent_work_dir is None:
             return
@@ -704,11 +853,19 @@ class AgentSkillRuntime:
             "agent_id": self._agent_id,
             "event_type": event_type,
             "tick": tick,
+            "trace_id": trace_id,
+            "span_id": span_id,
+            "parent_span_id": parent_span_id,
+            "name": name,
+            "input_summary": input_summary or {},
+            "output_summary": output_summary or {},
+            "error": error,
+            "duration_ms": duration_ms,
             "data": data,
         }
 
         # 追加到行为追踪日志
-        path = self._agent_work_dir / "logs" / "behavior_trace.jsonl"
+        path = self._agent_work_dir / RUNTIME_LOG_DIR / "behavior_trace.jsonl"
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a", encoding="utf-8") as f:
             f.write(jr_dumps(event, indent=None) + "\n")
@@ -722,7 +879,7 @@ class AgentSkillRuntime:
         if self._agent_work_dir is None:
             return {}
 
-        path = self._agent_work_dir / "logs" / "behavior_trace.jsonl"
+        path = self._agent_work_dir / RUNTIME_LOG_DIR / "behavior_trace.jsonl"
         if not path.exists():
             return {}
 
@@ -751,16 +908,16 @@ class AgentSkillRuntime:
             data = event.get("data", {})
 
             if event_type == "tool_call":
-                tool = data.get("tool", "unknown")
+                tool = event.get("name") or data.get("tool", "unknown")
                 tool_counts[tool] = tool_counts.get(tool, 0) + 1
             elif event_type == "skill_activate":
-                skill = data.get("skill", "unknown")
+                skill = event.get("name") or data.get("skill", "unknown")
                 skill_activations[skill] = skill_activations.get(skill, 0) + 1
             elif event_type == "error":
                 errors.append(
                     {
-                        "tool": data.get("tool", "unknown"),
-                        "error": str(data.get("error", ""))[:100],
+                        "tool": event.get("name") or data.get("tool", "unknown"),
+                        "error": str(event.get("error") or data.get("error", ""))[:100],
                     }
                 )
 
@@ -777,46 +934,110 @@ class AgentSkillRuntime:
     def build_file_manifest(self) -> str:
         """构建 workspace 文件清单。
 
-        动态扫描 workspace 目录，生成 Markdown 格式的文件清单，
-        类似 CLAUDE.md 的功能，帮助 agent 了解有哪些文件可用。
+        动态扫描 workspace 目录，生成 Markdown 格式的短文件索引。
 
         :returns: Markdown 格式的文件清单。
         """
         if self._agent_work_dir is None:
             return ""
 
-        lines = ["# Workspace Files", "", f"**Root**: `{self._agent_work_dir}`", ""]
-
         workspace_root = self._agent_work_dir
-        grouped_files: dict[str, list[Path]] = {}
-        root_files: list[Path] = []
+        lines = [
+            "# Workspace Files",
+            "",
+            "Generated index for quick discovery. Use `workspace_list` for the live file tree.",
+            "",
+            f"**Root**: `{workspace_root}`",
+            "",
+        ]
 
-        for file_path in sorted(p for p in workspace_root.rglob("*") if p.is_file()):
-            rel = file_path.relative_to(workspace_root)
-            if any(part.startswith(".") for part in rel.parts):
-                continue
-            if len(rel.parts) == 1:
-                root_files.append(file_path)
-                continue
-            group = rel.parts[0]
-            grouped_files.setdefault(group, []).append(file_path)
+        ignored_dirs = {RUNTIME_DIR, "__pycache__"}
 
+        root_files = sorted(
+            p
+            for p in workspace_root.iterdir()
+            if p.is_file() and not p.name.startswith(".") and p.name != AGENT_DOCUMENT
+        )
         if root_files:
             lines.append("## Root Files")
             for file_path in root_files:
                 rel = file_path.relative_to(workspace_root)
-                size = file_path.stat().st_size
-                size_str = self._format_file_size(size)
+                size_str = self._format_file_size(file_path.stat().st_size)
                 lines.append(f"- `{rel.as_posix()}` ({size_str})")
             lines.append("")
 
-        for group in sorted(grouped_files):
-            lines.append(f"## {group}/")
-            for file_path in grouped_files[group]:
+        state_dir = workspace_root / "state"
+        if state_dir.exists() and state_dir.is_dir():
+            state_files = sorted(
+                p
+                for p in state_dir.rglob("*")
+                if p.is_file()
+                and not any(
+                    part.startswith(".") for part in p.relative_to(workspace_root).parts
+                )
+            )
+            if state_files:
+                lines.append("## state/")
+                for file_path in state_files[:120]:
+                    rel = file_path.relative_to(workspace_root)
+                    size_str = self._format_file_size(file_path.stat().st_size)
+                    extra = ""
+                    if file_path.suffix == ".json":
+                        try:
+                            data = jr_parse(file_path.read_text(encoding="utf-8"))
+                            purpose = self._describe_state_json(data, max_len=80)
+                            state_summary = self._summarize_state_json(
+                                data,
+                                max_len=80,
+                            )
+                            details = [x for x in [purpose, state_summary] if x]
+                            if details:
+                                extra = " - " + " | ".join(details)
+                        except Exception:
+                            extra = " - unreadable json"
+                    elif file_path.suffix == ".jsonl":
+                        count = self._count_nonempty_lines(file_path)
+                        extra = f" - {count} entries"
+                    lines.append(f"- `{rel.as_posix()}` ({size_str}){extra}")
+                if len(state_files) > 120:
+                    lines.append(f"- ... {len(state_files) - 120} more state files")
+                lines.append("")
+
+        for dirname in ["memory", "input", "custom"]:
+            dir_path = workspace_root / dirname
+            if not dir_path.exists() or not dir_path.is_dir():
+                continue
+            files = sorted(
+                p
+                for p in dir_path.rglob("*")
+                if p.is_file()
+                and not any(
+                    part.startswith(".") for part in p.relative_to(workspace_root).parts
+                )
+            )
+            lines.append(f"## {dirname}/")
+            for file_path in files[:80]:
                 rel = file_path.relative_to(workspace_root)
-                size = file_path.stat().st_size
-                size_str = self._format_file_size(size)
-                lines.append(f"- `{rel.as_posix()}` ({size_str})")
+                size_str = self._format_file_size(file_path.stat().st_size)
+                extra = ""
+                if file_path.suffix == ".jsonl":
+                    extra = f" - {self._count_nonempty_lines(file_path)} entries"
+                lines.append(f"- `{rel.as_posix()}` ({size_str}){extra}")
+            if len(files) > 80:
+                lines.append(f"- ... {len(files) - 80} more files")
+            lines.append("")
+
+        summarized_dirs = []
+        for dirname in sorted(ignored_dirs):
+            dir_path = workspace_root / dirname
+            if dir_path.exists() and dir_path.is_dir():
+                count = sum(1 for p in dir_path.rglob("*") if p.is_file())
+                summarized_dirs.append(
+                    f"- `{dirname}/` ({count} files, summarized only)"
+                )
+        if summarized_dirs:
+            lines.append("## Runtime Directories")
+            lines.extend(summarized_dirs)
             lines.append("")
 
         return "\n".join(lines)
@@ -832,7 +1053,12 @@ class AgentSkillRuntime:
             return f"{size / (1024 * 1024):.1f}MB"
 
     def write_file_manifest(self) -> None:
-        """将文件清单写入 AGENT_FILES.md。"""
+        """将文件索引写入 AGENT.md 的自动生成区块。"""
         manifest = self.build_file_manifest()
         if manifest:
-            self.workspace_write("AGENT_FILES.md", manifest)
+            existing = self.read_agent_context()
+            content = self._replace_generated_file_index(
+                str(existing.get("content", "")),
+                manifest,
+            )
+            self._write_agent_context(dict(existing.get("metadata", {}) or {}), content)

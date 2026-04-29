@@ -14,6 +14,7 @@
 import * as vscode from 'vscode';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
+import { requestJson } from './httpClient';
 
 const execFileAsync = promisify(execFile);
 
@@ -87,14 +88,13 @@ export class LLMValidator {
             max_tokens: 1,
           };
 
-      const response = await fetch(fullUrl, {
+      const response = await requestJson<{ error?: { message?: string }; message?: string }>(fullUrl, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${apiKey}`,
         },
-        body: JSON.stringify(requestBody),
-        signal: AbortSignal.timeout(15000), // 15秒超时
+        body: requestBody,
+        timeoutMs: 15000,
       });
 
       this.log(`Response status: ${response.status}`);
@@ -107,7 +107,7 @@ export class LLMValidator {
       // 尝试获取错误详情
       let errorDetail = '';
       try {
-        const errorData = await response.json();
+        const errorData = response.data;
         errorDetail = errorData.error?.message || errorData.message || JSON.stringify(errorData);
       } catch {
         errorDetail = response.statusText || `HTTP ${response.status}`;
@@ -125,19 +125,15 @@ export class LLMValidator {
         return { success: false, error: `请求失败 (${response.status}): ${errorDetail}` };
       }
     } catch (error) {
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        const errorMsg = `无法连接到 ${fullUrl}。请检查网络或 API 地址是否正确`;
-        this.log(`Connection error: ${errorMsg}`);
-        return { success: false, error: errorMsg };
-      }
       if (error instanceof Error) {
-        if (error.name === 'AbortError') {
+        if (error.message.includes('请求超时')) {
           const errorMsg = '请求超时（15秒），请检查网络连接或 API 地址是否正确';
           this.log(`Timeout error: ${errorMsg}`);
           return { success: false, error: errorMsg };
         }
-        this.log(`Error: ${error.message}`);
-        return { success: false, error: error.message };
+        const errorMsg = `无法连接到 ${fullUrl}。请检查网络或 API 地址是否正确`;
+        this.log(`Connection error: ${error.message}`);
+        return { success: false, error: errorMsg };
       }
       return { success: false, error: '未知错误' };
     }

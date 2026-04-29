@@ -1,73 +1,47 @@
 /**
  * 技能管理 Webview：Agent（后端 API）与 Claude（.claude/skills）；
- * 市场条目来自用户在设置中配置的 GitHub 源。
+ * 市场条目来自用户在设置中配置的 GitHub/GitLab/Gitee 源。
  */
 
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { execSync } from 'child_process';
+import * as os from 'os';
+import { spawnSync } from 'child_process';
 import type {
   MarketplaceSkill,
   AgentSkill,
   ClaudeCodeSkill,
   BuiltinSkill,
   MarketplaceLoadError,
+  SkillFrontmatter,
 } from './webview/skillMarketplace/types';
 import { ApiClient } from './apiClient';
 import type { ProjectStructureProvider } from './projectStructureProvider';
+import { getPlatformAdapter, type SkillSource } from './platforms';
+import {
+  CLAUDE_DISABLED_VAULT,
+  CATEGORY_MAP,
+  GITHUB_API_TIMEOUT_MS,
+  GITHUB_RAW_TIMEOUT_MS,
+  DEFAULT_CLAUDE_SKILL_SOURCES,
+  DEFAULT_AGENT_SKILL_SOURCES,
+  skillMdPathInDir,
+  markdownBodyForPreview,
+  parseFrontmatter,
+  formatSkillName,
+  normalizeSkillSources,
+  isNetworkOrTimeoutError,
+  dedupeMarketplaceSkills,
+  type GitHubContentItem,
+} from './skillMarketplace/utils';
+import {
+  isValidGitBranch,
+  isValidGitRepoUrl,
+  canReadSkillDir,
+} from './skillMarketplace/security';
 
 const PANEL_VIEW_TYPE = 'aiSocialScientist.skillMarketplace';
-
-const GITHUB_API_TIMEOUT_MS = 45_000;
-const GITHUB_RAW_TIMEOUT_MS = 28_000;
-
-const CLAUDE_DISABLED_VAULT = '.agentsociety-disabled-skills';
-
-const CATEGORY_MAP: Record<string, { id: string; name: string; nameZh: string }> = {
-  pdf: { id: 'document', name: 'Document Processing', nameZh: '文档处理' },
-  docx: { id: 'document', name: 'Document Processing', nameZh: '文档处理' },
-  xlsx: { id: 'document', name: 'Document Processing', nameZh: '文档处理' },
-  pptx: { id: 'document', name: 'Document Processing', nameZh: '文档处理' },
-  'artifacts-builder': { id: 'development', name: 'Development Tools', nameZh: '开发工具' },
-  'canvas-design': { id: 'creative', name: 'Creative Tools', nameZh: '创意工具' },
-  'algorithmic-art': { id: 'creative', name: 'Creative Tools', nameZh: '创意工具' },
-  'mcp-builder': { id: 'integration', name: 'Integrations', nameZh: '集成工具' },
-  'webapp-testing': { id: 'development', name: 'Development Tools', nameZh: '开发工具' },
-  'skill-creator': { id: 'development', name: 'Development Tools', nameZh: '开发工具' },
-  'internal-comms': { id: 'productivity', name: 'Productivity', nameZh: '效率工具' },
-  'slack-gif-creator': { id: 'creative', name: 'Creative Tools', nameZh: '创意工具' },
-  'brand-guidelines': { id: 'creative', name: 'Creative Tools', nameZh: '创意工具' },
-  'theme-factory': { id: 'creative', name: 'Creative Tools', nameZh: '创意工具' }
-};
-
-type GitHubContentItem = { name: string; type: string; path: string };
-
-function skillMdPathInDir(skillDir: string): string | null {
-  const exact = path.join(skillDir, 'SKILL.md');
-  if (fs.existsSync(exact)) {
-    return exact;
-  }
-  try {
-    for (const f of fs.readdirSync(skillDir)) {
-      if (f.toLowerCase() === 'skill.md') {
-        return path.join(skillDir, f);
-      }
-    }
-  } catch {
-    /* unreadable */
-  }
-  return null;
-}
-
-function markdownBodyForPreview(full: string): string {
-  const normalized = full.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n');
-  const match = normalized.match(/^---\n[\s\S]*?\n---\s*\n?/);
-  if (match && match.index === 0) {
-    return normalized.slice(match[0].length).trim();
-  }
-  return normalized.trim();
-}
 
 export class SkillMarketplacePanel {
   public static current: SkillMarketplacePanel | undefined;
@@ -219,6 +193,49 @@ export class SkillMarketplacePanel {
             await this._loadClaudeCodeSkills();
             break;
           }
+          case 'getSkillSources': {
+            const target = data.payload as 'agent' | 'claudeCode';
+            await this._getSkillSources(target);
+            break;
+          }
+          case 'saveSkillSources': {
+            const payload = data.payload as {
+              target: 'agent' | 'claudeCode';
+              sources: Array<{
+                owner: string;
+                repo: string;
+                branch?: string;
+                skillsPath?: string;
+                platform?: string;
+                baseUrl?: string;
+              }>;
+            };
+            await this._saveSkillSources(payload.target, payload.sources);
+            break;
+          }
+          case 'getGithubToken': {
+            await this._getGithubToken();
+            break;
+          }
+          case 'saveGithubToken': {
+            const payload = data.payload as { token: string };
+            await this._saveGithubToken(payload.token);
+            break;
+          }
+          case 'getSkillUpdateDiff': {
+            const payload = data.payload as { skill: MarketplaceSkill } | undefined;
+            if (payload?.skill) {
+              await this._getSkillUpdateDiff(payload.skill);
+            }
+            break;
+          }
+          case 'confirmSkillUpdate': {
+            const payload = data.payload as { skill: MarketplaceSkill } | undefined;
+            if (payload?.skill) {
+              await this._confirmSkillUpdate(payload.skill);
+            }
+            break;
+          }
         }
       },
       undefined,
@@ -267,81 +284,8 @@ export class SkillMarketplacePanel {
     );
   }
 
-  private _normalizeSkillSources(
-    sources: any[]
-  ): Array<{ owner: string; repo: string; branch: string; skillsPath: string }> {
-    const out: Array<{ owner: string; repo: string; branch: string; skillsPath: string }> = [];
-    for (const s of sources) {
-      if (!s || typeof s !== 'object') {
-        continue;
-      }
-      const owner = String((s as any).owner ?? '').trim();
-      const repo = String((s as any).repo ?? '').trim();
-      const branch = String((s as any).branch ?? 'main').trim() || 'main';
-      const skillsPath = String((s as any).skillsPath ?? (s as any).path ?? '')
-        .trim()
-        .replace(/^\/+|\/+$/g, '');
-      if (!owner || !repo) {
-        continue;
-      }
-      out.push({ owner, repo, branch, skillsPath });
-    }
-    return out;
-  }
 
-  private _dedupeMarketplaceSkills(skills: MarketplaceSkill[]): MarketplaceSkill[] {
-    const seen = new Set<string>();
-    const result: MarketplaceSkill[] = [];
-    for (const s of skills) {
-      const segments = s.path.split('/').filter(Boolean);
-      const key = (segments.length ? segments[segments.length - 1] : s.id).toLowerCase();
-      if (seen.has(key)) {
-        continue;
-      }
-      seen.add(key);
-      result.push(s);
-    }
-    return result;
-  }
 
-  private async _fetchWithTimeout(url: string, headers: Record<string, string>, timeoutMs: number): Promise<Response> {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-    try {
-      return await fetch(url, { headers, signal: controller.signal });
-    } finally {
-      clearTimeout(timer);
-    }
-  }
-
-  private _isNetworkOrTimeoutError(error: unknown): boolean {
-    const e = error as { name?: string; message?: string };
-    const msg = (e?.message || String(error)).toLowerCase();
-    if (e?.name === 'AbortError') {
-      return true;
-    }
-    return (
-      msg.includes('fetch failed') ||
-      msg.includes('network') ||
-      msg.includes('econnrefused') ||
-      msg.includes('enotfound') ||
-      msg.includes('etimedout') ||
-      msg.includes('timeout') ||
-      msg.includes('getaddrinfo')
-    );
-  }
-
-  private _githubHeaders(): Record<string, string> {
-    const headers: Record<string, string> = {
-      Accept: 'application/vnd.github.v3+json',
-      'User-Agent': 'AI-Social-Scientist-VSCode'
-    };
-    const token = vscode.workspace.getConfiguration('agentSkills').get<string>('githubToken', '')?.trim();
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
-    return headers;
-  }
 
   // ============ Agent Skills ============
 
@@ -435,7 +379,7 @@ export class SkillMarketplacePanel {
           const skillPath = path.join(skillsDir, name);
           const mdPath = skillMdPathInDir(skillPath)!;
           const content = fs.readFileSync(mdPath, 'utf-8');
-          const frontmatter = this._parseFrontmatter(content);
+          const frontmatter = parseFrontmatter(content);
           skills.push({
             name,
             path: skillPath,
@@ -494,7 +438,7 @@ export class SkillMarketplacePanel {
         let description: string | undefined;
         if (hasSkillMd && mdPath) {
           const content = fs.readFileSync(mdPath, 'utf-8');
-          const frontmatter = this._parseFrontmatter(content);
+          const frontmatter = parseFrontmatter(content);
           description = typeof frontmatter.description === 'string' ? frontmatter.description : undefined;
         }
 
@@ -534,7 +478,7 @@ export class SkillMarketplacePanel {
         let description: string | undefined;
         if (hasSkillMd && mdPath) {
           const content = fs.readFileSync(mdPath, 'utf-8');
-          const frontmatter = this._parseFrontmatter(content);
+          const frontmatter = parseFrontmatter(content);
           description = typeof frontmatter.description === 'string' ? frontmatter.description : undefined;
         }
         const files = fs.readdirSync(skillPath).filter(f => !f.startsWith('.'));
@@ -638,30 +582,42 @@ export class SkillMarketplacePanel {
     return resolvedPath === resolvedDir || resolvedPath.startsWith(resolvedDir + path.sep);
   }
 
-  private _canReadSkillDir(skillDir: string): boolean {
-    const resolved = path.resolve(skillDir);
-    const extSkills = path.resolve(path.join(this._extensionUri.fsPath, 'skills'));
-    if (this._isUnderDir(resolved, extSkills)) {
-      return true;
-    }
-    const wf = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-    if (wf) {
-      if (this._isUnderDir(resolved, path.resolve(path.join(wf, 'custom', 'skills')))) {
-        return true;
+  /**
+   * 安全地解析路径，处理符号链接
+   * 返回路径的真实绝对路径，如果路径不存在或无法访问则返回 null
+   */
+  private _safeResolvePath(inputPath: string): string | null {
+    try {
+      // 首先解析为绝对路径
+      const absolutePath = path.resolve(inputPath);
+
+      // 检查路径是否存在
+      if (!fs.existsSync(absolutePath)) {
+        return absolutePath; // 不存在的路径，返回解析后的路径用于后续检查
       }
-      if (this._isUnderDir(resolved, path.resolve(path.join(wf, '.claude', 'skills')))) {
-        return true;
-      }
+
+      // 使用 realpath 获取真实路径（解析符号链接）
+      const realPath = fs.realpathSync(absolutePath);
+      return realPath;
+    } catch {
+      return null;
     }
-    const home = process.env.HOME || process.env.USERPROFILE || '';
-    if (home) {
-      const globalClaude = path.resolve(path.join(home, '.claude', 'skills'));
-      if (this._isUnderDir(resolved, globalClaude)) {
-        return true;
-      }
-    }
-    return false;
   }
+
+  /**
+   * 检查路径是否在允许的目录内（安全版本，处理符号链接）
+   */
+  private _isPathSafe(inputPath: string, allowedDir: string): boolean {
+    const resolvedInput = this._safeResolvePath(inputPath);
+    const resolvedAllowed = this._safeResolvePath(allowedDir);
+
+    if (!resolvedInput || !resolvedAllowed) {
+      return false;
+    }
+
+    return this._isUnderDir(resolvedInput, resolvedAllowed);
+  }
+
 
   private async _fetchAgentSkillDetail(name: string): Promise<void> {
     try {
@@ -683,7 +639,7 @@ export class SkillMarketplacePanel {
   }
 
   private async _fetchLocalSkillMarkdown(skillDir: string): Promise<void> {
-    if (!this._canReadSkillDir(skillDir)) {
+    if (!canReadSkillDir(skillDir, this._extensionUri)) {
       await this._postMessage({
         type: 'skillDetailError',
         payload: { key: `path:${skillDir}`, error: 'Path not allowed' }
@@ -723,11 +679,17 @@ export class SkillMarketplacePanel {
   private async _loadMarketplaceSkills(): Promise<void> {
     const agentRaw = vscode.workspace.getConfiguration('agentSkills').get<unknown>('skillSources');
     const claudeRaw = vscode.workspace.getConfiguration('agentSkills').get<unknown>('claudeSkillSources');
-    const agentSources = this._normalizeSkillSources(Array.isArray(agentRaw) ? agentRaw : []);
-    const claudeSources = this._normalizeSkillSources(Array.isArray(claudeRaw) ? claudeRaw : []);
+
+    // 如果配置为空或非数组，使用默认值
+    const agentSources = normalizeSkillSources(
+      Array.isArray(agentRaw) && agentRaw.length > 0 ? agentRaw : DEFAULT_AGENT_SKILL_SOURCES
+    );
+    const claudeSources = normalizeSkillSources(
+      Array.isArray(claudeRaw) && claudeRaw.length > 0 ? claudeRaw : DEFAULT_CLAUDE_SKILL_SOURCES
+    );
 
     const loadOneChannel = async (
-      sources: Array<{ owner: string; repo: string; branch: string; skillsPath: string }>,
+      sources: SkillSource[],
       channel: 'agent' | 'claude',
       installTarget: 'agent' | 'claudeCode'
     ): Promise<{ skills: MarketplaceSkill[]; errors: MarketplaceLoadError[] }> => {
@@ -740,14 +702,14 @@ export class SkillMarketplacePanel {
       }
 
       for (const source of sources) {
-        const label = `${source.owner}/${source.repo}`;
+        const label = `${source.owner}/${source.repo} (${source.platform})`;
         try {
-          const skills = await this._fetchSkillsFromGitHub(source, installTarget);
+          const skills = await this._fetchSkillsFromSource(source, installTarget);
           remote.push(...skills);
         } catch (error: any) {
           const msg = error?.message || String(error);
           this._outputChannel.appendLine(`[SkillManagement] Marketplace source ${label}: ${msg}`);
-          if (this._isNetworkOrTimeoutError(error)) {
+          if (isNetworkOrTimeoutError(error)) {
             errors.push({ code: 'NETWORK', message: `${label}: ${msg}` });
           } else {
             errors.push({ code: 'GITHUB_SOURCE_FAILED', source: label, message: msg });
@@ -755,7 +717,7 @@ export class SkillMarketplacePanel {
         }
       }
 
-      return { skills: this._dedupeMarketplaceSkills(remote), errors };
+      return { skills: dedupeMarketplaceSkills(remote), errors };
     };
 
     const [agentPayload, claudePayload] = await Promise.all([
@@ -769,42 +731,27 @@ export class SkillMarketplacePanel {
     });
   }
 
-  private async _fetchSkillsFromGitHub(
-    source: { owner: string; repo: string; branch: string; skillsPath: string },
+  private async _fetchSkillsFromSource(
+    source: SkillSource,
     installTarget: 'agent' | 'claudeCode'
   ): Promise<MarketplaceSkill[]> {
-    const { owner, repo, branch, skillsPath } = source;
-    const base = `https://api.github.com/repos/${owner}/${repo}/contents`;
-    const apiUrl = skillsPath
-      ? `${base}/${skillsPath.replace(/^\/+|\/+$/g, '')}?ref=${encodeURIComponent(branch)}`
-      : `${base}?ref=${encodeURIComponent(branch)}`;
+    const adapter = getPlatformAdapter(source.platform);
 
-    this._outputChannel.appendLine(`[SkillMarketplace] Fetching skills from: ${apiUrl}`);
+    this._outputChannel.appendLine(
+      `[SkillMarketplace] Fetching skills from ${source.platform}: ${source.owner}/${source.repo}`
+    );
 
-    const response = await this._fetchWithTimeout(apiUrl, this._githubHeaders(), GITHUB_API_TIMEOUT_MS);
-
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`GitHub API error: ${response.status} ${response.statusText} ${text.slice(0, 200)}`);
-    }
-
-    const contents = (await response.json()) as unknown;
-    if (!Array.isArray(contents)) {
-      const errBody =
-        typeof contents === 'object' && contents !== null && 'message' in contents
-          ? String((contents as { message: string }).message)
-          : JSON.stringify(contents);
-      throw new Error(`GitHub API returned non-array: ${errBody}`);
-    }
+    const contents = await adapter.fetchRepoContents(source);
+    const dirs = contents.filter((item) => item.type === 'dir');
 
     const skills: MarketplaceSkill[] = [];
-    const dirs = contents.filter((item): item is GitHubContentItem => item.type === 'dir');
-
     const concurrency = 6;
     for (let i = 0; i < dirs.length; i += concurrency) {
       const batch = dirs.slice(i, i + concurrency);
       const batchResults = await Promise.all(
-        batch.map((item) => this._fetchSkillInfo(owner, repo, branch, item.path, item.name, installTarget))
+        batch.map((item) =>
+          this._fetchSkillInfoFromAdapter(source, item.path, item.name, installTarget, adapter)
+        )
       );
       for (const skillInfo of batchResults) {
         if (skillInfo) {
@@ -816,37 +763,42 @@ export class SkillMarketplacePanel {
     return skills;
   }
 
-  private async _fetchSkillInfo(
-    owner: string,
-    repo: string,
-    branch: string,
+  private async _fetchSkillInfoFromAdapter(
+    source: SkillSource,
     skillPath: string,
     skillName: string,
-    installTarget: 'agent' | 'claudeCode'
+    installTarget: 'agent' | 'claudeCode',
+    adapter: ReturnType<typeof getPlatformAdapter>
   ): Promise<MarketplaceSkill | null> {
     try {
-      const skillMdUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${skillPath}/SKILL.md`;
-      const response = await this._fetchWithTimeout(
-        skillMdUrl,
-        { 'User-Agent': 'AI-Social-Scientist-VSCode' },
-        GITHUB_RAW_TIMEOUT_MS
-      );
-
-      if (!response.ok) {
-        this._outputChannel.appendLine(
-          `[SkillMarketplace] Skip ${skillName}: SKILL.md unavailable (${response.status})`
-        );
-        return null;
-      }
-
-      const content = await response.text();
-      const frontmatter = this._parseFrontmatter(content);
+      const content = await adapter.fetchFileContent(source, `${skillPath}/SKILL.md`);
+      const frontmatter = parseFrontmatter(content);
 
       const catInfo = CATEGORY_MAP[skillName] || { id: 'other', name: 'Other', nameZh: '其他' };
 
+      // 获取本地已安装版本和内容
+      const { version: installedVersion, content: localContent } = this._getLocalSkillInfo(skillName, installTarget);
+
+      // 比较版本，检测是否有更新
+      const remoteVersion = frontmatter.version || '1.0.0';
+      let updateAvailable = false;
+
+      if (installedVersion) {
+        // 版本号比较
+        const versionDiff = this._compareVersions(remoteVersion, installedVersion);
+        if (versionDiff > 0) {
+          updateAvailable = true;
+        } else if (versionDiff === 0 && localContent) {
+          // 版本号相同，比较内容哈希检测内容变化
+          const localHash = this._hashContent(localContent);
+          const remoteHash = this._hashContent(content);
+          updateAvailable = localHash !== remoteHash;
+        }
+      }
+
       return {
         id: skillName,
-        name: frontmatter.name || this._formatSkillName(skillName),
+        name: frontmatter.name || formatSkillName(skillName),
         description:
           typeof frontmatter.description === 'string' && frontmatter.description.trim()
             ? frontmatter.description
@@ -856,14 +808,18 @@ export class SkillMarketplacePanel {
             ? frontmatter.descriptionZh
             : undefined,
         category: catInfo.id,
-        author: typeof frontmatter.author === 'string' && frontmatter.author.trim() ? frontmatter.author : owner,
-        repo: `https://github.com/${owner}/${repo}`,
-        branch,
+        author: typeof frontmatter.author === 'string' && frontmatter.author.trim() ? frontmatter.author : source.owner,
+        repo: adapter.getRepoUrl(source),
+        branch: source.branch,
         path: skillPath,
         tags: Array.isArray(frontmatter.tags) ? frontmatter.tags : [skillName],
         compatibility: installTarget === 'claudeCode' ? ['claude', 'copilot', 'cursor'] : ['agent'],
-        version: frontmatter.version || '1.0.0',
-        installTarget
+        version: remoteVersion,
+        installTarget,
+        // 新增字段
+        installedVersion,
+        updateAvailable,
+        skillMdContent: content,  // 缓存 SKILL.md 内容用于预览
       };
     } catch (error: any) {
       this._outputChannel.appendLine(`[SkillManagement] Skip ${skillName}: ${error.message}`);
@@ -871,121 +827,144 @@ export class SkillMarketplacePanel {
     }
   }
 
-  private _parseFrontmatter(content: string): Record<string, any> {
-    const result: Record<string, any> = {};
-    const normalized = content.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n');
-    const frontmatterMatch = normalized.match(/^---\n([\s\S]*?)\n---/);
-
-    if (!frontmatterMatch) {
-      return result;
+  /**
+   * 获取本地已安装技能的版本和内容
+   */
+  private _getLocalSkillInfo(skillId: string, installTarget: 'agent' | 'claudeCode'): { version?: string; content?: string } {
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (!workspaceFolder) {
+      return {};
     }
 
-    const lines = frontmatterMatch[1].split('\n');
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith('#')) {
-        continue;
-      }
-      const match = trimmed.match(/^([\w-]+):\s*(.*)$/);
-      if (match) {
-        const key = match[1];
-        let value: any = match[2].trim();
-
-        if (value.startsWith('[') && value.endsWith(']')) {
-          value = value
-            .slice(1, -1)
-            .split(',')
-            .map((s: string) => s.trim().replace(/['"]/g, ''));
-        } else if (value.startsWith('"') && value.endsWith('"')) {
-          value = value.slice(1, -1);
-        }
-
-        result[key] = value;
-      }
+    let skillDir: string;
+    if (installTarget === 'agent') {
+      skillDir = path.join(workspaceFolder.uri.fsPath, 'custom', 'skills', skillId);
+    } else {
+      skillDir = path.join(workspaceFolder.uri.fsPath, '.claude', 'skills', skillId);
     }
 
-    return result;
+    const skillMdPath = path.join(skillDir, 'SKILL.md');
+    if (!fs.existsSync(skillMdPath)) {
+      return {};
+    }
+
+    try {
+      const content = fs.readFileSync(skillMdPath, 'utf-8');
+      const frontmatter = parseFrontmatter(content);
+      return { version: frontmatter.version, content };
+    } catch {
+      return {};
+    }
   }
 
-  private _formatSkillName(name: string): string {
-    return name
-      .split('-')
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
+  /**
+   * 计算内容的简单哈希（用于检测内容变化）
+   */
+  private _hashContent(content: string): string {
+    // 使用简单的字符串哈希算法
+    let hash = 0;
+    for (let i = 0; i < content.length; i++) {
+      const char = content.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    return hash.toString(16);
+  }
+
+  /**
+   * 比较版本号
+   * @returns >0 如果 v1 > v2, <0 如果 v1 < v2, 0 如果相等
+   */
+  private _compareVersions(v1: string, v2: string): number {
+    const parts1 = v1.split('.').map(p => parseInt(p, 10) || 0);
+    const parts2 = v2.split('.').map(p => parseInt(p, 10) || 0);
+
+    const maxLen = Math.max(parts1.length, parts2.length);
+    for (let i = 0; i < maxLen; i++) {
+      const p1 = parts1[i] || 0;
+      const p2 = parts2[i] || 0;
+      if (p1 !== p2) {
+        return p1 - p2;
+      }
+    }
+    return 0;
+  }
+
+
+
+  /**
+   * 统一的技能安装逻辑
+   */
+  private async _installSkill(
+    skill: MarketplaceSkill,
+    installTarget: 'agent' | 'claudeCode'
+  ): Promise<void> {
+    const skillTypeLabel = installTarget === 'agent' ? 'Agent Skill' : 'Claude Code Skill';
+    try {
+      await this._postMessage({ type: 'installProgress', payload: { skillId: skill.id, status: 'downloading' } });
+
+      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+      const targetDir = installTarget === 'agent'
+        ? path.join(workspaceFolder?.uri.fsPath || '', 'custom', 'skills', skill.id)
+        : path.join(workspaceFolder?.uri.fsPath || '', '.claude', 'skills', skill.id);
+
+      // 安全校验：分支名
+      const branch = skill.branch || 'main';
+      if (!isValidGitBranch(branch)) {
+        throw new Error(`Invalid branch name: ${branch}`);
+      }
+
+      // 安全校验：仓库 URL
+      if (!isValidGitRepoUrl(skill.repo)) {
+        throw new Error(`Invalid or disallowed repository URL: ${skill.repo}`);
+      }
+
+      // 清理已存在的目标目录
+      if (fs.existsSync(targetDir)) {
+        fs.rmSync(targetDir, { recursive: true, force: true });
+      }
+      fs.mkdirSync(path.dirname(targetDir), { recursive: true });
+
+      await this._postMessage({ type: 'installProgress', payload: { skillId: skill.id, status: 'installing' } });
+
+      // 克隆仓库到临时目录
+      const tempDir = path.join(process.env.TMP || '/tmp', `skill-${skill.id}-${Date.now()}`);
+      spawnSync('git', ['clone', '--depth', '1', '--branch', branch, skill.repo, tempDir], {
+        encoding: 'utf-8',
+        timeout: 120000
+      });
+
+      // 复制技能目录
+      const sourcePath = path.join(tempDir, skill.path);
+      if (fs.existsSync(sourcePath)) {
+        fs.cpSync(sourcePath, targetDir, { recursive: true });
+      } else if (skill.path === '.' || skill.path === '' || skill.path === skill.id) {
+        fs.cpSync(tempDir, targetDir, { recursive: true });
+      } else {
+        throw new Error(`Skill path not found: ${sourcePath}`);
+      }
+
+      // 清理临时目录
+      fs.rmSync(tempDir, { recursive: true, force: true });
+
+      await this._postMessage({
+        type: 'installComplete',
+        payload: { skillId: skill.id, name: skill.name, skillType: installTarget }
+      });
+      this._outputChannel.appendLine(`[SkillManagement] Successfully installed ${skillTypeLabel}: ${skill.name}`);
+    } catch (error: any) {
+      const message = error?.message || String(error);
+      this._outputChannel.appendLine(`[SkillManagement] Failed to install ${skill.name}: ${message}`);
+      await this._postMessage({ type: 'installFailed', payload: { skillId: skill.id, error: message } });
+    }
   }
 
   private async _installAgentSkill(skill: MarketplaceSkill): Promise<void> {
-    try {
-      await this._postMessage({ type: 'installProgress', payload: { skillId: skill.id, status: 'downloading' } });
-      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-      const targetDir = path.join(workspaceFolder?.uri.fsPath || '', 'custom', 'skills', skill.id);
-
-      if (fs.existsSync(targetDir)) {
-        fs.rmSync(targetDir, { recursive: true, force: true });
-      }
-      fs.mkdirSync(path.dirname(targetDir), { recursive: true });
-
-      await this._postMessage({ type: 'installProgress', payload: { skillId: skill.id, status: 'installing' } });
-
-      const tempDir = path.join(process.env.TMP || '/tmp', `skill-${skill.id}-${Date.now()}`);
-      execSync(`git clone --depth 1 --branch ${skill.branch || 'main'} ${skill.repo} "${tempDir}"`, { encoding: 'utf-8', timeout: 120000 });
-
-      const sourcePath = path.join(tempDir, skill.path);
-      if (fs.existsSync(sourcePath)) {
-        fs.cpSync(sourcePath, targetDir, { recursive: true });
-      } else if (skill.path === '.' || skill.path === '' || skill.path === skill.id) {
-        fs.cpSync(tempDir, targetDir, { recursive: true });
-      } else {
-        throw new Error(`Skill path not found: ${sourcePath}`);
-      }
-      fs.rmSync(tempDir, { recursive: true, force: true });
-
-      await this._postMessage({
-        type: 'installComplete',
-        payload: { skillId: skill.id, name: skill.name, skillType: 'agent' }
-      });
-      this._outputChannel.appendLine(`[SkillManagement] Successfully installed Agent Skill: ${skill.name}`);
-    } catch (error: any) {
-      this._outputChannel.appendLine(`[SkillManagement] Failed to install ${skill.name}: ${error.message}`);
-      await this._postMessage({ type: 'installFailed', payload: { skillId: skill.id, error: error.message } });
-    }
+    await this._installSkill(skill, 'agent');
   }
 
   private async _installClaudeCodeSkill(skill: MarketplaceSkill): Promise<void> {
-    try {
-      await this._postMessage({ type: 'installProgress', payload: { skillId: skill.id, status: 'downloading' } });
-      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-      const targetDir = path.join(workspaceFolder?.uri.fsPath || '', '.claude', 'skills', skill.id);
-
-      if (fs.existsSync(targetDir)) {
-        fs.rmSync(targetDir, { recursive: true, force: true });
-      }
-      fs.mkdirSync(path.dirname(targetDir), { recursive: true });
-
-      await this._postMessage({ type: 'installProgress', payload: { skillId: skill.id, status: 'installing' } });
-
-      const tempDir = path.join(process.env.TMP || '/tmp', `skill-${skill.id}-${Date.now()}`);
-      execSync(`git clone --depth 1 --branch ${skill.branch || 'main'} ${skill.repo} "${tempDir}"`, { encoding: 'utf-8', timeout: 120000 });
-
-      const sourcePath = path.join(tempDir, skill.path);
-      if (fs.existsSync(sourcePath)) {
-        fs.cpSync(sourcePath, targetDir, { recursive: true });
-      } else if (skill.path === '.' || skill.path === '' || skill.path === skill.id) {
-        fs.cpSync(tempDir, targetDir, { recursive: true });
-      } else {
-        throw new Error(`Skill path not found: ${sourcePath}`);
-      }
-      fs.rmSync(tempDir, { recursive: true, force: true });
-
-      await this._postMessage({
-        type: 'installComplete',
-        payload: { skillId: skill.id, name: skill.name, skillType: 'claudeCode' }
-      });
-      this._outputChannel.appendLine(`[SkillManagement] Successfully installed Claude Code Skill: ${skill.name}`);
-    } catch (error: any) {
-      this._outputChannel.appendLine(`[SkillManagement] Failed to install ${skill.name}: ${error.message}`);
-      await this._postMessage({ type: 'installFailed', payload: { skillId: skill.id, error: error.message } });
-    }
+    await this._installSkill(skill, 'claudeCode');
   }
 
   private async _importAgentSkill(): Promise<void> {
@@ -1050,6 +1029,318 @@ export class SkillMarketplacePanel {
       this._outputChannel.appendLine(`[SkillManagement] Claude import failed: ${error.message}`);
       await this._postMessage({ type: 'error', payload: error.message || String(error) });
     }
+  }
+
+  /** 获取市场源配置 */
+  private async _getSkillSources(target: 'agent' | 'claudeCode'): Promise<void> {
+    const configKey = target === 'agent' ? 'skillSources' : 'claudeSkillSources';
+    const raw = vscode.workspace.getConfiguration('agentSkills').get<unknown[]>(configKey);
+
+    // 如果配置为空或非数组，使用默认值
+    const defaultSources = target === 'agent' ? DEFAULT_AGENT_SKILL_SOURCES : DEFAULT_CLAUDE_SKILL_SOURCES;
+    const sources = normalizeSkillSources(
+      Array.isArray(raw) && raw.length > 0 ? raw : defaultSources
+    );
+
+    await this._postMessage({
+      type: 'skillSourcesLoaded',
+      payload: { target, sources },
+    });
+  }
+
+  /** 保存市场源配置 */
+  private async _saveSkillSources(
+    target: 'agent' | 'claudeCode',
+    sources: Array<{
+      owner: string;
+      repo: string;
+      branch?: string;
+      skillsPath?: string;
+      platform?: string;
+      baseUrl?: string;
+    }>
+  ): Promise<void> {
+    const configKey = target === 'agent' ? 'skillSources' : 'claudeSkillSources';
+    try {
+      // 验证并规范化源配置
+      const normalized: any[] = [];
+      for (const s of sources) {
+        if (!s.owner?.trim() || !s.repo?.trim()) {
+          continue;
+        }
+        const item: any = {
+          owner: s.owner.trim(),
+          repo: s.repo.trim(),
+          branch: s.branch?.trim() || 'main',
+        };
+        if (s.skillsPath?.trim()) {
+          item.skillsPath = s.skillsPath.trim().replace(/^\/+|\/+$/g, '');
+        }
+        if (s.platform && s.platform !== 'github') {
+          item.platform = s.platform;
+        }
+        if (s.baseUrl?.trim()) {
+          item.baseUrl = s.baseUrl.trim();
+        }
+        normalized.push(item);
+      }
+      await vscode.workspace.getConfiguration('agentSkills').update(
+        configKey,
+        normalized,
+        vscode.ConfigurationTarget.Global
+      );
+      await this._postMessage({
+        type: 'skillSourcesSaved',
+        payload: { target, sources: normalized },
+      });
+      // 刷新市场列表
+      await this._loadMarketplaceSkills();
+    } catch (error: any) {
+      this._outputChannel.appendLine(`[SkillManagement] Save sources failed: ${error.message}`);
+      await this._postMessage({
+        type: 'skillSourcesError',
+        payload: { target, error: error.message || String(error) },
+      });
+    }
+  }
+
+  private async _getGithubToken(): Promise<void> {
+    const token = vscode.workspace.getConfiguration('agentSkills').get<string>('githubToken', '');
+    await this._postMessage({
+      type: 'githubTokenLoaded',
+      payload: { token },
+    });
+  }
+
+  private async _saveGithubToken(token: string): Promise<void> {
+    try {
+      await vscode.workspace.getConfiguration('agentSkills').update(
+        'githubToken',
+        token,
+        vscode.ConfigurationTarget.Global
+      );
+      await this._postMessage({
+        type: 'githubTokenSaved',
+        payload: { success: true },
+      });
+    } catch (error: any) {
+      this._outputChannel.appendLine(`[SkillManagement] Save GitHub token failed: ${error.message}`);
+    }
+  }
+
+  private _parseGitNoIndexDiff(
+    diffText: string,
+    localRoot: string,
+    remoteRoot: string,
+    skill: MarketplaceSkill
+  ): {
+    filesAdded: string[];
+    filesDeleted: string[];
+    filesModified: string[];
+    fileDiffs: Array<{
+      path: string;
+      status: 'added' | 'deleted' | 'modified';
+      hunks: Array<{
+        oldStart: number;
+        oldLines: number;
+        newStart: number;
+        newLines: number;
+        lines: string[];
+      }>;
+    }>;
+  } {
+    const filesAdded: string[] = [];
+    const filesDeleted: string[] = [];
+    const filesModified: string[] = [];
+    const fileDiffs: Array<{
+      path: string;
+      status: 'added' | 'deleted' | 'modified';
+      hunks: Array<{
+        oldStart: number;
+        oldLines: number;
+        newStart: number;
+        newLines: number;
+        lines: string[];
+      }>;
+    }> = [];
+
+    const normalizePath = (p: string): string => {
+      const cleaned = p.replace(/^a\//, '').replace(/^b\//, '');
+      if (cleaned.startsWith(localRoot)) {
+        return cleaned.slice(localRoot.length).replace(/^\/+/, '');
+      }
+      if (cleaned.startsWith(remoteRoot)) {
+        return cleaned.slice(remoteRoot.length).replace(/^\/+/, '');
+      }
+      return cleaned;
+    };
+
+    const lines = diffText.split(/\r?\n/);
+    let current:
+      | {
+        path: string;
+        status: 'added' | 'deleted' | 'modified';
+        hunks: Array<{
+          oldStart: number;
+          oldLines: number;
+          newStart: number;
+          newLines: number;
+          lines: string[];
+        }>;
+      }
+      | undefined;
+    let currentHunk:
+      | {
+        oldStart: number;
+        oldLines: number;
+        newStart: number;
+        newLines: number;
+        lines: string[];
+      }
+      | undefined;
+
+    const flushHunk = () => {
+      if (current && currentHunk) {
+        current.hunks.push(currentHunk);
+      }
+      currentHunk = undefined;
+    };
+
+    const flushFile = () => {
+      flushHunk();
+      if (current) {
+        fileDiffs.push(current);
+      }
+      current = undefined;
+    };
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (line.startsWith('diff --git ')) {
+        flushFile();
+        const m = /^diff --git a\/(.+?) b\/(.+)$/.exec(line);
+        const rawPath = m?.[2] ?? m?.[1] ?? `file-${fileDiffs.length}`;
+        current = { path: normalizePath(rawPath), status: 'modified', hunks: [] };
+        continue;
+      }
+      if (!current) {
+        continue;
+      }
+      if (line.startsWith('new file mode ')) {
+        current.status = 'added';
+        continue;
+      }
+      if (line.startsWith('deleted file mode ')) {
+        current.status = 'deleted';
+        continue;
+      }
+      if (line.startsWith('@@ ')) {
+        flushHunk();
+        const m = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/.exec(line);
+        currentHunk = {
+          oldStart: Number(m?.[1] ?? 0),
+          oldLines: Number(m?.[2] ?? 1),
+          newStart: Number(m?.[3] ?? 0),
+          newLines: Number(m?.[4] ?? 1),
+          lines: [],
+        };
+        currentHunk.lines.push(line);
+        continue;
+      }
+      if (currentHunk) {
+        if (line.startsWith('+') || line.startsWith('-') || line.startsWith(' ')) {
+          currentHunk.lines.push(line);
+        }
+      }
+    }
+    flushFile();
+
+    for (const f of fileDiffs) {
+      if (f.status === 'added') {
+        filesAdded.push(f.path);
+      } else if (f.status === 'deleted') {
+        filesDeleted.push(f.path);
+      } else {
+        filesModified.push(f.path);
+      }
+    }
+
+    return { filesAdded, filesDeleted, filesModified, fileDiffs };
+  }
+
+  private async _getSkillUpdateDiff(skill: MarketplaceSkill): Promise<void> {
+    try {
+      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+      if (!workspaceFolder) {
+        throw new Error('No workspace folder opened');
+      }
+
+      const localRoot =
+        skill.installTarget === 'agent'
+          ? path.join(workspaceFolder.uri.fsPath, 'custom', 'skills', skill.id)
+          : path.join(workspaceFolder.uri.fsPath, '.claude', 'skills', skill.id);
+
+      if (!fs.existsSync(localRoot)) {
+        throw new Error(`Local skill not found: ${localRoot}`);
+      }
+
+      const branch = skill.branch || 'main';
+      if (!isValidGitBranch(branch)) {
+        throw new Error(`Invalid branch name: ${branch}`);
+      }
+      if (!isValidGitRepoUrl(skill.repo)) {
+        throw new Error(`Invalid or disallowed repository URL: ${skill.repo}`);
+      }
+
+      const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), `skill-diff-${skill.id}-`));
+      spawnSync('git', ['clone', '--depth', '1', '--branch', branch, skill.repo, tempDir], {
+        encoding: 'utf-8',
+        timeout: 120000,
+      });
+
+      const remoteRoot = path.join(tempDir, skill.path);
+      if (!fs.existsSync(remoteRoot)) {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+        throw new Error(`Skill path not found: ${remoteRoot}`);
+      }
+
+      const r = spawnSync('git', ['diff', '--no-index', '--', localRoot, remoteRoot], {
+        encoding: 'utf-8',
+        timeout: 120000,
+      });
+      const diffText = (r.stdout || '') + (r.stderr || '');
+
+      fs.rmSync(tempDir, { recursive: true, force: true });
+
+      const parsed = this._parseGitNoIndexDiff(diffText, localRoot, remoteRoot, skill);
+
+      await this._postMessage({
+        type: 'skillUpdateDiffLoaded',
+        payload: {
+          skillId: skill.id,
+          skillName: skill.name,
+          localVersion: skill.installedVersion || '',
+          remoteVersion: skill.version || '',
+          filesAdded: parsed.filesAdded,
+          filesDeleted: parsed.filesDeleted,
+          filesModified: parsed.filesModified,
+          fileDiffs: parsed.fileDiffs,
+        },
+      });
+    } catch (error: any) {
+      await this._postMessage({
+        type: 'skillUpdateDiffError',
+        payload: { error: error.message || String(error), skillId: skill.id },
+      });
+    }
+  }
+
+  private async _confirmSkillUpdate(skill: MarketplaceSkill): Promise<void> {
+    if (skill.installTarget === 'agent') {
+      await this._installAgentSkill(skill);
+      return;
+    }
+    await this._installClaudeCodeSkill(skill);
   }
 
   private _openSkillFolder(skillPath: string): void {

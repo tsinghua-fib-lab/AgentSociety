@@ -107,16 +107,10 @@ detector = DeadlockDetector(timeout=60.0)
 detector.register("operation1")
 ```
 
-### 4. Context Management - AGENT_CONTEXT.md
+### 4. Context Management - AGENT.md
 
-```python
-from agentsociety2.agent.context import AgentContext
-
-ctx = AgentContext(workspace_path)
-ctx.update_focus("正在咖啡馆吃午餐")
-ctx.add_decision("选择步行而非乘坐公交")
-prompt = ctx.to_prompt_context()
-```
+`AGENT.md` 由运行时组件 `AgentSkillRuntime` 自动维护（包含 YAML frontmatter 与自动生成的文件索引区块）。
+Agent 可通过 `workspace_read("AGENT.md")` 获取当前上下文与文件索引。
 
 ## 内置技能
 

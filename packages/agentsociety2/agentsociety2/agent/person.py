@@ -14,6 +14,7 @@ import threading
 import re
 import shlex
 import difflib
+import time
 from collections import OrderedDict
 from collections.abc import Mapping
 from datetime import datetime
@@ -52,12 +53,14 @@ from agentsociety2.agent.tool import (
     jr_parse,
     json_dumps_tool_result_for_thread,
     pagination_from_args,
+    slice_text_page,
     trunc_str,
     BashSecurityChecker,
+    ToolPolicy,
+    ToolPolicyContext,
 )
 from agentsociety2.agent.tool.loop_detection import (
     LoopDetectionService,
-    LoopDetectionConfig,
 )
 from agentsociety2.env import (
     PersonStepConstraints,
@@ -172,7 +175,7 @@ class PersonAgent(AgentBase):
         # 上下文利用率追踪
         self._last_utilization: float = 0.0
         self._compact_count: int = 0
-        # 跨压缩轮次的滚动摘要（增量合并，持久化见 thread_compact_state.json）
+        # 跨压缩轮次的滚动摘要（增量合并，持久化见 .runtime/logs/thread_compact_state.json）
         self._rolling_thread_summary: str = ""
 
         # ── 系统提示词缓存（使用单一版本号简化逻辑）──
@@ -194,6 +197,12 @@ class PersonAgent(AgentBase):
         # ── 并发控制 ──
         self._parallel_executor = ParallelExecutor(self._config)
         self._rate_limiter = RateLimiter(self._config.concurrency.rate_limit_rps)
+        self._tool_policy = ToolPolicy()
+
+        # ── 当前工具 trace 上下文（仅用于统一观测，不进入业务逻辑）──
+        self._current_trace_id: str | None = None
+        self._current_tool_span_id: str | None = None
+        self._current_tool_started_at: float | None = None
 
     def _update_workspace_cache(self, path: str, content: str) -> None:
         """更新缓存并执行 LRU 淘汰。
@@ -339,16 +348,18 @@ class PersonAgent(AgentBase):
 
         workspace_context: dict[str, Any] = {}
         json_paths = [
-            "emotion.json",
-            "intention.json",
-            "plan_state.json",
-            "session_state.json",
-            "observation_ctx.json",
+            "state/emotion.json",
+            "state/intention.json",
+            "state/plan_state.json",
+            "state/needs.json",
+            "state/observation_ctx.json",
+            ".runtime/logs/session_state.json",
         ]
         text_paths = [
-            "observation.txt",
-            "thought.txt",
-            "current_need.txt",
+            "state/observation.txt",
+            "state/thought.txt",
+            "state/current_need.txt",
+            "AGENT.md",
         ]
 
         for path in json_paths:
@@ -361,11 +372,18 @@ class PersonAgent(AgentBase):
                 if text:
                     workspace_context[path] = self._truncate_text(text, max_len=3000)
 
-        if self._skill_runtime.workspace_exists("memory.jsonl"):
-            workspace_context["memory_recent"] = self._tail_jsonl(
-                self._skill_runtime.workspace_read("memory.jsonl"),
-                limit=10,
-            )
+        for memory_path in [
+            "state/memory.jsonl",
+            "memory/memory.jsonl",
+            "memory.jsonl",
+        ]:
+            if self._skill_runtime.workspace_exists(memory_path):
+                workspace_context["memory_recent"] = self._tail_jsonl(
+                    self._skill_runtime.workspace_read(memory_path),
+                    limit=10,
+                )
+                workspace_context["memory_path"] = memory_path
+                break
 
         recent_tool_logs = self._skill_runtime.read_recent_tool_logs(limit=8)
         if recent_tool_logs:
@@ -634,6 +652,66 @@ class PersonAgent(AgentBase):
         if len(thread_messages) > self._ctx_config.thread_max_messages:
             thread_messages = thread_messages[-self._ctx_config.thread_max_messages :]
 
+        trace_id = self._current_trace_id
+        span_id = self._current_tool_span_id
+        if trace_id and span_id:
+            duration_ms = None
+            if self._current_tool_started_at is not None:
+                duration_ms = int(
+                    (time.monotonic() - self._current_tool_started_at) * 1000
+                )
+            output_summary = self._summarize_tool_result(enriched)
+            self._skill_runtime.emit_behavior_event(
+                "tool_result",
+                {
+                    "action": str(enriched.get("action", "")),
+                    "workspace_state_version": self._workspace_state_version,
+                },
+                tick=tick,
+                trace_id=trace_id,
+                span_id=span_id,
+                parent_span_id="step",
+                name=str(enriched.get("action", "")) or None,
+                output_summary=output_summary,
+                error=(
+                    str(enriched.get("error", ""))[:300]
+                    if not bool(enriched.get("ok", False)) and enriched.get("error")
+                    else None
+                ),
+                duration_ms=duration_ms,
+            )
+
+    @staticmethod
+    def _summarize_tool_result(result: dict[str, Any]) -> dict[str, Any]:
+        """生成工具结果摘要，避免把大内容写入 trace。"""
+        summary: dict[str, Any] = {
+            "ok": bool(result.get("ok", False)),
+        }
+        for key in [
+            "action",
+            "skill_name",
+            "path",
+            "exit_code",
+            "error_type",
+            "count",
+            "size",
+            "workspace_state_version",
+        ]:
+            if key in result:
+                summary[key] = result[key]
+        if "artifacts" in result:
+            artifacts = result.get("artifacts") or []
+            summary["artifacts_count"] = (
+                len(artifacts) if isinstance(artifacts, list) else 0
+            )
+        if "returned_chars" in result:
+            summary["returned_chars"] = result.get("returned_chars")
+        if "has_more" in result:
+            summary["has_more"] = result.get("has_more")
+        if not summary["ok"] and result.get("error"):
+            summary["error"] = str(result.get("error"))[:300]
+        return summary
+
     def _prepare_prompt_sidecars(self) -> None:
         """准备 prompt 侧车数据。
 
@@ -722,44 +800,6 @@ class PersonAgent(AgentBase):
             return False
         return not bool(getattr(info, "disable_model_invocation", False))
 
-    @staticmethod
-    def _normalize_allowed_tools(raw: list[str]) -> set[str]:
-        """将 skill frontmatter 的 allowed-tools 归一到 PersonAgent 的 tool_name 集合。
-
-        :param raw: 原始 allowed-tools 列表。
-        :return: 标准化后的 tool_name 集合。
-        """
-        if not raw:
-            return set()
-
-        mapping = {
-            "read": "workspace_read",
-            "write": "workspace_write",
-            "workspace_read": "workspace_read",
-            "workspace_write": "workspace_write",
-            "workspace_list": "workspace_list",
-            "activate_skill": "activate_skill",
-            "read_skill": "read_skill",
-            "execute_skill": "execute_skill",
-            "bash": "bash",
-            "grep": "grep",
-            "glob": "glob",
-            "codegen": "codegen",
-            "batch": "batch",
-            "enable_skill": "enable_skill",
-            "disable_skill": "disable_skill",
-            "done": "done",
-        }
-        out: set[str] = set()
-        for item in raw:
-            s = str(item).strip()
-            if not s:
-                continue
-            base = s.split("(", 1)[0].strip().lower()
-            if base in mapping:
-                out.add(mapping[base])
-        return out
-
     def _allowed_tools_for_active_scope(self) -> set[str] | None:
         """获取当前 scope 的 allowed-tools。
 
@@ -771,37 +811,7 @@ class PersonAgent(AgentBase):
         info = self._skill_registry.get_skill_info(name, load_content=False)
         if info is None:
             return None
-        raw_list = getattr(info, "allowed_tools", []) or []
-        if not raw_list:
-            return None
-        return self._normalize_allowed_tools(raw_list)
-
-    def _check_allowed_tools_for_action(self, action: str) -> dict[str, Any] | None:
-        """统一处理 allowed-tools 拦截。
-
-        :param action: 工具名称。
-        :returns: ``None`` 表示允许，否则返回错误对象。
-        """
-        guarded_actions = {
-            "workspace_read",
-            "workspace_write",
-            "workspace_list",
-            "bash",
-            "glob",
-            "grep",
-            "codegen",
-            "batch",
-        }
-        if action not in guarded_actions:
-            return None
-        allowed = self._allowed_tools_for_active_scope()
-        if allowed is None or action in allowed:
-            return None
-        return {
-            "action": action,
-            "ok": False,
-            "error": f"blocked by allowed-tools of active skill: {self._active_skill_scope}",
-        }
+        return ToolPolicy.allowed_tools_for_scope(info)
 
     @staticmethod
     def _split_skill_arguments(raw: Any) -> tuple[str, list[str]]:
@@ -856,8 +866,6 @@ class PersonAgent(AgentBase):
         :param content: 包含 !`cmd` 占位符的 skill 内容。
         :return: 渲染后的内容。
         """
-        from agentsociety2.agent.tool.security import BashSecurityChecker
-
         security_checker = BashSecurityChecker()
         pattern = re.compile(r"!\`([^`\n]+)\`")
         rendered = content
@@ -1033,7 +1041,24 @@ class PersonAgent(AgentBase):
             readonly=False,
             template_mode=template_mode,
         )
-        return {"ok": True, "stdout": answer, "stderr": "", "ctx": updated_ctx}
+        status = ""
+        if isinstance(updated_ctx, Mapping):
+            raw_status = updated_ctx.get("status")
+            if raw_status is None:
+                raw_obs = updated_ctx.get("observations")
+                if isinstance(raw_obs, Mapping):
+                    raw_status = raw_obs.get("status")
+            status = str(raw_status or "").strip().lower()
+        ok = status not in {"fail", "failed", "error"}
+        result: dict[str, Any] = {
+            "ok": ok,
+            "stdout": answer,
+            "stderr": "" if ok else answer,
+            "ctx": updated_ctx,
+        }
+        if status:
+            result["status"] = status
+        return result
 
     def _glob_in_workspace(self, pattern: str, root: str) -> dict[str, Any]:
         """在 workspace 内做 glob 检索（带路径越界保护）。
@@ -1336,7 +1361,7 @@ class PersonAgent(AgentBase):
         - _step_context: 步骤上下文（step 开始时构建）
         - _memory: 记忆内容（从 memory/ 目录读取）
         - _structured_summary: 结构化摘要（从文件读取）
-        - _rolling_thread_summary: 滚动摘要（从 thread_compact_state.json 读取）
+        - _rolling_thread_summary: 滚动摘要（从 .runtime/logs/thread_compact_state.json 读取）
 
         :param tick: 检查点的 tick 值。
         :return: 是否成功恢复。
@@ -1472,12 +1497,16 @@ class PersonAgent(AgentBase):
         # 清空 thread 消息文件
         if self._skill_runtime._agent_work_dir is not None:
             thread_file = (
-                self._skill_runtime._agent_work_dir / "logs" / "thread_messages.jsonl"
+                self._skill_runtime._agent_work_dir
+                / ".runtime"
+                / "logs"
+                / "thread_messages.jsonl"
             )
             if thread_file.exists():
                 thread_file.unlink()
             compact_state = (
                 self._skill_runtime._agent_work_dir
+                / ".runtime"
                 / "logs"
                 / "thread_compact_state.json"
             )
@@ -1537,31 +1566,30 @@ class PersonAgent(AgentBase):
         """
         results: list[dict[str, Any]] = []
 
-        for op in operations:
-            tool_name = op.get("tool_name", "")
-            args = op.get("arguments", {})
-            blocked_obj = self._check_allowed_tools_for_action(str(tool_name).strip())
-            if blocked_obj is not None:
-                results.append(
-                    {
-                        "tool_name": tool_name,
-                        "ok": False,
-                        "error": blocked_obj.get("error", "blocked"),
-                    }
-                )
-                continue
+        # 先做 policy 阻断 + 再并行化只读工具（workspace_write 仍顺序执行）
+        work_dir = str(self._skill_runtime.workspace_root())
 
+        async def exec_one(tool_name: str, args: dict[str, Any]) -> dict[str, Any]:
+            policy_ctx = ToolPolicyContext(
+                active_skill_scope=self._active_skill_scope,
+                allowed_tools=self._allowed_tools_for_active_scope(),
+                workspace_root=work_dir,
+            )
+            blocked = self._tool_policy.check(
+                action=tool_name, args=args, ctx=policy_ctx
+            )
+            if blocked is not None:
+                return {"tool_name": tool_name, **blocked}
+
+            # 复用当前 batch 内既有实现（仅覆盖只读工具；写入保持顺序）
             if tool_name == "workspace_read":
-                # 支持批量读取
                 paths = args.get("paths", [])
                 if not paths:
                     path = args.get("path", "")
                     if path:
                         paths = [path]
-
                 cap = self._workspace_read_chunk_cap()
                 off, lim = pagination_from_args(args, cap)
-
                 read_results: dict[str, Any] = {}
                 for p in paths:
                     p = str(p).strip()
@@ -1578,106 +1606,45 @@ class PersonAgent(AgentBase):
                         read_results[p] = {"ok": True, "cached": False, **page}
                     else:
                         read_results[p] = {"ok": False, "error": "file not found"}
+                return {
+                    "tool_name": "workspace_read",
+                    "ok": all(r.get("ok", False) for r in read_results.values()),
+                    "files": read_results,
+                    "count": len(read_results),
+                }
 
-                results.append(
-                    {
-                        "tool_name": "workspace_read",
-                        "ok": all(r.get("ok", False) for r in read_results.values()),
-                        "files": read_results,
-                        "count": len(read_results),
-                    }
-                )
+            if tool_name == "workspace_list":
+                root = str(args.get("path", ".") or ".")
+                listed = self._skill_runtime.workspace_list(root)
+                return {
+                    "tool_name": "workspace_list",
+                    "ok": True,
+                    "path": root,
+                    "files": listed,
+                }
 
-            elif tool_name == "workspace_write":
-                # 支持批量写入
-                writes = args.get("writes", {})
-                if not writes:
-                    path = args.get("path", "")
-                    content = args.get("content", "")
-                    if path:
-                        writes = {path: content}
-
-                written_paths: list[str] = []
-                write_errors: list[str] = []
-                for p, content in writes.items():
-                    p = str(p).strip()
-                    if not p:
-                        continue
-                    try:
-                        self._skill_runtime.workspace_write(p, str(content))
-                        written_paths.append(p)
-                        # 失效缓存
-                        self._invalidate_workspace_cache(p)
-                        self._bump_workspace_state_version()
-                    except Exception as e:
-                        write_errors.append(f"{p}: {str(e)}")
-
-                results.append(
-                    {
-                        "tool_name": "workspace_write",
-                        "ok": len(write_errors) == 0,
-                        "written_paths": written_paths,
-                        "errors": write_errors if write_errors else None,
-                        "count": len(written_paths),
-                    }
-                )
-
-            elif tool_name == "workspace_list":
-                paths = args.get("paths", [])
-                if not paths:
-                    path = args.get("path", ".")
-                    paths = [path]
-
-                list_results: dict[str, Any] = {}
-                for p in paths:
-                    p = str(p).strip() or "."
-                    try:
-                        files = self._skill_runtime.workspace_list(p)
-                        list_results[p] = {
-                            "ok": True,
-                            "files": files[:100],
-                            "count": len(files),
-                        }
-                    except Exception as e:
-                        list_results[p] = {"ok": False, "error": str(e)}
-
-                results.append(
-                    {
-                        "tool_name": "workspace_list",
-                        "ok": all(r.get("ok", False) for r in list_results.values()),
-                        "directories": list_results,
-                    }
-                )
-
-            elif tool_name == "glob":
+            if tool_name == "glob":
                 patterns = args.get("patterns", [])
                 if not patterns:
-                    pattern = args.get("pattern", "**/*")
-                    patterns = [pattern]
-                root = str(args.get("path", "."))
-
+                    pattern = args.get("pattern", "")
+                    if pattern:
+                        patterns = [pattern]
+                root = str(args.get("root", ".") or ".")
                 glob_results: dict[str, Any] = {}
                 for pattern in patterns:
-                    pattern = str(pattern).strip() or "**/*"
-                    try:
-                        parsed = self._glob_in_workspace(pattern=pattern, root=root)
-                        glob_results[pattern] = {
-                            "ok": True,
-                            "count": parsed.get("count", 0),
-                            "matches": parsed.get("matches", [])[:100],
-                        }
-                    except Exception as e:
-                        glob_results[pattern] = {"ok": False, "error": str(e)}
+                    pattern = str(pattern).strip()
+                    if not pattern:
+                        continue
+                    glob_results[pattern] = self._glob_in_workspace(
+                        pattern=pattern, root=root
+                    )
+                return {
+                    "tool_name": "glob",
+                    "ok": all(r.get("ok", False) for r in glob_results.values()),
+                    "patterns": glob_results,
+                }
 
-                results.append(
-                    {
-                        "tool_name": "glob",
-                        "ok": all(r.get("ok", False) for r in glob_results.values()),
-                        "patterns": glob_results,
-                    }
-                )
-
-            elif tool_name == "grep":
+            if tool_name == "grep":
                 patterns = args.get("patterns", [])
                 if not patterns:
                     pattern = args.get("pattern", "")
@@ -1685,40 +1652,97 @@ class PersonAgent(AgentBase):
                         patterns = [pattern]
                 root = str(args.get("path", "."))
                 file_glob = str(args.get("glob", ""))
-
                 grep_results: dict[str, Any] = {}
                 for pattern in patterns:
                     pattern = str(pattern).strip()
                     if not pattern:
                         continue
-                    try:
-                        parsed = self._grep_in_workspace(
-                            pattern=pattern, root=root, file_glob=file_glob
-                        )
-                        grep_results[pattern] = {
-                            "ok": True,
-                            "count": parsed.get("count", 0),
-                            "matches": parsed.get("matches", [])[:100],
-                        }
-                    except Exception as e:
-                        grep_results[pattern] = {"ok": False, "error": str(e)}
+                    grep_results[pattern] = self._grep_in_workspace(
+                        pattern=pattern, root=root, file_glob=file_glob
+                    )
+                return {
+                    "tool_name": "grep",
+                    "ok": all(r.get("ok", False) for r in grep_results.values()),
+                    "patterns": grep_results,
+                }
 
-                results.append(
-                    {
-                        "tool_name": "grep",
-                        "ok": all(r.get("ok", False) for r in grep_results.values()),
-                        "patterns": grep_results,
-                    }
-                )
+            # 其他工具不在 batch 内并行执行范围，保守返回不支持
+            return {
+                "tool_name": tool_name,
+                "ok": False,
+                "error": (
+                    "unsupported tool in batch. Supported: workspace_read, workspace_list, glob, grep. "
+                    "workspace_write is handled sequentially outside the parallel set."
+                ),
+            }
 
+        parallel_ops: list[tuple[str, dict[str, Any]]] = []
+        sequential_writes: list[dict[str, Any]] = []
+
+        for op in operations:
+            tool_name = str(op.get("tool_name", "") or "").strip()
+            args = self._coerce_llm_dict(op.get("arguments", {}))
+            if tool_name == "workspace_write":
+                sequential_writes.append({"tool_name": tool_name, "arguments": args})
             else:
-                results.append(
-                    {
-                        "tool_name": tool_name,
-                        "ok": False,
-                        "error": f"unsupported tool in batch: {tool_name}. Supported: workspace_read, workspace_write, workspace_list, glob, grep",
-                    }
-                )
+                parallel_ops.append((tool_name, args))
+
+        if parallel_ops:
+            # 并行执行只读工具
+            outcomes = await self._parallel_executor.execute(
+                parallel_ops,
+                executor=lambda tname, a: exec_one(
+                    str(tname), self._coerce_llm_dict(a)
+                ),
+            )
+            results.extend(outcomes)
+
+        # workspace_write：顺序执行（有副作用，且需要逐条 bump 版本/失效缓存）
+        for op in sequential_writes:
+            tool_name = op.get("tool_name", "")
+            args = self._coerce_llm_dict(op.get("arguments", {}))
+            policy_ctx = ToolPolicyContext(
+                active_skill_scope=self._active_skill_scope,
+                allowed_tools=self._allowed_tools_for_active_scope(),
+                workspace_root=work_dir,
+            )
+            blocked = self._tool_policy.check(
+                action=tool_name, args=args, ctx=policy_ctx
+            )
+            if blocked is not None:
+                results.append({"tool_name": tool_name, **blocked})
+                continue
+
+            writes = args.get("writes", {})
+            if not writes:
+                path = args.get("path", "")
+                content = args.get("content", "")
+                if path:
+                    writes = {path: content}
+
+            written_paths: list[str] = []
+            write_errors: list[str] = []
+            for p, content in writes.items():
+                p = str(p).strip()
+                if not p:
+                    continue
+                try:
+                    self._skill_runtime.workspace_write(p, str(content))
+                    written_paths.append(p)
+                    self._invalidate_workspace_cache(p)
+                    self._bump_workspace_state_version()
+                except Exception as e:
+                    write_errors.append(f"{p}: {str(e)}")
+
+            results.append(
+                {
+                    "tool_name": "workspace_write",
+                    "ok": len(write_errors) == 0,
+                    "written_paths": written_paths,
+                    "errors": write_errors if write_errors else None,
+                    "count": len(written_paths),
+                }
+            )
 
         return {
             "action": "batch",
@@ -1744,11 +1768,32 @@ class PersonAgent(AgentBase):
         logs: list[str] = []
         history: list[dict[str, Any]] = []
         thread_messages = self._skill_runtime.read_recent_thread_messages(limit=40)
+        trace_id = f"agent_{self.id}_tick_{tick}"
+        step_start = time.monotonic()
+        self._skill_runtime.emit_behavior_event(
+            "step_start",
+            {
+                "active_skills": sorted(self._activated_skills),
+                "visible_skill_count": len(self._all_visible_skill_names()),
+                "workspace_state_version": self._workspace_state_version,
+            },
+            tick=tick,
+            trace_id=trace_id,
+            span_id="step",
+            name="person_step",
+            input_summary={
+                "thread_messages": len(thread_messages),
+                "max_tool_rounds": self._max_tool_rounds,
+            },
+        )
 
         # 每步重置循环检测器
         self._loop_detector.reset()
 
         for i in range(self._max_tool_rounds):
+            # 全局节流：避免短时间内过度请求（LLM/子进程/IO）导致 429 或资源争用
+            await self._rate_limiter.acquire()
+
             # 滑动摘要：当 thread 过长时压缩旧消息
             thread_messages = await self._compact_thread_if_needed(
                 thread_messages, tick, t
@@ -1791,6 +1836,10 @@ class PersonAgent(AgentBase):
             action = decision.tool_name.strip()
             args = self._coerce_llm_dict(decision.arguments)
             skill_name = str(args.get("skill_name", "")).strip()
+            span_id = f"tool_{i + 1}"
+            self._current_trace_id = trace_id
+            self._current_tool_span_id = span_id
+            self._current_tool_started_at = time.monotonic()
 
             # ── tool_name 语义校验（避免 Pydantic 校验失败导致重试） ────────────────
             # 允许模型犯错：把错误变成 TOOL_RESULT_JSON，给模型在同一步内纠正的机会。
@@ -1843,6 +1892,15 @@ class PersonAgent(AgentBase):
                     "args_summary": {k: str(v)[:50] for k, v in list(args.items())[:5]},
                 },
                 tick=tick,
+                trace_id=trace_id,
+                span_id=span_id,
+                parent_span_id="step",
+                name=action,
+                input_summary={
+                    "skill_name": skill_name,
+                    "done": bool(getattr(decision, "done", False)),
+                    "args_keys": sorted(args.keys())[:12],
+                },
             )
 
             # ── 循环检测 ──
@@ -2012,14 +2070,21 @@ class PersonAgent(AgentBase):
                 logs.append(f"{action}:{skill_name}:rejected")
                 continue
 
-            # ── allowed-tools gate ──
-            blocked_obj = self._check_allowed_tools_for_action(action)
+            # ── ToolPolicy gate（allowed-tools/bash security/等） ──
+            policy_ctx = ToolPolicyContext(
+                active_skill_scope=self._active_skill_scope,
+                allowed_tools=self._allowed_tools_for_active_scope(),
+                workspace_root=str(self._skill_runtime.workspace_root()),
+            )
+            blocked_obj = self._tool_policy.check(
+                action=action, args=args, ctx=policy_ctx
+            )
             if blocked_obj is not None:
                 history.append(blocked_obj)
                 self._append_tool_result_to_thread(
                     thread_messages, tick, t, blocked_obj
                 )
-                logs.append(f"{action}:blocked_allowed_tools")
+                logs.append(f"{action}:blocked_policy")
                 continue
 
             # ── activate_skill ──
@@ -2082,6 +2147,12 @@ class PersonAgent(AgentBase):
                             "args": activation_raw[:100] if activation_raw else "",
                         },
                         tick=tick,
+                        trace_id=trace_id,
+                        span_id=f"{span_id}.skill_activate",
+                        parent_span_id=span_id,
+                        name=skill_name,
+                        input_summary={"arguments": activation_raw[:100]},
+                        output_summary={"content_chars": len(content)},
                     )
                 result_obj = {
                     "action": action,
@@ -2248,7 +2319,7 @@ class PersonAgent(AgentBase):
                             "path": ws_read_path,
                             "ok": False,
                             "error": "file not found",
-                            "hint": "Call workspace_list(path) to inspect available files, or read AGENT_FILES.md for a generated file index.",
+                            "hint": "Call workspace_list(path) to inspect available files, or read AGENT.md for the generated file index.",
                             "suggestions": close,
                             "files_sample": sample,
                         }
@@ -2493,6 +2564,8 @@ class PersonAgent(AgentBase):
                     "stderr": trunc_str(ce, self._ctx_config.stderr_max_chars),
                     "workspace_state_version": self._workspace_state_version,
                 }
+                if out.get("status"):
+                    result_obj["status"] = str(out.get("status"))
                 if out.get("ctx") is not None:
                     ctx_str = jr_dumps(out["ctx"])
                     result_obj["ctx"] = trunc_str(ctx_str, max_len=4000)
@@ -2502,6 +2575,16 @@ class PersonAgent(AgentBase):
                 )
                 self._append_tool_result_to_thread(thread_messages, tick, t, result_obj)
                 logs.append(f"codegen:{'ok' if ok else 'fail'}")
+                if str(out.get("status", "")).lower() == "in_progress":
+                    logs.append("done:environment_in_progress")
+                    break
+                if not ok:
+                    loop_result = self._loop_detector.check_error_loop(
+                        str(result_obj.get("stderr") or result_obj.get("stdout") or "")
+                    )
+                    if loop_result.is_loop:
+                        logs.append(f"loop_detected:{loop_result.loop_type}")
+                        break
                 if decision.done:
                     logs.append(f"done:{decision.summary or 'step_complete'}")
                     break
@@ -2531,6 +2614,25 @@ class PersonAgent(AgentBase):
                 logs.append(f"done:{decision.summary or 'step_complete'}")
                 break
 
+        duration_ms = int((time.monotonic() - step_start) * 1000)
+        self._skill_runtime.emit_behavior_event(
+            "step_end",
+            {
+                "log_count": len(logs),
+                "tool_count": len(history),
+                "workspace_state_version": self._workspace_state_version,
+            },
+            tick=tick,
+            trace_id=trace_id,
+            span_id="step",
+            name="person_step",
+            output_summary={
+                "logs": logs[-5:],
+                "tool_count": len(history),
+                "activated_skills": sorted(self._activated_skills),
+            },
+            duration_ms=duration_ms,
+        )
         return logs, history
 
     # ── Public API ────────────────────────────────────────────────────────────

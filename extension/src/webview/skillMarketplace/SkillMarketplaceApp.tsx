@@ -8,66 +8,28 @@ import {
   ReloadOutlined, CheckCircleOutlined, AppstoreOutlined, BookOutlined,
   ToolOutlined, RobotOutlined, ThunderboltOutlined, ShopOutlined,
   SyncOutlined, ImportOutlined, InboxOutlined, CloudSyncOutlined, SettingOutlined,
+  UndoOutlined, QuestionCircleOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import type {
   VSCodeAPI, MarketplaceSkill, AgentSkill, ClaudeCodeSkill, BuiltinSkill, AgentSkillDetailPayload,
-  MarketplaceLoadError, MarketplaceChannelsPayload,
+  MarketplaceLoadError, MarketplaceChannelsPayload, SkillSourceConfig,
 } from './types';
+import { DEFAULT_CLAUDE_SOURCES, DEFAULT_AGENT_SOURCES } from './types';
 import { useVscodeTheme } from '../theme';
 import 'antd/dist/reset.css';
+import { SkillDetailCollapse } from './components';
 
 const { Content } = Layout;
 const { Title, Text } = Typography;
 const { Search } = Input;
 const { Panel } = Collapse;
 
-const MARKETPLACE_PAGE_SIZE = 5;
+const MARKETPLACE_PAGE_SIZE = 10;
+const SEARCH_DEBOUNCE_MS = 200;
 
 interface SkillManagementAppProps { vscode: VSCodeAPI; }
 type SkillTab = 'agent' | 'claudeCode';
-
-type SkillDetailCollapseProps = {
-  panelLabel: string;
-  onPanelOpen?: () => void;
-  loading: boolean;
-  borderColor: string;
-  children: React.ReactNode;
-};
-
-const SkillDetailCollapse: React.FC<SkillDetailCollapseProps> = ({
-  panelLabel,
-  onPanelOpen,
-  loading,
-  borderColor,
-  children,
-}) => (
-  <Collapse
-    ghost
-    size="small"
-    style={{ marginTop: 8, borderTop: `1px solid ${borderColor}`, paddingTop: 8 }}
-    onChange={(keys) => {
-      const arr = Array.isArray(keys) ? keys : keys != null ? [keys as string] : [];
-      if (arr.includes('detail')) {
-        onPanelOpen?.();
-      }
-    }}
-    items={[
-      {
-        key: 'detail',
-        forceRender: true,
-        label: <span style={{ fontSize: 12 }}>{panelLabel}</span>,
-        children: loading ? (
-          <div style={{ padding: 8 }}>
-            <Spin size="small" />
-          </div>
-        ) : (
-          children
-        ),
-      },
-    ]}
-  />
-);
 
 export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode }) => {
   const { t, i18n } = useTranslation();
@@ -86,6 +48,7 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
   const [claudeMarketplaceLoadErrors, setClaudeMarketplaceLoadErrors] = React.useState<MarketplaceLoadError[]>([]);
   const [agentMarketPage, setAgentMarketPage] = React.useState(1);
   const [claudeMarketPage, setClaudeMarketPage] = React.useState(1);
+  const [searchInput, setSearchInput] = React.useState('');
   const [searchQuery, setSearchQuery] = React.useState('');
   const [installingSkills, setInstallingSkills] = React.useState<Set<string>>(new Set());
   const [agentSkillDetails, setAgentSkillDetails] = React.useState<Record<string, AgentSkillDetailPayload>>({});
@@ -93,6 +56,64 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
   const [localMdByPath, setLocalMdByPath] = React.useState<Record<string, string | null>>({});
   const [localMdLoading, setLocalMdLoading] = React.useState<Record<string, boolean>>({});
   const [vsixSyncLoading, setVsixSyncLoading] = React.useState<Set<string>>(new Set());
+  // 市场源配置状态
+  const [showAdvancedSettings, setShowAdvancedSettings] = React.useState(false);
+  const [agentSkillSources, setAgentSkillSources] = React.useState<Array<{
+    owner: string;
+    repo: string;
+    branch?: string;
+    skillsPath?: string;
+    platform?: string;
+    baseUrl?: string;
+  }>>([]);
+  const [claudeSkillSources, setClaudeSkillSources] = React.useState<Array<{
+    owner: string;
+    repo: string;
+    branch?: string;
+    skillsPath?: string;
+    platform?: string;
+    baseUrl?: string;
+  }>>([]);
+  const [skillSourcesLoading, setSkillSourcesLoading] = React.useState(false);
+  const [updateDiffModal, setUpdateDiffModal] = React.useState<{
+    open: boolean;
+    skill?: MarketplaceSkill;
+    diff?: {
+      skillId: string;
+      skillName: string;
+      localVersion: string;
+      remoteVersion: string;
+      filesAdded: string[];
+      filesDeleted: string[];
+      filesModified: string[];
+      fileDiffs: Array<{
+        path: string;
+        status: 'added' | 'deleted' | 'modified';
+        hunks: Array<{
+          oldStart: number;
+          oldLines: number;
+          newStart: number;
+          newLines: number;
+          lines: string[];
+        }>;
+      }>;
+    };
+  }>({ open: false });
+  const [updateDiffLoadingById, setUpdateDiffLoadingById] = React.useState<Record<string, boolean>>({});
+  const pendingUpdateSkillRef = React.useRef<Record<string, MarketplaceSkill>>({});
+  // 帮助弹窗状态
+  const [helpModalOpen, setHelpModalOpen] = React.useState(false);
+  // 高级设置弹窗状态
+  const [sourcesModalTarget, setSourcesModalTarget] = React.useState<'agent' | 'claudeCode' | null>(null);
+  // GitHub Token 状态
+  const [githubToken, setGithubToken] = React.useState('');
+
+  React.useEffect(() => {
+    const handle = setTimeout(() => {
+      setSearchQuery(searchInput);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(handle);
+  }, [searchInput]);
 
   React.useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -206,6 +227,90 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
           setMarketplaceLoading(false);
           setVsixSyncLoading(new Set());
           break;
+        case 'skillSourcesLoaded': {
+          const payload = msg.payload as {
+            target: 'agent' | 'claudeCode';
+            sources: Array<{
+              owner: string;
+              repo: string;
+              branch?: string;
+              skillsPath?: string;
+              platform?: string;
+              baseUrl?: string;
+            }>;
+          };
+          if (payload.target === 'agent') {
+            setAgentSkillSources(payload.sources);
+          } else {
+            setClaudeSkillSources(payload.sources);
+          }
+          setSkillSourcesLoading(false);
+          break;
+        }
+        case 'skillSourcesSaved': {
+          const payload = msg.payload as {
+            target: 'agent' | 'claudeCode';
+            sources: Array<{
+              owner: string;
+              repo: string;
+              branch?: string;
+              skillsPath?: string;
+              platform?: string;
+              baseUrl?: string;
+            }>;
+          };
+          if (payload.target === 'agent') {
+            setAgentSkillSources(payload.sources);
+          } else {
+            setClaudeSkillSources(payload.sources);
+          }
+          setSkillSourcesLoading(false);
+          message.success(t('skillManagement.sourcesSaved'));
+          break;
+        }
+        case 'skillSourcesError': {
+          const payload = msg.payload as { target: string; error: string };
+          setSkillSourcesLoading(false);
+          message.error(payload.error || t('skillManagement.sourcesSaveFailed'));
+          break;
+        }
+        case 'githubTokenLoaded': {
+          const payload = msg.payload as { token: string };
+          setGithubToken(payload.token || '');
+          break;
+        }
+        case 'githubTokenSaved': {
+          message.success(t('skillManagement.tokenSaved'));
+          break;
+        }
+        case 'skillUpdateDiffLoaded': {
+          const p = msg.payload as any;
+          const skillId = String(p?.skillId || '');
+          if (skillId) {
+            setUpdateDiffLoadingById((m) => {
+              const n = { ...m };
+              delete n[skillId];
+              return n;
+            });
+          }
+          // 用 ref 记录的 skill，避免 effect 闭包拿到旧 state
+          const skill = pendingUpdateSkillRef.current[skillId];
+          setUpdateDiffModal({ open: true, skill, diff: p });
+          break;
+        }
+        case 'skillUpdateDiffError': {
+          const p = msg.payload as { error: string; skillId?: string };
+          const skillId = String(p?.skillId || '');
+          if (skillId) {
+            setUpdateDiffLoadingById((m) => {
+              const n = { ...m };
+              delete n[skillId];
+              return n;
+            });
+          }
+          message.error(p?.error || t('skillManagement.detailLoadFailed'));
+          break;
+        }
       }
     };
     window.addEventListener('message', handleMessage);
@@ -271,6 +376,46 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
     });
   };
 
+  // 市场源配置操作
+  const handleGetSkillSources = (target: 'agent' | 'claudeCode') => {
+    setSkillSourcesLoading(true);
+    vscode.postMessage({ type: 'getSkillSources', payload: target });
+  };
+
+  const handleSaveSkillSources = (
+    target: 'agent' | 'claudeCode',
+    sources: Array<{
+      owner: string;
+      repo: string;
+      branch?: string;
+      skillsPath?: string;
+      platform?: string;
+      baseUrl?: string;
+    }>
+  ) => {
+    setSkillSourcesLoading(true);
+    vscode.postMessage({ type: 'saveSkillSources', payload: { target, sources } });
+  };
+
+  const handleGetGithubToken = () => {
+    vscode.postMessage({ type: 'getGithubToken' });
+  };
+
+  const handleSaveGithubToken = (token: string) => {
+    vscode.postMessage({ type: 'saveGithubToken', payload: { token } });
+  };
+
+  const handlePreviewUpdateDiff = (skill: MarketplaceSkill) => {
+    pendingUpdateSkillRef.current[skill.id] = skill;
+    setUpdateDiffLoadingById((m) => ({ ...m, [skill.id]: true }));
+    vscode.postMessage({ type: 'getSkillUpdateDiff', payload: { skill } });
+  };
+
+  const handleConfirmUpdate = (skill: MarketplaceSkill) => {
+    vscode.postMessage({ type: 'confirmSkillUpdate', payload: { skill } });
+    setUpdateDiffModal({ open: false });
+  };
+
   // Marketplace
   const isInstalling = (id: string) => installingSkills.has(id);
   const handleInstallAgentFromMarket = (skill: MarketplaceSkill) => {
@@ -330,6 +475,19 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
     return trimmed || t('skillManagement.detailNoMarkdownBody');
   };
 
+  /**
+   * 格式化远程 SKILL.md 内容用于预览
+   * 移除 YAML frontmatter，只显示 Markdown 正文
+   */
+  const formatSkillMdPreview = (text: string | null | undefined): string => {
+    if (!text) return t('skillManagement.detailNoMarkdownBody');
+    // 移除 YAML frontmatter
+    const normalized = text.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n');
+    const match = normalized.match(/^---\n[\s\S]*?\n---\s*\n?/);
+    const body = match ? normalized.slice(match[0].length).trim() : normalized.trim();
+    return body || t('skillManagement.skillMdMetaOnly');
+  };
+
   const tabToolbar = (left: React.ReactNode, right: React.ReactNode) => (
     <div
       style={{
@@ -357,6 +515,195 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
     }),
     [palette.codeBlockBackground, palette.panelBorder]
   );
+
+  /** 打开高级设置弹窗 */
+  const openSourcesModal = (target: 'agent' | 'claudeCode') => {
+    handleGetSkillSources(target);
+    handleGetGithubToken();
+    setSourcesModalTarget(target);
+  };
+
+  /** 高级设置弹窗内容 */
+  const renderSourcesModalContent = () => {
+    if (!sourcesModalTarget) return null;
+    const sources = sourcesModalTarget === 'agent' ? agentSkillSources : claudeSkillSources;
+    const setSources = sourcesModalTarget === 'agent' ? setAgentSkillSources : setClaudeSkillSources;
+    const defaultSources = sourcesModalTarget === 'agent' ? DEFAULT_AGENT_SOURCES : DEFAULT_CLAUDE_SOURCES;
+    const hasDefaults = defaultSources.length > 0;
+
+    const handleAddSource = () => {
+      setSources([...sources, { owner: '', repo: '', branch: 'main', platform: 'github' }]);
+    };
+
+    const handleRemoveSource = (index: number) => {
+      setSources(sources.filter((_, i) => i !== index));
+    };
+
+    const handleUpdateSource = (index: number, field: string, value: string) => {
+      const newSources = [...sources];
+      (newSources[index] as Record<string, string>)[field] = value;
+      setSources(newSources);
+    };
+
+    const handleResetToDefault = () => {
+      setSources([...defaultSources]);
+    };
+
+    const handleSave = () => {
+      handleSaveSkillSources(sourcesModalTarget, sources.filter(s => s.owner.trim() && s.repo.trim()));
+    };
+
+    return (
+      <div>
+        {/* GitHub Token 配置 */}
+        <div style={{ marginBottom: 20, padding: 16, background: palette.surfaceBackground, borderRadius: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <Text strong style={{ fontSize: 13 }}>{t('skillManagement.githubTokenTitle')}</Text>
+            <Tag color="default">{t('skillManagement.optional')}</Tag>
+          </div>
+          <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>
+            {t('skillManagement.githubTokenDesc')}
+          </Text>
+          <Input.Password
+            size="small"
+            value={githubToken}
+            onChange={(e) => setGithubToken(e.target.value)}
+            placeholder="ghp_xxxx"
+            style={{ marginBottom: 8 }}
+          />
+          <Button
+            size="small"
+            type="primary"
+            ghost
+            onClick={() => handleSaveGithubToken(githubToken)}
+          >
+            {t('skillManagement.saveToken')}
+          </Button>
+        </div>
+
+        <Divider style={{ margin: '16px 0' }} />
+
+        {/* 市场源配置 */}
+        <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Text strong style={{ fontSize: 13 }}>{t('skillManagement.sourcesList')}</Text>
+          <Space size="small">
+            {hasDefaults && (
+              <Tooltip title={t('skillManagement.resetToDefaultTooltip')}>
+                <Button size="small" icon={<UndoOutlined />} onClick={handleResetToDefault}>
+                  {t('skillManagement.resetToDefault')}
+                </Button>
+              </Tooltip>
+            )}
+            <Button size="small" icon={<span>+</span>} onClick={handleAddSource}>
+              {t('skillManagement.addSource')}
+            </Button>
+          </Space>
+        </div>
+
+        {hasDefaults && (
+          <Alert
+            type="info"
+            showIcon
+            style={{ marginBottom: 12, fontSize: 12 }}
+            message={t('skillManagement.defaultSourcesHint')}
+          />
+        )}
+
+        {sources.length === 0 ? (
+          <Empty description={t('skillManagement.noSources')} style={{ padding: 20 }} />
+        ) : (
+          sources.map((source, index) => {
+            const isDefault = defaultSources.some(
+              d => d.owner === source.owner && d.repo === source.repo && d.skillsPath === source.skillsPath
+            );
+            return (
+              <div
+                key={index}
+                style={{
+                  display: 'flex',
+                  gap: 8,
+                  alignItems: 'center',
+                  padding: '10px 12px',
+                  marginBottom: 8,
+                  borderRadius: 6,
+                  border: `1px solid ${isDefault ? palette.linkForeground : palette.panelBorder}`,
+                  background: palette.surfaceBackground,
+                }}
+              >
+                <Input
+                  size="small"
+                  value={source.owner}
+                  onChange={(e) => handleUpdateSource(index, 'owner', e.target.value)}
+                  placeholder="owner"
+                  style={{ width: 100 }}
+                />
+                <span>/</span>
+                <Input
+                  size="small"
+                  value={source.repo}
+                  onChange={(e) => handleUpdateSource(index, 'repo', e.target.value)}
+                  placeholder="repo"
+                  style={{ width: 100 }}
+                />
+                <Input
+                  size="small"
+                  value={source.skillsPath || ''}
+                  onChange={(e) => handleUpdateSource(index, 'skillsPath', e.target.value)}
+                  placeholder="path"
+                  style={{ width: 80 }}
+                />
+                <select
+                  value={source.platform || 'github'}
+                  onChange={(e) => handleUpdateSource(index, 'platform', e.target.value)}
+                  style={{
+                    height: 24,
+                    fontSize: 12,
+                    borderRadius: 4,
+                    border: `1px solid ${palette.panelBorder}`,
+                    background: palette.editorBackground,
+                    color: palette.editorForeground,
+                    width: 80,
+                  }}
+                >
+                  <option value="github">GitHub</option>
+                  <option value="gitlab">GitLab</option>
+                  <option value="gitee">Gitee</option>
+                </select>
+                {isDefault && (
+                  <Tag color="blue" style={{ margin: 0 }}>{t('skillManagement.isDefaultSource')}</Tag>
+                )}
+                <Button
+                  type="text"
+                  size="small"
+                  danger
+                  icon={<DeleteOutlined />}
+                  onClick={() => handleRemoveSource(index)}
+                />
+              </div>
+            );
+          })
+        )}
+
+        <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <Button
+            size="small"
+            onClick={() => handleGetSkillSources(sourcesModalTarget)}
+            loading={skillSourcesLoading}
+          >
+            {t('skillManagement.reloadFromConfig')}
+          </Button>
+          <Button
+            type="primary"
+            size="small"
+            onClick={handleSave}
+            loading={skillSourcesLoading}
+          >
+            {t('skillManagement.saveSources')}
+          </Button>
+        </div>
+      </div>
+    );
+  };
 
   // 过滤
   const filteredAgentSkills = React.useMemo(() => {
@@ -490,27 +837,57 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
     <div
       style={{
         flex: '1 1 120px',
-        minWidth: 108,
-        padding: '10px 14px',
-        borderRadius: 10,
+        minWidth: 100,
+        padding: '12px 16px',
+        borderRadius: 8,
         border: `1px solid ${palette.panelBorder}`,
-        background: palette.surfaceBackground,
+        background: `linear-gradient(135deg, ${palette.surfaceBackground} 0%, ${palette.editorBackground} 100%)`,
+        transition: 'all 0.2s ease',
       }}
     >
-      <div style={{ fontSize: 11, color: palette.descriptionForeground, marginBottom: 4, letterSpacing: 0.2 }}>{label}</div>
+      <div style={{ fontSize: 11, color: palette.descriptionForeground, marginBottom: 6, fontWeight: 500, letterSpacing: 0.3 }}>{label}</div>
       <div
         style={{
-          fontSize: 20,
-          fontWeight: 600,
+          fontSize: 22,
+          fontWeight: 700,
           fontVariantNumeric: 'tabular-nums',
           color: accent ?? palette.editorForeground,
-          lineHeight: 1.2,
+          lineHeight: 1,
         }}
       >
         {value}
       </div>
     </div>
   );
+
+  // 统一的技能卡片头部样式
+  const skillCardHeaderStyle: React.CSSProperties = {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'flex-start',
+    gap: 12,
+  };
+
+  const skillCardContentStyle: React.CSSProperties = {
+    flex: '1 1 220px',
+    minWidth: 0,
+  };
+
+  const skillCardActionsStyle: React.CSSProperties = {
+    flex: '0 0 auto',
+    justifyContent: 'flex-end',
+  };
+
+  const detailLabelStyle: React.CSSProperties = {
+    fontSize: 11,
+    marginBottom: 2,
+  };
+
+  const detailValueStyle: React.CSSProperties = {
+    fontSize: 12,
+    wordBreak: 'break-all',
+    color: palette.editorForeground,
+  };
 
   const renderAgentSkillCard = (skill: AgentSkill, isBuiltin: boolean) => {
     const detail = agentSkillDetails[skill.name];
@@ -520,19 +897,19 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
     const mdBody = (detail?.skill_md ?? '').trim();
     return cardShell(
       skill.name,
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: 12 }}>
-          <div style={{ flex: '1 1 220px', minWidth: 0 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={skillCardHeaderStyle}>
+          <div style={skillCardContentStyle}>
             <Space wrap size={[4, 4]}>
               <Tag color={isBuiltin ? 'blue' : 'green'}>
                 {isBuiltin ? t('skillManagement.tagAgentBackend') : t('skillManagement.tagAgentRegistered')}
               </Tag>
               <Text strong style={{ wordBreak: 'break-word' }}>{skill.name}</Text>
-              {skill.enabled && <Tag color="success" icon={<CheckCircleOutlined />}>{t('skillManagement.enabled')}</Tag>}
+              {skill.enabled && <Tag color="success" icon={<CheckCircleOutlined />} style={{ marginLeft: 4 }}>{t('skillManagement.enabled')}</Tag>}
             </Space>
             <div style={descStyle}>{skill.description || t('skillManagement.noDescription')}</div>
           </div>
-          <Space wrap style={{ flex: '0 0 auto', justifyContent: 'flex-end' }}>
+          <Space wrap size={4} style={skillCardActionsStyle}>
             <Tooltip title={skill.enabled ? t('skillManagement.disable') : t('skillManagement.enable')}>
               <Switch checked={skill.enabled} onChange={() => handleToggleAgentSkill(skill)} size="small" />
             </Tooltip>
@@ -562,29 +939,20 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div>
-              <Text type="secondary" style={{ fontSize: 11 }}>{t('skillManagement.detailPath')}</Text>
-              <div style={{ fontSize: 12, wordBreak: 'break-all', color: palette.editorForeground }}>
-                {detail?.path ?? skill.path}
-              </div>
+              <Text type="secondary" style={detailLabelStyle}>{t('skillManagement.detailPath')}</Text>
+              <div style={detailValueStyle}>{detail?.path ?? skill.path}</div>
             </div>
             {scriptText ? (
               <div>
-                <Text type="secondary" style={{ fontSize: 11 }}>{t('skillManagement.detailScript')}</Text>
-                <div
-                  style={{
-                    fontSize: 12,
-                    fontFamily: 'var(--vscode-editor-font-family, monospace)',
-                    wordBreak: 'break-all',
-                    color: palette.editorForeground,
-                  }}
-                >
+                <Text type="secondary" style={detailLabelStyle}>{t('skillManagement.detailScript')}</Text>
+                <div style={{ ...detailValueStyle, fontFamily: 'var(--vscode-editor-font-family, monospace)' }}>
                   {scriptText}
                 </div>
               </div>
             ) : null}
             {requiresList.length > 0 ? (
               <div>
-                <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 4 }}>
+                <Text type="secondary" style={{ ...detailLabelStyle, display: 'block', marginBottom: 4 }}>
                   {t('skillManagement.detailRequires')}
                 </Text>
                 <Space wrap size={[4, 4]}>
@@ -595,19 +963,11 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
               </div>
             ) : null}
             <div>
-              <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 4 }}>
+              <Text type="secondary" style={{ ...detailLabelStyle, display: 'block', marginBottom: 4 }}>
                 {t('skillManagement.detailMarkdown')}
               </Text>
               <div style={mdPreviewStyle}>
-                <pre
-                  style={{
-                    margin: 0,
-                    fontSize: 11,
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-word',
-                    color: palette.editorForeground,
-                  }}
-                >
+                <pre style={{ margin: 0, fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: palette.editorForeground }}>
                   {mdBody || t('skillManagement.detailNoMarkdownBody')}
                 </pre>
               </div>
@@ -625,19 +985,22 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
     const isActive = skill.active !== false;
     return cardShell(
       skill.name,
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: 12 }}>
-          <div style={{ flex: '1 1 220px', minWidth: 0 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={skillCardHeaderStyle}>
+          <div style={skillCardContentStyle}>
             <Space wrap size={[4, 4]}>
               <Tag color={skill.origin === 'workspace' ? 'blue' : 'geekblue'}>
                 {t(`skillManagement.claudeOrigin.${skill.origin}`)}
               </Tag>
-              {!isActive ? <Tag color="warning">{t('skillManagement.claudeSkillInactive')}</Tag> : null}
+              {!isActive && <Tag color="warning">{t('skillManagement.claudeSkillInactive')}</Tag>}
               <Text strong style={{ wordBreak: 'break-word' }}>{skill.name}</Text>
             </Space>
             <div style={descStyle}>{skill.description || t('skillManagement.noDescription')}</div>
           </div>
-          <Space wrap style={{ flex: '0 0 auto', justifyContent: 'flex-end' }}>
+          <Space wrap size={4} style={skillCardActionsStyle}>
+            <Tooltip title={isActive ? t('skillManagement.disable') : t('skillManagement.enable')}>
+              <Switch checked={isActive} onChange={() => handleSetClaudeSkillActive(skill.name, skill.origin, !isActive)} size="small" />
+            </Tooltip>
             {skill.hasSkillMd && (
               <Tooltip title={t('skillManagement.viewDocumentation')}>
                 <Button type="text" size="small" icon={<BookOutlined />} onClick={() => handleOpenLocalSkillMarkdown(skill.path)} />
@@ -646,15 +1009,6 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
             <Tooltip title={t('skillManagement.openFolder')}>
               <Button type="text" size="small" icon={<FolderOpenOutlined />} onClick={() => handleOpenFolder(skill.path)} />
             </Tooltip>
-            {isActive ? (
-              <Button size="small" onClick={() => handleSetClaudeSkillActive(skill.name, skill.origin, false)}>
-                {t('skillManagement.claudeSkillDeactivate')}
-              </Button>
-            ) : (
-              <Button type="primary" size="small" onClick={() => handleSetClaudeSkillActive(skill.name, skill.origin, true)}>
-                {t('skillManagement.claudeSkillActivate')}
-              </Button>
-            )}
             <Tooltip title={t('skillManagement.purgeClaudeSkill')}>
               <Button type="text" size="small" danger icon={<DeleteOutlined />} onClick={() => handlePurgeClaudeCodeSkill(skill.name, skill.origin)} />
             </Tooltip>
@@ -668,29 +1022,21 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div>
-              <Text type="secondary" style={{ fontSize: 11 }}>{t('skillManagement.detailPath')}</Text>
-              <div style={{ fontSize: 12, wordBreak: 'break-all', color: palette.editorForeground }}>{skill.path}</div>
+              <Text type="secondary" style={detailLabelStyle}>{t('skillManagement.detailPath')}</Text>
+              <div style={detailValueStyle}>{skill.path}</div>
             </div>
             <div>
-              <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 4 }}>
+              <Text type="secondary" style={{ ...detailLabelStyle, display: 'block', marginBottom: 4 }}>
                 {t('skillManagement.detailFiles')}
               </Text>
               <Text style={{ fontSize: 12 }}>{skill.files.length ? skill.files.join(', ') : '—'}</Text>
             </div>
             <div>
-              <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 4 }}>
+              <Text type="secondary" style={{ ...detailLabelStyle, display: 'block', marginBottom: 4 }}>
                 {t('skillManagement.detailMarkdown')}
               </Text>
               <div style={mdPreviewStyle}>
-                <pre
-                  style={{
-                    margin: 0,
-                    fontSize: 11,
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-word',
-                    color: palette.editorForeground,
-                  }}
-                >
+                <pre style={{ margin: 0, fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: palette.editorForeground }}>
                   {mdText === undefined ? '' : formatLocalSkillMdPreview(mdText)}
                 </pre>
               </div>
@@ -701,34 +1047,72 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
     );
   };
 
-  const renderAgentMarketplaceCard = (skill: MarketplaceSkill) => {
+  /**
+   * 统一的市场技能卡片渲染函数
+   */
+  const renderMarketplaceCard = (
+    skill: MarketplaceSkill,
+    installTarget: 'agent' | 'claudeCode'
+  ) => {
     const installing = isInstalling(skill.id);
-    const alreadyInstalledAgent = agentSkills.some(s => s.name === skill.id);
+    const alreadyInstalled = installTarget === 'agent'
+      ? agentSkills.some(s => s.name === skill.id)
+      : claudeCodeSkills.some(s => s.name === skill.id);
+    const hasUpdate = skill.updateAvailable && skill.installedVersion;
+    const cardKey = installTarget === 'agent' ? `agent-mp-${skill.id}` : `claude-mp-${skill.id}`;
+    const handleInstall = installTarget === 'agent'
+      ? handleInstallAgentFromMarket
+      : handleInstallClaudeFromMarket;
+
     return cardShell(
-      `agent-mp-${skill.id}`,
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: 12 }}>
-          <div style={{ flex: '1 1 240px', minWidth: 0 }}>
+      cardKey,
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={skillCardHeaderStyle}>
+          <div style={skillCardContentStyle}>
             <Space wrap size={[4, 4]}>
               <Text strong style={{ wordBreak: 'break-word' }}>{skill.name}</Text>
+              {skill.version && <Tag style={{ margin: 0 }}>v{skill.version}</Tag>}
               <Tag color="blue">{skill.author}</Tag>
+              {hasUpdate && <Tag color="orange">{t('skillManagement.updateAvailable')}</Tag>}
+              {alreadyInstalled && <Tag color="success">{t('skillManagement.installed')}</Tag>}
             </Space>
             <div style={descStyle}>{getDescription(skill)}</div>
-            <Space size={4} wrap style={{ marginTop: 8 }}>
-              {(skill.tags ?? []).slice(0, 6).map(tag => <Tag key={tag} style={{ margin: 0, fontSize: 11 }}>{tag}</Tag>)}
-            </Space>
+            {(skill.tags ?? []).length > 0 && (
+              <Space size={4} wrap style={{ marginTop: 6 }}>
+                {(skill.tags ?? []).slice(0, 6).map(tag => <Tag key={tag} style={{ margin: 0, fontSize: 11 }}>{tag}</Tag>)}
+              </Space>
+            )}
           </div>
-          <Space wrap style={{ flex: '0 0 auto' }}>
-            <Button
-              type="primary"
-              size="small"
-              icon={installing ? <Spin size="small" /> : <DownloadOutlined />}
-              onClick={() => handleInstallAgentFromMarket(skill)}
-              disabled={installing || alreadyInstalledAgent}
-              loading={installing}
-            >
-              {alreadyInstalledAgent ? t('skillManagement.installed') : t('skillManagement.installAgent')}
-            </Button>
+          <Space wrap size={4} style={skillCardActionsStyle}>
+            {hasUpdate ? (
+              <Button
+                type="primary"
+                size="small"
+                icon={<SyncOutlined />}
+                onClick={() => handlePreviewUpdateDiff(skill)}
+                disabled={installing}
+                loading={installing || !!updateDiffLoadingById[skill.id]}
+              >
+                {t('skillManagement.updateTo', { version: skill.version })}
+              </Button>
+            ) : (
+              <Button
+                type="primary"
+                size="small"
+                icon={installing ? <Spin size="small" /> : <DownloadOutlined />}
+                onClick={() => handleInstall(skill)}
+                disabled={installing || alreadyInstalled}
+                loading={installing}
+              >
+                {installing
+                  ? t('skillManagement.installing')
+                  : alreadyInstalled
+                    ? t('skillManagement.installed')
+                    : installTarget === 'agent'
+                      ? t('skillManagement.installAgent')
+                      : t('skillManagement.installClaudeCode')}
+              </Button>
+            )}
           </Space>
         </div>
         <SkillDetailCollapse
@@ -736,14 +1120,20 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
           loading={false}
           borderColor={palette.panelBorder}
         >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {skill.installedVersion && (
+              <div>
+                <Text type="secondary" style={detailLabelStyle}>{t('skillManagement.detailInstalledVersion')}</Text>
+                <div style={detailValueStyle}>v{skill.installedVersion}</div>
+              </div>
+            )}
             <div>
-              <Text type="secondary" style={{ fontSize: 11 }}>{t('skillManagement.detailRepo')}</Text>
-              <div style={{ wordBreak: 'break-all' }}>{skill.repo}</div>
+              <Text type="secondary" style={detailLabelStyle}>{t('skillManagement.detailRepo')}</Text>
+              <div style={detailValueStyle}>{skill.repo}</div>
             </div>
             {(skill.compatibility ?? []).length > 0 ? (
               <div>
-                <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 4 }}>
+                <Text type="secondary" style={{ ...detailLabelStyle, display: 'block', marginBottom: 4 }}>
                   {t('skillManagement.detailCompat')}
                 </Text>
                 <Space wrap size={[4, 4]}>
@@ -753,6 +1143,18 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
                 </Space>
               </div>
             ) : null}
+            {skill.skillMdContent && (
+              <div>
+                <Text type="secondary" style={{ ...detailLabelStyle, display: 'block', marginBottom: 4 }}>
+                  {t('skillManagement.detailMarkdown')}
+                </Text>
+                <div style={mdPreviewStyle}>
+                  <pre style={{ margin: 0, fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: palette.editorForeground }}>
+                    {formatSkillMdPreview(skill.skillMdContent)}
+                  </pre>
+                </div>
+              </div>
+            )}
             {skill.homepage ? (
               <Button
                 type="link"
@@ -770,73 +1172,12 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
     );
   };
 
+  const renderAgentMarketplaceCard = (skill: MarketplaceSkill) => {
+    return renderMarketplaceCard(skill, 'agent');
+  };
+
   const renderClaudeMarketplaceCard = (skill: MarketplaceSkill) => {
-    const installing = isInstalling(skill.id);
-    const alreadyInstalledClaude = claudeCodeSkills.some(s => s.name === skill.id);
-    return cardShell(
-      `claude-mp-${skill.id}`,
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: 12 }}>
-          <div style={{ flex: '1 1 240px', minWidth: 0 }}>
-            <Space wrap size={[4, 4]}>
-              <Text strong style={{ wordBreak: 'break-word' }}>{skill.name}</Text>
-              <Tag color="blue">{skill.author}</Tag>
-            </Space>
-            <div style={descStyle}>{getDescription(skill)}</div>
-            <Space size={4} wrap style={{ marginTop: 8 }}>
-              {(skill.tags ?? []).slice(0, 6).map(tag => <Tag key={tag} style={{ margin: 0, fontSize: 11 }}>{tag}</Tag>)}
-            </Space>
-          </div>
-          <Space wrap style={{ flex: '0 0 auto' }}>
-            <Button
-              type="primary"
-              size="small"
-              icon={installing ? <Spin size="small" /> : <DownloadOutlined />}
-              onClick={() => handleInstallClaudeFromMarket(skill)}
-              disabled={installing || alreadyInstalledClaude}
-              loading={installing}
-            >
-              {alreadyInstalledClaude ? t('skillManagement.installed') : t('skillManagement.installClaudeCode')}
-            </Button>
-          </Space>
-        </div>
-        <SkillDetailCollapse
-          panelLabel={t('skillManagement.skillDetails')}
-          loading={false}
-          borderColor={palette.panelBorder}
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 12 }}>
-            <div>
-              <Text type="secondary" style={{ fontSize: 11 }}>{t('skillManagement.detailRepo')}</Text>
-              <div style={{ wordBreak: 'break-all' }}>{skill.repo}</div>
-            </div>
-            {(skill.compatibility ?? []).length > 0 ? (
-              <div>
-                <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 4 }}>
-                  {t('skillManagement.detailCompat')}
-                </Text>
-                <Space wrap size={[4, 4]}>
-                  {(skill.compatibility ?? []).map((c) => (
-                    <Tag key={c} style={{ margin: 0 }}>{c}</Tag>
-                  ))}
-                </Space>
-              </div>
-            ) : null}
-            {skill.homepage ? (
-              <Button
-                type="link"
-                size="small"
-                style={{ padding: 0, height: 'auto' }}
-                onClick={() => vscode.postMessage({ type: 'openExternal', payload: { url: skill.homepage } })}
-              >
-                {t('skillManagement.viewHomepage')}
-              </Button>
-            ) : null}
-          </div>
-        </SkillDetailCollapse>
-      </div>,
-      true
-    );
+    return renderMarketplaceCard(skill, 'claudeCode');
   };
 
   const renderClaudeUnifiedRow = (row: (typeof claudeUnifiedRows)[number]) => {
@@ -855,9 +1196,9 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
 
     return cardShell(
       `vsix-${skill.name}`,
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: 12 }}>
-          <div style={{ flex: '1 1 220px', minWidth: 0 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={skillCardHeaderStyle}>
+          <div style={skillCardContentStyle}>
             <Space wrap size={[4, 4]}>
               <Tag color="purple">{t('skillManagement.vsixTemplateTag')}</Tag>
               {workspaceSynced ? (
@@ -873,7 +1214,7 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
             </Space>
             <div style={descStyle}>{skill.description || t('skillManagement.noDescription')}</div>
           </div>
-          <Space wrap style={{ flex: '0 0 auto', justifyContent: 'flex-end' }}>
+          <Space wrap size={4} style={skillCardActionsStyle}>
             <Button
               type="primary"
               size="small"
@@ -883,6 +1224,11 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
             >
               {workspaceSynced ? t('skillManagement.resyncVsixToWorkspace') : t('skillManagement.syncVsixToWorkspace')}
             </Button>
+            {workspaceSynced && (
+              <Tooltip title={wsActive ? t('skillManagement.disable') : t('skillManagement.enable')}>
+                <Switch checked={wsActive} onChange={() => handleSetClaudeSkillActive(skill.name, 'workspace', !wsActive)} size="small" />
+              </Tooltip>
+            )}
             {skill.hasSkillMd && (
               <Tooltip title={t('skillManagement.viewDocumentation')}>
                 <Button type="text" size="small" icon={<BookOutlined />} onClick={() => handleOpenLocalSkillMarkdown(displayPath)} />
@@ -891,21 +1237,11 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
             <Tooltip title={t('skillManagement.openFolder')}>
               <Button type="text" size="small" icon={<FolderOpenOutlined />} onClick={() => handleOpenFolder(displayPath)} />
             </Tooltip>
-            {workspaceSynced && wsActive ? (
-              <Button size="small" onClick={() => handleSetClaudeSkillActive(skill.name, 'workspace', false)}>
-                {t('skillManagement.claudeSkillDeactivate')}
-              </Button>
-            ) : null}
-            {workspaceSynced && !wsActive ? (
-              <Button type="primary" size="small" onClick={() => handleSetClaudeSkillActive(skill.name, 'workspace', true)}>
-                {t('skillManagement.claudeSkillActivate')}
-              </Button>
-            ) : null}
-            {workspaceSynced ? (
+            {workspaceSynced && (
               <Tooltip title={t('skillManagement.purgeClaudeSkill')}>
                 <Button type="text" size="small" danger icon={<DeleteOutlined />} onClick={() => handlePurgeClaudeCodeSkill(skill.name, 'workspace')} />
               </Tooltip>
-            ) : null}
+            )}
           </Space>
         </div>
         <SkillDetailCollapse
@@ -916,31 +1252,23 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div>
-              <Text type="secondary" style={{ fontSize: 11 }}>{t('skillManagement.detailPath')}</Text>
-              <div style={{ fontSize: 12, wordBreak: 'break-all', color: palette.editorForeground }}>{displayPath}</div>
+              <Text type="secondary" style={detailLabelStyle}>{t('skillManagement.detailPath')}</Text>
+              <div style={detailValueStyle}>{displayPath}</div>
             </div>
-            {workspaceSynced ? (
+            {workspaceSynced && (
               <div>
-                <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 4 }}>
+                <Text type="secondary" style={{ ...detailLabelStyle, display: 'block', marginBottom: 4 }}>
                   {t('skillManagement.detailFiles')}
                 </Text>
                 <Text style={{ fontSize: 12 }}>{detailFiles.length ? detailFiles.join(', ') : '—'}</Text>
               </div>
-            ) : null}
+            )}
             <div>
-              <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 4 }}>
+              <Text type="secondary" style={{ ...detailLabelStyle, display: 'block', marginBottom: 4 }}>
                 {t('skillManagement.detailMarkdown')}
               </Text>
               <div style={mdPreviewStyle}>
-                <pre
-                  style={{
-                    margin: 0,
-                    fontSize: 11,
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-word',
-                    color: palette.editorForeground,
-                  }}
-                >
+                <pre style={{ margin: 0, fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: palette.editorForeground }}>
                   {mdText === undefined ? '' : formatLocalSkillMdPreview(mdText)}
                 </pre>
               </div>
@@ -961,16 +1289,20 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
   const renderAgentMarketplaceSection = () => (
     <Collapse ghost style={{ marginTop: 16 }}>
       <Panel header={sectionPanelHeader(<ShopOutlined />, t('skillManagement.marketplaceAgent'))} key="marketplaceAgent">
-        <div style={{ marginBottom: 10 }}>
+        <div style={{ marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Space wrap align="center">
             <Button icon={<ReloadOutlined />} onClick={handleRefreshMarketplace} loading={marketplaceLoading} size="small">
               {t('skillManagement.refresh')}
             </Button>
-            <Button icon={<SettingOutlined />} onClick={handleOpenSkillSourcesSettings} size="small">
-              {t('skillManagement.openSkillSourcesSettings')}
-            </Button>
             <Text type="secondary" style={{ fontSize: 12 }}>{t('skillManagement.marketplaceAgentHint')}</Text>
           </Space>
+          <Button
+            size="small"
+            icon={<SettingOutlined />}
+            onClick={() => openSourcesModal('agent')}
+          >
+            {t('skillManagement.advancedSettings')}
+          </Button>
         </div>
         {agentMarketplaceLoadErrors.length > 0 && (
           <Alert
@@ -991,9 +1323,7 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
           <div style={{ textAlign: 'center', padding: 20 }}><Spin /></div>
         ) : filteredAgentMarketplaceSkills.length === 0 ? (
           <Empty description={t('skillManagement.noMarketplaceSkillsAgent')}>
-            <Button type="primary" size="small" icon={<SettingOutlined />} onClick={handleOpenSkillSourcesSettings}>
-              {t('skillManagement.openSkillSourcesSettings')}
-            </Button>
+            <Text type="secondary" style={{ fontSize: 12 }}>{t('skillManagement.configureSourcesHint')}</Text>
           </Empty>
         ) : (
           <>
@@ -1026,16 +1356,20 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
   const renderClaudeMarketplaceSection = () => (
     <Collapse ghost style={{ marginTop: 16 }}>
       <Panel header={sectionPanelHeader(<ShopOutlined />, t('skillManagement.marketplaceClaude'))} key="marketplaceClaude">
-        <div style={{ marginBottom: 10 }}>
+        <div style={{ marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Space wrap align="center">
             <Button icon={<ReloadOutlined />} onClick={handleRefreshMarketplace} loading={marketplaceLoading} size="small">
               {t('skillManagement.refresh')}
             </Button>
-            <Button icon={<SettingOutlined />} onClick={handleOpenClaudeSkillSourcesSettings} size="small">
-              {t('skillManagement.openClaudeSkillSourcesSettings')}
-            </Button>
             <Text type="secondary" style={{ fontSize: 12 }}>{t('skillManagement.marketplaceClaudeHint')}</Text>
           </Space>
+          <Button
+            size="small"
+            icon={<SettingOutlined />}
+            onClick={() => openSourcesModal('claudeCode')}
+          >
+            {t('skillManagement.advancedSettings')}
+          </Button>
         </div>
         {claudeMarketplaceLoadErrors.length > 0 && (
           <Alert
@@ -1056,9 +1390,7 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
           <div style={{ textAlign: 'center', padding: 20 }}><Spin /></div>
         ) : filteredClaudeMarketplaceSkills.length === 0 ? (
           <Empty description={t('skillManagement.noMarketplaceSkillsClaude')}>
-            <Button type="primary" size="small" icon={<SettingOutlined />} onClick={handleOpenClaudeSkillSourcesSettings}>
-              {t('skillManagement.openClaudeSkillSourcesSettings')}
-            </Button>
+            <Text type="secondary" style={{ fontSize: 12 }}>{t('skillManagement.configureSourcesHint')}</Text>
           </Empty>
         ) : (
           <>
@@ -1093,13 +1425,6 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
     const customSkills = filteredAgentSkills.filter(s => s.source !== 'builtin');
     return (
       <div>
-        <Alert
-          type="info"
-          showIcon
-          style={{ marginBottom: 16 }}
-          message={t('skillManagement.agentTabIntroTitle')}
-          description={t('skillManagement.agentTabIntroBody')}
-        />
         {tabToolbar(
           <Text type="secondary" style={{ fontSize: 13 }}>
             {t('skillManagement.agentSkillsCount', { count: filteredAgentSkills.length })}
@@ -1149,18 +1474,16 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
     const listBlocking =
       (claudeCodeSkillsLoading || builtinSkillsLoading) && claudeUnifiedRows.length === 0;
 
+    // 分组：扩展模板、工作区技能、用户目录技能
+    const bundledRows = claudeUnifiedRows.filter(r => r.kind === 'bundled');
+    const workspaceRows = claudeUnifiedRows.filter(r => r.kind === 'other' && r.skill.origin === 'workspace');
+    const globalRows = claudeUnifiedRows.filter(r => r.kind === 'other' && r.skill.origin === 'global');
+
     return (
       <div>
-        <Alert
-          type="info"
-          showIcon
-          style={{ marginBottom: 16 }}
-          message={t('skillManagement.claudeTabIntroTitle')}
-          description={t('skillManagement.claudeTabIntroBody')}
-        />
         {tabToolbar(
           <Text type="secondary" style={{ fontSize: 13 }}>
-            {t('skillManagement.claudeCodeSkillsCount', { count: filteredClaudeCodeSkills.length })}
+            {t('skillManagement.claudeCodeSkillsCount', { count: claudeUnifiedRows.length })}
           </Text>,
           <>
             <Button icon={<ReloadOutlined />} onClick={handleRefreshClaudeList} size="small">
@@ -1174,14 +1497,42 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
             </Button>
           </>
         )}
-        <Text strong style={{ fontSize: 13, display: 'block', marginBottom: 10 }}>
-          {t('skillManagement.claudeUnifiedListTitle')}
-        </Text>
         {listBlocking ? <div style={{ textAlign: 'center', padding: 40 }}><Spin /></div> : (
           <>
-            {claudeUnifiedRows.length > 0 ? (
-              <>{claudeUnifiedRows.map((row) => renderClaudeUnifiedRow(row))}</>
-            ) : (
+            {/* 扩展附带模板 */}
+            {bundledRows.length > 0 && (
+              <Collapse defaultActiveKey={['bundled']} ghost>
+                <Panel
+                  header={sectionPanelHeader(<InboxOutlined />, `${t('skillManagement.vsixTemplateSection')} (${bundledRows.length})`)}
+                  key="bundled"
+                >
+                  {bundledRows.map((row) => renderClaudeUnifiedRow(row))}
+                </Panel>
+              </Collapse>
+            )}
+            {/* 工作区技能 */}
+            {workspaceRows.length > 0 && (
+              <Collapse defaultActiveKey={['workspace']} ghost style={{ marginTop: bundledRows.length > 0 ? 8 : 0 }}>
+                <Panel
+                  header={sectionPanelHeader(<ToolOutlined />, `${t('skillManagement.claudeWorkspaceSection')} (${workspaceRows.length})`)}
+                  key="workspace"
+                >
+                  {workspaceRows.map((row) => renderClaudeUnifiedRow(row))}
+                </Panel>
+              </Collapse>
+            )}
+            {/* 用户目录技能 */}
+            {globalRows.length > 0 && (
+              <Collapse defaultActiveKey={['global']} ghost style={{ marginTop: bundledRows.length > 0 || workspaceRows.length > 0 ? 8 : 0 }}>
+                <Panel
+                  header={sectionPanelHeader(<CloudSyncOutlined />, `${t('skillManagement.claudeGlobalSection')} (${globalRows.length})`)}
+                  key="global"
+                >
+                  {globalRows.map((row) => renderClaudeUnifiedRow(row))}
+                </Panel>
+              </Collapse>
+            )}
+            {claudeUnifiedRows.length === 0 && (
               <Empty description={t('skillManagement.noClaudeCodeSkills')} style={{ padding: 40 }} />
             )}
           </>
@@ -1198,54 +1549,191 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
     <ConfigProvider theme={themeConfig}>
       <Layout style={{ minHeight: '100vh', background: 'transparent' }}>
         <Content style={{ padding: '20px 22px 28px' }}>
+          <Modal
+            open={updateDiffModal.open}
+            title={t('skillManagement.updateDiffTitle', {
+              name: updateDiffModal.skill?.name || updateDiffModal.diff?.skillName || '',
+              from: updateDiffModal.diff?.localVersion || updateDiffModal.skill?.installedVersion || '',
+              to: updateDiffModal.diff?.remoteVersion || updateDiffModal.skill?.version || '',
+            })}
+            width={920}
+            okText={t('skillManagement.confirmUpdate')}
+            cancelText={t('skillManagement.cancel')}
+            onCancel={() => setUpdateDiffModal({ open: false })}
+            onOk={() => {
+              if (updateDiffModal.skill) {
+                handleConfirmUpdate(updateDiffModal.skill);
+              }
+            }}
+            okButtonProps={{ disabled: !updateDiffModal.skill }}
+          >
+            {!updateDiffModal.diff ? (
+              <div style={{ padding: 16, textAlign: 'center' }}>
+                <Spin />
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, fontSize: 12 }}>
+                  <Tag color="green">{t('skillManagement.diffAdded', { count: updateDiffModal.diff.filesAdded.length })}</Tag>
+                  <Tag color="red">{t('skillManagement.diffDeleted', { count: updateDiffModal.diff.filesDeleted.length })}</Tag>
+                  <Tag color="blue">{t('skillManagement.diffModified', { count: updateDiffModal.diff.filesModified.length })}</Tag>
+                </div>
+                <div style={{ maxHeight: 460, overflow: 'auto', border: `1px solid ${palette.panelBorder}`, borderRadius: 10 }}>
+                  <div style={{ padding: 12 }}>
+                    {(updateDiffModal.diff.fileDiffs || []).map((f: any) => (
+                      <div key={f.path} style={{ marginBottom: 14 }}>
+                        <Text strong style={{ fontSize: 12 }}>{f.path}</Text>
+                        <Tag style={{ marginLeft: 8 }} color={f.status === 'added' ? 'green' : f.status === 'deleted' ? 'red' : 'blue'}>
+                          {f.status}
+                        </Tag>
+                        {(f.hunks || []).map((h: any, idx: number) => (
+                          <pre
+                            key={idx}
+                            style={{
+                              marginTop: 8,
+                              marginBottom: 0,
+                              padding: '10px 12px',
+                              background: palette.codeBlockBackground,
+                              border: `1px solid ${palette.panelBorder}`,
+                              borderRadius: 8,
+                              fontSize: 11,
+                              whiteSpace: 'pre-wrap',
+                              wordBreak: 'break-word',
+                              color: palette.editorForeground,
+                            }}
+                          >
+                            {h.lines?.join('\n') || ''}
+                          </pre>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </Modal>
+          {/* 帮助弹窗 */}
+          <Modal
+            open={helpModalOpen}
+            title={t('skillManagement.helpTitle')}
+            onCancel={() => setHelpModalOpen(false)}
+            footer={null}
+            width={720}
+          >
+            <div style={{ fontSize: 13, lineHeight: 1.7 }}>
+              <Title level={5} style={{ marginTop: 0 }}>{t('skillManagement.helpAgentTabTitle')}</Title>
+              <Text style={{ display: 'block', marginBottom: 8 }}>{t('skillManagement.helpAgentTabDescFull')}</Text>
+              <ul style={{ margin: '0 0 16px', paddingLeft: 20 }}>
+                <li>{t('skillManagement.helpAgentEnable')}</li>
+                <li>{t('skillManagement.helpAgentArchive')}</li>
+                <li>{t('skillManagement.helpAgentImport')}</li>
+                <li>{t('skillManagement.helpAgentScan')}</li>
+              </ul>
+
+              <Title level={5}>{t('skillManagement.helpClaudeTabTitle')}</Title>
+              <Text style={{ display: 'block', marginBottom: 8 }}>{t('skillManagement.helpClaudeTabDescFull')}</Text>
+              <ul style={{ margin: '0 0 16px', paddingLeft: 20 }}>
+                <li>{t('skillManagement.helpClaudeSync')}</li>
+                <li>{t('skillManagement.helpClaudeToggle')}</li>
+                <li>{t('skillManagement.helpClaudeDelete')}</li>
+              </ul>
+
+              <Title level={5}>{t('skillManagement.helpMarketplaceTitle')}</Title>
+              <Text style={{ display: 'block', marginBottom: 8 }}>{t('skillManagement.helpMarketplaceDesc')}</Text>
+              <ul style={{ margin: '0 0 16px', paddingLeft: 20 }}>
+                <li>{t('skillManagement.helpMarketplaceInstall')}</li>
+                <li>{t('skillManagement.helpMarketplaceSources')}</li>
+                <li>{t('skillManagement.helpMarketplaceUpdate')}</li>
+              </ul>
+
+              <Title level={5}>{t('skillManagement.helpSourcesTitle')}</Title>
+              <Text>{t('skillManagement.helpSourcesDesc')}</Text>
+            </div>
+          </Modal>
+          {/* 高级设置弹窗 */}
+          <Modal
+            open={sourcesModalTarget !== null}
+            title={t('skillManagement.advancedSettingsTitle')}
+            onCancel={() => setSourcesModalTarget(null)}
+            footer={null}
+            width={640}
+          >
+            {renderSourcesModalContent()}
+          </Modal>
           <div style={{ maxWidth: 1180, margin: '0 auto' }}>
+            {/* 头部区域 */}
             <div
               style={{
                 marginBottom: 20,
-                padding: '20px 22px',
-                borderRadius: 12,
+                padding: '24px 28px',
+                borderRadius: 16,
                 border: `1px solid ${heroBorder}`,
-                background: heroBg,
+                background: `linear-gradient(180deg, ${heroBg} 0%, ${palette.editorBackground} 100%)`,
+                boxShadow: `0 2px 8px rgba(0,0,0,0.08)`,
               }}
             >
-              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
-                <div style={{ flex: '1 1 240px', minWidth: 0 }}>
-                  <Title level={4} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: 36,
-                        height: 36,
-                        borderRadius: 10,
-                        background: palette.inactiveSelectionBackground,
-                        color: palette.editorForeground,
-                      }}
-                    >
-                      <AppstoreOutlined />
-                    </span>
-                    {t('skillManagement.title')}
-                  </Title>
-                  <Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 13, lineHeight: 1.55 }}>
-                    {t('skillManagement.subtitle')}
-                  </Text>
+              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 20 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 42,
+                      height: 42,
+                      borderRadius: 12,
+                      background: `linear-gradient(135deg, ${palette.linkForeground}20 0%, ${palette.linkForeground}10 100%)`,
+                      color: palette.linkForeground,
+                    }}
+                  >
+                    <AppstoreOutlined style={{ fontSize: 20 }} />
+                  </span>
+                  <div>
+                    <Title level={4} style={{ margin: 0 }}>{t('skillManagement.title')}</Title>
+                    <Text type="secondary" style={{ fontSize: 12 }}>{t('skillManagement.subtitle')}</Text>
+                  </div>
+                  <Tooltip title={t('skillManagement.helpTooltip')}>
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<QuestionCircleOutlined />}
+                      onClick={() => setHelpModalOpen(true)}
+                      style={{ color: palette.linkForeground, marginLeft: 8 }}
+                    />
+                  </Tooltip>
                 </div>
-                <div style={{ flex: '1 1 320px', display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                  {statPill(t('skillManagement.statEnabledAgent'), agentEnabledCount, palette.successForeground)}
-                  {statPill(t('skillManagement.statCustomAgent'), agentCustomCount)}
-                  {statPill(t('skillManagement.statMarketplace'), marketplaceTotalCount, palette.linkForeground)}
-                  {statPill(t('skillManagement.statClaude'), claudeCodeSkills.length)}
-                </div>
+                <Tooltip title={t('skillManagement.refreshAll')}>
+                  <Button
+                    size="small"
+                    icon={<ReloadOutlined />}
+                    onClick={() => {
+                      vscode.postMessage({ type: 'listAgentSkills' });
+                      vscode.postMessage({ type: 'listClaudeCodeSkills' });
+                      vscode.postMessage({ type: 'listBuiltinSkills' });
+                      vscode.postMessage({ type: 'refreshMarketplace' });
+                    }}
+                  >
+                    {t('skillManagement.refresh')}
+                  </Button>
+                </Tooltip>
               </div>
-              <Divider style={{ margin: '16px 0 12px', borderColor: heroBorder }} />
+
+              {/* 统计卡片 */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
+                {statPill(t('skillManagement.statEnabledAgent'), agentEnabledCount, palette.successForeground)}
+                {statPill(t('skillManagement.statCustomAgent'), agentCustomCount)}
+                {statPill(t('skillManagement.statMarketplace'), marketplaceTotalCount, palette.linkForeground)}
+                {statPill(t('skillManagement.statClaude'), claudeCodeSkills.length)}
+              </div>
+
+              {/* 搜索框 */}
               <Search
                 placeholder={t('skillManagement.searchPlaceholder')}
                 allowClear
                 enterButton
                 size="middle"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
+                value={searchInput}
+                onChange={e => setSearchInput(e.target.value)}
               />
             </div>
             <Tabs

@@ -10,6 +10,7 @@ JSON 容错策略：
 from __future__ import annotations
 
 import asyncio
+import json
 from collections.abc import Mapping
 from typing import Any
 
@@ -71,17 +72,18 @@ def _serialize_for_json(obj: Any) -> Any:
     return str(obj)
 
 
-def jr_dumps(obj: Any, indent: int | None = 2) -> str:
+def jr_dumps(obj: Any, indent: int | None = None) -> str:
     """JSON 序列化（带容错处理）。
 
     自动处理不可序列化类型，确保输出有效 JSON。
 
     :param obj: 要序列化的对象。
-    :param indent: 缩进级别。
+    :param indent: 缩进级别；默认使用紧凑输出以减少 token 与日志体积。
     :return: JSON 字符串。
     """
     serialized = _serialize_for_json(obj)
-    return json_repair.dumps(serialized, indent=indent, ensure_ascii=False)
+    json_text = json.dumps(serialized, indent=indent, ensure_ascii=False)
+    return json_repair.repair_json(json_text, indent=indent, ensure_ascii=False)
 
 
 def jr_parse(text: str) -> Any:

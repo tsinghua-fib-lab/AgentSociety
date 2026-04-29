@@ -190,10 +190,10 @@ export class YamlViewer {
     
     function highlightYaml(str) {
       return str
-        .replace(/^(\s*)([a-zA-Z_][a-zA-Z0-9_]*)(:)/gm, '$1<span class="yaml-key">$2</span>$3')
-        .replace(/:\s*"([^"]*)"/g, ': <span class="yaml-value">"$1"</span>')
-        .replace(/:\s*(\\d+)/g, ': <span class="yaml-number">$1</span>')
-        .replace(/:\s*(true|false)/g, ': <span class="yaml-bool">$1</span>')
+        .replace(/^(\\s*)([a-zA-Z_][a-zA-Z0-9_]*)(:)/gm, '$1<span class="yaml-key">$2</span>$3')
+        .replace(/:\\s*"([^"]*)"/g, ': <span class="yaml-value">"$1"</span>')
+        .replace(/:\\s*(\\d+)/g, ': <span class="yaml-number">$1</span>')
+        .replace(/:\\s*(true|false)/g, ': <span class="yaml-bool">$1</span>')
         .replace(/(#.*)$/gm, '<span class="yaml-comment">$1</span>');
     }
     

@@ -157,6 +157,7 @@ class PersistenceConfig:
     wal_max_entries: int = 1000
     llm_history_max_entries: int = 100
     enable_llm_history: bool = False
+    archive_after_days: int = 30
 
 
 @dataclass
@@ -315,16 +316,125 @@ class AgentConfig:
 
     @classmethod
     def from_kwargs(cls, kwargs: dict | None = None) -> "AgentConfig":
-        """从 kwargs 字典创建配置实例。
+        """从 kwargs 字典创建配置实例（支持最小可用覆盖）。
 
-        目前返回默认配置，忽略 kwargs 中的配置项。
-        未来可扩展支持从 kwargs 覆盖特定配置。
+        该方法用于把 `PersonAgent(..., **capability_kwargs)` 传入的少数关键参数
+        映射到 `AgentConfig`。本仓库明确 **不需要向后兼容**：未识别的字段会被忽略，
+        但已支持字段会严格生效（并做 clamp）。
 
-        :param kwargs: 可选的配置字典。
-        :return: 配置实例。
+        支持字段（约定名）：
+        - max_tool_rounds -> loop.max_rounds
+        - step_timeout -> loop.step_timeout
+        - preload_workspace_paths -> context.preload_workspace_paths
+        - thread_key_state_paths -> context.thread_key_state_paths
+        - workspace_read_chunk_chars -> context.workspace_read_chunk_cap
+        - tool_result_thread_budget_chars -> context.tool_result_thread_budget
+        - catalog_working_set_json -> context.catalog_working_set_json
+        - system_prompt_max_identity_chars -> context.system_prompt_max_identity_chars
+        - profile_max_chars / profile_truncate_chars -> context.profile_max_chars
+        - enable_llm_history -> persistence.enable_llm_history
+        - llm_history_max_entries -> persistence.llm_history_max_entries
         """
-        # 目前返回默认配置
-        return cls()
+        raw = kwargs or {}
+        if not isinstance(raw, dict) or not raw:
+            return cls()
+
+        cfg = cls()
+
+        def _as_int(v: object, default: int) -> int:
+            try:
+                return int(v)  # type: ignore[arg-type]
+            except Exception:
+                return default
+
+        def _as_bool(v: object, default: bool = False) -> bool:
+            if isinstance(v, bool):
+                return v
+            if isinstance(v, (int, float)):
+                return bool(v)
+            s = str(v).strip().lower()
+            if s in {"1", "true", "yes", "y", "on"}:
+                return True
+            if s in {"0", "false", "no", "n", "off"}:
+                return False
+            return default
+
+        def _as_list_str(v: object) -> list[str]:
+            if v is None:
+                return []
+            if isinstance(v, list):
+                return [str(x) for x in v if str(x).strip()]
+            if isinstance(v, tuple):
+                return [str(x) for x in v if str(x).strip()]
+            s = str(v).strip()
+            return [s] if s else []
+
+        # loop
+        if "max_tool_rounds" in raw:
+            cfg.loop.max_rounds = max(
+                1, _as_int(raw.get("max_tool_rounds"), cfg.loop.max_rounds)
+            )
+        if "step_timeout" in raw:
+            cfg.loop.step_timeout = max(
+                5, _as_int(raw.get("step_timeout"), cfg.loop.step_timeout)
+            )
+
+        # context: paths / budgets
+        if "preload_workspace_paths" in raw:
+            cfg.context.preload_workspace_paths = _as_list_str(
+                raw.get("preload_workspace_paths")
+            )
+        if "thread_key_state_paths" in raw:
+            cfg.context.thread_key_state_paths = _as_list_str(
+                raw.get("thread_key_state_paths")
+            )
+
+        if "workspace_read_chunk_chars" in raw:
+            cap = _as_int(
+                raw.get("workspace_read_chunk_chars"),
+                cfg.context.workspace_read_chunk_cap,
+            )
+            cfg.context.workspace_read_chunk_cap = max(1024, min(96_000, cap))
+
+        if "tool_result_thread_budget_chars" in raw:
+            bud = _as_int(
+                raw.get("tool_result_thread_budget_chars"),
+                cfg.context.tool_result_thread_budget,
+            )
+            cfg.context.tool_result_thread_budget = max(4096, min(256_000, bud))
+
+        if "catalog_working_set_json" in raw:
+            cfg.context.catalog_working_set_json = _as_bool(
+                raw.get("catalog_working_set_json"), False
+            )
+
+        if "system_prompt_max_identity_chars" in raw:
+            mx = _as_int(
+                raw.get("system_prompt_max_identity_chars"),
+                cfg.context.system_prompt_max_identity_chars,
+            )
+            cfg.context.system_prompt_max_identity_chars = max(2000, min(200_000, mx))
+
+        if "profile_max_chars" in raw or "profile_truncate_chars" in raw:
+            v = raw.get("profile_max_chars", raw.get("profile_truncate_chars"))
+            mx = _as_int(v, cfg.context.profile_max_chars)
+            cfg.context.profile_max_chars = max(512, min(200_000, mx))
+
+        # persistence
+        if "enable_llm_history" in raw:
+            cfg.persistence.enable_llm_history = _as_bool(
+                raw.get("enable_llm_history"), cfg.persistence.enable_llm_history
+            )
+        if "llm_history_max_entries" in raw:
+            cfg.persistence.llm_history_max_entries = max(
+                0,
+                _as_int(
+                    raw.get("llm_history_max_entries"),
+                    cfg.persistence.llm_history_max_entries,
+                ),
+            )
+
+        return cfg
 
     def to_dict(self) -> dict:
         """转换为字典。"""

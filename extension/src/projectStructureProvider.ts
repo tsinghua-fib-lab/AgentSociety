@@ -26,6 +26,103 @@ import { localize } from './i18n';
 import { ApiClient } from './apiClient';
 import { WorkspaceManager } from './workspaceManager';
 
+const IGNORED_DIR_NAMES = new Set([
+  '__pycache__',
+  '.git',
+  '.hg',
+  '.svn',
+  '.vscode',
+  'node_modules',
+  '.venv',
+  'venv',
+  'virtualenv',
+  '.pytest_cache',
+  '.mypy_cache',
+  '.ipynb_checkpoints',
+  'dist',
+  'out',
+  'build',
+  'agentsociety_data',
+  'logs',
+  'mineru_output',
+]);
+
+const IGNORED_FILE_NAMES = new Set([
+  '.DS_Store',
+  'Thumbs.db',
+]);
+
+const IGNORED_FILE_EXTS = new Set([
+  '.pyc',
+  '.pyo',
+  '.swp',
+  '.swo',
+  '.coverage',
+  '.tmp',
+  '.bak',
+  '.lock',
+]);
+
+function shouldHideFsEntry(entryName: string): boolean {
+  if (!entryName || entryName === '.' || entryName === '..') {
+    return true;
+  }
+  if (IGNORED_FILE_NAMES.has(entryName)) {
+    return true;
+  }
+  if (IGNORED_DIR_NAMES.has(entryName)) {
+    return true;
+  }
+  return false;
+}
+
+function shouldShowFileByExt(fileName: string): boolean {
+  const ext = path.extname(fileName).toLowerCase();
+  if (!ext) {
+    // 无扩展名文件默认不展示（除非在明确白名单里）
+    return fileName === 'pid.json';
+  }
+  if (IGNORED_FILE_EXTS.has(ext)) {
+    return false;
+  }
+  // 只展示常见可读/可视化的产物，避免把大二进制/缓存塞满树
+  return [
+    '.json',
+    '.yaml',
+    '.yml',
+    '.md',
+    '.txt',
+    '.csv',
+    '.tsv',
+    '.html',
+    '.htm',
+    '.png',
+    '.jpg',
+    '.jpeg',
+    '.gif',
+    '.svg',
+    '.log',
+    '.db',
+    '.sqlite',
+  ].includes(ext);
+}
+
+function safeStatSync(fsPath: string): fs.Stats | null {
+  try {
+    return fs.statSync(fsPath);
+  } catch {
+    return null;
+  }
+}
+
+function listDirEntriesSafe(dirPath: string): string[] {
+  try {
+    return fs.readdirSync(dirPath);
+  } catch {
+    return [];
+  }
+}
+
 /**
  * ProjectItem - 项目树视图中的单个节点
  * 
@@ -167,6 +264,7 @@ export class ProjectItem extends vscode.TreeItem {
         'txt': 'file-text',
         'db': 'database',
         'sqlite': 'database',
+        'log': 'output',
         'png': 'file-media',
         'jpg': 'file-media',
         'jpeg': 'file-media',
@@ -208,24 +306,24 @@ export class ProjectItem extends vscode.TreeItem {
     // 当用户点击这个节点时，会执行相应的命令打开文件
     if (filePath) {
       if (type === 'reportHtml' || (ext === 'html' && (type === 'presentationExperiment' || type === 'synthesis'))) {
-        // HTML 报告文件使用默认浏览器打开（不依赖 Live Preview 扩展）
+        // HTML 报告：使用系统默认浏览器打开（不依赖任何 VSCode 扩展）
         this.command = {
-          command: 'livePreview.start.preview.atFile',
-          title: 'Open HTML Report',
-          arguments: [vscode.Uri.file(filePath)]
+          command: 'aiSocialScientist.openHtmlFile',
+          title: '打开 HTML 报告',
+          arguments: [filePath]
         };
       } else if (type === 'reportMd' && isMarkdown) {
         // Markdown 报告默认以预览模式打开
         this.command = {
           command: 'markdown.showPreview',
-          title: 'Open Preview',
+          title: '打开预览',
           arguments: [vscode.Uri.file(filePath)]
         };
       } else if (isMarkdown) {
         // Markdown 文件默认以预览模式打开
         this.command = {
           command: 'markdown.showPreview',  // VSCode内置命令：预览 Markdown 文件
-          title: 'Open Preview',
+          title: '打开预览',
           arguments: [vscode.Uri.file(filePath)]  // 传递文件URI作为参数
         };
       } else if (isJson) {
@@ -240,14 +338,14 @@ export class ProjectItem extends vscode.TreeItem {
           // 有自定义编辑器的文件：让 VSCode 自动选择
           this.command = {
             command: 'vscode.open',
-            title: 'Open File',
+            title: '打开文件',
             arguments: [vscode.Uri.file(filePath)]
           };
         } else {
           // 其他 JSON 文件：使用通用可视化查看器
           this.command = {
             command: 'aiSocialScientist.viewJsonFile',
-            title: 'View JSON',
+            title: '查看 JSON',
             arguments: [filePath]
           };
         }
@@ -255,14 +353,14 @@ export class ProjectItem extends vscode.TreeItem {
         // YAML 文件：使用通用可视化查看器
         this.command = {
           command: 'aiSocialScientist.viewYamlFile',
-          title: 'View YAML',
+          title: '查看 YAML',
           arguments: [filePath]
         };
       } else {
         // 其他文件使用默认打开方式
         this.command = {
           command: 'vscode.open',  // VSCode内置命令：打开文件
-          title: 'Open File',
+          title: '打开文件',
           arguments: [vscode.Uri.file(filePath)]  // 传递文件URI作为参数
         };
       }
@@ -270,7 +368,7 @@ export class ProjectItem extends vscode.TreeItem {
       // 环境与智能体节点：点击时打开统一的管理界面
       this.command = {
         command: 'agentsociety.viewPrefillParams',
-        title: 'View Environment & Agents Management',
+        title: '预填充参数',
       };
     } else if (type === 'settings') {
       // 配置设置节点：点击时打开配置页（而非 VS Code 设置）
@@ -333,8 +431,8 @@ export class ProjectStructureProvider implements vscode.TreeDataProvider<Project
    */
   readonly onDidChangeTreeData: vscode.Event<ProjectItem | undefined | null> = this._onDidChangeTreeData.event;
 
-  // 文件系统监听器 - 监听工作区文件的变化
-  private watcher: vscode.FileSystemWatcher | undefined;
+  // 文件系统监听器 - 监听工作区文件的变化（多个 pattern）
+  private watchers: vscode.FileSystemWatcher[] = [];
 
   // 当前工作区的路径
   private workspacePath: string = '';
@@ -346,7 +444,7 @@ export class ProjectStructureProvider implements vscode.TreeDataProvider<Project
   private refreshTimer: NodeJS.Timeout | undefined;
 
   // 防抖延迟时间（毫秒）- 200ms内多次刷新请求会被合并为一次
-  private readonly DEBOUNCE_DELAY = 200;
+  private readonly DEBOUNCE_DELAY = 2000;  // 2秒防抖延迟，避免实验运行时频繁刷新
 
   // 输出通道 - 用于显示调试日志
   // 用户可以在"输出"面板中查看这些日志
@@ -442,18 +540,40 @@ export class ProjectStructureProvider implements vscode.TreeDataProvider<Project
     this.workspacePath = workspaceFolder.uri.fsPath;
     this.log(`Setting up file watcher for workspace: ${this.workspacePath}`);
 
-    // 创建文件系统监听器
-    // RelativePattern用于指定相对于工作区的文件模式
-    // **/* 表示匹配所有文件和文件夹（递归）
-    this.watcher = vscode.workspace.createFileSystemWatcher(
-      new vscode.RelativePattern(workspaceFolder, '**/*')
-    );
+    // 为避免大仓库下 `**/*` 监听带来的事件风暴，只监听本扩展核心工作区结构
+    const patterns: string[] = [
+      '.env',
+      'TOPIC.md',
+      'papers/**',
+      'hypothesis_*/**',
+      'custom/**',
+      'presentation/**',
+      'synthesis/**',
+      '.agentsociety/**',
+      '.claude/skills/**',
+    ];
 
     // 创建辅助函数：检查路径是否应该被忽略
     // 优化：使用更高效的路径匹配，提前检查常见情况
     const shouldIgnorePath = (filePath: string): boolean => {
       // 快速路径：检查路径中是否包含常见忽略目录
-      const quickIgnorePatterns = ['node_modules', '.git', '__pycache__', '.venv', 'venv', 'virtualenv', '.pytest_cache', '.mypy_cache', '.ipynb_checkpoints'];
+      const quickIgnorePatterns = [
+        'node_modules',
+        '.git',
+        '__pycache__',
+        '.venv',
+        'venv',
+        'virtualenv',
+        '.pytest_cache',
+        '.mypy_cache',
+        '.ipynb_checkpoints',
+        'dist',
+        'out',
+        'build',
+        'agentsociety_data',
+        'logs',
+        'mineru_output',
+      ];
       for (const pattern of quickIgnorePatterns) {
         if (filePath.includes(`/${pattern}/`) || filePath.includes(`\\${pattern}\\`)) {
           return true;
@@ -462,7 +582,8 @@ export class ProjectStructureProvider implements vscode.TreeDataProvider<Project
 
       // 文件扩展名快速检查
       const ext = filePath.toLowerCase();
-      const ignoredExts = ['.pyc', '.pyo', '.log', '.ds_store', '.swp', '.swo', '.coverage'];
+      // 注意：实验 run/output.log 很常见，不能一概忽略；后续会在事件处理里更精细地过滤 .log 的 change 刷新
+      const ignoredExts = ['.pyc', '.pyo', '.ds_store', '.swp', '.swo', '.coverage'];
       for (const ignoredExt of ignoredExts) {
         if (ext.endsWith(ignoredExt)) {
           return true;
@@ -484,38 +605,44 @@ export class ProjectStructureProvider implements vscode.TreeDataProvider<Project
       return complexIgnorePatterns.some(pattern => pattern.test(filePath));
     };
 
-    // 监听文件修改事件
-    this.watcher.onDidChange((uri) => {
-      if (shouldIgnorePath(uri.fsPath)) {
-        return;  // 忽略匹配的路径
-      }
-      this.log(`File changed: ${uri.fsPath}`);
-      this.refresh();
-    });
+    for (const pattern of patterns) {
+      const watcher = vscode.workspace.createFileSystemWatcher(
+        new vscode.RelativePattern(workspaceFolder, pattern),
+      );
 
-    // 监听文件创建事件
-    this.watcher.onDidCreate((uri) => {
-      if (shouldIgnorePath(uri.fsPath)) {
-        return;  // 忽略匹配的路径
-      }
-      this.log(`File created: ${uri.fsPath}`);
-      this.refresh();
-    });
+      watcher.onDidChange((uri) => {
+        // 日志文件写入频繁，避免每次追加都触发树刷新；创建/删除仍可刷新
+        if (uri.fsPath.toLowerCase().endsWith('.log')) {
+          return;
+        }
+        if (shouldIgnorePath(uri.fsPath)) {
+          return;
+        }
+        this.log(`File changed: ${uri.fsPath}`);
+        this.refresh();
+      });
 
-    // 监听文件删除事件
-    this.watcher.onDidDelete((uri) => {
-      if (shouldIgnorePath(uri.fsPath)) {
-        return;  // 忽略匹配的路径
-      }
-      this.log(`File deleted: ${uri.fsPath}`);
-      this.refresh();
-    });
+      watcher.onDidCreate((uri) => {
+        if (shouldIgnorePath(uri.fsPath)) {
+          return;
+        }
+        this.log(`File created: ${uri.fsPath}`);
+        this.refresh();
+      });
 
-    // 将监听器添加到context.subscriptions
-    // 这样当扩展停用时，VSCode会自动调用dispose()清理资源
-    // 这是VSCode插件开发的最佳实践，避免内存泄漏
-    this.context.subscriptions.push(this.watcher);
-    this.log('File watcher setup completed');
+      watcher.onDidDelete((uri) => {
+        if (shouldIgnorePath(uri.fsPath)) {
+          return;
+        }
+        this.log(`File deleted: ${uri.fsPath}`);
+        this.refresh();
+      });
+
+      this.watchers.push(watcher);
+      this.context.subscriptions.push(watcher);
+    }
+
+    this.log(`File watcher setup completed (${this.watchers.length} patterns)`);
   }
 
   /**
@@ -524,10 +651,12 @@ export class ProjectStructureProvider implements vscode.TreeDataProvider<Project
    * 当工作区变化或扩展停用时调用，释放资源
    */
   private disposeWatcher(): void {
-    if (this.watcher) {
-      this.log('Disposing file watcher');
-      this.watcher.dispose();  // 停止监听
-      this.watcher = undefined;
+    if (this.watchers.length > 0) {
+      this.log('Disposing file watchers');
+      for (const watcher of this.watchers) {
+        watcher.dispose();
+      }
+      this.watchers = [];
     }
   }
 
@@ -991,24 +1120,12 @@ export class ProjectStructureProvider implements vscode.TreeDataProvider<Project
                 } else if (st === 'failed') {
                   failedExperiments++;
                 }
-              } catch { }
+              } catch { void 0; }
             }
-          }
-
-          let statusDesc = '';
-          if (totalExperiments > 0) {
-            const bits: string[] = [`${completedExperiments}/${totalExperiments}`];
-            if (runningExperiments > 0) {
-              bits.push(`▶${runningExperiments}`);
-            }
-            if (failedExperiments > 0) {
-              bits.push(`✗${failedExperiments}`);
-            }
-            statusDesc = ` (${bits.join(' ')})`;
           }
 
           const displayName = match
-            ? `${localize('projectStructure.hypothesis')} ${match[1]}${statusDesc}`
+            ? `${localize('projectStructure.hypothesis')} ${match[1]}`
             : dirName;  // 如果格式不匹配，使用原目录名
 
           const item = new ProjectItem(
@@ -1026,6 +1143,29 @@ export class ProjectStructureProvider implements vscode.TreeDataProvider<Project
             }
             if (failedExperiments > 0) {
               item.tooltip += `\n${localize('projectStructure.statusFailed')}: ${failedExperiments}`;
+            }
+          }
+
+          // 将状态信息放到 description，避免 label 过长/混入符号
+          if (totalExperiments > 0) {
+            const bits: string[] = [`${completedExperiments}/${totalExperiments}`];
+            if (runningExperiments > 0) {
+              bits.push(`${localize('projectStructure.running')}:${runningExperiments}`);
+            }
+            if (failedExperiments > 0) {
+              bits.push(`${localize('projectStructure.statusFailed')}:${failedExperiments}`);
+            }
+            item.description = bits.join(' · ');
+
+            // 为假设节点提供语义化图标：失败优先，其次运行中，否则完成/默认
+            if (failedExperiments > 0) {
+              item.iconPath = makeThemeIcon('warning', 'charts.red');
+            } else if (runningExperiments > 0) {
+              item.iconPath = makeThemeIcon('sync', 'charts.yellow');
+            } else if (completedExperiments === totalExperiments && totalExperiments > 0) {
+              item.iconPath = makeThemeIcon('pass-filled', 'charts.green');
+            } else {
+              item.iconPath = makeThemeIcon('lightbulb', 'charts.blue');
             }
           }
 
@@ -1127,7 +1267,7 @@ export class ProjectStructureProvider implements vscode.TreeDataProvider<Project
       const items: ProjectItem[] = [];
 
       if (fs.existsSync(papersDir)) {
-        const entries = fs.readdirSync(papersDir).filter(entry => entry !== 'mineru_output');
+        const entries = listDirEntriesSafe(papersDir).filter(entry => !shouldHideFsEntry(entry));
 
         // 按类型分类文件
         const pdfFiles: { name: string; path: string }[] = [];
@@ -1138,9 +1278,15 @@ export class ProjectStructureProvider implements vscode.TreeDataProvider<Project
 
         for (const entry of entries) {
           const fullPath = path.join(papersDir, entry);
-          const stat = fs.statSync(fullPath);
+          const stat = safeStatSync(fullPath);
+          if (!stat) {
+            continue;
+          }
 
           if (stat.isFile()) {
+            if (!shouldShowFileByExt(entry)) {
+              continue;
+            }
             const ext = entry.toLowerCase().split('.').pop() || '';
             if (ext === 'pdf') {
               pdfFiles.push({ name: entry, path: fullPath });
@@ -1154,12 +1300,13 @@ export class ProjectStructureProvider implements vscode.TreeDataProvider<Project
           } else if (stat.isDirectory()) {
             let fileCount = 0;
             try {
-              const subEntries = fs.readdirSync(fullPath).filter((sub: string) => sub !== 'mineru_output');
+              const subEntries = listDirEntriesSafe(fullPath).filter((sub: string) => !shouldHideFsEntry(sub));
               fileCount = subEntries.filter((sub: string) => {
                 const subPath = path.join(fullPath, sub);
-                return fs.statSync(subPath).isFile();
+                const subStat = safeStatSync(subPath);
+                return !!subStat && subStat.isFile() && shouldShowFileByExt(sub);
               }).length;
-            } catch { }
+            } catch { void 0; }
             directories.push({ name: entry, path: fullPath, count: fileCount });
           }
         }
@@ -1182,11 +1329,11 @@ export class ProjectStructureProvider implements vscode.TreeDataProvider<Project
             fileItem.contextValue = 'paper json literatureIndex';
             fileItem.command = {
               command: 'aiSocialScientist.viewLiteratureIndex',
-              title: 'View Literature Index',
+              title: '查看文献索引',
               arguments: [{ filePath: literatureIndexFile.path }]
             };
             items.push(fileItem);
-          } catch { }
+          } catch { void 0; }
         }
 
         // PDF 文献组
@@ -1253,14 +1400,20 @@ export class ProjectStructureProvider implements vscode.TreeDataProvider<Project
       // 检查是否为目录
       if (fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()) {
         const items: ProjectItem[] = [];
-        // 读取目录内容，忽略mineru_output文件夹
-        const entries = fs.readdirSync(filePath).filter(entry => entry !== 'mineru_output');
+        // 读取目录内容，过滤无关目录/文件
+        const entries = listDirEntriesSafe(filePath).filter(entry => !shouldHideFsEntry(entry));
 
         for (const entry of entries) {
           const fullPath = path.join(filePath, entry);
-          const stat = fs.statSync(fullPath);
+          const stat = safeStatSync(fullPath);
+          if (!stat) {
+            continue;
+          }
 
           if (stat.isFile()) {
+            if (!shouldShowFileByExt(entry)) {
+              continue;
+            }
             // 如果是文件，创建文件节点
             items.push(new ProjectItem(
               entry,  // 文件名作为标签
@@ -1316,14 +1469,19 @@ export class ProjectStructureProvider implements vscode.TreeDataProvider<Project
       const items: ProjectItem[] = [];
 
       if (fs.existsSync(userDataDir)) {
-        // 读取目录下的所有文件和文件夹，忽略mineru_output文件夹
-        const entries = fs.readdirSync(userDataDir).filter(entry => entry !== 'mineru_output');
+        const entries = listDirEntriesSafe(userDataDir).filter(entry => !shouldHideFsEntry(entry));
 
         for (const entry of entries) {
           const fullPath = path.join(userDataDir, entry);
-          const stat = fs.statSync(fullPath);
+          const stat = safeStatSync(fullPath);
+          if (!stat) {
+            continue;
+          }
 
           if (stat.isFile()) {
+            if (!shouldShowFileByExt(entry)) {
+              continue;
+            }
             // 如果是文件，创建文件节点
             items.push(new ProjectItem(
               entry,  // 文件名作为标签
@@ -1405,13 +1563,19 @@ export class ProjectStructureProvider implements vscode.TreeDataProvider<Project
       }
 
       const items: ProjectItem[] = [];
-      const entries = fs.readdirSync(datasetDirPath);
+      const entries = listDirEntriesSafe(datasetDirPath).filter(entry => !shouldHideFsEntry(entry));
 
       for (const entry of entries) {
         const fullPath = path.join(datasetDirPath, entry);
-        const stat = fs.statSync(fullPath);
+        const stat = safeStatSync(fullPath);
+        if (!stat) {
+          continue;
+        }
 
         if (stat.isFile()) {
+          if (!shouldShowFileByExt(entry)) {
+            continue;
+          }
           const fileItem = new ProjectItem(
             entry,
             vscode.TreeItemCollapsibleState.None,
@@ -1445,14 +1609,19 @@ export class ProjectStructureProvider implements vscode.TreeDataProvider<Project
       // 检查是否为目录
       if (fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()) {
         const items: ProjectItem[] = [];
-        // 读取目录内容，忽略mineru_output文件夹
-        const entries = fs.readdirSync(filePath).filter(entry => entry !== 'mineru_output');
+        const entries = listDirEntriesSafe(filePath).filter(entry => !shouldHideFsEntry(entry));
 
         for (const entry of entries) {
           const fullPath = path.join(filePath, entry);
-          const stat = fs.statSync(fullPath);
+          const stat = safeStatSync(fullPath);
+          if (!stat) {
+            continue;
+          }
 
           if (stat.isFile()) {
+            if (!shouldShowFileByExt(entry)) {
+              continue;
+            }
             // 如果是文件，创建文件节点
             items.push(new ProjectItem(
               entry,  // 文件名作为标签
@@ -1681,12 +1850,18 @@ export class ProjectStructureProvider implements vscode.TreeDataProvider<Project
         return [];
       }
       const items: ProjectItem[] = [];
-      const initFiles = fs.readdirSync(initDir);
+      const initFiles = listDirEntriesSafe(initDir).filter(f => !shouldHideFsEntry(f));
 
       for (const file of initFiles) {
         const filePath = path.join(initDir, file);
-        const stat = fs.statSync(filePath);
+        const stat = safeStatSync(filePath);
+        if (!stat) {
+          continue;
+        }
         if (stat.isFile()) {
+          if (!shouldShowFileByExt(file)) {
+            continue;
+          }
           const fileItem = new ProjectItem(
             file,
             vscode.TreeItemCollapsibleState.None,
@@ -1698,7 +1873,7 @@ export class ProjectStructureProvider implements vscode.TreeDataProvider<Project
             fileItem.contextValue = 'yaml stepsYaml';
             fileItem.command = {
               command: 'aiSocialScientist.viewStepsYaml',
-              title: 'View Steps Timeline',
+              title: '查看步骤时间线',
               arguments: [{ filePath: filePath }]
             };
           }
@@ -1716,6 +1891,34 @@ export class ProjectStructureProvider implements vscode.TreeDataProvider<Project
         return [];
       }
       const items: ProjectItem[] = [];
+
+      // output.log（实验运行主日志）
+      const outputLog = path.join(runDir, 'output.log');
+      if (fs.existsSync(outputLog)) {
+        const logItem = new ProjectItem(
+          'output.log',
+          vscode.TreeItemCollapsibleState.None,
+          'file',
+          outputLog
+        );
+        logItem.tooltip = 'Experiment log (output.log)';
+        logItem.iconPath = makeThemeIcon('output', 'descriptionForeground');
+        items.push(logItem);
+      }
+
+      // artifacts/（ask 等步骤产物）
+      const artifactsDir = path.join(runDir, 'artifacts');
+      if (fs.existsSync(artifactsDir) && fs.statSync(artifactsDir).isDirectory()) {
+        const artifactsItem = new ProjectItem(
+          'artifacts',
+          vscode.TreeItemCollapsibleState.Collapsed,
+          'file',
+          artifactsDir
+        );
+        artifactsItem.tooltip = 'Run artifacts';
+        artifactsItem.iconPath = makeThemeIcon('archive', 'charts.purple');
+        items.push(artifactsItem);
+      }
 
       // sqlite.db
       const dbFile = path.join(runDir, 'sqlite.db');
@@ -1755,7 +1958,7 @@ export class ProjectStructureProvider implements vscode.TreeDataProvider<Project
         resultsItem.contextValue = 'json experimentResults';
         resultsItem.command = {
           command: 'aiSocialScientist.viewExperimentResults',
-          title: 'View Experiment Results',
+          title: '查看实验结果',
           arguments: [{ filePath: resultsFile }]
         };
         items.push(resultsItem);
@@ -1781,11 +1984,47 @@ export class ProjectStructureProvider implements vscode.TreeDataProvider<Project
           pidItem.contextValue = 'pidJson';
           pidItem.command = {
             command: 'aiSocialScientist.viewPidStatus',
-            title: 'View PID Status',
+            title: '查看运行状态',
             arguments: [{ filePath: pidFile }]
           };
           items.push(pidItem);
-        } catch { }
+        } catch { void 0; }
+      }
+
+      // 其他可读产物（避免把大文件/缓存塞满）
+      const known = new Set(['sqlite.db', 'experiment_results.json', 'pid.json', 'output.log', 'artifacts']);
+      const maxBytes = 50 * 1024 * 1024; // 50MB
+      const others = listDirEntriesSafe(runDir)
+        .filter(name => !shouldHideFsEntry(name))
+        .filter(name => !known.has(name))
+        .map(name => ({ name, fullPath: path.join(runDir, name) }))
+        .filter(({ name, fullPath }) => {
+          const stat = safeStatSync(fullPath);
+          if (!stat) {
+            return false;
+          }
+          if (stat.isDirectory()) {
+            return true;
+          }
+          if (!stat.isFile()) {
+            return false;
+          }
+          if (stat.size > maxBytes) {
+            return false;
+          }
+          return shouldShowFileByExt(name);
+        })
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      for (const { name, fullPath } of others) {
+        const stat = safeStatSync(fullPath);
+        if (!stat) {
+          continue;
+        }
+        const collapsible = stat.isDirectory()
+          ? vscode.TreeItemCollapsibleState.Collapsed
+          : vscode.TreeItemCollapsibleState.None;
+        items.push(new ProjectItem(name, collapsible, 'file', fullPath));
       }
 
       return items;
@@ -1895,11 +2134,6 @@ export class ProjectStructureProvider implements vscode.TreeDataProvider<Project
             'reportHtml',
             reportFiles['report_zh.html']
           );
-          item.command = {
-            command: 'livePreview.start.preview.atFile',
-            title: 'Open with Live Preview',
-            arguments: [vscode.Uri.file(reportFiles['report_zh.html'])]
-          };
           items.push(item);
         }
 
@@ -1911,11 +2145,6 @@ export class ProjectStructureProvider implements vscode.TreeDataProvider<Project
             'reportHtml',
             reportFiles['report_en.html']
           );
-          item.command = {
-            command: 'livePreview.start.preview.atFile',
-            title: 'Open with Live Preview',
-            arguments: [vscode.Uri.file(reportFiles['report_en.html'])]
-          };
           items.push(item);
         }
 
@@ -1927,11 +2156,6 @@ export class ProjectStructureProvider implements vscode.TreeDataProvider<Project
             'reportHtml',
             reportFiles['report.html']
           );
-          item.command = {
-            command: 'livePreview.start.preview.atFile',
-            title: 'Open with Live Preview',
-            arguments: [vscode.Uri.file(reportFiles['report.html'])]
-          };
           items.push(item);
         }
 
@@ -2089,11 +2313,6 @@ export class ProjectStructureProvider implements vscode.TreeDataProvider<Project
                 'reportHtml',
                 paths.zh
               );
-              item.command = {
-                command: 'livePreview.start.preview.atFile',
-                title: 'Open with Live Preview',
-                arguments: [vscode.Uri.file(paths.zh)]
-              };
               items.push(item);
             }
 
@@ -2105,11 +2324,6 @@ export class ProjectStructureProvider implements vscode.TreeDataProvider<Project
                 'reportHtml',
                 paths.en
               );
-              item.command = {
-                command: 'livePreview.start.preview.atFile',
-                title: 'Open with Live Preview',
-                arguments: [vscode.Uri.file(paths.en)]
-              };
               items.push(item);
             }
 
@@ -2121,11 +2335,6 @@ export class ProjectStructureProvider implements vscode.TreeDataProvider<Project
                 'reportHtml',
                 paths.generic
               );
-              item.command = {
-                command: 'livePreview.start.preview.atFile',
-                title: 'Open with Live Preview',
-                arguments: [vscode.Uri.file(paths.generic)]
-              };
               items.push(item);
             }
           } else {

@@ -1,16 +1,15 @@
 ---
 name: memory
 description: Persist important outcomes from this step to long-term storage with automatic forgetting curve.
-inputs:
-  - state/observation.txt
-  - state/intention.json
-outputs:
-  - state/memory.jsonl
 ---
 
 # Memory
 
-You are the agent's long-term memory system with automatic forgetting based on the Ebbinghaus curve. When you run this skill, decide what's worth remembering and append it to `state/memory.jsonl`.
+You are the agent's long-term memory system with automatic forgetting and retrieval reinforcement. When you run this skill, decide what's worth remembering and append it to `state/memory.jsonl`.
+
+## Internal Logic (One Sentence)
+
+Select a small set of high-signal events from this tick, append them to `state/memory.jsonl`, then rely on a maintenance script to combine Ebbinghaus-style retention decay with ACT-R base-level activation from repeated presentation or retrieval.
 
 ## Architecture (conceptual)
 
@@ -26,16 +25,21 @@ Three layers:
 
 - **What**: JSONL in the agent workspace with automatic forgetting.
 - **Purpose**: Persist what should survive across ticks (events, decisions, plan outcomes).
-- **Forgetting**: Old memories fade and are eventually removed (see Forgetting Curve below).
-- **Reinforcement**: Frequently accessed memories are reinforced and last longer.
+- **Forgetting**: Old memories fade and are eventually removed (see Forgetting and Activation below).
+- **Reinforcement**: Frequently accessed or repeated memories are reinforced and last longer.
 
 ### 3. Optional "step bundle" (convention)
 
 - If you want one rich JSONL line per tick, you may bundle highlights into `summary` from whatever files you read in this step-purely optional.
 
-## Forgetting Curve (Ebbinghaus Model)
+## Forgetting and Activation
 
-Memories naturally decay over time following the Ebbinghaus forgetting curve:
+Memories naturally decay over time, but repeated experience and retrieval should make a memory easier to recover. This skill therefore uses two complementary signals:
+
+- **Ebbinghaus-style retention** for simple time decay.
+- **ACT-R base-level activation** for repeated presentation/retrieval.
+
+Research basis: `references/research_basis.md`.
 
 ### Retention Formula
 
@@ -48,6 +52,22 @@ Where:
 - `S` = memory strength coefficient (default: 100 ticks, configurable via `AGENT_MEMORY_STRENGTH` env var)
 - `importance_multiplier` = high: 1.5, medium: 1.0, low: 0.5
 
+### ACT-R Base-Level Activation
+
+The maintenance script also computes:
+
+```text
+activation = ln(sum((current_tick - presentation_tick)^(-d))) + importance_bonus + access_bonus
+retrieval_probability = logistic(activation - threshold)
+retention = max(ebbinghaus_retention, retrieval_probability)
+```
+
+Where:
+- `_presentations` stores the ticks when the memory was encoded or strongly re-encountered.
+- `d` defaults to `0.5`, a common ACT-R decay value.
+- `_access_count` provides a small retrieval-practice bonus.
+- The max rule keeps the simple forgetting curve as a conservative floor while allowing repeated social facts, names, promises, and routes to persist.
+
 ### Decay Rules
 
 | Retention Level | Status | Behavior |
@@ -58,10 +78,13 @@ Where:
 
 ### Reinforcement
 
-When a memory is accessed (via `grep` or explicit read), it gets reinforced:
-- Each access adds `+0.1` to retention (max `0.95`)
-- The `_access_count` field tracks access frequency
-- This models how "recalling strengthens memory"
+When a memory is accessed or re-encoded:
+
+- Increase `_access_count` by 1 when the runtime can identify retrieval.
+- Append current tick to `_presentations` when the same fact/event is strongly re-encountered.
+- Keep `_presentations` short if needed by retaining the newest and most important ticks.
+
+This models retrieval practice and repeated exposure without pretending the simulation has exact human neural memory.
 
 ### Memory Limits
 
@@ -170,13 +193,15 @@ Use `grep` on `state/memory.jsonl` to search for names or tags.
 Run periodically to apply forgetting curve:
 
 ```bash
-python scripts/memory_maintenance.py \
+python skills/memory/scripts/memory_maintenance.py \
   --memory-file state/memory.jsonl \
   --current-tick 100
 ```
 
 Configuration via environment variables:
 - `AGENT_MEMORY_STRENGTH`: Memory strength coefficient (default: 100)
+- `AGENT_MEMORY_ACTR_DECAY`: ACT-R decay parameter (default: 0.5)
+- `AGENT_MEMORY_RETRIEVAL_THRESHOLD`: logistic retrieval threshold (default: -2.5)
 - `AGENT_MEMORY_MAX_ENTRIES`: Maximum memories to keep (default: 1000)
 
 ## Guidelines

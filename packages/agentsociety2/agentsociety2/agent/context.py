@@ -66,6 +66,7 @@ from ruamel.yaml import YAML
 from agentsociety2.agent.config import ContextConfig
 from agentsociety2.agent.tool.utils import jr_dumps as _jr_dumps, jr_parse
 from agentsociety2.logger import get_logger
+from litellm import token_counter as _LITELLM_TOKEN_COUNTER
 
 logger = get_logger()
 
@@ -75,8 +76,6 @@ _yaml.default_flow_style = False
 
 _MIN_OLD_SEGMENTS = 2
 _ROLE_OVERHEAD_TOKENS = 4
-
-from litellm import token_counter as _LITELLM_TOKEN_COUNTER
 
 
 class ThreadTokenCounter:
@@ -197,6 +196,16 @@ def estimate_messages_tokens_approx(messages: list[dict[str, str]]) -> int:
             _ROLE_OVERHEAD_TOKENS + max(1, len(c) // 3) if c else _ROLE_OVERHEAD_TOKENS
         )
     return total
+
+
+def default_tiktoken_encoding_for_model(model: str | None) -> str:
+    """为给定模型选择默认 tiktoken 编码名（用于测试与本地回退）。
+
+    :param model: LiteLLM 模型名（可为空）。
+    :returns: tiktoken encoding 名称。
+    """
+    _ = model  # 当前实现统一使用 cl100k_base
+    return "cl100k_base"
 
 
 def get_context_utilization(
@@ -747,7 +756,7 @@ def load_rolling_summary_from_workspace(read_json: Callable[[str, Any], Any]) ->
     :return: 当前滚动摘要字符串（可能为空）。
     :rtype: str
     """
-    raw = read_json("logs/thread_compact_state.json", {})
+    raw = read_json(".runtime/logs/thread_compact_state.json", {})
     if isinstance(raw, dict):
         return str(raw.get("rolling_summary", "") or "")
     return ""
@@ -774,7 +783,7 @@ def save_thread_compact_state(
     :rtype: None
     """
     workspace_write(
-        "logs/thread_compact_state.json",
+        ".runtime/logs/thread_compact_state.json",
         _jr_dumps(
             {
                 "rolling_summary": rolling_summary,
@@ -810,7 +819,7 @@ def save_thread_history_before_compact(
     :param compact_count: 当前压缩次数（用于文件命名）。
     :return: 保存的历史文件路径。
     """
-    history_path = f"logs/thread_history/compact_{compact_count:04d}.jsonl"
+    history_path = f".runtime/logs/thread_history/compact_{compact_count:04d}.jsonl"
     lines = []
     for m in thread_messages:
         lines.append(_jr_dumps(m, indent=None))
@@ -1108,229 +1117,3 @@ async def run_thread_compaction(
         compact_count=new_compact_count,
         tier=tier,
     )
-
-
-class AgentContext:
-    """Unified context manager (AGENT_CONTEXT.md).
-
-    Designed after Claude Code's CLAUDE.md best practices:
-    - Concise (under 300 lines, ideally 60)
-    - Contains what agent cannot infer
-    - Living document, updated each tick
-    - Modular structure for easy navigation
-
-    Structure::
-
-        ---
-        # YAML frontmatter
-        current_focus: "..."
-        tick: 42
-        location: "cafe"
-        ---
-
-        # Agent Context
-
-        ## Current Focus
-        What I'm working on right now.
-
-        ## Key Decisions
-        Important choices made.
-
-        ## Patterns
-        Recurring behaviors or observations.
-
-        ## Known Issues
-        Errors or blockers to remember.
-
-    Example::
-
-        ctx = AgentContext(workspace_path)
-        ctx.update_focus("Having lunch at the café")
-        ctx.add_decision("Chose to walk instead of taking bus")
-        prompt_context = ctx.to_prompt_context()
-    """
-
-    MAX_DECISIONS = 15
-    MAX_PATTERNS = 10
-    MAX_ISSUES = 5
-    MAX_BODY_CHARS = 2000
-
-    def __init__(self, workspace_path: Path):
-        self.path = workspace_path / "AGENT_CONTEXT.md"
-        self._frontmatter: dict[str, Any] = {
-            "current_focus": "",
-            "tick": 0,
-            "location": "",
-            "energy": 0.5,
-            "mood": "neutral",
-        }
-        self._decisions: list[dict[str, Any]] = []
-        self._patterns: list[str] = []
-        self._issues: list[dict[str, str]] = []
-        self._body = ""
-        self._load()
-
-    def _load(self) -> None:
-        if not self.path.exists():
-            return
-        content = self.path.read_text(encoding="utf-8")
-        if not content.startswith("---"):
-            self._body = content[: self.MAX_BODY_CHARS]
-            return
-        parts = content.split("---", 2)
-        if len(parts) < 3:
-            return
-        loaded = _yaml.load(StringIO(parts[1]))
-        if isinstance(loaded, dict):
-            self._frontmatter.update(loaded)
-        self._body = parts[2].strip()[: self.MAX_BODY_CHARS]
-        self._parse_body()
-
-    def _parse_body(self) -> None:
-        sections = self._body.split("## ")
-        for section in sections[1:]:
-            lines = section.strip().split("\n")
-            if not lines:
-                continue
-            header = lines[0].lower()
-            content = "\n".join(lines[1:]).strip()
-            if header.startswith("key decisions"):
-                self._decisions = self._parse_list_items(content, "decision")
-            elif header.startswith("patterns"):
-                self._patterns = [
-                    l[2:] for l in content.split("\n") if l.startswith("- ")
-                ][: self.MAX_PATTERNS]
-            elif header.startswith("known issues"):
-                self._issues = self._parse_list_items(content, "issue")
-
-    def _parse_list_items(self, content: str, key: str) -> list[dict[str, Any]]:
-        items = []
-        for line in content.split("\n"):
-            if line.startswith("- "):
-                items.append(
-                    {key: line[2:], "time": datetime.now(timezone.utc).isoformat()}
-                )
-        return items[: getattr(self, f"MAX_{key.upper()}S", 10)]
-
-    def _save(self) -> None:
-        self._frontmatter["updated"] = datetime.now(timezone.utc).isoformat()
-        buf = StringIO()
-        _yaml.dump(self._frontmatter, buf)
-        front = buf.getvalue()
-        body = self._render_body()
-        self.path.write_text(f"---\n{front}---\n\n{body}\n", encoding="utf-8")
-
-    def _render_body(self) -> str:
-        lines = ["# Agent Context", ""]
-        if self._frontmatter.get("current_focus"):
-            lines.extend(
-                ["## Current Focus", "", self._frontmatter["current_focus"], ""]
-            )
-        if self._decisions:
-            lines.extend(["## Key Decisions", ""])
-            for d in self._decisions[-self.MAX_DECISIONS :]:
-                lines.append(f"- {d.get('decision', d)}")
-            lines.append("")
-        if self._patterns:
-            lines.extend(["## Patterns", ""])
-            for p in self._patterns:
-                lines.append(f"- {p}")
-            lines.append("")
-        if self._issues:
-            lines.extend(["## Known Issues", ""])
-            for i in self._issues[-self.MAX_ISSUES :]:
-                lines.append(f"- {i.get('issue', i)}")
-            lines.append("")
-        return "\n".join(lines)[: self.MAX_BODY_CHARS]
-
-    def update_focus(self, focus: str) -> None:
-        self._frontmatter["current_focus"] = focus
-        self._save()
-
-    def update_state(
-        self, tick: int, location: str = "", energy: float = 0.5, mood: str = "neutral"
-    ) -> None:
-        self._frontmatter["tick"] = tick
-        if location:
-            self._frontmatter["location"] = location
-        self._frontmatter["energy"] = energy
-        self._frontmatter["mood"] = mood
-        self._save()
-
-    def add_decision(self, decision: str) -> None:
-        self._decisions.append(
-            {"decision": decision, "time": datetime.now(timezone.utc).isoformat()}
-        )
-        if len(self._decisions) > self.MAX_DECISIONS:
-            self._decisions = self._decisions[-self.MAX_DECISIONS :]
-        self._save()
-
-    def add_pattern(self, pattern: str) -> None:
-        if pattern not in self._patterns:
-            self._patterns.append(pattern)
-            if len(self._patterns) > self.MAX_PATTERNS:
-                self._patterns = self._patterns[-self.MAX_PATTERNS :]
-            self._save()
-
-    def add_issue(self, issue: str, context: str = "") -> None:
-        self._issues.append(
-            {
-                "issue": issue,
-                "context": context,
-                "time": datetime.now(timezone.utc).isoformat(),
-            }
-        )
-        if len(self._issues) > self.MAX_ISSUES:
-            self._issues = self._issues[-self.MAX_ISSUES :]
-        self._save()
-
-    def resolve_issue(self, issue: str) -> None:
-        self._issues = [i for i in self._issues if i.get("issue") != issue]
-        self._save()
-
-    def to_prompt_context(self, max_items: int = 5) -> str:
-        lines: list[str] = []
-        if self._frontmatter.get("current_focus"):
-            lines.append(f"**Focus**: {self._frontmatter['current_focus']}")
-        if self._frontmatter.get("location"):
-            lines.append(f"**Location**: {self._frontmatter['location']}")
-        if self._decisions:
-            lines.append("\n**Recent Decisions**:")
-            for d in self._decisions[-max_items:]:
-                lines.append(f"- {d.get('decision', d)}")
-        if self._patterns:
-            lines.append("\n**Patterns**:")
-            for p in self._patterns[-3:]:
-                lines.append(f"- {p}")
-        if self._issues:
-            lines.append("\n**Known Issues**:")
-            for i in self._issues[-3:]:
-                lines.append(f"- {i.get('issue', i)}")
-        return "\n".join(lines) if lines else ""
-
-    def clear(self) -> None:
-        self._frontmatter = {
-            "current_focus": "",
-            "tick": 0,
-            "location": "",
-            "energy": 0.5,
-            "mood": "neutral",
-        }
-        self._decisions = []
-        self._patterns = []
-        self._issues = []
-        self._body = ""
-        self._save()
-
-    @property
-    def focus(self) -> str:
-        return self._frontmatter.get("current_focus", "")
-
-    @property
-    def data(self) -> dict[str, Any]:
-        return {
-            "frontmatter": self._frontmatter.copy(),
-            "decisions": self._decisions.copy(),
-            "patterns": self._patterns.copy(),
-            "issues": self._issues.copy(),
-        }

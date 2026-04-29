@@ -4,23 +4,21 @@
 
 - [开发环境设置](#开发环境设置)
 - [项目结构](#项目结构)
-- [功能模块](#功能模块)
+- [核心模块](#核心模块)
 - [后端开发](#后端开发)
 - [React Webview 开发](#react-webview-开发)
-- [待实现功能](#待实现功能)
+- [帮助页面维护](#帮助页面维护)
 - [打包发布](#打包发布)
-- [测试](#测试)
 - [代码规范](#代码规范)
 
 ## 开发环境设置
 
 ### 前置要求
 
-- Node.js (>= 16.x)
-- npm 或 yarn
-- Python 3.10+
-- uv (Python包管理器)
-- VSCode 或 Cursor (>= 1.80.0)
+- Node.js >= 16.x
+- Python >= 3.11
+- uv (Python 包管理器)
+- VSCode >= 1.80.0
 
 ### 安装依赖
 
@@ -34,152 +32,227 @@ npm install
 ```bash
 npm run build        # 生产构建（打包扩展和 webview）
 npm run compile      # 开发构建
+npm run watch        # 监听模式
 ```
 
-或者使用预发布命令：
-```bash
-npm run vscode:prepublish
-```
+### 调试
 
-### 监听模式（开发时使用）
-
-```bash
-npm run watch        # 监听模式构建
-```
-
-## 调试
-
-1. 在 VSCode/Cursor 中打开 `extension` 文件夹
+1. 在 VSCode 中打开 `extension` 文件夹
 2. 按 `F5` 启动调试会话
-3. 这将打开一个新的 Extension Development Host 窗口，插件已加载
+3. 新的 Extension Development Host 窗口将打开
 
 ## 项目结构
 
 ```
 extension/
-├── src/                          # 源代码目录
-│   ├── extension.ts              # 主入口文件
-│   ├── projectStructureProvider.ts  # 项目结构树视图提供者
-│   ├── apiClient.ts              # API客户端
-│   ├── i18n.ts                   # 国际化字符串
-│   ├── jsonViewer.ts             # JSON 可视化查看器
-│   ├── yamlViewer.ts             # YAML 可视化查看器
-│   ├── stepsViewer.ts            # 步骤时间线查看器
-│   ├── pidStatusViewer.ts        # 实验状态监控查看器
-│   ├── literatureIndexViewer.ts  # 文献索引查看器
-│   ├── experimentResultsViewer.ts # 实验结果查看器
-│   ├── services/                 # 服务模块
-│   │   ├── backendManager.ts     # 后端管理
-│   │   ├── backendService.ts     # 后端服务
-│   │   └── ...
-│   └── webview/                  # React Webview 组件
-│       ├── components/           # 共享组件
-│       ├── configPage/           # 配置页面
-│       ├── initConfig/           # 初始化配置
-│       ├── prefillParams/        # 预填充参数界面
-│       ├── replay/               # 实验回放界面
-│       ├── simSettings/          # SIM设置界面
-│       └── i18n/                 # 国际化资源
-├── skills/                       # Agent Skills
-├── out/                          # 编译输出目录（自动生成）
-├── package.json                  # 插件配置文件
-├── tsconfig.json                 # TypeScript配置
-├── webpack.config.js             # Webpack 构建配置
-└── README.md                     # 项目说明文档
+├── src/                              # 源代码目录
+│   ├── extension.ts                  # 主入口文件
+│   ├── projectStructureProvider.ts   # 项目结构树视图提供者
+│   ├── apiClient.ts                  # API 客户端
+│   ├── configPageViewProvider.ts     # 配置页面 Webview
+│   ├── helpPageViewProvider.ts       # 帮助页面 Webview
+│   ├── prefillParamsViewProvider.ts  # 预填充参数查看器
+│   ├── replayWebviewProvider.ts      # 回放可视化 Webview
+│   ├── simSettingsEditorProvider.ts  # SIM_SETTINGS 自定义编辑器
+│   ├── initConfigEditorProvider.ts   # init_config 自定义编辑器
+│   ├── skillMarketplaceProvider.ts   # 技能市场面板
+│   ├── envManager.ts                 # 环境变量(.env)管理
+│   ├── i18n.ts                       # 国际化字符串
+│   ├── jsonViewer.ts                 # JSON 可视化查看器
+│   ├── yamlViewer.ts                 # YAML 可视化查看器
+│   ├── stepsViewer.ts                # 步骤时间线查看器
+│   ├── pidStatusViewer.ts            # 实验状态监控查看器
+│   ├── literatureIndexViewer.ts      # 文献索引查看器
+│   ├── experimentResultsViewer.ts    # 实验结果查看器
+│   ├── dragAndDropController.ts      # 拖放控制器
+│   ├── runtimeConfig.ts              # 运行时配置读取
+│   ├── atReference.ts                # @引用格式工具
+│   ├── aiChatInvoker.ts              # AI Chat 调用器
+│   ├── portUtils.ts                  # 动态端口分配
+│   ├── workspaceManager.ts           # 工作区管理
+│   ├── services/                     # 服务模块
+│   │   ├── backendManager.ts         # 后端进程管理
+│   │   ├── backendService.ts         # 后端服务接口
+│   │   ├── llmValidator.ts           # LLM 配置验证
+│   │   └── workspaceExportManager.ts # 工作区导出
+│   ├── webview/                      # React Webview 组件
+│   │   ├── components/               # 共享组件
+│   │   ├── configPage/               # 配置页面
+│   │   ├── helpPage/                 # 帮助页面
+│   │   ├── initConfig/               # 初始化配置
+│   │   ├── prefillParams/            # 预填充参数界面
+│   │   ├── replay/                   # 实验回放界面
+│   │   ├── simSettings/              # SIM 设置界面
+│   │   ├── skillMarketplace/         # 技能市场
+│   │   ├── i18n/                     # 国际化资源
+│   │   └── theme.ts                  # VSCode 主题适配
+│   ├── platforms/                    # 多平台适配器
+│   │   ├── PlatformAdapter.ts        # 平台适配器基类
+│   │   ├── GitHubAdapter.ts          # GitHub API 适配器
+│   │   ├── GitLabAdapter.ts          # GitLab API 适配器
+│   │   └── GiteeAdapter.ts           # Gitee API 适配器
+│   ├── skillMarketplace/             # 技能市场工具
+│   │   ├── security.ts               # 安全验证
+│   │   └── utils.ts                  # 工具函数
+│   └── shared/                       # 共享模块
+│       ├── messages.ts               # 消息类型定义
+│       └── protocol.ts               # 通信协议
+├── skills/                           # Claude Code Skills
+│   ├── agentsociety-analysis/        # 数据分析
+│   ├── agentsociety-create-agent/    # 创建 Agent
+│   ├── agentsociety-create-env-module/ # 创建环境模块
+│   ├── agentsociety-create-dataset/  # 创建数据集
+│   ├── agentsociety-use-dataset/     # 使用数据集
+│   ├── agentsociety-experiment-config/ # 实验配置
+│   ├── agentsociety-hypothesis/      # 假设管理
+│   ├── agentsociety-literature-search/ # 文献检索
+│   ├── agentsociety-run-experiment/  # 运行实验
+│   ├── agentsociety-scan-modules/    # 扫描模块
+│   ├── agentsociety-synthesize/      # 结果综合
+│   ├── agentsociety-web-research/    # 网络研究
+│   ├── agentsociety-generate-paper/  # 论文生成
+│   ├── docx/                         # Word 文档处理
+│   ├── pdf/                          # PDF 文档处理
+│   ├── pptx/                         # PPT 文档处理
+│   └── xlsx/                         # Excel 文档处理
+├── HELP.md                           # 帮助文档（Markdown 格式）
+├── README.md                         # 项目说明
+├── package.json                      # 插件配置
+├── tsconfig.json                     # TypeScript 配置
+├── webpack.config.js                 # Webpack 构建配置
+└── out/                              # 编译输出（自动生成）
 ```
 
-## 功能模块
+## 核心模块
 
-### 1. 项目结构视图 (Project Structure View)
+### 1. 项目结构视图 (ProjectStructureProvider)
 
-- **文件**: `src/projectStructureProvider.ts`
-- **功能**: 在左侧边栏显示研究项目的层次结构
-  - 研究话题 (Topic)
-  - 假设 (Hypotheses)
-  - 实验 (Experiments)
-  - 论文 (Papers)
-- **特性**:
-  - 支持拖放操作
-  - 上下文菜单操作
-  - 自动刷新
-  - 实验状态概览显示
+**文件**: `src/projectStructureProvider.ts`
 
-### 2. 可视化文件查看器
+提供左侧树视图，展示工作区文件结构：
 
-插件提供多种文件类型的可视化查看功能：
+- **研究话题 (Topic)** - TOPIC.md 文件
+- **假设 (Hypotheses)** - hypothesis_xxx/ 目录
+- **实验 (Experiments)** - experiment_xxx/ 目录
+- **论文 (Papers)** - papers/ 目录
 
-#### JSON Viewer (`src/jsonViewer.ts`)
-- 语法高亮显示
-- 折叠/展开对象和数组
-- 搜索功能
-- 复制内容、复制路径
+支持特性：
+- 拖放操作（文件拖入 papers/ 目录）
+- 上下文菜单操作
+- 自动刷新
+- 实验状态概览显示
+- 自定义模块扫描和测试
 
-#### YAML Viewer (`src/yamlViewer.ts`)
-- 语法高亮显示
-- 复制内容
-- 转换为 JSON
+### 2. 配置页面 (ConfigPageViewProvider)
 
-#### Steps Viewer (`src/stepsViewer.ts`)
-- 时间线视图显示实验步骤
-- 编辑和保存功能
-- 状态指示器
+**文件**: `src/configPageViewProvider.ts`, `src/webview/configPage/`
 
-#### PID Status Viewer (`src/pidStatusViewer.ts`)
-- 实验运行状态监控
-- 自动刷新（运行中的实验）
-- 状态图标（完成/运行/失败/暂停）
-- 详细信息展示
+提供可视化配置界面，配置保存在工作区的 `.env` 文件中：
 
-#### Literature Index Viewer (`src/literatureIndexViewer.ts`)
-- 文献列表展示
-- 搜索和过滤
-- 批量操作
-- 复制 @引用格式
-- 键盘快捷键支持
+- **LLM API 配置**
+  - Default LLM（必填）
+  - Coder LLM（代码生成，可选）
+  - Nano LLM（高频操作，可选）
+  - Analysis LLM（数据分析，可选）
+  - Embedding 模型（可选）
 
-### 3. AI 聊天界面 (Chat Webview)
+- **Python 环境配置**
+- **文献检索配置**
+- **EasyPaper 配置**
+- **配置验证功能**
 
-- **文件**: `src/chatWebviewProvider.ts` (Webview Provider)
-- **React 组件**: `src/webview/chat/` (使用 React + Ant Design X V2)
-- **功能**: 右侧边栏的 LLM Agent 对话交互入口
-- **技术栈**:
-  - React 18
-  - Ant Design 6.x
-  - Ant Design X V2 (AI 对话组件)
-  - TypeScript
-  - Webpack (构建工具)
-- **特性**:
-  - 美观的对话界面（使用 Ant Design X Chat 组件）
-  - Markdown 消息渲染
-  - 自动适配 VSCode 主题（亮色/暗色）
-  - 工具调用和文件保存通知显示
-  - 实时连接状态显示
-  - 支持SSE流式响应
+### 3. 帮助页面 (HelpPageViewProvider)
 
-### 3. SIM 设置编辑器 (SIM Settings Editor)
+**文件**: `src/helpPageViewProvider.ts`, `src/webview/helpPage/`, `HELP.md`
 
-- **文件**: `src/simSettingsEditorProvider.ts`
-- **功能**: 自定义编辑器，用于编辑 `SIM_SETTINGS.json` 文件
-- **特性**: 
-  - 可视化选择 Agent Class
-  - 可视化选择 Environment Module
-  - JSON 配置编辑
+从 `HELP.md` 读取 Markdown 内容并渲染：
 
-### 4. API客户端 (API Client)
+- 支持命令链接跳转 (`[文字](command:命令ID)`)
+- 支持外部 URL 打开
+- 自定义 Markdown 样式适配 VSCode 主题
 
-- **文件**: `src/apiClient.ts`
-- **功能**: 处理与FastAPI后端的HTTP通信
-- **特性**:
-  - 支持SSE流式响应
-  - 自动重连机制
-  - 错误处理
-  - 连接状态管理
+实现要点：
+
+- Webview 通过 `window.HELP_CONTENT` 注入 `HELP.md` 文本，再由 React 渲染
+- 由于 CSP 默认禁用内联脚本，注入脚本需使用 `nonce`（见 `helpPageViewProvider.ts`）
+
+### 4. 后端管理器 (BackendManager)
+
+**文件**: `src/services/backendManager.ts`
+
+管理 FastAPI 后端进程的生命周期：
+
+- 启动/停止/重启后端服务
+- 动态端口分配
+- 健康检查（每 10 秒）
+- 进程 PID 管理
+- 状态栏显示服务状态和端口
+- 日志输出到专用 OutputChannel
+
+#### 端口与状态检测逻辑
+
+- **端口来源**：工作区 `.env` 的 `BACKEND_PORT`
+- **插件启动后端**：若 `BACKEND_PORT` 可用就使用；若被占用则自动分配可用端口，并写回 `.env`
+- **手动启动后端**：插件不会扫描端口；只会按 `.env` 的 `BACKEND_PORT` 进行 `/health` 检测与连接
+
+#### 后端状态查询命令
+
+- `aiSocialScientist.showBackendStatus`：弹出信息提示（用于交互提示）
+- `aiSocialScientist.getBackendStatus`：返回结构化状态对象（用于 Webview/配置页等需要“数据源一致”的场景）
+
+### 5. 技能市场 (SkillMarketplaceProvider)
+
+**文件**: `src/skillMarketplaceProvider.ts`, `src/webview/skillMarketplace/`
+
+管理 Agent 技能和 Claude 技能：
+
+- **Agent 运行时** - 安装到 `custom/skills`
+- **Claude 目录** - 安装到 `.claude/skills`
+- 支持从 GitHub/GitLab/Gitee 仓库安装
+- 技能启用/禁用/更新/归档
+- 内置模板同步到工作区
+
+### 6. 可视化查看器
+
+| 查看器 | 文件 | 功能 |
+|--------|------|------|
+| JSON Viewer | `jsonViewer.ts` | 语法高亮、折叠展开、搜索、复制 |
+| YAML Viewer | `yamlViewer.ts` | 语法高亮、复制内容、转换为 JSON |
+| Steps Viewer | `stepsViewer.ts` | 时间线视图、编辑保存 |
+| PID Status Viewer | `pidStatusViewer.ts` | 实验状态监控、自动刷新 |
+| Literature Index Viewer | `literatureIndexViewer.ts` | 文献列表、搜索、批量操作 |
+| Experiment Results Viewer | `experimentResultsViewer.ts` | 实验结果可视化 |
+
+### 7. API 客户端 (ApiClient)
+
+**文件**: `src/apiClient.ts`
+
+处理与 FastAPI 后端的 HTTP 通信：
+
+- 支持 SSE 流式响应
+- 自动重连机制
+- 错误处理
+- 连接状态管理
 
 ## 后端开发
 
 ### 后端项目位置
 
-后端代码位于 `packages/agentsociety2/agentsociety2/backend/`。
+后端代码位于 `packages/agentsociety2/agentsociety2/backend/`：
+
+```
+backend/
+├── app.py              # FastAPI 应用主入口
+├── run.py              # 启动脚本
+├── routers/            # API 路由
+│   ├── agent_skills.py # Agent Skills 管理
+│   ├── custom.py       # 自定义模块管理
+│   ├── experiments.py  # 实验数据接口
+│   ├── modules.py      # 模块信息接口
+│   ├── prefill_params.py # 预填充参数
+│   └── replay.py       # 回放数据接口
+└── services/           # 服务层
+```
 
 ### 启动后端服务
 
@@ -188,160 +261,99 @@ cd packages/agentsociety2
 uv run python -m agentsociety2.backend.run
 ```
 
-### 后端环境变量配置
+服务启动后：
+- 默认地址：`http://localhost:8001`
+- API 文档：`http://localhost:8001/docs`
+- ReDoc：`http://localhost:8001/redoc`
 
-在 `packages/agentsociety2/.env` 文件中配置：
-
-```env
-# 默认 LLM 配置（必需）
-AGENTSOCIETY_LLM_API_KEY=your_api_key
-AGENTSOCIETY_LLM_API_BASE=https://api.openai.com/v1
-AGENTSOCIETY_LLM_MODEL=gpt-5.4
-
-# 代码生成 LLM 配置（可选，未设置时回退到 AGENTSOCIETY_LLM_*）
-AGENTSOCIETY_CODER_LLM_API_KEY=your_coder_api_key
-AGENTSOCIETY_CODER_LLM_API_BASE=https://api.openai.com/v1
-AGENTSOCIETY_CODER_LLM_MODEL=gpt-5.4
-
-# 高频操作 LLM 配置（可选）
-AGENTSOCIETY_NANO_LLM_API_KEY=your_nano_api_key
-AGENTSOCIETY_NANO_LLM_API_BASE=https://api.openai.com/v1
-AGENTSOCIETY_NANO_LLM_MODEL=gpt-5.4-nano
-
-# 数据分析 LLM 配置（可选，用于数据分析、洞察生成、报告撰写）
-AGENTSOCIETY_ANALYSIS_LLM_API_KEY=your_analysis_api_key
-AGENTSOCIETY_ANALYSIS_LLM_API_BASE=https://api.openai.com/v1
-AGENTSOCIETY_ANALYSIS_LLM_MODEL=gpt-5.4
-
-# Embedding 模型配置（可选）
-AGENTSOCIETY_EMBEDDING_API_KEY=your_embedding_api_key
-AGENTSOCIETY_EMBEDDING_API_BASE=https://api.openai.com/v1
-AGENTSOCIETY_EMBEDDING_MODEL=text-embedding-3-large
-AGENTSOCIETY_EMBEDDING_DIMS=1024
-
-# 后端服务配置
-BACKEND_HOST=0.0.0.0
-BACKEND_PORT=8001
-
-# 文献检索 API（统一学术文献检索服务）
-LITERATURE_SEARCH_API_URL=http://localhost:8008/api/search
-LITERATURE_SEARCH_API_KEY=lit-your-api-key-here
-```
-
-**重要提示**：
-- `LITERATURE_SEARCH_API_URL` 必须指向文献检索服务的地址
-- `LITERATURE_SEARCH_API_KEY` 用于认证，请替换为实际的 API Key
-
-### 后端API端点
+### 主要 API 端点
 
 #### 基础接口
-- **GET `/health`** - 健康检查
-- **GET `/docs`** - API文档（Swagger UI）
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/health` | GET | 健康检查 |
+| `/docs` | GET | Swagger API 文档 |
 
 #### Agent Skills 接口 (`/api/v1/agent-skills`)
-- **GET `/list`** - 列出所有 Agent Skills
-- **POST `/enable`** - 启用 Skill
-- **POST `/disable`** - 禁用 Skill
-- **POST `/scan`** - 扫描自定义 Skill
-- **POST `/import`** - 从路径导入 Skill
-- **POST `/create`** - 创建新 Skill
-- **POST `/upload`** - 上传 zip 包导入 Skill
-- **POST `/reload`** - 热重载 Skill
-- **POST `/remove`** - 移除自定义 Skill
-- **GET `/{name}/info`** - 获取 Skill 详情
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/list` | GET | 列出所有 Agent Skills |
+| `/enable` | POST | 启用 Skill |
+| `/disable` | POST | 禁用 Skill |
+| `/scan` | POST | 扫描自定义 Skill |
+| `/import` | POST | 从路径导入 Skill |
+| `/create` | POST | 创建新 Skill |
+| `/upload` | POST | 上传 zip 包导入 Skill |
+| `/reload` | POST | 热重载 Skill |
+| `/remove` | POST | 移除自定义 Skill |
+| `/{name}/info` | GET | 获取 Skill 详情 |
 
 #### 模块接口 (`/api/v1/modules`)
-- **GET `/agent_classes`** - 获取所有 Agent 类
-- **GET `/env_module_classes`** - 获取所有环境模块类
-- **GET `/all`** - 获取所有模块（一次性返回）
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/agent_classes` | GET | 获取所有 Agent 类 |
+| `/env_module_classes` | GET | 获取所有环境模块类 |
+| `/all` | GET | 获取所有模块（一次性返回） |
 
 #### 预填充参数接口 (`/api/v1/prefill-params`)
-- **GET `/`** - 获取全局预填充参数
-- **GET `/{class_kind}/{class_name}`** - 获取特定类的预填充参数
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/` | GET | 获取全局预填充参数 |
+| `/{class_kind}/{class_name}` | GET | 获取特定类的预填充参数 |
 
 #### 实验数据接口 (`/api/v1/experiments`)
-- **GET `/{hypothesis_id}/{experiment_id}/info`** - 获取实验信息
-- **GET `/{hypothesis_id}/{experiment_id}/artifacts`** - 获取产出文件列表
-- **GET `/{hypothesis_id}/{experiment_id}/artifacts/{artifact_name}`** - 获取产出文件内容
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/{hypothesis_id}/{experiment_id}/info` | GET | 获取实验信息 |
+| `/{hypothesis_id}/{experiment_id}/artifacts` | GET | 获取产出文件列表 |
+| `/{hypothesis_id}/{experiment_id}/artifacts/{name}` | GET | 获取产出文件内容 |
 
 #### 回放数据接口 (`/api/v1/replay`)
-- **GET `/{hypothesis_id}/{experiment_id}/info`** - 获取实验基本信息
-- **GET `/{hypothesis_id}/{experiment_id}/timeline`** - 获取时间线数据
-- **GET `/{hypothesis_id}/{experiment_id}/agents`** - 获取所有 Agent 列表
-- **GET `/{hypothesis_id}/{experiment_id}/agent/{agent_id}`** - 获取 Agent 详情
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/{hypothesis_id}/{experiment_id}/info` | GET | 获取实验基本信息 |
+| `/{hypothesis_id}/{experiment_id}/timeline` | GET | 获取时间线数据 |
+| `/{hypothesis_id}/{experiment_id}/agents` | GET | 获取所有 Agent 列表 |
+| `/{hypothesis_id}/{experiment_id}/agent/{agent_id}` | GET | 获取 Agent 详情 |
 
 #### 自定义模块接口 (`/api/v1/custom`)
-- **POST `/scan`** - 扫描自定义模块
-- **POST `/clean`** - 清理自定义模块配置
-- **POST `/test`** - 测试自定义模块
-- **GET `/list`** - 列出已注册的自定义模块
-- **GET `/status`** - 获取自定义模块状态
-
-### Claude Code Skills
-
-研究工作流通过 Claude Code Skills 实现：
-
-- **agentsociety-literature-search** - 文献检索
-- **agentsociety-hypothesis** - 假设管理
-- **agentsociety-experiment-config** - 实验配置生成与验证
-- **agentsociety-run-experiment** - 实验执行
-- **agentsociety-analysis** - 数据分析
-- **agentsociety-synthesize** - 结果综合
-- **agentsociety-generate-paper** - 论文生成
-- **agentsociety-scan-modules** - 扫描模块
-- **agentsociety-create-env-module** - 创建环境模块
-- **agentsociety-create-dataset** - 创建数据集
-- **agentsociety-use-dataset** - 使用数据集
-- **agentsociety-web-research** - 网络研究
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/scan` | POST | 扫描自定义模块 |
+| `/clean` | POST | 清理自定义模块配置 |
+| `/test` | POST | 测试自定义模块 |
+| `/list` | GET | 列出已注册的自定义模块 |
+| `/status` | GET | 获取自定义模块状态 |
 
 ## React Webview 开发
 
-### 概述
+### 技术栈
 
-本项目使用 React + Ant Design X V2 来构建 Webview 界面，提供了现代化的 AI 对话体验。
+- React 18
+- Ant Design 6
+- @ant-design/x-markdown
+- TypeScript
+- Webpack
 
-### 依赖说明
-
-Webview 开发需要以下依赖：
-
-- `react` 和 `react-dom` - React 框架
-- `antd` - Ant Design 组件库 (v6.x)
-- `@ant-design/x` - Ant Design X AI 组件库 (v2.0)
-- `@ant-design/icons` - Ant Design 图标库
-- `webpack` 和 `webpack-cli` - 构建工具
-- `ts-loader` - TypeScript 加载器
-- `css-loader` 和 `style-loader` - CSS 处理
-- `less-loader` - Less 样式处理
-
-### React 组件开发
-
-#### 获取 VSCode API
-
-在 React 组件中，通过 `acquireVsCodeApi()` 获取 VSCode API：
-
-```tsx
-import type { VSCodeAPI } from './types';
-
-const vscode: VSCodeAPI = acquireVsCodeApi();
-```
-
-#### 与扩展通信
+### 与扩展通信
 
 **发送消息到扩展：**
+
 ```tsx
 vscode.postMessage({
-  command: 'sendMessage',
-  text: '用户输入的消息'
+  command: 'openCommand',
+  commandId: 'aiSocialScientist.openConfigPage'
 });
 ```
 
 **接收扩展的消息：**
+
 ```tsx
 React.useEffect(() => {
-  const handleMessage = (event: MessageEvent<ExtensionMessage>) => {
+  const handleMessage = (event: MessageEvent) => {
     const message = event.data;
     switch (message.command) {
-      case 'addMessage':
+      case 'initialConfig':
         // 处理消息
         break;
     }
@@ -352,109 +364,72 @@ React.useEffect(() => {
 }, []);
 ```
 
-#### 使用 VSCode 主题变量
+### 主题适配
 
-React 组件中可以使用 VSCode 的 CSS 变量来适配主题：
+使用 `useVscodeTheme` Hook 适配 VSCode 主题：
 
 ```tsx
+import { useVscodeTheme } from '../theme';
+
+const { isDark, palette, themeConfig } = useVscodeTheme();
+
+// 使用主题颜色
 <div style={{
-  backgroundColor: 'var(--vscode-editor-background)',
-  color: 'var(--vscode-editor-foreground)',
+  background: palette.editorBackground,
+  color: palette.editorForeground,
+  border: `1px solid ${palette.panelBorder}`,
 }}>
   {/* 内容 */}
 </div>
 ```
 
-#### 使用 Ant Design X Chat 组件
+### 可用主题颜色
 
-```tsx
-import { Chat } from '@ant-design/x';
-import type { ChatMessage } from '@ant-design/x';
+| 变量 | 说明 |
+|------|------|
+| `editorBackground` | 编辑器背景色 |
+| `editorForeground` | 编辑器前景色 |
+| `panelBorder` | 面板边框色 |
+| `linkForeground` | 链接颜色 |
+| `descriptionForeground` | 描述文字颜色 |
+| `successForeground` | 成功状态颜色 |
+| `errorForeground` | 错误状态颜色 |
 
-const [messages, setMessages] = React.useState<ChatMessage[]>([]);
+## 帮助页面维护
 
-<Chat
-  messages={messages}
-  onSend={handleSendMessage}
-  loading={loading}
-  placeholder="输入您的问题或请求..."
-/>
+帮助页面内容存储在 `HELP.md` 文件中，使用 Markdown 格式。
+
+帮助页建议保持“上手路径 + 一键入口 + 排错”这三块为主，避免把过多细节（如回放的完整说明）堆在帮助页里，必要时再拆分到独立文档。
+
+### 特殊链接语法
+
+**命令链接**：点击执行 VSCode 命令
+
+```markdown
+[打开配置页面](command:aiSocialScientist.openConfigPage)
 ```
 
-### 工作原理
+**外部链接**：点击在浏览器打开
 
-1. **构建过程**：
-   - Webpack 将 React 组件（TSX）编译打包成 JavaScript
-   - 输出到 `out/webview/chat.js`
+```markdown
+[项目文档](https://github.com/tsinghua-fib-lab/agentsociety)
+```
 
-2. **加载过程**：
-   - `chatWebviewProvider.ts` 中的 `_getHtmlForWebview()` 方法生成 HTML
-   - HTML 中包含 `<script src="chat.js">` 标签
-   - Webview 加载并执行 React 应用
+### 更新帮助页面
 
-3. **通信机制**：
-   - React 组件通过 `vscode.postMessage()` 发送消息
-   - 扩展通过 `webview.postMessage()` 发送消息
-   - React 组件通过 `window.addEventListener('message')` 接收消息
+1. 编辑 `HELP.md` 文件
+2. 重新编译插件：`npm run compile`
+3. 刷新帮助页面即可看到更新
 
-### 类型定义
+### 添加新入口
 
-项目在 `src/webview/chat/types.ts` 中定义了完整的类型：
+在 Markdown 中添加命令链接即可创建快捷入口：
 
-- `VSCodeAPI` - VSCode Webview API 类型
-- `ExtensionMessage` - 扩展发送到 Webview 的消息类型
-- `WebviewMessage` - Webview 发送到扩展的消息类型
-
-### 注意事项
-
-1. **Webview 环境限制**：
-   - Webview 运行在隔离的浏览器环境中
-   - 不能直接访问 Node.js API
-   - 不能直接访问 VSCode API（需要通过 `acquireVsCodeApi()`）
-
-2. **资源加载**：
-   - 所有资源（JS、CSS、图片等）需要通过 `webview.asWebviewUri()` 转换
-   - 确保在 `localResourceRoots` 中配置了正确的路径
-
-3. **性能优化**：
-   - 生产构建使用 `webpack --mode production` 进行优化
-   - 开发时使用 `--mode development` 保留 source map
-
-4. **TypeScript 配置**：
-   - Webview 使用独立的 `src/webview/tsconfig.json` 配置
-   - 配置了正确的 JSX 和模块设置
-
-## 待实现功能
-
-根据项目需求，以下功能需要后续实现：
-
-1. **文件操作工具**
-   - `init_project_tool`: 初始化研究项目
-   - `edit_file_tool`: 编辑文件
-   - `read_file_tool`: 读取文件
-
-2. **论文检索**
-   - `search_paper_tool`: 搜索论文（已部分实现）
-   - 论文下载和管理（已部分实现）
-
-3. **假设生成**
-   - `hypothesis` tool (with actions: init, add, get, list, delete): 管理研究假设
-   - 假设文件夹结构创建
-
-4. **实验初始化**
-   - `try_init_agents`: 测试 Agent 初始化
-   - `try_init_env_modules`: 测试环境模块初始化
-   - 数据预处理和代码生成
-
-5. **实验执行**
-   - `steps.yaml` 生成
-   - 实验进程监控
-   - 结果数据库管理
-
-6. **结果分析**
-   - 数据可视化
-   - 统计分析
-   - 结论生成
+```markdown
+| 页面 | 说明 | 快捷入口 |
+|------|------|----------|
+| 配置页面 | 配置 LLM API | [打开](command:aiSocialScientist.openConfigPage) |
+```
 
 ## 打包发布
 
@@ -467,31 +442,67 @@ npm install -g @vscode/vsce
 ### 打包插件
 
 ```bash
+npm run package
+# 或
 vsce package
 ```
 
-这将生成一个 `.vsix` 文件，可以在 VSCode/Cursor 中安装。
+生成 `.vsix` 文件，可在 VSCode 中安装。
 
-## 测试
+### 发布到市场
 
 ```bash
-npm test
+vsce publish
 ```
 
 ## 代码规范
 
-项目使用 ESLint 进行代码检查：
+### Linting
 
 ```bash
 npm run lint
 ```
 
+### 注释规范
+
+文件头部注释格式：
+
+```typescript
+/**
+ * 模块说明
+ *
+ * 关联文件：
+ * - @extension/src/xxx.ts - 说明
+ *
+ * 后端API：
+ * - @packages/agentsociety2/agentsociety2/backend/xxx.py - 说明
+ */
+```
+
+函数注释格式：
+
+```typescript
+/**
+ * 函数说明
+ * @param param1 参数说明
+ * @returns 返回值说明
+ */
+```
+
+### 命名约定
+
+- 文件名：小写驼峰 (`configPageViewProvider.ts`)
+- 类名：大写驼峰 (`ConfigPageViewProvider`)
+- 接口名：大写驼峰，可带 `I` 前缀
+- 常量：全大写下划线 (`DEFAULT_VALUES`)
+- 私有成员：下划线前缀 (`_panel`)
+
 ## 参考资料
 
 - [VSCode Extension API](https://code.visualstudio.com/api)
 - [VSCode Extension Samples](https://github.com/Microsoft/vscode-extension-samples)
-- [TypeScript Documentation](https://www.typescriptlang.org/docs/)
 - [React Documentation](https://react.dev/)
 - [Ant Design Documentation](https://ant.design/)
 - [Ant Design X Documentation](https://x.ant.design/)
 - [FastAPI Documentation](https://fastapi.tiangolo.com/)
+- [AgentSociety2 Documentation](../packages/agentsociety2/README.md)

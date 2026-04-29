@@ -71,7 +71,9 @@ dependencies = [
     "stringcase>=1.2.0",
     "chromadb>=1.5.5",
     "fastapi>=0.128.0",
-    "uvicorn>=0.35.0",
+    "uvicorn>=0.36.0",
+    "websockets>=14.0",
+    "wsproto>=1.2.0",
     "mineru[core]>=1.0.0",
     "torch>=2.9.1",
     "doclayout-yolo>=0.0.4",
@@ -91,6 +93,7 @@ dependencies = [
     "networkx>=3.0",
     "scipy>=1.10.0",
     "statsmodels>=0.14.0",
+    "scikit-learn>=1.4.0",
 ]
 
 [project.scripts]

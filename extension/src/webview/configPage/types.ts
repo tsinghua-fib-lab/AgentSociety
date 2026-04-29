@@ -55,3 +55,9 @@ export interface WorkspaceInfo {
   hasWorkspace: boolean;
   workspacePath?: string;
 }
+
+export interface BackendStatus {
+  isRunning: boolean;
+  port?: number;
+  url?: string;
+}

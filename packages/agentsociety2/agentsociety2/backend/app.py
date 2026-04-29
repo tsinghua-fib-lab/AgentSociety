@@ -189,4 +189,5 @@ if __name__ == "__main__":
         port=port,
         reload=False,  # 生产环境设为False
         log_level=log_level,
+        ws="wsproto",
     )
