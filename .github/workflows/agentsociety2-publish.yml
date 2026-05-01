@@ -3,11 +3,11 @@ name: Publish to PyPI
 on:
   push:
     tags:
-      - 'agentsociety2-v*'
+      - "agentsociety2-v*"
 
 permissions:
   contents: read
-  id-token: write  # Required for trusted publishing
+  id-token: write # Required for trusted publishing
 
 jobs:
   build-python:
@@ -16,12 +16,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -40,7 +40,7 @@ jobs:
           twine check packages/agentsociety2/dist/*
 
       - name: Store the distribution packages
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: python-package-distributions
           path: packages/agentsociety2/dist/
@@ -51,15 +51,15 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: '22.13.0'
-          cache: 'npm'
+          node-version: "22.13.0"
+          cache: "npm"
           cache-dependency-path: extension/package-lock.json
 
       - name: Install dependencies
@@ -91,7 +91,7 @@ jobs:
           grep -q '^extension/node_modules/js-yaml/index.js$' vsix-contents.txt
 
       - name: Store the VSIX package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: vscode-extension
           path: extension/ai-social-scientist.vsix
@@ -106,7 +106,7 @@ jobs:
 
     steps:
       - name: Download all the dists
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: python-package-distributions
           path: dist/
@@ -128,18 +128,18 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Download Python distributions
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: python-package-distributions
           path: python-dist/
 
       - name: Download VSCode extension
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: vscode-extension
           path: vscode-dist/

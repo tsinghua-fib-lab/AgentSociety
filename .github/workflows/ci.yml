@@ -2,13 +2,13 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
     paths:
-      - 'packages/agentsociety2/**'
+      - "packages/agentsociety2/**"
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
     paths:
-      - 'packages/agentsociety2/**'
+      - "packages/agentsociety2/**"
 
 jobs:
   test:
@@ -22,13 +22,13 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
-          cache: 'pip'
+          cache: "pip"
 
       - name: Install dependencies
         run: |
@@ -55,7 +55,7 @@ jobs:
         env:
           AGENTSOCIETY_LLM_API_KEY: ${{ secrets.AGENTSOCIETY_LLM_API_KEY }}
           AGENTSOCIETY_LLM_API_BASE: ${{ secrets.AGENTSOCIETY_LLM_API_BASE }}
-          AGENTSOCIETY_LLM_MODEL: gpt-4o-mini
+          AGENTSOCIETY_LLM_MODEL: glm-5
         continue-on-error: true
 
   build:
@@ -65,9 +65,9 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
-      - uses: astral-sh/setup-uv@v3
+      - uses: astral-sh/setup-uv@v8
 
       - name: Build package
         run: |
