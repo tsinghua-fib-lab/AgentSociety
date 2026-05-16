@@ -196,8 +196,9 @@ async def test_search_literature_and_save_updates_index(monkeypatch, tmp_path):
     assert result["success"] is True
     assert len(index["entries"]) == 1
     entry = index["entries"][0]
-    assert entry["file_path"].startswith("papers/Agent_Societies_in_Simulation_")
-    assert (tmp_path / entry["file_path"]).exists()
+    file_path = Path(entry["file_path"])
+    assert file_path.as_posix().startswith("papers/Agent_Societies_in_Simulation_")
+    assert (tmp_path / file_path).exists()
     assert entry["extra_fields"]["authors"] == ["A. Researcher"]
     assert entry["extra_fields"]["url"] == "https://arxiv.org/abs/2601.00001"
 

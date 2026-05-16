@@ -156,6 +156,14 @@ from agentsociety import AgentSociety
 - Python >= 3.11
 - An LLM API key (OpenAI, Anthropic, or any litellm-supported provider)
 
+## Contributors
+
+Thank you to everyone who has contributed to this project:
+
+<a href="https://github.com/tsinghua-fib-lab/AgentSociety/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=tsinghua-fib-lab/AgentSociety" alt="Contributors" />
+</a>
+
 ## License
 
 AgentSociety is licensed under the Apache License Version 2.0 except for the `packages/agentsociety/commercial` folder. See the [LICENSE](LICENSE) file for details.

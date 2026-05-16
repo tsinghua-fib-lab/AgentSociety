@@ -95,7 +95,7 @@ We welcome contributions from the community!
 Thank you to everyone who has contributed to this project:
 
 <a href="https://github.com/tsinghua-fib-lab/AgentSociety/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=tsinghua-fib-lab/agentsociety" />
+  <img src="https://contrib.rocks/image?repo=tsinghua-fib-lab/AgentSociety" alt="Contributors" />
 </a>
 
 ## License

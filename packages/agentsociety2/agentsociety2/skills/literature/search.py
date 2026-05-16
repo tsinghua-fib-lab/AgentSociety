@@ -238,7 +238,7 @@ async def _save_literature_to_workspace(
                 "doi": article.get("doi"),
                 "abstract": article.get("abstract"),
                 "avg_similarity": article.get("avg_similarity"),
-                "file_path": str(filepath.relative_to(workspace_path)),
+                "file_path": filepath.relative_to(workspace_path).as_posix(),
                 "file_type": "markdown",
                 "source": "literature_search",
                 "query": result.get("query"),
