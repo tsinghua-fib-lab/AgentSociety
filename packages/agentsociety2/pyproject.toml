@@ -117,6 +117,7 @@ docs = [
     "myst-parser>=4.0.0",
     "sphinx-autodoc2>=0.5.0",
     "sphinx-intl==2.1.0",
+    "linkify-it-py>=2.0.0",
 ]
 # EDA and advanced analysis (optional, for analysis skill)
 # statsmodels for advanced statistical analysis (time series, regression, etc.)

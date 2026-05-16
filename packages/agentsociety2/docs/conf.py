@@ -150,7 +150,7 @@ html_favicon = "_static/logo/favicon.svg"
 
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
-    "pydantic": ("https://docs.pydantic.dev/latest/", None),
+    "pydantic": ("https://pydantic.dev/docs/validation/latest/", None),
 }
 
 # -- Options for Napoleon -----------------------------------------------------
