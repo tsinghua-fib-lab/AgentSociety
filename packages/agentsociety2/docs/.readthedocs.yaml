@@ -1,4 +1,5 @@
-# ReadTheDocs Configuration File
+# Paths are relative to the repository root (monorepo).
+# Prefer this file or packages/agentsociety2/.readthedocs.yaml (same content).
 version: 2
 
 build:
@@ -18,7 +19,4 @@ python:
 
 sphinx:
   configuration: packages/agentsociety2/docs/conf.py
-
-formats:
-  - pdf
-  - htmlzip
+  fail_on_warning: false
