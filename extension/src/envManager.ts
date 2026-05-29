@@ -267,15 +267,20 @@ export class EnvManager {
   /**
    * Format value for .env file
    */
-  private formatValue(value: any): string {
-    if (typeof value === 'string') {
-      // Escape if contains special characters
-      if (value.includes(' ') || value.includes('"') || value.includes("'") || value.includes('#')) {
-        return `"${value.replace(/"/g, '\\"')}"`;
-      }
+  private formatValue(value: unknown): string {
+    if (typeof value !== 'string') {
+      return String(value);
+    }
+    if (!/[\s"'#\\$`\n\r]/.test(value)) {
       return value;
     }
-    return String(value);
+    const escaped = value
+      .replace(/\\/g, '\\\\')
+      .replace(/"/g, '\\"')
+      .replace(/\n/g, '\\n')
+      .replace(/\r/g, '\\r')
+      .replace(/\$/g, '\\$');
+    return `"${escaped}"`;
   }
 
   /**

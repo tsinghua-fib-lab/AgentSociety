@@ -17,7 +17,7 @@ from __future__ import annotations
 import os
 import re
 import uuid
-from typing import Any, Literal, Optional
+from typing import Literal, Optional
 from litellm.router import Router
 
 from agentsociety2.logger import get_logger, setup_litellm_logging
@@ -54,24 +54,6 @@ def _disable_mem0_capture_event() -> None:
 
 
 _disable_mem0_capture_event()
-
-
-def _router_model_names(model_list: list[dict[str, Any]]) -> list[str]:
-    return [str(entry.get("model_name", "")) for entry in model_list]
-
-
-def _redact_router_config_for_log(obj: Any) -> Any:
-    if isinstance(obj, dict):
-        out: dict[str, Any] = {}
-        for k, v in obj.items():
-            if k in ("api_key", "api_base") and isinstance(v, str) and v:
-                out[k] = (v[:4] + "…") if len(v) > 4 else "****"
-            else:
-                out[k] = _redact_router_config_for_log(v)
-        return out
-    if isinstance(obj, list):
-        return [_redact_router_config_for_log(x) for x in obj]
-    return obj
 
 
 # Initialize LiteLLM logging once
@@ -445,7 +427,10 @@ class Config:
             # Configure fallback chain: analysis -> default -> nano
             fallbacks = [{analysis_model: [default_model, nano_model]}]
 
-            logger.debug("Analysis router models: %s", _router_model_names(model_list))
+            logger.debug(
+                "Analysis router models: %s",
+                [analysis_model, default_model, nano_model],
+            )
             return Router(
                 model_list=model_list,
                 fallbacks=fallbacks,
@@ -514,7 +499,10 @@ class Config:
             # fallbacks should be a list of dicts, where each dict maps primary model to fallback models
             fallbacks = [{coder_model: [default_model, nano_model]}]
 
-            logger.debug("Coder router models: %s", _router_model_names(model_list))
+            logger.debug(
+                "Coder router models: %s",
+                [coder_model, default_model, nano_model],
+            )
             return Router(
                 model_list=model_list,
                 fallbacks=fallbacks,
@@ -565,7 +553,10 @@ class Config:
             # Configure fallback chain: default -> nano
             fallbacks = [{default_model: [nano_model]}]
 
-            logger.debug("Default router models: %s", _router_model_names(model_list))
+            logger.debug(
+                "Default router models: %s",
+                [default_model, nano_model],
+            )
             return Router(
                 model_list=model_list,
                 fallbacks=fallbacks,

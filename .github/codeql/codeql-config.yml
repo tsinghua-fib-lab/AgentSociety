@@ -1,0 +1,4 @@
+name: "AgentSociety CodeQL config"
+
+paths-ignore:
+  - frontend/public/monaco-editor

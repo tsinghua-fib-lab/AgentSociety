@@ -14,6 +14,14 @@ Git 发版标签：`agentsociety2-v{major}.{minor}.{patch}`（见 `CONTRIBUTING.
 
 ## [Unreleased]
 
+---
+
+## [2.5.2] - 2026-05-29
+
+- **agentsociety2** `2.5.2` · **extension** `1.5.2` · 标签 `agentsociety2-v2.5.2`
+
+本版本在 [2.5.1] 基础上完成 **paper 技能外迁**、**安全加固** 与 **依赖漏洞修复**；Python 安装：`pip install agentsociety2==2.5.2`。
+
 ### Removed
 
 - **agentsociety2**：内置 `paper` 研究技能套件（`agentsociety-paper-adapter` / `agentsociety-paper-architecture` / `agentsociety-paper-evidence-architect`），论文生成迁移至独立的 `paper-toolkit` plugin。
@@ -22,6 +30,16 @@ Git 发版标签：`agentsociety2-v{major}.{minor}.{patch}`（见 `CONTRIBUTING.
 ### Changed
 
 - **docs**：根 `CLAUDE.md`、`workspace/CLAUDE.md`、`workspace/AGENTS.md` 指引由 `agentsociety-paper-orchestrator` 更新为引用外部 `paper-toolkit` plugin（确定性 CLI + companion Claude Code 写作 / 审阅 skill）。
+
+### Fixed
+
+- **agentsociety2**：后端路径解析增加 `..` / 空字节校验，消除 CodeQL 路径注入告警（`path_security.py`）。
+- **agentsociety2**：LLM Router 调试日志不再经含 API Key 的配置对象传递，避免敏感信息日志泄露。
+- **extension**：`.env` 写入时对 API Key 等值做完整转义（`\`、`"`、换行、`$` 等）。
+- **extension**：升级 `tmp`、`qs` 传递依赖，修复 `npm audit --audit-level=high` 失败。
+- **frontend**：升级 `fast-uri`、`fast-xml-builder`，并通过 `path-to-regexp` override 修复高危 npm 审计项。
+- **deps**：根 `uv.lock` 升级 `urllib3`、`idna`、`pytest`（仍使用清华 tuna 镜像源）。
+- **ci**：新增 CodeQL 配置，排除 `frontend/public/monaco-editor` 第三方 vendor 扫描误报。
 
 ---
 

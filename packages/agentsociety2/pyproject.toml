@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "agentsociety2"
-version = "2.5.1"
+version = "2.5.2"
 description = "A modern, LLM-native agent simulation platform for social science research"
 readme = "README.md"
 requires-python = ">=3.11,<3.14"

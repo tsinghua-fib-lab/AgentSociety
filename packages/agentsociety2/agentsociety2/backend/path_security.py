@@ -10,8 +10,17 @@ _SAFE_SEGMENT_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$")
 _ARTIFACT_NAME_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.-]*\.md$")
 
 
+def _validated_user_path(path_str: str, *, field: str) -> Path:
+    if not path_str or "\0" in path_str:
+        raise HTTPException(status_code=400, detail=f"Invalid {field}")
+    candidate = Path(path_str)
+    if ".." in candidate.parts:
+        raise HTTPException(status_code=400, detail=f"Invalid {field}")
+    return candidate.expanduser().resolve()
+
+
 def resolve_workspace_root(workspace_path: str) -> Path:
-    root = Path(workspace_path).expanduser().resolve()
+    root = _validated_user_path(workspace_path, field="workspace_path")
     if not root.is_dir():
         raise HTTPException(
             status_code=404, detail=f"Workspace not found: {workspace_path}"
@@ -96,7 +105,7 @@ def require_safe_skill_name(name: str) -> str:
 
 
 def resolve_existing_directory(path_str: str) -> Path:
-    target = Path(path_str).expanduser().resolve()
+    target = _validated_user_path(path_str, field="path")
     if not target.is_dir():
         raise HTTPException(status_code=400, detail=f"Directory not found: {path_str}")
     return target
@@ -119,7 +128,7 @@ def resolve_skill_relative(skill_dir: Path, relative: str) -> Path:
 
 
 def resolve_path_under_directory(root: Path, path_str: str) -> Path:
-    target = Path(path_str).expanduser().resolve()
+    target = _validated_user_path(path_str, field="path")
     if target != root and root not in target.parents:
         raise HTTPException(status_code=400, detail="Path escapes allowed directory")
     return target
