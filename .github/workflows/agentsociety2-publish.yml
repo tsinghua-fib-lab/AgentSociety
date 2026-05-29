@@ -152,7 +152,7 @@ jobs:
 
     steps:
       - name: Download all the dists
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: python-package-distributions
           path: dist/
@@ -176,13 +176,13 @@ jobs:
           fetch-depth: 0
 
       - name: Download Python distributions
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: python-package-distributions
           path: python-dist/
 
       - name: Download VSCode extension
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: vscode-extension
           path: vscode-dist/
