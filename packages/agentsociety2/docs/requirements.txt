@@ -3,5 +3,5 @@ sphinx>=7.0.0
 sphinx-autobuild>=2024.9.19
 furo>=2024.8.6
 myst-parser>=4.0.0
-sphinx-intl==2.1.0
+sphinx-intl==2.3.2
 linkify-it-py>=2.0.0
