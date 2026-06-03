@@ -1,5 +1,6 @@
 import asyncio
 import json
+import warnings
 from datetime import datetime, timedelta
 from typing import ClassVar, List
 
@@ -99,13 +100,26 @@ class EconomySpace(EnvBase):
         ColumnDef("bank_interest_rate", "REAL"),
     ]
 
-    def __init__(self, persons: List[EconomyPerson] | List[dict]):
+   def __init__(self, persons: List[EconomyPerson] | List[dict], **kwargs):
         """
         Initialize the Economy Space environment.
 
         :param persons: List of persons to initialize the environment with. Can be EconomyPerson objects or dicts.
+        :param kwargs: Additional keyword arguments. Unknown arguments
+                 will trigger a warning.
         """
         super().__init__()
+
+       + # Warn about unsupported kwargs
+  if kwargs:
+      warnings.warn(
+          f"EconomySpace received unknown keyword arguments"
+          f" that will be ignored: {list(kwargs.keys())}. "
+          f"Please check your init_config.json for unsupported"
+          f" parameters under the economy environment config.",
+          UserWarning,
+          stacklevel=2,
+      )
 
         # Convert dict to EconomyPerson if needed
         person_objects = []
