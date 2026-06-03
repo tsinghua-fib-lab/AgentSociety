@@ -544,7 +544,7 @@ class StructuredSummary(BaseModel):
     """
 
     primary_goal: str = ""
-    current_status: Literal["in_progress", "completed", "blocked", "error"] = (
+    current_status: Literal["in_progress", "completed", "blocked", "error", "failed"] = (
         "in_progress"
     )
     completed_actions: list[str] = []
