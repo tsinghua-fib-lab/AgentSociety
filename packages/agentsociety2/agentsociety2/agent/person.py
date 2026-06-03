@@ -201,6 +201,13 @@ class PersonAgent(AgentBase):
         self._current_tool_span_id: str | None = None
         self._current_tool_started_at: float | None = None
 
+     @staticmethod
+    def _truncate_text(text: str, max_len: int = 3000) -> str:
+        """截断文本到指定长度"""
+        if len(text) <= max_len:
+            return text
+        return text[:max_len] + "...
+        
     def _update_workspace_cache(self, path: str, content: str) -> None:
         """更新缓存并执行 LRU 淘汰。
 
