@@ -23,6 +23,6 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - uses: astral-sh/setup-uv@v8.1.0
+      - uses: astral-sh/setup-uv@v8.2.0
       - run: cd packages/agentsociety-benchmark && uv build
       - run: uv publish --trusted-publishing always
