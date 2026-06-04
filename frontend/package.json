@@ -29,7 +29,7 @@
     "mobx-react-lite": "^4.1.0",
     "plotly.js": "^3.0.1",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "react-dom": "^19.2.7",
     "react-i18next": "^15.4.1",
     "react-map-gl": "^7.1.7",
     "react-plotly.js": "^2.6.0",
@@ -41,7 +41,7 @@
   "devDependencies": {
     "@eslint/js": "^9.15.0",
     "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1",
+    "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react-swc": "^3.5.0",
     "eslint": "^9.15.0",
     "eslint-plugin-react-hooks": "^5.0.0",
