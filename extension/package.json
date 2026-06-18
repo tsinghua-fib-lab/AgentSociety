@@ -696,7 +696,7 @@
     "@types/vscode": "^1.95.0",
     "@vscode/vsce": "^3.9.1",
     "concurrently": "^10.0.3",
-    "css-loader": "^6.8.1",
+    "css-loader": "^7.1.4",
     "eslint": "^9.0.0",
     "globals": "^17.4.0",
     "less": "^4.2.0",
