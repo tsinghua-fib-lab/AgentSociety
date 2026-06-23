@@ -16,7 +16,7 @@
     "@monaco-editor/react": "^4.7.0",
     "@types/react-plotly.js": "^2.6.4",
     "@types/react-resizable": "^3.0.8",
-    "antd": "^5.29.3",
+    "antd": "^6.4.5",
     "casdoor-js-sdk": "^0.16.0",
     "casdoor-react-sdk": "^1.2.0",
     "dayjs": "^1.11.13",
