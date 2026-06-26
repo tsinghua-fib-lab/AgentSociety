@@ -77,6 +77,8 @@ from agentsociety2.logger import get_logger
 
 logger = get_logger()
 
+APP_VERSION = "2.7.0"
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -95,7 +97,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="AI Social Scientist Backend API",
     description="Backend API service for AI Social Scientist VSCode extension",
-    version="2.7.0",
+    version="APP_VERSION",
     lifespan=lifespan,
 )
 
@@ -122,7 +124,7 @@ async def root():
     """:returns: 后端服务基本信息与 endpoints 列表。"""
     return {
         "service": "AI Social Scientist Backend API",
-        "version": "2.7.0",
+        "version": APP_VERSION,
         "status": "running",
         "endpoints": {
             "prefill_params": "/api/v1/prefill-params",
@@ -135,11 +137,22 @@ async def root():
     }
 
 
-@app.get("/health")
-async def health_check():
-    """:returns: 健康状态。"""
-    return {"status": "healthy"}
+APP_VERSION = "2.7.0"
 
+app = FastAPI(
+    title="AI Social Scientist Backend API",
+    description="Backend API service for AI Social Scientist VSCode extension",
+    version=APP_VERSION,
+    lifespan=lifespan,
+)
+
+@app.get("/version")
+async def version():
+    """:returns: Backend version information."""
+    return {
+        "version": APP_VERSION
+    }
+    
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
@@ -150,13 +163,20 @@ async def global_exception_handler(request: Request, exc: Exception):
     :returns: 标准化的 500 JSON 响应。
     """
     logger.error(f"未处理的异常: {exc}", exc_info=True)
+    debug = os.getenv("BACKEND_DEBUG", "false").lower() == "true"
+
     return JSONResponse(
-        status_code=500,
-        content={
-            "success": False,
-            "error": "Internal Server Error",
-        },
-    )
+    status_code=500,
+    content={
+        "success": False,
+        "error": "Internal Server Error",
+        **({"detail": str(exc)} if debug else {}),
+    },
+)
+
+
+
+    return response
 
 
 if __name__ == "__main__":
@@ -194,5 +214,8 @@ if __name__ == "__main__":
         port=port,
         reload=False,  # 生产环境设为False
         log_level=log_level,
+      
         ws="wsproto",
     )
+
+    
