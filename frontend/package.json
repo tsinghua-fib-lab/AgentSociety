@@ -32,7 +32,7 @@
     "react-dom": "^18.3.1",
     "react-i18next": "^15.4.1",
     "react-map-gl": "^7.1.7",
-    "react-plotly.js": "^2.6.0",
+    "react-plotly.js": "^4.0.0",
     "react-resizable": "^3.0.5",
     "react-router-dom": "^7.0.2",
     "survey-creator-react": "^1.12.15",
