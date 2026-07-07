@@ -699,7 +699,7 @@
     "test:codex-bridge": "npm run compile && node --test test-codex-responses-bridge.js"
   },
   "devDependencies": {
-    "@eslint/js": "^9.0.0",
+    "@eslint/js": "^10.0.1",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^26.0.0",
     "@types/react": "^18.2.0",
