@@ -19,7 +19,7 @@
     "antd": "^6.4.5",
     "casdoor-js-sdk": "^0.16.0",
     "casdoor-react-sdk": "^1.2.0",
-    "dayjs": "^1.11.13",
+    "dayjs": "^1.11.21",
     "deck.gl": "^9.0.38",
     "i18next": "^26.3.1",
     "i18next-browser-languagedetector": "^8.0.5",
