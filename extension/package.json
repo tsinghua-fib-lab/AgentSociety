@@ -724,7 +724,7 @@
     "@ant-design/x": "^2.0.0",
     "@ant-design/x-markdown": "^2.1.1",
     "@deck.gl/core": "^9.3.5",
-    "@deck.gl/layers": "^9.3.5",
+    "@deck.gl/layers": "^9.3.6",
     "@deck.gl/react": "^9.3.5",
     "@deck.gl/widgets": "^9.3.5",
     "ajv": "^8.20.0",
