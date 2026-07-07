@@ -22,7 +22,7 @@
     "dayjs": "^1.11.13",
     "deck.gl": "^9.0.38",
     "i18next": "^26.3.1",
-    "i18next-browser-languagedetector": "^8.0.5",
+    "i18next-browser-languagedetector": "^8.2.1",
     "jwt-decode": "^4.0.0",
     "mapbox-gl": "^3.9.0",
     "mobx": "^6.16.1",
