@@ -48,7 +48,10 @@
 __version__ = "2.8.1"
 
 # Import main components for easy access
+# Agent API
 from .agent import AgentBase, PersonAgent
+
+# Environment API
 from .env import (
     EnvBase,
     RouterBase,
@@ -60,11 +63,17 @@ from .env import (
     SearchToolRouter,
     tool,
 )
-from .society import AgentSocietyHelper
+
+# Society API
+from .society import AgentSociety, AgentSocietyHelper
+
+# Storage API
 from .storage import ReplayWriter
 
 __all__ = [
+    "__version__",
     "AgentBase",
+    "AgentSociety",
     "AgentSocietyHelper",
     "CodeGenRouter",
     "EnvBase",

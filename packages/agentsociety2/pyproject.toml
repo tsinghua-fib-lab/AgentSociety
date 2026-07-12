@@ -6,8 +6,8 @@ build-backend = "hatchling.build"
 name = "agentsociety2"
 version = "2.8.1"
 description = "A modern, LLM-native agent simulation platform for social science research"
-readme = "README.md"
 requires-python = ">=3.11,<3.14"
+readme = "README.md"
 license = { text = "Apache-2.0" }
 authors = [
     { name = "Jun Zhang", email = "zhangjun990222@gmail.com" },
@@ -139,6 +139,7 @@ all = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["agentsociety2"]
+only-include = ["agentsociety2"]
 # Explicitly include contrib env files that match test patterns
 artifacts = [
   "agentsociety2/contrib/env/*_test.py",
@@ -172,21 +173,38 @@ optional_dependencies_dev_groups = ["dev", "docs"]
 [tool.ruff.lint]
 ignore = ["E402"]
 
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
 [tool.deptry.per_rule_ignores]
 DEP002 = ["aiosqlite", "chromadb", "networkx", "statsmodels", "agentsociety2"]
 DEP003 = ["debugpy"]
 
 [dependency-groups]
+
 dev = [
-    "matplotlib>=3.10.0",
     "pytest>=9.0.2",
     "pytest-asyncio>=0.23.0",
+    "pytest-cov>=5.0.0",
+    "ruff>=0.11.13",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
+addopts = "-ra"
 
+[tool.black]
+line-length = 88
+target-version = ["py311", "py312", "py313"]
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.13"
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
