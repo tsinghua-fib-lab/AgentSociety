@@ -46,7 +46,7 @@ jobs:
           AGENTSOCIETY_LLM_MODEL: glm-5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version-file: extension/.nvmrc
           cache: npm
@@ -102,7 +102,7 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version-file: extension/.nvmrc
           cache: npm
