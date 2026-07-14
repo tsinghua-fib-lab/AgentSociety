@@ -27,7 +27,7 @@
     "mapbox-gl": "^3.9.0",
     "mobx": "^6.16.1",
     "mobx-react-lite": "^4.1.0",
-    "plotly.js": "^3.0.1",
+    "plotly.js": "^3.7.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-i18next": "^15.4.1",
