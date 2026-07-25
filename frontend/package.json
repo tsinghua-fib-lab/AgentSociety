@@ -40,7 +40,7 @@
   },
   "devDependencies": {
     "@ant-design/pro-table": "^3.21.0",
-    "@eslint/js": "^9.15.0",
+    "@eslint/js": "^10.0.1",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react-swc": "^4.3.1",
