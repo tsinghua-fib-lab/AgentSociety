@@ -99,7 +99,7 @@ jobs:
 
       - name: Upload test report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: junit-py${{ matrix.python-version }}
           path: packages/agentsociety2/junit.xml
