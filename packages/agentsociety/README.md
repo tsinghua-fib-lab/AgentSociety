@@ -40,11 +40,11 @@ The paper is available at [arXiv:2502.08691](https://arxiv.org/abs/2502.08691):
 > **Note**: This is AgentSociety 1.x (legacy). For the modern LLM-native platform, see [AgentSociety 2](https://pypi.org/project/agentsociety2/) ([arXiv:2607.11895](https://arxiv.org/abs/2607.11895)). Repository-wide citations: [CITATION.cff](../../CITATION.cff) · [citations.bib](../../citations.bib).
 ## Star History
 
-<a href="https://www.star-history.com/#tsinghua-fib-lab/AgentSociety&Date">
+<a href="https://star-history.dera.page/#tsinghua-fib-lab/AgentSociety&Date">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=tsinghua-fib-lab/AgentSociety&type=Date&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=tsinghua-fib-lab/AgentSociety&type=Date" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=tsinghua-fib-lab/AgentSociety&type=Date" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://star-history.dera.page/svg?repos=tsinghua-fib-lab/AgentSociety&type=Date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://star-history.dera.page/svg?repos=tsinghua-fib-lab/AgentSociety&type=Date" />
+   <img alt="Star History Chart" src="https://star-history.dera.page/svg?repos=tsinghua-fib-lab/AgentSociety&type=Date" />
  </picture>
 </a>
 
