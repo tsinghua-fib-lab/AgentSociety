@@ -44,11 +44,11 @@ Machine-readable citations: [CITATION.cff](./CITATION.cff) · [citations.bib](./
 
 ## Star History
 
-<a href="https://www.star-history.com/#tsinghua-fib-lab/AgentSociety&Date">
+<a href="https://star-history.dera.page/#tsinghua-fib-lab/AgentSociety&Date">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=tsinghua-fib-lab/AgentSociety&type=Date&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=tsinghua-fib-lab/AgentSociety&type=Date" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=tsinghua-fib-lab/AgentSociety&type=Date" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://star-history.dera.page/svg?repos=tsinghua-fib-lab/AgentSociety&type=Date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://star-history.dera.page/svg?repos=tsinghua-fib-lab/AgentSociety&type=Date" />
+   <img alt="Star History Chart" src="https://star-history.dera.page/svg?repos=tsinghua-fib-lab/AgentSociety&type=Date" />
  </picture>
 </a>
 
