@@ -24,6 +24,6 @@ jobs:
       - name: Build frontend
         run: |
           bash scripts/rebuild_frontend.sh
-      - uses: astral-sh/setup-uv@v9.0.0
+      - uses: astral-sh/setup-uv@v10.0.1
       - run: cd packages/agentsociety && uv build
       - run: cd packages/agentsociety && uv publish --trusted-publishing always
