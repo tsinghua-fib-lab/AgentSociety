@@ -48,7 +48,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.3",
     "globals": "^17.7.0",
-    "monaco-editor": "^0.55.1",
+    "monaco-editor": "^0.56.0",
     "rc-field-form": "^2.7.1",
     "survey-core": "2.5.34",
     "survey-react-ui": "^2.5.30",
