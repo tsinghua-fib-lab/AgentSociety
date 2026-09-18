@@ -34,7 +34,7 @@
     "react-map-gl": "^8.1.1",
     "react-plotly.js": "^4.0.0",
     "react-resizable": "^3.0.5",
-    "react-router": "^8.3.0",
+    "react-router": "^8.4.0",
     "survey-creator-react": "^1.12.15",
     "tinycolor2": "^1.6.0"
   },
