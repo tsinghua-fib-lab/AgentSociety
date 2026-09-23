@@ -860,7 +860,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.1.1",
-    "@types/react": "^18.3.31",
+    "@types/react": "^19.3.0",
     "@types/react-dom": "^18.2.0",
     "@types/vscode": "^1.95.0",
     "@types/write-file-atomic": "^4.0.3",
@@ -894,7 +894,7 @@
     "i18next": "^26.4.2",
     "js-yaml": "^5.4.2",
     "mapbox-gl": "^3.30.0",
-    "react": "^18.2.0",
+    "react": "^19.3.0",
     "react-dom": "^18.2.0",
     "react-i18next": "^17.0.14",
     "react-map-gl": "^8.1.3",
