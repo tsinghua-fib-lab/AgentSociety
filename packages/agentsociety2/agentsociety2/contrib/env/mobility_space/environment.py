@@ -40,9 +40,6 @@ __all__ = [
 
 
 POI_START_ID = 7_0000_0000
-DRIVING_SPEED_RATIO = 0.8  # the speed of driving is 80% of the max speed of the road
-WALKING_SPEED = 1.34  # the speed of walking is 1.34 m/s
-DRIVING_SPEED = 8.0  # the speed of driving is 8.0 m/s (approx 28.8 km/h)
 BENCHMARK_SLOT_TICK_SEC = 1800
 
 
@@ -396,8 +393,6 @@ class MobilitySpace(EnvBase):
         Return AI-readable initialization guidance for this environment module.
         Includes parameter descriptions and JSON schemas for data models.
         """
-        import json
-
         # Get JSON schemas for nested models
         person_init_schema = MobilityPersonInit.model_json_schema()
 

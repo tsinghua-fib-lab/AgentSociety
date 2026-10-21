@@ -161,7 +161,8 @@ async def scan_custom_modules(request: ScanRequest):
         )
 
     try:
-        logger.info(f"[Custom Modules] Starting scan of workspace: {workspace_path}")
+        log_workspace = workspace_path.replace("\r", "\\r").replace("\n", "\\n")
+        logger.info(f"[Custom Modules] Starting scan of workspace: {log_workspace}")
 
         scanner = CustomModuleScanner(workspace_path)
         scan_result = scanner.scan_all()
@@ -277,13 +278,14 @@ async def test_custom_modules(request: TestRequest):
     try:
         # 记录测试请求
         if module_kind and module_class_name:
+            log_kind = module_kind.replace("\r", "\\r").replace("\n", "\\n")
+            log_class = module_class_name.replace("\r", "\\r").replace("\n", "\\n")
             logger.info(
-                f"[Custom Modules] Testing specific module: {module_kind}.{module_class_name}"
+                f"[Custom Modules] Testing specific module: {log_kind}.{log_class}"
             )
         else:
-            logger.info(
-                f"[Custom Modules] Starting test of workspace: {workspace_path}"
-            )
+            log_workspace = workspace_path.replace("\r", "\\r").replace("\n", "\\n")
+            logger.info(f"[Custom Modules] Starting test of workspace: {log_workspace}")
 
         builder = SafeModuleTester(workspace_path)
 
@@ -318,8 +320,10 @@ async def test_custom_modules(request: TestRequest):
                     None,
                 )
             if module_info is None:
+                log_kind = module_kind.replace("\r", "\\r").replace("\n", "\\n")
+                log_class = module_class_name.replace("\r", "\\r").replace("\n", "\\n")
                 logger.warning(
-                    f"[Custom Modules] Module not found: {module_kind}.{module_class_name}"
+                    f"[Custom Modules] Module not found: {log_kind}.{log_class}"
                 )
                 return TestResponse(
                     success=False,

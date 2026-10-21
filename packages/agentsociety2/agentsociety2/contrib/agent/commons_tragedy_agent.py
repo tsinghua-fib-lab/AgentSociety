@@ -364,9 +364,6 @@ This agent participates in a 10-round Tragedy of the Commons game where multiple
             "IMPORTANT: Do not write any additional text before or after the XML structure. Your entire output must consist of exactly the XML format shown above."
         )
 
-        extraction = 1  # Default extraction (conservative strategy)
-        explanation = "LLM call or parsing failed"
-
         try:
             response = await self.acompletion(
                 [{"role": "user", "content": prompt}], stream=False

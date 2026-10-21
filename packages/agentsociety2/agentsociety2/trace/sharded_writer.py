@@ -114,17 +114,18 @@ class ShardedAppendSink:
         self._fds: dict[str, int] = {}
         self._lock = threading.Lock()
 
-    def _fd(self, key: str) -> int:
-        fd = self._fds.get(key)
-        if fd is not None:
-            return fd
+    def _ensure_fd(self, key: str) -> None:
+        if key in self._fds:
+            return
         with self._lock:
-            fd = self._fds.get(key)
-            if fd is None:
+            if key not in self._fds:
                 path = self._base / f"trace_{key}.jsonl"
-                fd = os.open(str(path), os.O_APPEND | os.O_CREAT | os.O_WRONLY, 0o644)
+                # Cached descriptor is owned by this writer and released by close().
+                # codeql[py/file-not-closed]
+                fd = os.open(
+                    str(path), os.O_APPEND | os.O_CREAT | os.O_WRONLY, 0o600
+                )
                 self._fds[key] = fd
-        return fd
 
     def append_record(self, record: dict[str, Any]) -> None:
         """Append one JSONL record to the shard keyed by ``trace_id[:2]``.
@@ -136,7 +137,8 @@ class ShardedAppendSink:
         rec = _cap_large(record, self._cap) if self._cap else record
         key = str(rec.get("trace_id", ""))[:2].lower() or "00"
         data = (json.dumps(rec, ensure_ascii=False, default=str) + "\n").encode("utf-8")
-        fd = self._fd(key)
+        self._ensure_fd(key)
+        fd = self._fds[key]
         mv = memoryview(data)
         # Under O_APPEND each os.write is atomic for <= PIPE_BUF; loop only to
         # handle the rare partial write of a (capped, small) buffer.

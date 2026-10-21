@@ -550,7 +550,8 @@ class RouterBase(ABC):
         messages: list[AllMessageValues],
         stream: Literal[False] = False,
         **kwargs: Any,
-    ) -> ModelResponse: ...
+    ) -> ModelResponse:
+        raise NotImplementedError
 
     @overload
     async def acompletion(
@@ -559,7 +560,8 @@ class RouterBase(ABC):
         messages: list[AllMessageValues],
         stream: Literal[True] = True,
         **kwargs: Any,
-    ) -> CustomStreamWrapper: ...
+    ) -> CustomStreamWrapper:
+        raise NotImplementedError
 
     async def acompletion(
         self,

@@ -32,8 +32,9 @@ def point_on_line_given_distance(start_node, end_node, distance):
         return (x1, y1 + distance if distance >= 0 else y1 - abs(distance))
     else:
         # Calculate the direction vector (dx, dy) along the line
-        dx = (x2 - x1) / math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
-        dy = (y2 - y1) / math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+        length = math.hypot(x2 - x1, y2 - y1)
+        dx = (x2 - x1) / length
+        dy = (y2 - y1) / length
 
         # Scale the direction vector by the given distance
         scaled_dx = dx * distance

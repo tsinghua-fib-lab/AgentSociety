@@ -359,10 +359,6 @@ EDA_HUB_ENTRIES: tuple[dict[str, str], ...] = (
     },
 )
 
-REPORT_TOOL_LINKS: tuple[dict[str, str], ...] = tuple(
-    e for e in EDA_HUB_ENTRIES if e["key"] != "quick-stats"
-)
-
 
 def brand_header_html(
     title: str,

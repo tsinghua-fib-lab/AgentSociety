@@ -394,8 +394,6 @@ class Map:
         if doc is None:
             return None
         doc = deepcopy(doc)
-        if not include_unused:
-            ...
         return doc
 
     def get_lane(self, id: int, include_unused: bool = False) -> Any | None:
@@ -429,8 +427,6 @@ class Map:
         if doc is None:
             return None
         doc = deepcopy(doc)
-        if not include_unused:
-            ...
         return doc
 
     def get_junction(self, id: int, include_unused: bool = False) -> Any | None:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import inspect
 import os
+from importlib import import_module
 from pathlib import Path
 from typing import Any, Self
 
@@ -57,9 +58,8 @@ class ModuleRegistry:
         if self._builtin_loaded:
             return
 
-        from agentsociety2.registry.modules import discover_and_register_builtin_modules
-
-        discover_and_register_builtin_modules(self)
+        modules = import_module("agentsociety2.registry.modules")
+        modules.discover_and_register_builtin_modules(self)
         self._builtin_loaded = True
 
     def _ensure_custom_loaded(self) -> None:
@@ -75,9 +75,8 @@ class ModuleRegistry:
             self._custom_loaded = True
             return
 
-        from agentsociety2.registry.modules import scan_and_register_custom_modules
-
-        scan_and_register_custom_modules(workspace_path, self)
+        modules = import_module("agentsociety2.registry.modules")
+        modules.scan_and_register_custom_modules(workspace_path, self)
         self._custom_loaded = True
 
     def _ensure_loaded(self) -> None:

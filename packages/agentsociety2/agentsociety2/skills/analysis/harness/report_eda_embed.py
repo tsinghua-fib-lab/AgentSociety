@@ -5,11 +5,15 @@ import re
 from pathlib import Path
 
 from agentsociety2.skills.analysis.chart_export import (
-    REPORT_TOOL_LINKS,
+    EDA_HUB_ENTRIES,
     ensure_brand_icon,
     html_font_links,
     html_tab_switcher_script,
     report_eda_section_css,
+)
+
+_REPORT_TOOL_LINKS: tuple[dict[str, str], ...] = tuple(
+    entry for entry in EDA_HUB_ENTRIES if entry["key"] != "quick-stats"
 )
 
 EDA_INTERACTIVE_BEGIN = "<!-- EDA_INTERACTIVE_BEGIN -->"
@@ -29,9 +33,9 @@ _REPORT_TAB_META: dict[str, tuple[str, str, str, str]] = {
     "missingno": ("缺失结构", "Missingness", "eda_missingno.html", ""),
 }
 
-_TOOL_ICONS: dict[str, str] = {e["key"]: e["icon"] for e in REPORT_TOOL_LINKS}
+_TOOL_ICONS: dict[str, str] = {e["key"]: e["icon"] for e in _REPORT_TOOL_LINKS}
 _TOOL_DESC: dict[str, tuple[str, str]] = {
-    e["key"]: (e["desc_zh"], e["desc_en"]) for e in REPORT_TOOL_LINKS
+    e["key"]: (e["desc_zh"], e["desc_en"]) for e in _REPORT_TOOL_LINKS
 }
 
 
@@ -50,7 +54,7 @@ def _quick_stats_excerpt(data_dir: Path) -> str:
 def _tool_cards_html(data_dir: Path, *, lang: str) -> str:
     zh = lang.startswith("zh")
     cards: list[str] = []
-    for spec in REPORT_TOOL_LINKS:
+    for spec in _REPORT_TOOL_LINKS:
         path = data_dir / spec["file"]
         if not path.is_file():
             continue
@@ -179,8 +183,7 @@ def build_interactive_eda_section(
             body += excerpt or (
                 f'<p class="iframe-hint">{"见「探索中心」或下方工具卡片。" if zh else "See Exploration hub or tool cards below."}</p>'
             )
-            if True:
-                body += _tool_cards_html(data_dir, lang=lang)
+            body += _tool_cards_html(data_dir, lang=lang)
         elif mode == "iframe":
             desc_zh, desc_en = (
                 _TOOL_DESC.get(tab_id, ("", "")) if tab_id in _TOOL_DESC else ("", "")

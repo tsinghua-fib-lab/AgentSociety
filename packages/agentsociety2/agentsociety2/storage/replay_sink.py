@@ -124,35 +124,38 @@ class ReplaySink:
     # Row writes
     # ------------------------------------------------------------------
 
-    def _fd(self, table: str, shard: int) -> int:
+    def _ensure_fd(self, table: str, shard: int) -> None:
         key = (table, shard)
-        fd = self._fds.get(key)
-        if fd is not None:
-            return fd
+        if key in self._fds:
+            return
         with self._lock:
-            fd = self._fds.get(key)
-            if fd is None:
+            if key not in self._fds:
                 path = self._dir / f"{table}.{shard:02x}.jsonl"
-                fd = os.open(str(path), os.O_APPEND | os.O_CREAT | os.O_WRONLY, 0o644)
+                # Cached descriptor is owned by this sink and released by close().
+                # codeql[py/file-not-closed]
+                fd = os.open(
+                    str(path), os.O_APPEND | os.O_CREAT | os.O_WRONLY, 0o600
+                )
                 self._fds[key] = fd
-        return fd
 
-    def _lock_fd(self, table: str, shard: int) -> int:
+    def _ensure_lock_fd(self, table: str, shard: int) -> None:
         key = (table, shard)
-        fd = self._lock_fds.get(key)
-        if fd is not None:
-            return fd
+        if key in self._lock_fds:
+            return
         with self._lock:
-            fd = self._lock_fds.get(key)
-            if fd is None:
+            if key not in self._lock_fds:
                 path = self._dir / f".{table}.{shard:02x}.lock"
-                fd = os.open(str(path), os.O_RDWR | os.O_CREAT, 0o644)
+                # Cached descriptor is owned by this sink and released by close().
+                # codeql[py/file-not-closed]
+                fd = os.open(
+                    str(path), os.O_RDWR | os.O_CREAT, 0o600
+                )
                 self._lock_fds[key] = fd
-        return fd
 
     @contextmanager
     def _shard_lock(self, table: str, shard: int):
-        fd = self._lock_fd(table, shard)
+        self._ensure_lock_fd(table, shard)
+        fd = self._lock_fds[(table, shard)]
         with _file_lock(fd):
             yield
 
@@ -165,7 +168,8 @@ class ReplaySink:
             shard = zlib.crc32(line) % _NUM_SHARDS
             by_shard.setdefault(shard, bytearray()).extend(line)
         for shard, buf in by_shard.items():
-            fd = self._fd(table, shard)
+            self._ensure_fd(table, shard)
+            fd = self._fds[(table, shard)]
             with self._shard_lock(table, shard):
                 mv = memoryview(buf)
                 while mv:
@@ -216,33 +220,35 @@ class ReplaySink:
     def _merge_schema(self, patch: dict[str, Any]) -> None:
         """Read-merge-write ``_schema.json`` under an flock on the sidecar fd."""
         self._dir.mkdir(parents=True, exist_ok=True)
-        fd = os.open(str(self._schema_path), os.O_RDWR | os.O_CREAT, 0o644)
-        with _file_lock(fd):
-            os.lseek(fd, 0, os.SEEK_SET)
-            existing = b""
-            while True:
-                chunk = os.read(fd, 65536)
-                if not chunk:
-                    break
-                existing += chunk
-            data: dict[str, Any] = {}
-            if existing.strip():
-                try:
-                    data = json.loads(existing.decode("utf-8"))
-                except json.JSONDecodeError:
-                    data = {}
-            for section, entries in patch.items():
-                bucket = data.setdefault(section, {})
-                bucket.update(entries)
-            payload = json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8")
-            os.lseek(fd, 0, os.SEEK_SET)
-            os.ftruncate(fd, 0)
-            mv = memoryview(payload)
-            while mv:
-                n = os.write(fd, mv)
-                mv = mv[n:]
-            os.fsync(fd)
-        os.close(fd)
+        fd = os.open(str(self._schema_path), os.O_RDWR | os.O_CREAT, 0o600)
+        try:
+            with _file_lock(fd):
+                os.lseek(fd, 0, os.SEEK_SET)
+                existing = b""
+                while True:
+                    chunk = os.read(fd, 65536)
+                    if not chunk:
+                        break
+                    existing += chunk
+                data: dict[str, Any] = {}
+                if existing.strip():
+                    try:
+                        data = json.loads(existing.decode("utf-8"))
+                    except json.JSONDecodeError:
+                        data = {}
+                for section, entries in patch.items():
+                    bucket = data.setdefault(section, {})
+                    bucket.update(entries)
+                payload = json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8")
+                os.lseek(fd, 0, os.SEEK_SET)
+                os.ftruncate(fd, 0)
+                mv = memoryview(payload)
+                while mv:
+                    n = os.write(fd, mv)
+                    mv = mv[n:]
+                os.fsync(fd)
+        finally:
+            os.close(fd)
 
     # ------------------------------------------------------------------
     # Lifecycle

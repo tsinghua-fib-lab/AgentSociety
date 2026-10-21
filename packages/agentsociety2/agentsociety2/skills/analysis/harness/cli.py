@@ -144,7 +144,7 @@ def _iter_files(path: Path) -> list[Path]:
 
 def _fingerprint_paths(paths: list[Path]) -> str:
     digest = hashlib.sha256()
-    for path in sorted({p.resolve() for p in paths}, key=lambda p: str(p)):
+    for path in sorted({p.resolve() for p in paths}, key=str):
         digest.update(str(path).encode("utf-8", errors="replace"))
         if not path.exists():
             digest.update(b"\0MISSING")

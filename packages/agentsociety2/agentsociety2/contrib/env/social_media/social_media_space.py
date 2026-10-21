@@ -1270,7 +1270,6 @@ Example payloads (ISO datetimes, keys may be int or string in JSON; constructor 
                     user_id,
                     limit,
                     follows={uid: u.following for uid, u in self._persons.items()},
-                    likes={pid: post.liked_by for pid, post in self._posts.items()},
                 )
             elif algorithm == "random":
                 rng = random.Random(self._random_seed)
@@ -1303,7 +1302,6 @@ Example payloads (ISO datetimes, keys may be int or string in JSON; constructor 
                     user_id,
                     limit,
                     follows={uid: u.following for uid, u in self._persons.items()},
-                    likes={pid: post.liked_by for pid, post in self._posts.items()},
                 )
             elif algorithm == "random":
                 if self._random_seed is not None:

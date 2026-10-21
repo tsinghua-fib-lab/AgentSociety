@@ -12,7 +12,7 @@ import asyncio
 import json
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import json_repair
 from litellm import AllMessageValues
@@ -27,9 +27,6 @@ from agentsociety2.society.llm_xml import (
     normalize_steps,
     parse_xml_object,
 )
-
-if TYPE_CHECKING:
-    from agentsociety2.society.society import AgentSociety
 
 __all__ = ["AgentSocietyHelper"]
 
@@ -71,7 +68,7 @@ class AgentSocietyHelper:
     def __init__(
         self,
         env_router: RouterBase,
-        society: AgentSociety,
+        society: Any,
         max_steps: int = 8,
         max_replans: int = 2,
         max_llm_call_retry: int = 10,

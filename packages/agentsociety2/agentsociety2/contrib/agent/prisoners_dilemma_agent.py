@@ -213,9 +213,6 @@ This agent participates in a 10-round Prisoner's Dilemma game where two players 
             "IMPORTANT: Do not write any additional text before or after the XML structure. Your entire output must consist of exactly the XML format shown above."
         )
 
-        action = "No"
-        explanation = ""
-
         try:
             response = await self.acompletion(
                 [{"role": "user", "content": prompt}],

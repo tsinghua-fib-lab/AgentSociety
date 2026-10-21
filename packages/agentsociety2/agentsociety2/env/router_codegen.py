@@ -646,7 +646,8 @@ class TemplateCacheDB:
 class AskObserver(Protocol):
     """Ask流程观察者协议：流程结束后接收最终 context"""
 
-    async def on_final(self, context: AskContext) -> None: ...
+    async def on_final(self, context: AskContext) -> None:
+        raise NotImplementedError
 
 
 # ==================== 责任链：Code 获取 ====================
@@ -658,13 +659,13 @@ class CodeProvider(Protocol):
     @property
     def name(self) -> str:
         """提供者名称，用于 context.code_source"""
-        ...
+        raise NotImplementedError
 
     async def get_code(
         self, context: AskContext, router: "CodeGenRouter"
     ) -> str | None:
         """返回代码则链终止，返回 None 则传递至下一节点"""
-        ...
+        raise NotImplementedError
 
 
 # ==================== 管道-过滤器 ====================
@@ -673,9 +674,8 @@ class CodeProvider(Protocol):
 class PipelineStage(Protocol):
     """管道阶段协议，接收 AskContext，返回可能被修改的 AskContext"""
 
-    async def process(
-        self, context: AskContext, router: "CodeGenRouter"
-    ) -> AskContext: ...
+    async def process(self, context: AskContext, router: "CodeGenRouter") -> AskContext:
+        raise NotImplementedError
 
 
 # --- 观察者具体实现：统一在 on_final 中根据 context 记录 ---
