@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Typography, Button, Space, Col } from 'antd';
 import { GithubOutlined } from '@ant-design/icons';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 
 const { Text, Link } = Typography;
 
@@ -67,8 +67,9 @@ const HomePage = () => {
                     display: 'block',
                     marginBottom: '64px',
                 }}
-                dangerouslySetInnerHTML={{ __html: t('home.mainDescription') }}
-            />
+            >
+                <Trans i18nKey="home.mainDescription" components={{ strong: <strong />, em: <em /> }} />
+            </div>
 
             {/* 按钮组 */}
             <Space size="large">

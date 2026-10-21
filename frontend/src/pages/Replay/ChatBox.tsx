@@ -1,4 +1,4 @@
-import { Button, Flex, GetProp, message, Modal, Row, Select, Tabs } from 'antd';
+import { Avatar, Button, Flex, GetProp, message, Modal, Row, Select, Tabs } from 'antd';
 import { AndroidOutlined, ArrowUpOutlined, CommentOutlined, ProfileOutlined, SmileOutlined, UpOutlined, UserOutlined, LineChartOutlined } from '@ant-design/icons';
 import { AgentDialog } from './components/type';
 import { Bubble, Sender } from '@ant-design/x';
@@ -11,24 +11,24 @@ import { fetchCustom } from '../../components/fetch';
 import { useTranslation } from 'react-i18next';
 import Plot from 'react-plotly.js';
 
-const roles: GetProp<typeof Bubble.List, 'roles'> = {
+const roles: GetProp<typeof Bubble.List, 'role'> = {
     self: {
         placement: 'start',
-        avatar: { icon: <UserOutlined />, style: { background: '#fde3cf' } },
+        avatar: <Avatar icon={<UserOutlined />} style={{ background: '#fde3cf' }} />,
         style: {
             maxWidth: 600,
         },
     },
     otherAgent: {
         placement: 'end',
-        avatar: { icon: <UserOutlined />, style: { background: '#cce3cf' } },
+        avatar: <Avatar icon={<UserOutlined />} style={{ background: '#cce3cf' }} />,
         style: {
             maxWidth: 600,
         },
     },
     user: {
         placement: 'end',
-        avatar: { icon: <UserOutlined />, style: { background: '#87d068' } },
+        avatar: <Avatar icon={<UserOutlined />} style={{ background: '#87d068' }} />,
     },
 };
 
@@ -106,7 +106,7 @@ export const RightPanel = observer(() => {
 
     const renderDialogs = (type: number) => (<>
         <Bubble.List
-            roles={roles}
+            role={roles}
             className={type === 2 ? 'bubble-input' : 'bubble-no-input'}
             items={agentDialogs.filter(m => m.type === type).map((m, i) => {
                 // try to parse content as JSON
@@ -160,7 +160,7 @@ export const RightPanel = observer(() => {
     // 将一个Survey中的提问转换为User，回答转换为Agent
     const renderSurveys = () => (<>
         <Bubble.List
-            roles={roles}
+            role={roles}
             className='bubble-input'
             items={agentSurveys.map((s, i) => {
                 console.log(store.id2surveys, s.survey_id);

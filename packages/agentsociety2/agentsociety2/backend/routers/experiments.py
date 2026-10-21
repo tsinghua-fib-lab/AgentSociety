@@ -38,19 +38,29 @@ _LOG_READ_CHUNK = 64 * 1024
 
 
 def _resolve_experiment_log_path(run_dir: Path, source: str) -> Path:
-    """Pick the log file under ``run/`` for the requested source."""
+    """Pick the log file under ``run/`` for the requested source.
+
+    :param run_dir: Trusted experiment run directory.
+    :param source: Requested source name: ``auto``, ``output.log``, or
+        ``stderr.log``.
+    :returns: Resolved path to an existing log file below ``run_dir``.
+    :raises HTTPException: If ``source`` is unsupported or no matching log
+        exists.
+    """
+    # Select trusted literal filenames, never join the request value into a path.
     if source == "auto":
-        for name in _LOG_CANDIDATES:
-            candidate = run_dir / name
-            if candidate.is_file():
-                return candidate
-        raise HTTPException(status_code=404, detail="Experiment log not found")
-    if source not in _LOG_CANDIDATES:
+        names = _LOG_CANDIDATES
+    elif source == "output.log":
+        names = ("output.log",)
+    elif source == "stderr.log":
+        names = ("stderr.log",)
+    else:
         raise HTTPException(status_code=400, detail=f"Unsupported log source: {source}")
-    path = run_dir / source
-    if not path.is_file():
-        raise HTTPException(status_code=404, detail=f"Log file not found: {source}")
-    return path
+    for name in names:
+        candidate = resolve_under_root(run_dir, name)
+        if candidate.is_file():
+            return candidate
+    raise HTTPException(status_code=404, detail="Experiment log not found")
 
 
 def read_log_tail(path: Path, *, tail: int) -> str:
@@ -109,11 +119,24 @@ def _get_experiment_path(
     workspace_path: str,
     hypothesis_id: str,
     experiment_id: str,
-):
+) -> Path:
+    """Resolve an experiment directory below the configured workspace.
+
+    :param workspace_path: Workspace root supplied by the API caller.
+    :param hypothesis_id: Validated hypothesis identifier.
+    :param experiment_id: Validated experiment identifier.
+    :returns: Resolved experiment directory path.
+    :raises HTTPException: If any component escapes the workspace root.
+    """
     return resolve_experiment_dir(workspace_path, hypothesis_id, experiment_id)
 
 
 def _list_agent_state_datasets(datasets: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Return deterministic agent snapshot candidates from a replay catalog.
+
+    :param datasets: Replay dataset catalog entries.
+    :returns: Compatible entries ordered by capability and dataset identifier.
+    """
     items = [
         dataset
         for dataset in datasets
@@ -134,6 +157,11 @@ def _list_agent_state_datasets(datasets: list[dict[str, Any]]) -> list[dict[str,
 def _get_agent_profile_dataset(
     datasets: list[dict[str, Any]],
 ) -> dict[str, Any] | None:
+    """Select the preferred agent profile dataset.
+
+    :param datasets: Replay dataset catalog entries.
+    :returns: The first compatible profile dataset, or ``None``.
+    """
     candidates = [
         dataset
         for dataset in datasets
@@ -145,6 +173,11 @@ def _get_agent_profile_dataset(
 
 
 def _get_timeline_dataset(datasets: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """Select the preferred dataset for calculating replay step counts.
+
+    :param datasets: Replay dataset catalog entries.
+    :returns: A compatible agent or environment snapshot dataset, or ``None``.
+    """
     agent_datasets = [
         dataset
         for dataset in _list_agent_state_datasets(datasets)
@@ -165,8 +198,12 @@ def _get_timeline_dataset(datasets: list[dict[str, Any]]) -> dict[str, Any] | No
     return env_datasets[0] if env_datasets else None
 
 
-def _read_replay_summary(replay_dir) -> tuple[int, int]:
-    """Return ``(agent_count, step_count)`` from current replay JSONL data."""
+def _read_replay_summary(replay_dir: Path) -> tuple[int, int]:
+    """Return agent and step counts from current replay JSONL data.
+
+    :param replay_dir: Directory containing replay schema and shard files.
+    :returns: ``(agent_count, step_count)``.
+    """
 
     reader = ReplayReader(replay_dir)
     try:
@@ -202,10 +239,16 @@ async def get_experiment_info(
     experiment_id: str,
     workspace_path: str = Query(..., description="Workspace directory path"),
 ) -> ExperimentInfo:
-    """
-    获取实验基本信息。
+    """获取实验基本信息。
 
     返回指定实验的状态、开始/结束时间、Agent 数量和已执行 step 数。
+
+    :param hypothesis_id: Hypothesis identifier.
+    :param experiment_id: Experiment identifier.
+    :param workspace_path: Workspace root containing experiment data.
+    :returns: Experiment status and replay summary.
+    :raises HTTPException: If an identifier is unsafe or the experiment is
+        missing.
     """
     # Validate path parameters at the API boundary
     require_safe_segment(hypothesis_id, field="hypothesis_id")
@@ -215,7 +258,7 @@ async def get_experiment_info(
     if not exp_path.exists():
         raise HTTPException(status_code=404, detail="Experiment not found")
 
-    run_dir = exp_path / "run"
+    run_dir = resolve_under_root(exp_path, "run")
     pid_file = run_dir / "pid.json"
     replay_dir = run_dir / "replay"
 
@@ -259,7 +302,14 @@ async def list_artifacts(
     experiment_id: str,
     workspace_path: str = Query(..., description="Workspace directory path"),
 ) -> list[dict[str, str]]:
-    """列出实验运行过程中生成的 Markdown 产出文件。"""
+    """列出实验运行过程中生成的 Markdown 产出文件。
+
+    :param hypothesis_id: Hypothesis identifier.
+    :param experiment_id: Experiment identifier.
+    :param workspace_path: Workspace root containing experiment data.
+    :returns: Metadata for generated Markdown artifacts.
+    :raises HTTPException: If an identifier or resolved path is unsafe.
+    """
 
     # Validate path parameters at the API boundary
     require_safe_segment(hypothesis_id, field="hypothesis_id")
@@ -290,7 +340,15 @@ async def get_artifact(
     artifact_name: str,
     workspace_path: str = Query(..., description="Workspace directory path"),
 ) -> dict[str, str]:
-    """获取指定 Markdown 产出文件内容。"""
+    """获取指定 Markdown 产出文件内容。
+
+    :param hypothesis_id: Hypothesis identifier.
+    :param experiment_id: Experiment identifier.
+    :param artifact_name: Markdown artifact filename.
+    :param workspace_path: Workspace root containing experiment data.
+    :returns: Artifact name and UTF-8 content.
+    :raises HTTPException: If the artifact path is unsafe or missing.
+    """
 
     artifact_path = resolve_artifact_path(
         workspace_path, hypothesis_id, experiment_id, artifact_name
@@ -320,12 +378,22 @@ async def get_experiment_log(
         description="Log file: auto | output.log | stderr.log",
     ),
 ) -> PlainTextResponse:
-    """Return the tail of an experiment run log (``run/output.log`` by default)."""
+    """Return the tail of an experiment run log.
+
+    :param hypothesis_id: Hypothesis identifier.
+    :param experiment_id: Experiment identifier.
+    :param workspace_path: Workspace root containing experiment data.
+    :param tail: Maximum number of trailing lines to return.
+    :param source: Log source: ``auto``, ``output.log``, or ``stderr.log``.
+    :returns: Plain-text response containing the selected log tail.
+    :raises HTTPException: If an identifier, path, or source is invalid, or if
+        the run directory or log file is missing.
+    """
 
     require_safe_segment(hypothesis_id, field="hypothesis_id")
     require_safe_segment(experiment_id, field="experiment_id")
     exp_path = _get_experiment_path(workspace_path, hypothesis_id, experiment_id)
-    run_dir = exp_path / "run"
+    run_dir = resolve_under_root(exp_path, "run")
     if not run_dir.is_dir():
         raise HTTPException(
             status_code=404, detail="Experiment run directory not found"
