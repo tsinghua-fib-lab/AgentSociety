@@ -37,9 +37,7 @@ def _history(run_dir: Path) -> list:
     path = run_dir / "env" / MODULE / "state" / "ENV_STATE.json"
     if not path.is_file():
         return []
-    return list(
-        json.loads(path.read_text(encoding="utf-8")).get("round_history") or []
-    )
+    return list(json.loads(path.read_text(encoding="utf-8")).get("round_history") or [])
 
 
 async def main() -> None:

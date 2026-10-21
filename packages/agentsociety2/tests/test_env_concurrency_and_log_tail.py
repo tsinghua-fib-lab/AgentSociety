@@ -138,6 +138,22 @@ async def test_exec_print_capture_isolated_between_concurrent_asks() -> None:
     assert "A-" not in res_b["output"]
 
 
+def test_codegen_validation_requires_final_status_assignment() -> None:
+    from agentsociety2.env.router_codegen import CodeGenRouter, CodeStage
+
+    valid = "print('done')\nresults['status'] = 'success'"
+    assert CodeStage._validate_code_safety(CodeGenRouter, valid) == (True, "")
+
+    ok, reason = CodeStage._validate_code_safety(CodeGenRouter, "print('done')")
+    assert not ok
+    assert "Final statement must assign results['status']" in reason
+
+    unknown = "result = 'unknown'\nresults['status'] = result"
+    ok, reason = CodeStage._validate_code_safety(CodeGenRouter, unknown)
+    assert not ok
+    assert "instead of unknown" in reason
+
+
 @pytest.mark.asyncio
 async def test_module_local_locks_faster_than_global_lock() -> None:
     """A/B: global serialize lock (before) vs module-local locks (after)."""

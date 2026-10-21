@@ -82,8 +82,10 @@ async def main() -> None:
     await society.close()
     require_no_critical_failures(run_dir)
 
-    joined = f"{a1} {a2} {a3}".lower()
-    ok = ("18" in a3) or ("18" in joined and "rainy" in joined)
+    # Validate the observed post-intervention state.  The intervention request
+    # itself contains the target values, so including ``a2`` here could turn a
+    # refused or failed intervention into a false positive.
+    ok = "18" in a3
     print(f"Token stats: {stats}")
     print(f"WALL_SEC={wall:.2f}")
     print(f"SUCCESS={ok}")

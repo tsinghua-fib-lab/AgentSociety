@@ -619,7 +619,8 @@ Create a step-by-step execution plan for {mode}.
 2. Prefer `list_agents` / `get_agent_profile` / `filter_agents_by_profile` over `ask_environment` for agent roster or profile questions
 3. Prefer `get_agent_profile` over `ask_agents` when the answer is already in the agent profile (personality, bio, location, age, specialty)
 4. When calling `ask_agents`, always include concrete `<agent_ids><item>...</item></agent_ids>`
-5. Minimize steps; avoid redundant tool calls
+5. In intervention mode, `ask_environment` may execute environment actions; readonly mode automatically blocks mutations
+6. Minimize steps; avoid redundant tool calls
 
 ## Response Format (XML only)
 Respond with a single XML document. Do not use JSON.
@@ -885,7 +886,8 @@ Generate the final answer as XML:"""
                     "function": {
                         "name": "ask_environment",
                         "description": (
-                            "Ask the environment router a question; good for facts about modules, world, or aggregates."
+                            "Send a query or action to the environment. Mutations are "
+                            "allowed only in intervention mode."
                         ),
                         "parameters": {
                             "type": "object",
@@ -1055,9 +1057,7 @@ Generate the final answer as XML:"""
         readonly: bool,
     ) -> dict[str, Any]:
         ctx = {}
-        more_ctx, answer = await self._env_router.ask(
-            ctx, question, readonly=bool(readonly)
-        )
+        more_ctx, answer = await self._env_router.ask(ctx, question, readonly=readonly)
         return {"answer": answer, "context": more_ctx}
 
     async def _tool_ask_agents(

@@ -1011,20 +1011,23 @@ summary step). So write it the way you would explain the result to a person:
 
 ## Status handling
 - Inspect each tool's return value for a `status` field.
-- Map it: success -> `results['status'] = 'success'`; error -> `'fail'`;
-  still running -> `'in_progress'`.
+- Map an explicit status: success -> `results['status'] = 'success'`; error ->
+  `'fail'`; still running -> `'in_progress'`.
+- A tool that returns a plain value, or a dict without an error status, completed
+  successfully: set `results['status'] = 'success'`.
 - On failure also set `results['reason'] = "<short why>"`.
 
 ## Allowed building blocks
 - In scope: `ctx`, `modules`, `results`, `print()`. Importable: collections,
   itertools, functools, operator, copy, decimal, fractions, statistics, string,
   re, datetime, json, math, random, numpy (as `np`).
-- Tools are async: ALWAYS `await` them. No dangerous operations.
+- Follow each tool signature: use `await` for `async def` tools and call plain
+  `def` tools directly. No dangerous operations.
 - NEVER forget to set `results['status']` at the END of your code.
 
 ## Example (imitate the print style, not the exact tools)
 response = await modules["MobilitySpace"].get_status(ctx["id"])
-status = response.get("status") if isinstance(response, dict) else "unknown"
+status = response.get("status", "success") if isinstance(response, dict) else "success"
 if status == "success":
     loc = response.get("aoi_id")
     print(f"Checked the agent's status: it is currently at AOI {{loc}} and idle.")
@@ -1185,6 +1188,19 @@ class CodeStage:
                         return True
                 return False
 
+            def _assigns_result_status(node: ast.stmt) -> bool:
+                targets = node.targets if isinstance(node, ast.Assign) else []
+                if isinstance(node, ast.AnnAssign):
+                    targets = [node.target]
+                return any(
+                    isinstance(target, ast.Subscript)
+                    and isinstance(target.value, ast.Name)
+                    and target.value.id == "results"
+                    and isinstance(target.slice, ast.Constant)
+                    and target.slice.value == "status"
+                    for target in targets
+                )
+
             for node in ast.walk(tree):
                 if type(node) in router.FORBIDDEN_AST_NODES:
                     violations.append(f"Forbidden AST node type: {type(node).__name__}")
@@ -1217,6 +1233,19 @@ class CodeStage:
                         violations.append(
                             "Potential infinite loop: while True without break"
                         )
+
+            if not tree.body or not _assigns_result_status(tree.body[-1]):
+                violations.append("Final statement must assign results['status']")
+            if any(
+                isinstance(node, ast.Constant)
+                and isinstance(node.value, str)
+                and node.value.lower() == "unknown"
+                for node in ast.walk(tree)
+            ):
+                violations.append(
+                    "Generated code must classify the outcome as success, fail, "
+                    "in_progress, or error instead of unknown"
+                )
 
             if violations:
                 return (
@@ -1418,7 +1447,6 @@ class CodeStage:
                             return context
                         context.code = None
                         continue
-
             code = context.code
             if code is None:
                 return context
