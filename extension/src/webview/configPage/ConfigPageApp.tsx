@@ -232,7 +232,6 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
   const [backendStatus, setBackendStatus] = React.useState<BackendStatus>({ isRunning: false });
   const [claudeCliStatus, setClaudeCliStatus] = React.useState<ClaudeCodeCliStatus>({ installed: false });
   const [claudeSettingsPath, setClaudeSettingsPath] = React.useState('~/.claude/settings.json');
-  const [claudeCodeCustomized, setClaudeCodeCustomized] = React.useState(false);
   const [claudeAvailableModels, setClaudeAvailableModels] = React.useState<ClaudeModelOption[]>([]);
   const claudeModelsFetchFingerprintRef = React.useRef<string | null>(null);
   const [aiCliGatewayStatus, setAiCliGatewayStatus] = React.useState<AiCliGatewayStatus>({
@@ -250,14 +249,6 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
     Record<string, ProviderAvailabilityResult>
   >({});
   const [claudeProvidersLoading, setClaudeProvidersLoading] = React.useState(false);
-  const activeClaudeProvider = claudeProviders.find((p) => p.activeClaude);
-  const claudeValidateDisabledReason = !activeClaudeProvider
-    ? t('claudeCodeConfig.providerNeedOne')
-    : !hasText(activeClaudeProvider.apiKey)
-      ? t('claudeCodeConfig.apiKeyRequired')
-      : !hasText(activeClaudeProvider.baseUrl)
-        ? t('claudeCodeConfig.baseUrlRequired')
-        : null;
   const [gatewayUsageRecords, setGatewayUsageRecords] = React.useState<TokenUsageRecord[]>([]);
   const [gatewayUsageLoading, setGatewayUsageLoading] = React.useState(false);
   const [codexRouting, setCodexRouting] = React.useState<{ configPath: string; routed: boolean; directUrl?: string } | null>(null);
@@ -354,17 +345,6 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
     ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  const expandAdvancedConfig = (
-    tab: AdvancedTopTab = 'models',
-    scrollTarget?: React.RefObject<HTMLDivElement | null>
-  ) => {
-    setPageTab('specialized');
-    setAdvancedTopTab(tab);
-    window.setTimeout(() => {
-      scrollToRef(scrollTarget ?? pageSectionRef);
-    }, 200);
-  };
-
   const jumpToPage = (tab: ConfigPageTab, subTab?: AdvancedTopTab) => {
     setPageTab(tab);
     if (tab === 'specialized') {
@@ -400,21 +380,6 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
     jumpToPage(tab);
     setConfigCollapseKeys(['config']);
   };
-
-  const advancedBlockedByKind = React.useMemo(
-    (): Record<AdvancedValidationKey, string | null> => ({
-      coder: coderValidateDisabledReason,
-      embedding: embeddingValidateDisabledReason,
-      python: pythonValidateDisabledReason,
-      literature: literatureValidateDisabledReason,
-    }),
-    [
-      coderValidateDisabledReason,
-      embeddingValidateDisabledReason,
-      literatureValidateDisabledReason,
-      pythonValidateDisabledReason,
-    ]
-  );
 
   const saveDisabledReason = React.useMemo((): string | null => {
     if (!workspaceInfo.hasWorkspace) {
@@ -1095,22 +1060,6 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
     [getConfigValuesForValidation, isStillValid, submitValidation]
   );
 
-  const validateAllAdvanced = React.useCallback(
-    (options?: { manual?: boolean }) => {
-      const manual = options?.manual ?? false;
-      if (manual) {
-        literatureValidateManualRef.current = true;
-      }
-      for (const key of ADVANCED_VALIDATION_KEYS) {
-        if (!manual && isStillValid(key)) {
-          continue;
-        }
-        validateAdvancedItem(key, { silent: true, manual });
-      }
-    },
-    [isStillValid, validateAdvancedItem]
-  );
-
   const handleValidate = (llmType: string) => {
     const configValues = getConfigValuesForValidation();
     if (llmType === 'literature') {
@@ -1505,14 +1454,9 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
         }
       } else if (message.command === 'backendStatus') {
         setBackendStatus(message.backendStatus || { isRunning: false });
-        if (typeof message.claudeCodeCustomized === 'boolean') {
-          setClaudeCodeCustomized(message.claudeCodeCustomized);
-        }
       } else if (message.command === 'claudeSaveResult') {
         const msg = message as { success?: boolean; error?: string };
-        if (msg.success) {
-          setClaudeCodeCustomized(true);
-        } else if (msg.error) {
+        if (!msg.success && msg.error) {
           notification.error({
             message: t('claudeCodeConfig.saveFailed'),
             description: msg.error,

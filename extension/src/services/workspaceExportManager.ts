@@ -811,7 +811,6 @@ export class WorkspaceExportManager implements vscode.Disposable {
       return false;
     }
 
-    const stats = fs.lstatSync(absolutePath);
     return !this.shouldExclude(this.normalizeRelativePath(relativePath));
   }
 

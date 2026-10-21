@@ -16,7 +16,6 @@ import {
   Empty,
   Popconfirm,
   Layout,
-  message,
 } from 'antd';
 import {
   SaveOutlined,
@@ -25,7 +24,6 @@ import {
   SettingOutlined,
   UserOutlined,
   EnvironmentOutlined,
-  EditOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
 } from '@ant-design/icons';
@@ -41,17 +39,6 @@ interface InitConfigAppProps {
   vscode: VSCodeAPI;
   initialConfig?: InitConfig;
 }
-
-// 判断是否为简单类型
-const isSimpleType = (value: any): boolean => {
-  return (
-    value === null ||
-    value === undefined ||
-    typeof value === 'string' ||
-    typeof value === 'number' ||
-    typeof value === 'boolean'
-  );
-};
 
 // 渲染单个参数的编辑器
 const ParamEditor: React.FC<{

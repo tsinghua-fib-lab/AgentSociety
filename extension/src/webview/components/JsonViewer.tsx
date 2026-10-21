@@ -10,7 +10,7 @@
  */
 
 import * as React from 'react';
-import { Typography, Tooltip, Space, Button, Input, Empty, Alert } from 'antd';
+import { Typography, Tooltip, Space, Button, Input, Empty } from 'antd';
 import { CopyOutlined, ExpandOutlined, CompressOutlined, SearchOutlined } from '@ant-design/icons';
 import { CodeHighlighter } from '@ant-design/x';
 import { useVscodeTheme } from '../theme';
@@ -64,16 +64,15 @@ const JsonNode: React.FC<JsonNodeProps> = ({
   const isExpandable = typeof value === 'object' && value !== null;
   const isArray = Array.isArray(value);
 
-  // 搜索匹配检查
-  const matchesSearch = (term: string, val: any): boolean => {
-    if (!term) return false;
-    const lowerTerm = term.toLowerCase();
-    if (String(val).toLowerCase().includes(lowerTerm)) return true;
-    return false;
-  };
-
-  // 检查当前 key 或 value 是否匹配搜索词
-  const isMatch = searchTerm && (matchesSearch(searchTerm, keyName || '') || matchesSearch(searchTerm, value));
+  const normalizedSearchTerm = searchTerm?.toLowerCase();
+  const isMatch = Boolean(
+    normalizedSearchTerm &&
+      (String(keyName ?? '').toLowerCase().includes(normalizedSearchTerm) ||
+        String(value).toLowerCase().includes(normalizedSearchTerm))
+  );
+  const matchStyle = isMatch
+    ? { backgroundColor: 'var(--vscode-editor-findMatchHighlightBackground, #ea5c0055)' }
+    : undefined;
 
   // 渲染值
   const renderValue = () => {
@@ -98,7 +97,7 @@ const JsonNode: React.FC<JsonNodeProps> = ({
   // 原始值渲染（非对象）
   if (!isExpandable) {
     return (
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', paddingLeft: keyName ? '0' : '16px' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', paddingLeft: keyName ? '0' : '16px', ...matchStyle }}>
         {keyName !== undefined && (
           <>
             <Text strong style={{ color: 'var(--vscode-terminal-ansiMagenta, #722ed1)' }}>"{keyName}"</Text>
@@ -133,7 +132,7 @@ const JsonNode: React.FC<JsonNodeProps> = ({
   return (
     <div style={{ paddingLeft: keyName ? '0' : '0' }}>
       <div
-        style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}
+        style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', ...matchStyle }}
         onClick={() => setExpanded(!expanded)}
       >
         {keyName !== undefined && (
@@ -326,9 +325,7 @@ export const JsonHighlight: React.FC<{
   data: Record<string, any> | any[] | null | undefined;
   isDark?: boolean;
   maxHeight?: string;
-}> = ({ data, isDark, maxHeight = '300px' }) => {
-  const { isDark: themeIsDark } = useVscodeTheme();
-  const darkMode = isDark ?? themeIsDark;
+}> = ({ data, maxHeight = '300px' }) => {
 
   if (!data) return <Empty description="No data" />;
 

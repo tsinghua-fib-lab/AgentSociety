@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Space, Tag, Tooltip, Typography } from 'antd';
+import { Tag, Tooltip, Typography } from 'antd';
 import {
   CheckCircleOutlined,
   CloseCircleOutlined,
