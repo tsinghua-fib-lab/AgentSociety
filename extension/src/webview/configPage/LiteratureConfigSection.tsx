@@ -1,12 +1,10 @@
 import * as React from 'react';
-import { Alert, Typography } from 'antd';
+import { Alert } from 'antd';
 import type { TFunction } from 'i18next';
 import type { VscodeThemePalette } from '../theme';
 import type { ValidationState } from './types';
 import { ValidationAction } from './ValidationAction';
 import { tabBodyStyle } from './configPageStyles';
-
-const { Text } = Typography;
 
 type Props = {
   t: TFunction;

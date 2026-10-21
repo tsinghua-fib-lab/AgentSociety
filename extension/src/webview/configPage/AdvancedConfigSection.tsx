@@ -57,8 +57,6 @@ export interface AdvancedConfigSectionProps {
   onSaveEasyPaper: () => void;
 }
 
-const MODEL_TAB_KEYS: SpecializedLlmKind[] = ['coder', 'embedding'];
-
 export const AdvancedConfigSection: React.FC<AdvancedConfigSectionProps> = ({
   t,
   palette,

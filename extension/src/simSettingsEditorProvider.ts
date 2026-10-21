@@ -150,13 +150,6 @@ export class SimSettingsEditorProvider implements vscode.CustomTextEditorProvide
     // 这个函数会读取当前文档内容并发送update消息到Webview
     const updateWebview = () => {
       const currentContent = document.getText();
-      let currentSettings: any = {};
-      try {
-        currentSettings = JSON.parse(currentContent);
-      } catch {
-        // 如果解析失败，使用空对象
-        currentSettings = {};
-      }
 
       // 发送update消息到Webview，通知文档已更新
       webviewPanel.webview.postMessage({

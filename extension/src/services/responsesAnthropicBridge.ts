@@ -398,7 +398,7 @@ export class AnthropicMessagesToResponsesStreamTranslator {
         summary: [],
       });
     }
-    for (const [index, state] of this.toolByBlock) {
+    for (const state of this.toolByBlock.values()) {
       output.push({
         id: state.id,
         type: 'function_call',

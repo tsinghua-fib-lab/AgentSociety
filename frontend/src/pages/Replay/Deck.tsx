@@ -25,7 +25,7 @@ const LAND_USE_NAME = new Map<string, string>([
 const Deck = observer((props: {
     style: React.CSSProperties,
 }) => {
-    const store = useContext(StoreContext)
+    const store = useContext(StoreContext);
 
     const [curZoom, setCurZoom] = useState(10.5);
     const [hovering, setHovering] = useState(false);
@@ -90,7 +90,7 @@ const Deck = observer((props: {
                     id: a.id,
                     coordinate: [a.lng, a.lat],
                     avatarUrl: avatarUrl,
-                }
+                };
             }),
             pickable: true,
             getIcon: d => ({

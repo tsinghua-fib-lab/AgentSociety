@@ -154,7 +154,7 @@ const CreateExperiment: React.FC = () => {
                     tenant_id: workflow.tenant_id,
                     id: workflow.id,
                 },
-            }
+            };
 
             // Send request to start experiment
             const response = await fetchCustom('/api/run-experiments', {
@@ -448,4 +448,4 @@ const CreateExperiment: React.FC = () => {
     );
 };
 
-export default CreateExperiment; 
+export default CreateExperiment;

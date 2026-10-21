@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { ConfigProvider, Transfer, Button, Space, Typography, Card, Alert, Spin, Modal, Tag, Layout, Tooltip } from 'antd';
-import { SaveOutlined, ReloadOutlined, InfoCircleOutlined, SettingOutlined, RobotOutlined, CloudServerOutlined, AppstoreOutlined } from '@ant-design/icons';
+import { SaveOutlined, ReloadOutlined, InfoCircleOutlined, SettingOutlined, RobotOutlined, CloudServerOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import type { VSCodeAPI, SimSettings, AgentInfo, EnvModuleInfo } from './types';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
