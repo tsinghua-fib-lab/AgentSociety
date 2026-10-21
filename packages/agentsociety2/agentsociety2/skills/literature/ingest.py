@@ -273,6 +273,8 @@ def add_from_local_file(
                 if loose_rel.parts and loose_rel.parts[0] != "full_texts":
                     src.unlink(missing_ok=True)
             except ValueError:
+                # The source can be outside ``papers_dir`` (for example an
+                # uploaded temporary file), in which case no loose copy exists.
                 pass
 
         pdf_rel = pdf_dest.relative_to(workspace).as_posix()
@@ -363,7 +365,6 @@ def add_from_local_file(
         under_papers = rel.parts and rel.parts[0] == "papers"
     except ValueError:
         under_papers = False
-        rel = None
 
     if under_papers and rel is not None:
         note_rel = rel.as_posix()

@@ -11,8 +11,9 @@ import re
 from typing import Any, Literal
 from urllib.parse import urlparse, urlunparse
 
+import httpx2
 from mcp import ClientSession
-from mcp.client.streamable_http import streamablehttp_client
+from mcp.client.streamable_http import streamable_http_client
 
 from agentsociety2.logger import get_logger
 
@@ -96,7 +97,12 @@ async def list_literature_mcp_tools(*, mcp_url: str, api_key: str) -> list[str]:
     url = normalize_literature_mcp_url(mcp_url)
     headers = _auth_headers(api_key)
 
-    async with streamablehttp_client(url, headers=headers) as (read, write, _):
+    async with (
+        httpx2.AsyncClient(
+            headers=headers, timeout=httpx2.Timeout(30, read=300)
+        ) as client,
+        streamable_http_client(url, http_client=client) as (read, write),
+    ):
         async with ClientSession(read, write) as session:
             await session.initialize()
             tools = await session.list_tools()
@@ -132,22 +138,19 @@ async def call_literature_mcp_tool(
     timeout_seconds = float(timeout)
 
     async with (
-        streamablehttp_client(
-            url,
-            headers=headers,
-            timeout=timeout_seconds,
-            sse_read_timeout=timeout_seconds,
-        ) as (read, write, _),
+        httpx2.AsyncClient(headers=headers, timeout=timeout_seconds) as client,
+        streamable_http_client(url, http_client=client) as (read, write),
         ClientSession(read, write) as session,
     ):
         await session.initialize()
         result = await session.call_tool(tool_name, arguments=payload)
-        if getattr(result, "isError", False):
-            message = (
-                _extract_tool_json(result) if result.content else {"error": "unknown"}
-            )
-            raise RuntimeError(f"MCP tool error: {message}")
-        return _extract_tool_json(result)
+        message = _extract_tool_json(result) if result.content else {"error": "unknown"}
+
+    # Raise after the AnyIO-backed MCP contexts have closed. Raising inside them
+    # wraps the application error in an ExceptionGroup in MCP 2.x.
+    if result.is_error:
+        raise RuntimeError(f"MCP tool error: {message}")
+    return message
 
 
 async def call_literature_search_mcp(
@@ -211,6 +214,11 @@ def mcp_gateway_origin(mcp_url: str) -> str:
 
 
 def _auth_headers(api_key: str) -> dict[str, str]:
+    """Build an optional bearer authentication header.
+
+    :param api_key: Raw API key, which may contain surrounding whitespace.
+    :returns: Authorization headers, or an empty mapping for a blank key.
+    """
     key = api_key.strip()
     if not key:
         return {}
@@ -218,6 +226,13 @@ def _auth_headers(api_key: str) -> dict[str, str]:
 
 
 def _extract_tool_json(result: Any) -> dict[str, Any]:
+    """Extract the first JSON object from an MCP tool result.
+
+    :param result: MCP call result containing text content blocks.
+    :returns: Parsed JSON object.
+    :raises ValueError: If the result has no text or contains no JSON object.
+    :raises json.JSONDecodeError: If JSON-looking content is malformed.
+    """
     texts: list[str] = []
     for block in result.content:
         text = getattr(block, "text", None)

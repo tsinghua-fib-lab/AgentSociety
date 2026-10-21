@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import os
 import re
+from functools import cache
 from typing import Any, Literal
 
 os.environ["LITELLM_LOCAL_MODEL_COST_MAP"] = "True"
@@ -181,8 +182,10 @@ def _redact_router_config_for_log(obj: Any) -> Any:
     return obj
 
 
-# Initialize LiteLLM logging once
-_litellm_logging_initialized = False
+@cache
+def _initialize_litellm_logging() -> None:
+    """Configure LiteLLM logging once per process."""
+    setup_litellm_logging()
 
 
 class Config:
@@ -572,12 +575,7 @@ class Config:
         :returns: LiteLLM :class:`litellm.router.Router` 实例。
         :raises ValueError: 当所需 API key 未配置时抛出。
         """
-        global _litellm_logging_initialized
-
-        # Initialize LiteLLM logging on first router creation
-        if not _litellm_logging_initialized:
-            setup_litellm_logging()
-            _litellm_logging_initialized = True
+        _initialize_litellm_logging()
 
         # Shared default-model definition (used as a fallback target below).
         default_api_key = cls.LLM_API_KEY

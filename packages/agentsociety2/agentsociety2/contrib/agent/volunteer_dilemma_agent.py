@@ -224,9 +224,6 @@ Players aim to maximize cumulative coins while balancing personal gain and colle
             "Explanation: [Brief 1-2 sentence explanation]"
         )
 
-        choice = self.decision_options[1]  # Default to 'Stand by'
-        explanation = "LLM call or parsing failed"
-
         try:
             response = await self.acompletion(
                 [{"role": "user", "content": prompt}], stream=False

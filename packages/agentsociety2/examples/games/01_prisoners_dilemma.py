@@ -34,9 +34,7 @@ def _history(run_dir: Path) -> list:
     path = run_dir / "env" / MODULE / "state" / "ENV_STATE.json"
     if not path.is_file():
         return []
-    return list(
-        json.loads(path.read_text(encoding="utf-8")).get("round_history") or []
-    )
+    return list(json.loads(path.read_text(encoding="utf-8")).get("round_history") or [])
 
 
 async def main() -> None:
@@ -47,9 +45,7 @@ async def main() -> None:
         for i, name in enumerate(agent_names)
     ]
 
-    env_router = await create_env_router_proxy(
-        [MODULE], {MODULE: {}}, run_dir=run_dir
-    )
+    env_router = await create_env_router_proxy([MODULE], {MODULE: {}}, run_dir=run_dir)
     society = AgentSociety(
         agent_specs=agent_specs,
         agent_class_name="PrisonersDilemmaAgent",

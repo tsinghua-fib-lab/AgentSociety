@@ -41,7 +41,11 @@ export const postDownloadWithAuth = async (url: string) => {
     form.action = url;
     form.method = 'POST';
     form.target = '_blank';
-    form.innerHTML = '<input type="hidden" name="authorization" value="' + authorization + '">';
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'authorization';
+    input.value = authorization;
+    form.appendChild(input);
     document.body.appendChild(form);
     form.submit();
     document.body.removeChild(form);

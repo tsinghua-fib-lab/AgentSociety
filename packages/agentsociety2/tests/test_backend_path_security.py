@@ -142,3 +142,42 @@ def test_copy_paths_must_not_overlap(
 
     with pytest.raises(HTTPException, match="Source and destination overlap"):
         require_disjoint_copy_paths(source, destination)
+
+
+@pytest.mark.parametrize("source", ["auto", "output.log", "stderr.log"])
+def test_log_path_rejects_symlink_escape(tmp_path: Path, source: str) -> None:
+    from agentsociety2.backend.routers.experiments import _resolve_experiment_log_path
+
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    secret = tmp_path / "secret.txt"
+    secret.write_text("private")
+    name = "stderr.log" if source == "stderr.log" else "output.log"
+    (run_dir / name).symlink_to(secret)
+    with pytest.raises(HTTPException, match="Path escapes workspace root"):
+        _resolve_experiment_log_path(run_dir, source)
+
+
+@pytest.mark.parametrize(
+    "source", ["../secret.txt", "/etc/passwd", "output.log/..", ""]
+)
+def test_log_path_rejects_unknown_sources(tmp_path: Path, source: str) -> None:
+    from agentsociety2.backend.routers.experiments import _resolve_experiment_log_path
+
+    with pytest.raises(HTTPException, match="Unsupported log source"):
+        _resolve_experiment_log_path(tmp_path, source)
+
+
+def test_log_path_auto_fallback_and_explicit_selection(tmp_path: Path) -> None:
+    from agentsociety2.backend.routers.experiments import _resolve_experiment_log_path
+
+    stderr = tmp_path / "stderr.log"
+    stderr.write_text("stderr")
+    assert _resolve_experiment_log_path(tmp_path, "auto") == stderr
+    with pytest.raises(HTTPException) as exc:
+        _resolve_experiment_log_path(tmp_path, "output.log")
+    assert exc.value.status_code == 404
+    output = tmp_path / "output.log"
+    output.write_text("stdout")
+    assert _resolve_experiment_log_path(tmp_path, "auto") == output
+    assert _resolve_experiment_log_path(tmp_path, "stderr.log") == stderr

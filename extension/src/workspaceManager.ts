@@ -987,9 +987,9 @@ export class WorkspaceManager {
     workspacePath: string,
     progress?: vscode.Progress<{ message?: string; increment?: number }>
   ): Promise<{ success: boolean; message: string; created: string[] }> {
-    const { exec } = require('child_process');
+    const { execFile } = require('child_process');
     const util = require('util');
-    const execPromise = util.promisify(exec);
+    const execFilePromise = util.promisify(execFile);
 
     const reportProgress = (message: string) => {
       if (progress) {
@@ -1016,14 +1016,14 @@ export class WorkspaceManager {
 
       // Build command using determined Python path
       // Assumes agentsociety2 is installed in the Python environment
-      const command = `"${pythonCmd}" -m agentsociety2.society.workspace init-custom --target-dir "${workspacePath}" --json`;
+      const args = ['-m', 'agentsociety2.society.workspace', 'init-custom', '--target-dir', workspacePath, '--json'];
 
-      this.log(`Executing: ${command}`);
+      this.log(`Executing: ${pythonCmd} ${JSON.stringify(args)}`);
 
       reportProgress('正在执行自定义模块初始化命令...');
 
-      const { stdout, stderr } = await execPromise(
-        command,
+      const { stdout, stderr } = await execFilePromise(
+        pythonCmd, args,
         { cwd: workspacePath, env: process.env }
       );
 

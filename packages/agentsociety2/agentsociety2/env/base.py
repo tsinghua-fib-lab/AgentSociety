@@ -51,8 +51,8 @@ from typing import (
 if TYPE_CHECKING:
     from agentsociety2.storage import ReplayWriter
 
-from mcp.server.fastmcp.tools.base import Tool
-from mcp.server.fastmcp.tools.tool_manager import ToolManager
+from mcp.server.mcpserver.tools.base import Tool
+from mcp.server.mcpserver.tools.tool_manager import ToolManager
 from openai.types.chat import ChatCompletionToolParam
 
 __all__ = [
@@ -62,12 +62,20 @@ __all__ = [
 
 
 def dump_int_map(mapping: dict[int, Any]) -> dict[str, Any]:
-    """``dict[int, ...]`` → JSON 友好的 ``dict[str, ...]``（JSON 键只能是字符串）。"""
+    """Convert integer mapping keys to their JSON-compatible string form.
+
+    :param mapping: Mapping with integer keys.
+    :returns: Copy of the mapping with string keys.
+    """
     return {str(k): v for k, v in mapping.items()}
 
 
 def load_int_map(mapping: dict[str, Any] | None) -> dict[int, Any]:
-    """JSON 还原后的 ``dict[str, ...]`` → ``dict[int, ...]``。"""
+    """Restore integer keys from a JSON-compatible mapping.
+
+    :param mapping: Mapping with string keys, or ``None``.
+    :returns: Mapping with integer keys.
+    """
     if not mapping:
         return {}
     return {int(k): v for k, v in mapping.items()}
@@ -587,6 +595,9 @@ class EnvBase(metaclass=EnvMeta):
         默认 no-op。子类按自选的格式/文件名把需要跨重启保留的状态写到
         ``self._workspace_root``（或传入的 ``workspace_path``）下。建议用
         :func:`~agentsociety2.storage.workspace_state.atomic_write_text` 原子写。
+
+        :param workspace_path: Optional workspace directory to bind before
+            persisting state.
         """
         if workspace_path is not None:
             self._bind_workspace(workspace_path)
@@ -597,6 +608,9 @@ class EnvBase(metaclass=EnvMeta):
         默认返回 ``False``。子类读取自己写入的状态并还原；返回是否成功加载
         （供 router 区分 fresh / resume）。仅在 ``__init__`` 与 ``init()`` 之后调用，
         故可安全覆盖 ``init()`` 设置的字段。
+
+        :param workspace_path: Workspace directory containing persisted state.
+        :returns: Whether persisted state was loaded.
         """
         self._bind_workspace(workspace_path)
         return False
@@ -607,7 +621,9 @@ class EnvBase(metaclass=EnvMeta):
     ) -> "EnvBase":
         """从 workspace 重建就绪模块：``cls(**init_kwargs)`` 后 ``restore``。
 
+        :param workspace_path: Workspace directory containing persisted state.
         :param init_kwargs: 构造该模块用的 kwargs（resume 时由 actor 从 ``SOCIETY.json`` 取）。
+        :returns: Initialized module restored from ``workspace_path``.
         """
         module = cls(**init_kwargs)
         await module.restore(Path(workspace_path))
@@ -650,7 +666,10 @@ class EnvBase(metaclass=EnvMeta):
 
     @staticmethod
     def _on_register_state_tables_done(task: "asyncio.Task[None]") -> None:
-        """Callback for _register_state_tables task to log exceptions."""
+        """Log an exception raised while registering replay state tables.
+
+        :param task: Completed asynchronous registration task.
+        """
         if task.cancelled():
             return
         exc = task.exception()

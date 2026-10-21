@@ -11,10 +11,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from agentsociety2.logger import get_logger
-
-logger = get_logger()
-
 
 def suggest_modules_for_topic(topic: str) -> dict[str, Any]:
     """Suggest appropriate agent and environment modules for a research topic

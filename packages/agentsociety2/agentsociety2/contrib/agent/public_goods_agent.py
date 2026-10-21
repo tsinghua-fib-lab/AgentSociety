@@ -207,18 +207,16 @@ This agent participates in a multi-round Public Goods Game. Each round, players 
         # Build history string
         history_str = self._build_history_string(all_agent_names)
 
-        # Build prompt
-        profile_str = self._build_profile_string()
+        personality = str(self._profile.get("personality", "unspecified"))
         prompt = (
-            f"{profile_str}\n"
-            f"Current Game State:\n"
-            f"This is round {round_num} of {self.num_rounds}.\n"
-            f"You have {self.initial_endowment} coins.\n"
-            f"Public fund contributions are multiplied by {self.public_pool_multiplier} and divided equally among all {self.num_agents} players.\n\n"
-            f"{history_str}\n\n"
-            "***CRITICAL INSTRUCTION***: Based ONLY on the rules and history, determine your contribution amount.\n"
-            f"Your decision must be an integer between {self.min_contribution} and {self.max_contribution} (inclusive).\n"
-            "State the integer amount first, followed by a brief 1-2 sentence explanation."
+            f"You are {self.name}; personality: {personality}.\n"
+            f"Public Goods Game, round {round_num}/{self.num_rounds}: "
+            f"{self.num_agents} players each receive {self.initial_endowment} coins. "
+            f"Contributions are multiplied by {self.public_pool_multiplier} and "
+            "shared equally.\n"
+            f"{history_str}\n"
+            f"Choose an integer from {self.min_contribution} to "
+            f"{self.max_contribution}. Reply only: <integer> - <one short reason>."
         )
 
         contribution = 0
@@ -230,6 +228,7 @@ This agent participates in a multi-round Public Goods Game. Each round, players 
                 stream=False,
                 max_retries=5,
                 max_delay=90.0,
+                max_tokens=2048,
             )
 
             if not response or not response.choices or len(response.choices) == 0:

@@ -185,7 +185,6 @@ class RecommendationEngine:
         user_id: int,
         limit: int = 20,
         follows: dict[int, list[int]] | None = None,
-        likes: dict[int, list[int]] | None = None,
         weights: dict[str, float] | None = None,
     ) -> list[Post]:
         """
@@ -201,7 +200,6 @@ class RecommendationEngine:
         :param user_id: 当前用户ID
         :param limit: 返回帖子数量
         :param follows: 关注关系 {follower_id: [followee_ids]}
-        :param likes: 点赞记录 {post_id: [user_ids]}
         :param weights: 权重配置
 
         :returns: 按综合分数排序的帖子列表
@@ -218,7 +216,6 @@ class RecommendationEngine:
             default_weights.update(weights)
 
         follows = follows or {}
-        _likes = likes or {}
 
         # 用户关注的人
         following_ids = follows.get(user_id, [])

@@ -10,6 +10,15 @@ from agentsociety2.society.llm_xml import (
 )
 
 
+class _EnvironmentRouter:
+    def __init__(self) -> None:
+        self.calls: list[tuple[dict, str, bool]] = []
+
+    async def ask(self, ctx: dict, instruction: str, readonly: bool):
+        self.calls.append((ctx, instruction, readonly))
+        return {"status": "success"}, "done"
+
+
 def test_parse_plan_xml_with_list_args() -> None:
     raw = """
     Here is the plan:
@@ -115,3 +124,32 @@ def test_get_agent_profile_tool_from_specs() -> None:
     assert out["profile"]["personality"] == "curious"
     missing = asyncio.run(helper._tool_get_agent_profile(name="Bob"))
     assert "error" in missing
+
+
+def test_environment_access_propagates_readonly_mode() -> None:
+    import asyncio
+
+    helper = object.__new__(AgentSocietyHelper)
+    router = _EnvironmentRouter()
+    helper._env_router = router  # type: ignore[attr-defined]
+    helper._register_tools()
+
+    result = asyncio.run(
+        helper._dispatch_tool(
+            "ask_environment",
+            {"question": "change the weather"},
+            readonly=False,
+        )
+    )
+    assert result == {"answer": "done", "context": {"status": "success"}}
+    assert router.calls == [({}, "change the weather", False)]
+
+    result = asyncio.run(
+        helper._dispatch_tool(
+            "ask_environment",
+            {"question": "read the weather"},
+            readonly=True,
+        )
+    )
+    assert result == {"answer": "done", "context": {"status": "success"}}
+    assert router.calls[-1] == ({}, "read the weather", True)

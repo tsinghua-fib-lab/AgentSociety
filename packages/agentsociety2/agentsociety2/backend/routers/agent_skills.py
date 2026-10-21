@@ -241,7 +241,9 @@ async def create_skill(req: CreateRequest):
     reg = get_skill_registry()
     reg.scan_custom(custom_skills_root(workspace))
 
-    logger.info(f"[Skills] Created skill '{safe_name}' at {dest}")
+    log_name = safe_name.replace("\r", "\\r").replace("\n", "\\n")
+    log_dest = str(dest).replace("\r", "\\r").replace("\n", "\\n")
+    logger.info(f"[Skills] Created skill '{log_name}' at {log_dest}")
     return ImportResponse(
         success=True, name=safe_name, message=f"Skill '{safe_name}' created"
     )

@@ -24,6 +24,7 @@ from __future__ import annotations
 import asyncio
 import json
 from datetime import datetime, timedelta
+from importlib import import_module
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -34,7 +35,6 @@ from agentsociety2.agent.runner import (
 )
 from agentsociety2.env import RouterBase
 from agentsociety2.logger import get_logger
-from agentsociety2.society.helper import AgentSocietyHelper
 from agentsociety2.society.questionnaire import (
     AgentQuestionnaireResult,
     Questionnaire,
@@ -58,6 +58,7 @@ from agentsociety2.storage.workspace_state import atomic_write_text
 if TYPE_CHECKING:
     from agentsociety2.agent.base import AgentBase
     from agentsociety2.agent.service_proxy import ServiceProxy
+    from agentsociety2.society.helper import AgentSocietyHelper
 
 __all__ = ["AgentSociety"]
 
@@ -894,7 +895,8 @@ class AgentSociety:
         only the agents a specific plan needs.
         """
         if self._helper is None:
-            self._helper = AgentSocietyHelper(
+            helper_module = import_module("agentsociety2.society.helper")
+            self._helper = helper_module.AgentSocietyHelper(
                 env_router=self._env_router,
                 society=self,
             )

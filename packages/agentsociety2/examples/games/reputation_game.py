@@ -82,8 +82,7 @@ async def main() -> None:
 
     print("=== Reputation Game ===\n")
     print(
-        f"Population={POPULATION}, steps={NUM_STEPS}, "
-        f"norm={env_config['norm_type']}\n"
+        f"Population={POPULATION}, steps={NUM_STEPS}, norm={env_config['norm_type']}\n"
     )
     t0 = time.perf_counter()
     for step_idx in range(1, NUM_STEPS + 1):

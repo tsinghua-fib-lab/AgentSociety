@@ -334,7 +334,6 @@ Both roles aim to maximize cumulative coins while considering trust and reciproc
         )
 
         investment = 0  # Default investment
-        explanation = "LLM call or parsing failed"
 
         try:
             response = await self.acompletion(
@@ -390,7 +389,6 @@ Both roles aim to maximize cumulative coins while considering trust and reciproc
         )
 
         return_amount = 0  # Default return
-        explanation = "LLM call or parsing failed"
 
         try:
             response = await self.acompletion(
