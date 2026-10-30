@@ -29,7 +29,7 @@
     "plotly.js": "4.1.2",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "react-i18next": "^17.1.8",
+    "react-i18next": "^17.1.9",
     "react-map-gl": "^8.1.1",
     "react-plotly.js": "^4.0.0",
     "react-resizable": "^4.0.2",
