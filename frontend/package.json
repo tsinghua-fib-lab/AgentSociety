@@ -20,7 +20,7 @@
     "casdoor-react-sdk": "^1.2.0",
     "dayjs": "^1.11.21",
     "deck.gl": "^9.0.38",
-    "i18next": "^26.5.10",
+    "i18next": "^26.5.11",
     "i18next-browser-languagedetector": "^8.2.1",
     "jwt-decode": "^4.0.0",
     "mapbox-gl": "^3.9.0",
