@@ -44,9 +44,14 @@ override-dependencies = [
     "cryptography>=50.0.0",
     "h2>=4.4.1",
     "json-repair>=0.63.0",
-    "setuptools>=83",
-    "virtualenv==20.35.4",
-    "filelock==3.20.3",
+    "setuptools>=84.1.0",
+    "virtualenv==21.15.1",
+    "filelock==4.2.4",
+    "msgpack>=1.2.3",
+    "opentelemetry-api>=1.45.1",
+    "opentelemetry-sdk>=1.45.1",
+    "opentelemetry-semantic-conventions>=0.66b1",
+    "opentelemetry-exporter-prometheus>=0.66b1",
     "yarl>=1.25.1,<2",
 ]
 
