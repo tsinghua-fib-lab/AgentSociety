@@ -26,6 +26,11 @@ updates:
     labels:
       - extension
       - dependencies
+    ignore:
+      # typescript-eslint does not support the TypeScript 7 compiler API yet.
+      - dependency-name: typescript
+        update-types:
+          - version-update:semver-major
 
   - package-ecosystem: npm
     directory: /frontend
@@ -35,6 +40,11 @@ updates:
     labels:
       - frontend
       - dependencies
+    ignore:
+      # Keep patch/minor updates while the lint toolchain remains on TS 6 APIs.
+      - dependency-name: typescript
+        update-types:
+          - version-update:semver-major
 
   - package-ecosystem: github-actions
     directory: /
