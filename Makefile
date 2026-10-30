@@ -62,6 +62,7 @@ watch-webview:
 # 清理 extension 构建产物
 clean-extension:
 	@echo "==> Cleaning extension build artifacts..."
+	rm -rf extension/dist
 	rm -rf extension/out/webview
 	rm -rf extension/out/**/*.js
 	rm -rf extension/out/**/*.map

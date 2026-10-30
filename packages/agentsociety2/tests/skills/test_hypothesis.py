@@ -1,33 +1,33 @@
 """Tests for hypothesis management functionality."""
 
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import pytest
+from pydantic import ValidationError
 
-from agentsociety2.skills.hypothesis.models import (
-    HypothesisModel,
-    ExperimentGroupModel,
-    HypothesisDataModel,
-)
 from agentsociety2.skills.hypothesis.manager import (
-    validate_hypothesis_schema,
-    validate_hypothesis_with_modules,
-    create_hypothesis_structure,
     add_hypothesis,
-    get_hypothesis,
-    list_hypotheses,
+    create_hypothesis_structure,
     delete_hypothesis,
     find_existing_hypotheses,
-    get_next_hypothesis_id,
     generate_hypothesis_markdown,
     generate_sim_settings,
+    get_hypothesis,
+    get_next_hypothesis_id,
+    list_hypotheses,
+    validate_hypothesis_schema,
+    validate_hypothesis_with_modules,
 )
-
+from agentsociety2.skills.hypothesis.models import (
+    ExperimentGroupModel,
+    HypothesisDataModel,
+    HypothesisModel,
+)
 
 # --- Shared fixtures ---
 
-VALID_HYPOTHESIS_DATA: Dict[str, Any] = {
+VALID_HYPOTHESIS_DATA: dict[str, Any] = {
     "hypothesis": {
         "description": "Agents with collectivist values will cooperate more.",
         "rationale": "Based on social identity theory, collectivist orientations promote group goals.",
@@ -105,7 +105,7 @@ class TestHypothesisModels:
         assert data.env_modules == ["simple_social_space", "economy_module"]
 
     def test_hypothesis_data_model_requires_at_least_one_group(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError, match="groups"):
             HypothesisDataModel(
                 hypothesis=HypothesisModel(
                     description="Test hypothesis",
@@ -144,7 +144,7 @@ class TestValidateHypothesisSchema:
                 }
             ],
         }
-        is_valid, error, model = validate_hypothesis_schema(data)
+        is_valid, error, _model = validate_hypothesis_schema(data)
         assert is_valid is False
         assert error is not None
         assert "rationale" in error.lower()
@@ -157,7 +157,7 @@ class TestValidateHypothesisSchema:
             },
             "groups": [],
         }
-        is_valid, error, model = validate_hypothesis_schema(data)
+        is_valid, error, _model = validate_hypothesis_schema(data)
         assert is_valid is False
         assert error is not None
 
@@ -167,7 +167,7 @@ class TestValidateHypothesisSchema:
             "agent_classes": ["basic_agent"],
             "env_modules": ["simple_social_space"],
         }
-        is_valid, error, model = validate_hypothesis_schema(data)
+        is_valid, _error, model = validate_hypothesis_schema(data)
         assert is_valid is True
         assert model.agent_classes == ["basic_agent"]
         assert model.env_modules == ["simple_social_space"]
@@ -177,7 +177,7 @@ class TestValidateHypothesisWithModules:
     """Tests for validate_hypothesis_with_modules function."""
 
     def test_valid_hypothesis_returns_tuple(self):
-        is_valid, error, model, guidance = validate_hypothesis_with_modules(
+        is_valid, error, _model, guidance = validate_hypothesis_with_modules(
             VALID_HYPOTHESIS_DATA
         )
         assert isinstance(is_valid, bool)
@@ -186,7 +186,7 @@ class TestValidateHypothesisWithModules:
 
     def test_invalid_schema_returns_false(self):
         data = {"hypothesis": {"description": "missing rationale"}, "groups": []}
-        is_valid, error, model, guidance = validate_hypothesis_with_modules(data)
+        is_valid, error, _model, _guidance = validate_hypothesis_with_modules(data)
         assert is_valid is False
         assert error is not None
 

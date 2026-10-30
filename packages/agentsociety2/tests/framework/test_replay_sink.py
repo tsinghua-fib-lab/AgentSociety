@@ -14,9 +14,9 @@ from pathlib import Path
 
 import pytest
 
-from agentsociety2.storage.replay_sink import ReplaySink, _NUM_SHARDS, build_replay_sink
 from agentsociety2.storage.replay_metadata import ReplayDatasetSpec
 from agentsociety2.storage.replay_proxy import ReplayProxy
+from agentsociety2.storage.replay_sink import _NUM_SHARDS, ReplaySink, build_replay_sink
 from agentsociety2.storage.table_schema import ColumnDef, TableSchema
 
 

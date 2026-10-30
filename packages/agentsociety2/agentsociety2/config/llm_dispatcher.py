@@ -21,7 +21,7 @@ import os
 import re
 import time
 from collections import deque
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -527,7 +527,7 @@ class LLMClient:
 
     model_name: str
     base_url: str
-    api_key: str
+    api_key: str = field(repr=False)
     model_type: str = "default"
     thinking: ThinkingSettings | None = None
 

@@ -198,7 +198,7 @@ This agent participates in a multi-round Public Goods Game. Each round, players 
         except Exception as e:
             error_message = f"Step execution failed: {type(e).__name__} - {e!s}"
             self._logger.error(f"[{self.name}] {error_message}")
-            return f"[{self.name}] [ERROR] {error_message}"
+            raise RuntimeError(f"[{self.name}] {error_message}") from e
 
     async def _decide_contribution(
         self, round_num: int, all_agent_names: list
@@ -223,26 +223,34 @@ This agent participates in a multi-round Public Goods Game. Each round, players 
         explanation = ""
 
         try:
-            response = await self.acompletion(
-                [{"role": "user", "content": prompt}],
-                stream=False,
-                max_retries=5,
-                max_delay=90.0,
-                max_tokens=2048,
-            )
+            for output_budget in (2048, 4096, 8192):
+                response = await self.acompletion(
+                    [{"role": "user", "content": prompt}],
+                    stream=False,
+                    max_retries=5,
+                    max_delay=90.0,
+                    max_tokens=output_budget,
+                )
+                choices = getattr(response, "choices", None)
+                choice = choices[0] if choices else None
+                message = getattr(choice, "message", None)
+                content = getattr(message, "content", None) or ""
+                if (
+                    content.strip()
+                    and getattr(choice, "finish_reason", None) != "length"
+                ):
+                    break
+                self._logger.warning(
+                    "[%s] Empty or truncated decision at output budget %d",
+                    self.name,
+                    output_budget,
+                )
+            else:
+                raise ValueError(
+                    "LLM returned empty or truncated responses after 3 attempts"
+                )
 
-            if not response or not response.choices or len(response.choices) == 0:
-                raise ValueError("LLM returned empty response")
-
-            choice = response.choices[0]
-            if not hasattr(choice, "message") or not choice.message:
-                raise ValueError("LLM returned empty response")
-
-            content = choice.message.content or ""  # type: ignore
             self._logger.debug(f"[{self.name}] [DEBUG] Raw response: {content}")
-
-            if not content or content.isspace():
-                raise ValueError("LLM returned empty response")
 
             # Use regex to match number and explanation
             match = re.search(r"^\s*(\d+)\s*[-–—]?\s*(.*)$", content, re.DOTALL)
@@ -257,10 +265,10 @@ This agent participates in a multi-round Public Goods Game. Each round, players 
                 ):
                     contribution = parsed_contribution
                 else:
-                    self._logger.warning(
-                        f"[{self.name}] [WARNING] Contribution value out of range: {parsed_contribution}, using default 0"
+                    raise ValueError(
+                        f"Contribution {parsed_contribution} is outside "
+                        f"{self.min_contribution}..{self.max_contribution}"
                     )
-                    contribution = 0
 
                 if match.group(2):
                     explanation = match.group(2).strip()
@@ -282,7 +290,10 @@ This agent participates in a multi-round Public Goods Game. Each round, players 
                     ):
                         contribution = parsed_contribution
                     else:
-                        contribution = 0
+                        raise ValueError(
+                            f"Contribution {parsed_contribution} is outside "
+                            f"{self.min_contribution}..{self.max_contribution}"
+                        )
                     explanation = f"Extracted keyword from response: {contribution}"
                     self._logger.info(
                         f"[{self.name}] [KEYWORD] Keyword match successful: contribution={contribution}"

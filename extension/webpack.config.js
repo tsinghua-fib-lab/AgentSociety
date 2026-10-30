@@ -14,6 +14,64 @@ const entries = {
 
 const isProd = process.env.NODE_ENV === 'production';
 
+const extensionHostConfig = {
+  name: 'extensionHost',
+  target: 'node',
+  mode: isProd ? 'production' : 'development',
+  entry: {
+    extension: './src/extension.ts',
+  },
+  output: {
+    path: path.resolve(__dirname, 'dist'),
+    filename: '[name].js',
+    libraryTarget: 'commonjs2',
+  },
+  externals: {
+    vscode: 'commonjs vscode',
+  },
+  resolve: {
+    extensions: ['.ts', '.js'],
+  },
+  module: {
+    rules: [
+      {
+        test: /\.ts$/,
+        use: {
+          loader: 'ts-loader',
+          options: {
+            configFile: path.resolve(__dirname, 'tsconfig.json'),
+            transpileOnly: true,
+          },
+        },
+        exclude: /node_modules/,
+      },
+    ],
+  },
+  devtool: false,
+  optimization: {
+    minimize: isProd,
+    minimizer: isProd
+      ? [
+          new TerserPlugin({
+            extractComments: false,
+          }),
+        ]
+      : [],
+  },
+  plugins: [
+    // https-proxy-agent exposes Kerberos/SPNEGO as an optional peer. The
+    // gateway supports explicit proxy credentials, so preserve the package's
+    // runtime "not installed" branch without treating Kerberos as required.
+    new webpack.IgnorePlugin({ resourceRegExp: /^kerberos$/ }),
+    new webpack.optimize.LimitChunkCountPlugin({
+      maxChunks: 1,
+    }),
+  ],
+  performance: {
+    hints: false,
+  },
+};
+
 const createConfig = (name, entry) => ({
   target: 'web',
   mode: isProd ? 'production' : 'development',
@@ -103,6 +161,12 @@ const createConfig = (name, entry) => ({
   },
 });
 
-module.exports = Object.entries(entries).map(([name, entry]) =>
+const webviewConfigs = Object.entries(entries).map(([name, entry]) =>
   createConfig(name, entry)
 );
+
+module.exports = process.env.WEBPACK_TARGET === 'extension'
+  ? [extensionHostConfig]
+  : process.env.WEBPACK_TARGET === 'webview'
+    ? webviewConfigs
+    : [extensionHostConfig, ...webviewConfigs];

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict, deque
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -102,7 +102,7 @@ class _BareEnv(EnvBase):
         super().__init__()
         self.value = value
 
-    async def step(self, tick: int, t: datetime) -> None:  # noqa: D401
+    async def step(self, tick: int, t: datetime) -> None:
         self.value += 1
 
 
@@ -220,14 +220,14 @@ async def test_router_to_workspaces_persists_all_modules(tmp_path: Path) -> None
 class _FailingRestoreEnv(PrisonersDilemmaEnv):
     """restore 时抛错（模拟 schema 漂移）。"""
 
-    async def restore(self, workspace_path) -> bool:  # noqa: D401
+    async def restore(self, workspace_path) -> bool:
         raise RuntimeError("schema drift")
 
 
 class _FailingDumpEnv(PrisonersDilemmaEnv):
     """to_workspace 时抛错。"""
 
-    async def to_workspace(self, workspace_path=None) -> None:  # noqa: D401
+    async def to_workspace(self, workspace_path=None) -> None:
         raise RuntimeError("serialize failed")
 
 
@@ -575,7 +575,6 @@ async def test_implicit_association_test_roundtrip(tmp_path):
 
 @pytest.mark.asyncio
 async def test_social_media_roundtrip(tmp_path):
-    from datetime import timezone
 
     from agentsociety2.contrib.env.social_media.models import (
         Post,
@@ -589,7 +588,7 @@ async def test_social_media_roundtrip(tmp_path):
     kwargs = {"agent_id_name_pairs": [(1, "A"), (2, "B")]}
     m1 = SocialMediaSpace(**kwargs)
     m1._bind_workspace(ws)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     m1._persons[1] = SocialMediaPerson(id=1, username="A", created_at=now)
     m1._posts[1] = Post(post_id=1, author_id=1, content="hello", created_at=now)
     m1._comments = {1: []}  # restore 会还原为 defaultdict(list)

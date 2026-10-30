@@ -6,7 +6,7 @@
 #   node-cli          ──► global claude-code / codex (changes on npm package bumps)
 #
 #   stage-2 foundation: apt, uv, coder user
-#   stage-2 static stacks: office document tools + pipx
+#   stage-2 static stacks: office document tools
 #   stage-2 locked deps: uv.lock / pyproject.toml
 #   stage-2 node COPY from node-cli
 #   stage-2 agentsociety2 source + editable install
@@ -20,7 +20,7 @@ FROM node:22 AS extension-builder
 WORKDIR /app/extension
 
 RUN npm config set registry https://registry.npmmirror.com \
-    && npm install -g @vscode/vsce
+    && npm install -g @vscode/vsce@4.0.0
 
 COPY ./extension/package.json ./extension/package-lock.json ./
 COPY ./extension/package.nls.json ./extension/package.nls.zh-cn.json ./
@@ -39,10 +39,11 @@ COPY ./extension/.vscodeignore ./
 COPY ./extension/NOTICE ./NOTICE
 COPY ./extension/README.md ./README.md
 COPY ./extension/CHANGELOG.md ./CHANGELOG.md
-COPY LICENSE /LICENSE
+COPY LICENSE ./LICENSE.txt
 
-RUN npm run vscode:prepublish \
-    && vsce package --out /app/extension.vsix
+# vsce invokes vscode:prepublish itself; running it explicitly would compile
+# every webview bundle twice in the same image layer.
+RUN vsce package --out /app/extension.vsix
 
 # ================= Stage 1b: Global Claude Code / Codex CLIs =================
 # Independent of Python lockfile and agentsociety2 source; shares node:22 base cache
@@ -50,7 +51,7 @@ RUN npm run vscode:prepublish \
 FROM node:22 AS node-cli
 
 RUN --mount=type=cache,target=/root/.npm \
-    npm install -g @anthropic-ai/claude-code @openai/codex
+    npm install -g @anthropic-ai/claude-code@2.1.314 @openai/codex@0.166.0
 
 # ================= Stage 2: Python runtime with extension =================
 FROM python:3.12
@@ -64,7 +65,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         sed -i 's|deb.debian.org|mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list; \
     fi; \
     apt-get update; \
-    apt-get install -y --no-install-recommends \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         curl \
         sudo \
         locales \
@@ -89,7 +90,7 @@ RUN ln -sf /usr/local/bin/python3 /usr/bin/python3 \
 
 WORKDIR /app
 
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
+COPY --from=ghcr.io/astral-sh/uv:0.13.6 /uv /uvx /usr/local/bin/
 RUN ln -sf /usr/local/bin/python3 /usr/local/bin/python
 RUN mkdir -p /etc/uv \
     && printf '[[index]]\nurl = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple/"\ndefault = true\n' > /etc/uv/uv.toml
@@ -105,24 +106,25 @@ ENV LANGUAGE=C.UTF-8
 ENV LC_ALL=C.UTF-8
 
 # ---- Static Python tool stacks (independent of uv.lock / AS2 source) ----
-# Office skills + paper-toolkit + pipx: bumping agentsociety2 must not reinstall these.
+# Office skills + paper-toolkit: bumping agentsociety2 must not reinstall these.
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv pip install --system \
-        pipx \
-        pypdf \
-        pdfplumber \
-        reportlab \
-        pytesseract \
-        pdf2image \
-        pandas \
-        openpyxl \
-        python-pptx \
-        Pillow \
-        python-docx \
-        python-dotenv \
-        "easypaper[docling,images]" \
-        "paper-toolkit" \
-    && pipx ensurepath
+    uv pip install --system --torch-backend=cpu \
+        pypdf==6.21.4 \
+        pdfplumber==0.11.10 \
+        reportlab==5.1.0 \
+        pytesseract==0.3.13 \
+        pdf2image==1.17.0 \
+        pandas==2.3.3 \
+        openpyxl==3.1.5 \
+        python-pptx==1.0.2 \
+        Pillow==13.0.0 \
+        python-docx==1.2.0 \
+        python-dotenv==1.2.4 \
+        docling==2.145.0 \
+        torch==2.15.0 \
+        torchvision==0.29.2 \
+        "easypaper[docling,images]==0.2.4" \
+        "paper-toolkit==0.1.2"
 
 # ---- Node.js + Claude Code / Codex (independent of uv.lock / AS2 source) ----
 # Copy the Node binary and global package tree only. Do NOT COPY /usr/local/bin/{npm,npx,claude,codex}:
@@ -164,7 +166,7 @@ COPY packages/agentsociety2/pyproject.toml packages/agentsociety2/pyproject.toml
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv export --frozen --no-dev --no-emit-package agentsociety2 \
         --format requirements-txt -o /tmp/reqs.txt \
-    && uv pip install --system -r /tmp/reqs.txt \
+    && uv pip install --system --no-config --no-deps --require-hashes -r /tmp/reqs.txt \
     && rm /tmp/reqs.txt
 
 # ---- agentsociety2 source (editable, deps already present) ----
@@ -177,3 +179,4 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 COPY --from=extension-builder /app/extension.vsix /app/extension.vsix
 
 USER coder
+WORKDIR /home/coder

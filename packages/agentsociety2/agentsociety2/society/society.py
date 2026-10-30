@@ -656,10 +656,13 @@ class AgentSociety:
     def mark_step_completed(self, step_idx: int) -> None:
         """标记第 ``step_idx`` 个顶层 step 已完成并立即持久化进度。
 
-        由 CLI 在每个顶层 step（含 Ask/Intervene/Questionnaire）成功后调用——
-        否则连续的非 RunStep 完成后若崩溃，resume 会把它们当作未执行而重跑。
+        由 CLI 在每个顶层 step（含 Ask/Intervene/Questionnaire）成功后调用。
+        游标只推进连续完成前缀，后续成功不能跨过尚未完成的步骤。
+        缺口之后的步骤在恢复时可能重新执行；本游标不保证业务副作用幂等。
         """
         if self._run_dir is None:
+            return
+        if step_idx != self._completed_step_count:
             return
         self._completed_step_count = step_idx + 1
         self._write_society_step_json()

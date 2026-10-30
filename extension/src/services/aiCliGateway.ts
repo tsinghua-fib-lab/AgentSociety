@@ -1,5 +1,5 @@
 import * as http from 'http';
-import type { IncomingMessage, ServerResponse } from 'http';
+import type { ClientRequest, IncomingMessage, ServerResponse } from 'http';
 import * as https from 'https';
 import { URL } from 'url';
 import { findAvailablePortFrom } from '../portUtils';
@@ -19,6 +19,7 @@ import { readCodexModelCatalogDocument } from './codexModelCatalog';
 import {
   buildLocalGatewayBaseUrl,
   resolveUpstreamTargetUrl,
+  upstreamTargetsLocalGateway,
   type AiCliGatewayUpstream,
 } from './aiCliGatewayUpstream';
 import { applyUpstreamAuthHeaders } from '../aiCli/upstreamAuthHeaders';
@@ -76,6 +77,7 @@ import {
 const DEFAULT_GATEWAY_PORT_START = 15721;
 const DEFAULT_GATEWAY_PORT_END = 15820;
 const MAX_BODY_BYTES = 64 * 1024 * 1024;
+const DEFAULT_UPSTREAM_IDLE_TIMEOUT_MS = 5 * 60 * 1000;
 
 export type AiCliGatewayStatus = {
   running: boolean;
@@ -284,7 +286,17 @@ function filterForwardHeaders(
   upstreamHost: string
 ): Record<string, string> {
   const out: Record<string, string> = {};
-  const skip = new Set(['host', 'connection', 'transfer-encoding']);
+  const skip = new Set([
+    'host',
+    'connection',
+    'keep-alive',
+    'proxy-authenticate',
+    'proxy-authorization',
+    'te',
+    'trailer',
+    'transfer-encoding',
+    'upgrade',
+  ]);
   for (const [key, value] of Object.entries(headers)) {
     if (!value || skip.has(key.toLowerCase())) {
       continue;
@@ -293,6 +305,51 @@ function filterForwardHeaders(
   }
   out.host = upstreamHost;
   return out;
+}
+
+const HOP_BY_HOP_RESPONSE_HEADERS = new Set([
+  'connection',
+  'keep-alive',
+  'proxy-authenticate',
+  'proxy-authorization',
+  'te',
+  'trailer',
+  'transfer-encoding',
+  'upgrade',
+]);
+
+export function filterProxyResponseHeaders(
+  headers: IncomingMessage['headers']
+): Record<string, string | string[]> {
+  const connectionTokens = new Set(
+    String(headers.connection ?? '')
+      .split(',')
+      .map((value) => value.trim().toLowerCase())
+      .filter(Boolean)
+  );
+  const out: Record<string, string | string[]> = {};
+  for (const [key, value] of Object.entries(headers)) {
+    const normalized = key.toLowerCase();
+    if (
+      value === undefined ||
+      HOP_BY_HOP_RESPONSE_HEADERS.has(normalized) ||
+      connectionTokens.has(normalized)
+    ) {
+      continue;
+    }
+    out[key] = value;
+  }
+  return out;
+}
+
+function reportedCostFromHeaders(headers: IncomingMessage['headers']): number | undefined {
+  const raw = headers['x-litellm-response-cost'];
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  if (typeof value !== 'string' || value.trim() === '') {
+    return undefined;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
 }
 
 function applyUpstreamAuth(
@@ -358,9 +415,17 @@ export class AiCliGateway {
   private failoverListener: AiCliGatewayFailoverListener | null = null;
   private readonly statsTracker = new GatewayRuntimeStatsTracker();
   private outboundProxy: OutboundProxyConfig | null = null;
+  private outboundProxyAgent: ReturnType<typeof createOutboundProxyAgent>;
+  private outboundProxyKey = '';
+  private directHttpAgent: http.Agent | undefined;
+  private directHttpsAgent: https.Agent | undefined;
   private rectifier: GatewayRectifierSettings = { ...DEFAULT_GATEWAY_RECTIFIER_SETTINGS };
   private optimizer: GatewayOptimizerSettings = { ...DEFAULT_GATEWAY_OPTIMIZER_SETTINGS };
   private readonly rectifierRetriedKinds = new WeakMap<IncomingMessage, Set<RectifierRetryKind>>();
+
+  constructor(
+    private readonly upstreamIdleTimeoutMs = DEFAULT_UPSTREAM_IDLE_TIMEOUT_MS
+  ) {}
 
   onLog(listener: AiCliGatewayLogListener | null): void {
     this.logListener = listener;
@@ -375,7 +440,19 @@ export class AiCliGateway {
   }
 
   configureOutboundProxy(proxy: OutboundProxyConfig | null): void {
-    this.outboundProxy = proxy?.url.trim() ? proxy : null;
+    const normalized = proxy?.url.trim()
+      ? { ...proxy, url: proxy.url.trim() }
+      : null;
+    const key = normalized
+      ? JSON.stringify([normalized.url, normalized.username ?? '', normalized.password ?? ''])
+      : '';
+    if (key === this.outboundProxyKey) {
+      return;
+    }
+    this.outboundProxyAgent?.destroy();
+    this.outboundProxyAgent = undefined;
+    this.outboundProxy = normalized;
+    this.outboundProxyKey = key;
   }
 
   configureRectifier(settings: Partial<GatewayRectifierSettings> | null): void {
@@ -409,8 +486,62 @@ export class AiCliGateway {
     return kinds;
   }
 
-  private outboundAgent() {
-    return createOutboundProxyAgent(this.outboundProxy);
+  private outboundAgent(protocol: string): http.Agent | undefined {
+    if (this.outboundProxy) {
+      this.outboundProxyAgent ??= createOutboundProxyAgent(this.outboundProxy);
+      return this.outboundProxyAgent;
+    }
+    if (protocol === 'https:') {
+      this.directHttpsAgent ??= new https.Agent({ keepAlive: true });
+      return this.directHttpsAgent;
+    }
+    if (protocol === 'http:') {
+      this.directHttpAgent ??= new http.Agent({ keepAlive: true });
+      return this.directHttpAgent;
+    }
+    return undefined;
+  }
+
+  private bindProxyRequestLifecycle(
+    proxyReq: ClientRequest,
+    clientReq: IncomingMessage,
+    clientRes: ServerResponse
+  ): void {
+    proxyReq.setTimeout(this.upstreamIdleTimeoutMs, () => {
+      proxyReq.destroy(new Error('upstream_idle_timeout'));
+    });
+    const abortUpstream = () => {
+      if (!clientRes.writableEnded && !proxyReq.destroyed) {
+        proxyReq.destroy(new Error('client_disconnected'));
+      }
+    };
+    clientReq.once('aborted', abortUpstream);
+    clientRes.once('close', abortUpstream);
+    proxyReq.once('close', () => {
+      clientReq.off('aborted', abortUpstream);
+      clientRes.off('close', abortUpstream);
+    });
+  }
+
+  private proxyRequestErrorResult(
+    err: Error,
+    clientReq: IncomingMessage,
+    clientRes: ServerResponse
+  ): ProxyAttemptResult {
+    if (
+      err.message === 'client_disconnected' ||
+      clientReq.aborted ||
+      clientRes.destroyed
+    ) {
+      return { ok: false, status: 499, canRetry: false, detail: 'client_disconnected' };
+    }
+    this.lastError = err.message;
+    if (err.message === 'upstream_idle_timeout') {
+      return { ok: false, status: 504, canRetry: true, detail: err.message };
+    }
+    return clientRes.headersSent
+      ? { ok: false, status: 502, canRetry: false, detail: err.message }
+      : { ok: false, status: 0, canRetry: true, detail: err.message };
   }
 
   private normalizeCodexUpstream(upstream: AiCliGatewayUpstream): AiCliGatewayUpstream {
@@ -427,25 +558,38 @@ export class AiCliGateway {
     };
   }
 
+  private assertNotSelfForwarding(upstream: AiCliGatewayUpstream): void {
+    if (this.port && upstreamTargetsLocalGateway(upstream.baseUrl, this.port)) {
+      throw new Error('gateway_upstream_points_to_itself');
+    }
+  }
+
   setOpenaiUpstream(upstream: AiCliGatewayUpstream | null): void {
     if (upstream?.baseUrl.trim() && upstream.apiKey.trim()) {
-      this.openaiUpstream = this.normalizeCodexUpstream(upstream);
+      const normalized = this.normalizeCodexUpstream(upstream);
+      this.assertNotSelfForwarding(normalized);
+      this.openaiUpstream = normalized;
     } else {
       this.openaiUpstream = null;
     }
   }
 
   configureFailover(config: AiCliGatewayFailoverConfig): void {
-    this.upstreams = config.anthropicUpstreams
+    const anthropicUpstreams = config.anthropicUpstreams
       .filter((u) => u.baseUrl.trim() && u.apiKey.trim())
       .map((u) => ({
         ...u,
         baseUrl: u.baseUrl.trim(),
         apiKey: u.apiKey.trim(),
       }));
-    this.openaiUpstreams = config.openaiUpstreams
+    const openaiUpstreams = config.openaiUpstreams
       .filter((u) => u.baseUrl.trim() && u.apiKey.trim())
       .map((u) => this.normalizeCodexUpstream(u));
+    for (const upstream of [...anthropicUpstreams, ...openaiUpstreams]) {
+      this.assertNotSelfForwarding(upstream);
+    }
+    this.upstreams = anthropicUpstreams;
+    this.openaiUpstreams = openaiUpstreams;
     this.failoverEnabled = config.enabled;
     if (this.upstreams.length > 0) {
       this.upstream = this.upstreams[0];
@@ -537,6 +681,7 @@ export class AiCliGateway {
       throw new Error('upstream_incomplete');
     }
     const normalized: AiCliGatewayUpstream = { ...upstream, baseUrl, apiKey };
+    this.assertNotSelfForwarding(normalized);
     this.upstream = normalized;
     if (this.upstreams.length === 0) {
       this.upstreams = [normalized];
@@ -561,6 +706,12 @@ export class AiCliGateway {
   }
 
   async stop(): Promise<void> {
+    this.outboundProxyAgent?.destroy();
+    this.outboundProxyAgent = undefined;
+    this.directHttpAgent?.destroy();
+    this.directHttpAgent = undefined;
+    this.directHttpsAgent?.destroy();
+    this.directHttpsAgent = undefined;
     if (!this.server) {
       this.port = null;
       this.upstream = null;
@@ -609,13 +760,15 @@ export class AiCliGateway {
     upstream: AiCliGatewayUpstream,
     status: number,
     startTime: number,
-    streaming: boolean
+    streaming: boolean,
+    reportedCostUsd?: number
   ): UsageRecordContext {
     return {
       status,
       durationMs: Date.now() - startTime,
       streaming,
       providerName: upstream.providerName,
+      reportedCostUsd,
     };
   }
 
@@ -639,6 +792,7 @@ export class AiCliGateway {
       status: ctx?.status,
       durationMs: ctx?.durationMs,
       streaming: ctx?.streaming,
+      reportedCostUsd: ctx?.reportedCostUsd,
       ts: new Date().toISOString(),
     });
   }
@@ -840,6 +994,9 @@ export class AiCliGateway {
               success = true;
               return;
             }
+            if (result.status === 499 || clientRes.destroyed) {
+              return;
+            }
             if (shouldFailoverHttpStatus(result.status)) {
               recordUpstreamFailure(this.circuit, upstream.baseUrl);
             }
@@ -874,7 +1031,7 @@ export class AiCliGateway {
             return;
           }
         }
-        if (!clientRes.headersSent) {
+        if (!clientRes.headersSent && !clientRes.destroyed) {
           this.writeJson(clientRes, lastStatus > 0 ? lastStatus : 502, {
             error: 'failover_exhausted',
             message: lastFailDetail ?? 'All configured upstream providers failed',
@@ -943,6 +1100,10 @@ export class AiCliGateway {
             return;
           }
 
+          if (result.status === 499 || clientRes.destroyed) {
+            return;
+          }
+
           if (shouldFailoverHttpStatus(result.status)) {
             recordUpstreamFailure(this.circuit, upstream.baseUrl);
           }
@@ -972,7 +1133,7 @@ export class AiCliGateway {
         }
       }
 
-      if (!clientRes.headersSent) {
+      if (!clientRes.headersSent && !clientRes.destroyed) {
         this.writeJson(clientRes, lastStatus > 0 ? lastStatus : 502, {
           error: 'failover_exhausted',
           message: 'All configured upstream providers failed',
@@ -1059,8 +1220,9 @@ export class AiCliGateway {
     let fullResponse = '';
 
     return new Promise<ProxyAttemptResult>((resolve) => {
-      const proxyReq = transport.request(parsed, { method, headers, agent: this.outboundAgent() }, (proxyRes) => {
+      const proxyReq = transport.request(parsed, { method, headers, agent: this.outboundAgent(parsed.protocol) }, (proxyRes) => {
         const status = proxyRes.statusCode ?? 502;
+        const reportedCostUsd = reportedCostFromHeaders(proxyRes.headers);
         const canRetry = shouldFailoverHttpStatus(status) && !clientRes.headersSent;
 
         if (canRetry) {
@@ -1081,8 +1243,7 @@ export class AiCliGateway {
             const errBody = Buffer.concat(errChunks);
             const fixed = this.tryBuildRectifiedBody(clientReq, forwardedBody, status, errBody);
             if (!fixed) {
-              const respHeaders = { ...proxyRes.headers } as Record<string, string | string[]>;
-              delete respHeaders['transfer-encoding'];
+              const respHeaders = filterProxyResponseHeaders(proxyRes.headers);
               respHeaders['content-length'] = String(errBody.length);
               clientRes.writeHead(status, respHeaders);
               clientRes.end(errBody);
@@ -1113,7 +1274,7 @@ export class AiCliGateway {
           return;
         }
 
-        clientRes.writeHead(status, proxyRes.headers as Record<string, string | string[]>);
+        clientRes.writeHead(status, filterProxyResponseHeaders(proxyRes.headers));
 
         if (captureUsage) {
           proxyRes.on('data', (chunk: Buffer) => {
@@ -1131,6 +1292,7 @@ export class AiCliGateway {
             durationMs: ms,
             streaming: true,
             providerName: upstream.providerName,
+            reportedCostUsd,
           };
           this.emitLog({
             ts: new Date().toISOString(),
@@ -1161,14 +1323,13 @@ export class AiCliGateway {
           resolve({ ok: false, status, canRetry: false });
         });
       });
+      this.bindProxyRequestLifecycle(proxyReq, clientReq, clientRes);
       proxyReq.on('error', (err) => {
-        this.lastError = err.message;
-        if (!clientRes.headersSent) {
-          resolve({ ok: false, status: 0, canRetry: true });
-          return;
+        const result = this.proxyRequestErrorResult(err, clientReq, clientRes);
+        if (clientRes.headersSent && !clientRes.writableEnded) {
+          clientRes.end();
         }
-        clientRes.end();
-        resolve({ ok: false, status: 502, canRetry: false });
+        resolve(result);
       });
       if (forwardedBody.length > 0) {
         proxyReq.write(forwardedBody);
@@ -1216,9 +1377,10 @@ export class AiCliGateway {
     const transport = parsed.protocol === 'https:' ? https : http;
 
     return new Promise<ProxyAttemptResult>((resolve) => {
-      const proxyReq = transport.request(parsed, { method, headers, agent: this.outboundAgent() }, (proxyRes) => {
+      const proxyReq = transport.request(parsed, { method, headers, agent: this.outboundAgent(parsed.protocol) }, (proxyRes) => {
         const status = proxyRes.statusCode ?? 502;
-        const respHeaders = { ...proxyRes.headers } as Record<string, string | string[]>;
+        const reportedCostUsd = reportedCostFromHeaders(proxyRes.headers);
+        const respHeaders = filterProxyResponseHeaders(proxyRes.headers);
         const canRetry = shouldFailoverHttpStatus(status) && !clientRes.headersSent;
 
         if (canRetry) {
@@ -1265,7 +1427,7 @@ export class AiCliGateway {
           return;
         }
 
-        const isChunked = respHeaders['transfer-encoding']?.toString().includes('chunked');
+        const isChunked = proxyRes.headers['transfer-encoding']?.toString().includes('chunked');
         const isSse = respHeaders['content-type']?.toString().includes('text/event-stream');
 
         if (isChunked || isSse) {
@@ -1286,6 +1448,7 @@ export class AiCliGateway {
               durationMs: ms,
               streaming: true,
               providerName: upstream.providerName,
+              reportedCostUsd,
             };
             this.emitLog({
               ts: new Date().toISOString(),
@@ -1322,7 +1485,6 @@ export class AiCliGateway {
         proxyRes.on('data', (chunk: Buffer) => chunks.push(chunk));
         proxyRes.on('end', () => {
           const respBody = Buffer.concat(chunks);
-          delete respHeaders['transfer-encoding'];
           respHeaders['content-length'] = String(respBody.length);
           clientRes.writeHead(status, respHeaders);
           clientRes.end(respBody);
@@ -1332,6 +1494,7 @@ export class AiCliGateway {
             durationMs: ms,
             streaming: false,
             providerName: upstream.providerName,
+            reportedCostUsd,
           };
           let usageInfo: { model: string; inputTokens: number; outputTokens: number } | null = null;
           let usageEmitted = false;
@@ -1373,14 +1536,13 @@ export class AiCliGateway {
           resolve({ ok: false, status, canRetry: false });
         });
       });
+      this.bindProxyRequestLifecycle(proxyReq, clientReq, clientRes);
       proxyReq.on('error', (err) => {
-        this.lastError = err.message;
-        if (!clientRes.headersSent) {
-          resolve({ ok: false, status: 0, canRetry: true });
-          return;
+        const result = this.proxyRequestErrorResult(err, clientReq, clientRes);
+        if (clientRes.headersSent && !clientRes.writableEnded) {
+          clientRes.end();
         }
-        clientRes.end();
-        resolve({ ok: false, status: 502, canRetry: false });
+        resolve(result);
       });
       if (forwardedBody.length > 0) {
         proxyReq.write(forwardedBody);
@@ -1412,7 +1574,9 @@ export class AiCliGateway {
       outputTokens: number;
       cacheReadTokens: number;
       cacheCreationTokens: number;
+      cacheCreationLongTokens?: number;
       serverToolUseTokens: number;
+      reportedCostUsd?: number;
     } | null,
     chunk: Record<string, unknown>
   ): {
@@ -1421,7 +1585,9 @@ export class AiCliGateway {
     outputTokens: number;
     cacheReadTokens: number;
     cacheCreationTokens: number;
+    cacheCreationLongTokens?: number;
     serverToolUseTokens: number;
+    reportedCostUsd?: number;
   } | null {
     return extractTokenUsage(chunk) ?? current;
   }
@@ -1439,7 +1605,9 @@ export class AiCliGateway {
       outputTokens: number;
       cacheReadTokens: number;
       cacheCreationTokens: number;
+      cacheCreationLongTokens?: number;
       serverToolUseTokens: number;
+      reportedCostUsd?: number;
     } | null = null;
     let lastRequestId = '';
     for (const message of parseSseMessages(fullResponse)) {
@@ -1493,6 +1661,7 @@ export class AiCliGateway {
         outputTokens: lastUsage.outputTokens,
         cacheReadTokens: lastUsage.cacheReadTokens,
         cacheCreationTokens: lastUsage.cacheCreationTokens,
+        cacheCreationLongTokens: lastUsage.cacheCreationLongTokens,
         serverToolUseTokens: lastUsage.serverToolUseTokens,
         requestId: lastRequestId,
         upstream,
@@ -1500,6 +1669,7 @@ export class AiCliGateway {
         status: ctx?.status,
         durationMs: ctx?.durationMs,
         streaming: ctx?.streaming,
+        reportedCostUsd: lastUsage.reportedCostUsd ?? ctx?.reportedCostUsd,
         ts: new Date().toISOString(),
       });
       return;
@@ -1525,6 +1695,7 @@ export class AiCliGateway {
       outputTokens: extracted.outputTokens,
       cacheReadTokens: extracted.cacheReadTokens,
       cacheCreationTokens: extracted.cacheCreationTokens,
+      cacheCreationLongTokens: extracted.cacheCreationLongTokens,
       serverToolUseTokens: extracted.serverToolUseTokens,
       requestId: extractRequestId(body),
       upstream,
@@ -1532,6 +1703,7 @@ export class AiCliGateway {
       status: ctx?.status,
       durationMs: ctx?.durationMs,
       streaming: ctx?.streaming,
+      reportedCostUsd: extracted.reportedCostUsd ?? ctx?.reportedCostUsd,
       ts: new Date().toISOString(),
     });
     return {
@@ -1600,8 +1772,9 @@ export class AiCliGateway {
     const transport = parsed.protocol === 'https:' ? https : http;
 
     return new Promise<ProxyAttemptResult>((resolve) => {
-      const proxyReq = transport.request(parsed, { method, headers, agent: this.outboundAgent() }, (proxyRes) => {
+      const proxyReq = transport.request(parsed, { method, headers, agent: this.outboundAgent(parsed.protocol) }, (proxyRes) => {
         const status = proxyRes.statusCode ?? 502;
+        const reportedCostUsd = reportedCostFromHeaders(proxyRes.headers);
         if (status < 200 || status >= 300) {
           const canRetry = shouldFailoverHttpStatus(status) && !clientRes.headersSent;
           const chunks: Buffer[] = [];
@@ -1681,7 +1854,7 @@ export class AiCliGateway {
               completion.response && typeof completion.response === 'object'
                 ? completion.response as Record<string, unknown>
                 : null;
-            const usageCtx = this.bridgeUsageCtx(upstream, 200, startTime, true);
+            const usageCtx = this.bridgeUsageCtx(upstream, 200, startTime, true, reportedCostUsd);
             const usageInfo = responseBody
               ? this.emitUsageFromResponseBody(responseBody, chatModel, targetUrl, urlPath, usageCtx)
               : null;
@@ -1730,7 +1903,7 @@ export class AiCliGateway {
             'content-length': Buffer.byteLength(out),
           });
           clientRes.end(out);
-          const usageCtx = this.bridgeUsageCtx(upstream, 200, startTime, false);
+          const usageCtx = this.bridgeUsageCtx(upstream, 200, startTime, false, reportedCostUsd);
           const usageInfo = this.emitUsageFromResponseBody(translated, chatModel, targetUrl, urlPath, usageCtx);
           if (!usageInfo) {
             this.emitRequestUsage(chatModel, targetUrl, urlPath, usageCtx);
@@ -1753,14 +1926,13 @@ export class AiCliGateway {
           resolve({ ok: false, status: 502, canRetry: false });
         });
       });
+      this.bindProxyRequestLifecycle(proxyReq, clientReq, clientRes);
       proxyReq.on('error', (err) => {
-        this.lastError = err.message;
-        if (!clientRes.headersSent) {
-          resolve({ ok: false, status: 0, canRetry: true });
-          return;
+        const result = this.proxyRequestErrorResult(err, clientReq, clientRes);
+        if (clientRes.headersSent && !clientRes.writableEnded) {
+          clientRes.end();
         }
-        clientRes.end();
-        resolve({ ok: false, status: 502, canRetry: false });
+        resolve(result);
       });
       proxyReq.write(chatBody);
       proxyReq.end();
@@ -1816,8 +1988,9 @@ export class AiCliGateway {
     const transport = parsed.protocol === 'https:' ? https : http;
 
     return new Promise<ProxyAttemptResult>((resolve) => {
-      const proxyReq = transport.request(parsed, { method, headers, agent: this.outboundAgent() }, (proxyRes) => {
+      const proxyReq = transport.request(parsed, { method, headers, agent: this.outboundAgent(parsed.protocol) }, (proxyRes) => {
         const status = proxyRes.statusCode ?? 502;
+        const reportedCostUsd = reportedCostFromHeaders(proxyRes.headers);
         if (status < 200 || status >= 300) {
           const canRetry = shouldFailoverHttpStatus(status) && !clientRes.headersSent;
           const chunks: Buffer[] = [];
@@ -1863,7 +2036,9 @@ export class AiCliGateway {
             outputTokens: number;
             cacheReadTokens: number;
             cacheCreationTokens: number;
+            cacheCreationLongTokens?: number;
             serverToolUseTokens: number;
+            reportedCostUsd?: number;
           } | null = null;
           proxyRes.on('data', (chunk: Buffer) => {
             buffer += chunk.toString('utf-8');
@@ -1902,7 +2077,7 @@ export class AiCliGateway {
             if (!clientRes.writableEnded) {
               clientRes.end();
             }
-            const usageCtx = this.bridgeUsageCtx(upstream, status, startTime, true);
+            const usageCtx = this.bridgeUsageCtx(upstream, status, startTime, true, reportedCostUsd);
             if (usageInfo) {
               this.emitUsage({
                 app: 'claude',
@@ -1911,6 +2086,7 @@ export class AiCliGateway {
                 outputTokens: usageInfo.outputTokens,
                 cacheReadTokens: usageInfo.cacheReadTokens,
                 cacheCreationTokens: usageInfo.cacheCreationTokens,
+                cacheCreationLongTokens: usageInfo.cacheCreationLongTokens,
                 serverToolUseTokens: usageInfo.serverToolUseTokens,
                 requestId: '',
                 upstream: targetUrl,
@@ -1918,6 +2094,7 @@ export class AiCliGateway {
                 status: usageCtx.status,
                 durationMs: usageCtx.durationMs,
                 streaming: usageCtx.streaming,
+                reportedCostUsd: usageInfo.reportedCostUsd ?? usageCtx.reportedCostUsd,
                 ts: new Date().toISOString(),
               });
             } else {
@@ -1951,7 +2128,7 @@ export class AiCliGateway {
           try {
             const parsedBody = JSON.parse(rawBody.toString('utf-8')) as Record<string, unknown>;
             const translated = translateOpenAiChatToAnthropicMessage(parsedBody, chatModel);
-            const usageCtx = this.bridgeUsageCtx(upstream, status, startTime, false);
+            const usageCtx = this.bridgeUsageCtx(upstream, status, startTime, false, reportedCostUsd);
             const usageInfo = this.emitUsageFromResponseBody(translated, chatModel, targetUrl, urlPath, usageCtx);
             if (!usageInfo) {
               this.emitRequestUsage(chatModel, targetUrl, urlPath, usageCtx);
@@ -1983,14 +2160,13 @@ export class AiCliGateway {
           }
         });
       });
+      this.bindProxyRequestLifecycle(proxyReq, clientReq, clientRes);
       proxyReq.on('error', (err) => {
-        this.lastError = err.message;
-        if (!clientRes.headersSent) {
-          resolve({ ok: false, status: 0, canRetry: true });
-          return;
+        const result = this.proxyRequestErrorResult(err, clientReq, clientRes);
+        if (clientRes.headersSent && !clientRes.writableEnded) {
+          clientRes.end();
         }
-        clientRes.end();
-        resolve({ ok: false, status: 502, canRetry: false });
+        resolve(result);
       });
       proxyReq.write(chatBody);
       proxyReq.end();
@@ -2054,8 +2230,9 @@ export class AiCliGateway {
     const transport = parsed.protocol === 'https:' ? https : http;
 
     return new Promise<ProxyAttemptResult>((resolve) => {
-      const proxyReq = transport.request(parsed, { method, headers, agent: this.outboundAgent() }, (proxyRes) => {
+      const proxyReq = transport.request(parsed, { method, headers, agent: this.outboundAgent(parsed.protocol) }, (proxyRes) => {
         const status = proxyRes.statusCode ?? 502;
+        const reportedCostUsd = reportedCostFromHeaders(proxyRes.headers);
         if (status < 200 || status >= 300) {
           const canRetry = shouldFailoverHttpStatus(status) && !clientRes.headersSent;
           const chunks: Buffer[] = [];
@@ -2149,7 +2326,7 @@ export class AiCliGateway {
               completion.response && typeof completion.response === 'object'
                 ? completion.response as Record<string, unknown>
                 : null;
-            const usageCtx = this.bridgeUsageCtx(upstream, 200, startTime, true);
+            const usageCtx = this.bridgeUsageCtx(upstream, 200, startTime, true, reportedCostUsd);
             const usageInfo = responseBody
               ? this.emitUsageFromResponseBody(responseBody, anthropicModel, targetUrl, urlPath, usageCtx)
               : null;
@@ -2189,7 +2366,7 @@ export class AiCliGateway {
               'content-length': Buffer.byteLength(out),
             });
             clientRes.end(out);
-            const usageCtx = this.bridgeUsageCtx(upstream, 200, startTime, false);
+            const usageCtx = this.bridgeUsageCtx(upstream, 200, startTime, false, reportedCostUsd);
             const usageInfo = this.emitUsageFromResponseBody(translated, anthropicModel, targetUrl, urlPath, usageCtx);
             if (!usageInfo) {
               this.emitRequestUsage(anthropicModel, targetUrl, urlPath, usageCtx);
@@ -2218,14 +2395,13 @@ export class AiCliGateway {
           resolve({ ok: false, status: 502, canRetry: false });
         });
       });
+      this.bindProxyRequestLifecycle(proxyReq, clientReq, clientRes);
       proxyReq.on('error', (err) => {
-        this.lastError = err.message;
-        if (!clientRes.headersSent) {
-          resolve({ ok: false, status: 0, canRetry: true });
-          return;
+        const result = this.proxyRequestErrorResult(err, clientReq, clientRes);
+        if (clientRes.headersSent && !clientRes.writableEnded) {
+          clientRes.end();
         }
-        clientRes.end();
-        resolve({ ok: false, status: 502, canRetry: false });
+        resolve(result);
       });
       proxyReq.write(anthropicBody);
       proxyReq.end();

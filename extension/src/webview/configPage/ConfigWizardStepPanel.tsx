@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Alert, Card, Descriptions, Form, Input, Space, Tag, Typography } from 'antd';
+import { Alert, Card, Checkbox, Descriptions, Form, Input, Space, Tag, Typography } from 'antd';
 import { CheckCircleOutlined, CloseCircleOutlined, SyncOutlined } from '@ant-design/icons';
 import type { FormInstance } from 'antd';
 import type { TFunction } from 'i18next';
@@ -101,6 +101,14 @@ function WizardBackendPanel({
             primary={false}
           />
         </div>
+      </Card>
+      <Card size="small" title={t('configPage.backend.autoStartTitle')} style={{ borderRadius: 10 }}>
+        <Form.Item name="backendAutoStart" valuePropName="checked" noStyle>
+          <Checkbox>{t('configPage.backend.autoStartLabel')}</Checkbox>
+        </Form.Item>
+        <Text type="secondary" style={{ display: 'block', fontSize: 12, marginTop: 8 }}>
+          {t('configPage.backend.autoStartHint')}
+        </Text>
       </Card>
     </Space>
   );

@@ -420,6 +420,11 @@
       "backendStopped": "Stopped",
       "backendStoppedHint": "Click to start"
     },
+    "backend": {
+      "autoStartTitle": "Startup behavior",
+      "autoStartLabel": "Start the local backend when the workspace opens",
+      "autoStartHint": "When enabled, the extension starts the backend silently after activation if the workspace configuration is ready. You can still start it manually when disabled."
+    },
     "metrics": {
       "noWorkspace": "No workspace",
       "llmHintMissing": "Add API key and model",
@@ -1292,7 +1297,7 @@
     "usageOutputRatio": "Output is {{value}}% of effective tokens",
     "usagePricingComplete": "Pricing matched for all requests",
     "usagePricingCoverage": "Pricing matched {{priced}} / {{total}} requests",
-    "usageCostIncludesCache": "Cost estimates input, output, cache hits, and cache writes separately; cache hits use a lower unit price.",
+    "usageCostIncludesCache": "Upstream-reported cost takes priority; otherwise USD estimates separate regular input, output, cache reads, and short/extended cache writes. Provider billing remains authoritative for long-context, processing-tier, regional, and tool surcharges.",
     "usageRangeToday": "Today",
     "usageRange7d": "7d",
     "usageRange30d": "30d",
@@ -1331,6 +1336,7 @@
     "usagePricingOutput": "Output price ($/M tokens)",
     "usagePricingCacheRead": "Cache read",
     "usagePricingCacheCreation": "Cache write",
+    "usagePricingCacheCreationLong": "Long cache write",
     "usagePricingSave": "Save pricing",
     "usagePricingReset": "Reset to built-in defaults",
     "usageCacheSavings": "Cache savings estimate",

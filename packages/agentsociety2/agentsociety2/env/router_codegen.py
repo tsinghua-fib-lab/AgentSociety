@@ -1031,11 +1031,12 @@ status = response.get("status", "success") if isinstance(response, dict) else "s
 if status == "success":
     loc = response.get("aoi_id")
     print(f"Checked the agent's status: it is currently at AOI {{loc}} and idle.")
-    results["status"] = "success"
+    outcome = "success"
 else:
     print("Could not read the agent's status from the environment.")
-    results["status"] = "fail"
-    results["reason"] = response.get("reason", "unknown")
+    outcome = "fail"
+    results["reason"] = response.get("reason", "The tool reported a failure.")
+results["status"] = outcome
 
 Your generated code:"""
 
@@ -1059,9 +1060,14 @@ Please generate the corrected code:"""
     ) -> tuple[str, dict[str, int] | None]:
         try:
             response = await router.acompletion_with_system_prompt(
-                model="coder", messages=context.dialog_history
+                model="coder",
+                messages=context.dialog_history,
+                # Reasoning models share this budget between thinking and code.
+                # Leave room for both, with a bounded increase on correction.
+                max_tokens=8192 if context.retry_count == 0 else 16384,
             )
-            raw = response.choices[0].message.content or ""  # type: ignore[union-attr]
+            choice = response.choices[0]
+            raw = choice.message.content or ""  # type: ignore[union-attr]
             pattern = r"```(?:python)?\s*\n(.*?)```"
             matches = re.findall(pattern, raw, re.DOTALL)
             code = matches[0].strip() if matches else raw.strip()
@@ -1072,6 +1078,11 @@ Please generate the corrected code:"""
                     "input_tokens": getattr(usage, "prompt_tokens", 0),
                     "output_tokens": getattr(usage, "completion_tokens", 0),
                 }
+            if getattr(choice, "finish_reason", None) == "length":
+                get_logger().warning(
+                    "Code generation exhausted its output budget; discarding truncated code"
+                )
+                return "", token_usage
             return code, token_usage
         except Exception as e:
             get_logger().error(f"{_get_debug_info('LLM代码生成失败')} - {e}")

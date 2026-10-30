@@ -772,23 +772,11 @@ export class WorkspaceManager {
     // Ensure target directory exists (recursive mkdir is idempotent)
     fs.mkdirSync(targetDir, { recursive: true });
 
-    // Get extension skills directory - handle different execution contexts
-    // In production: __dirname = extension/out/, skills = extension/skills/
-    // In development: __dirname might vary, so we try multiple paths
-    // Try common paths for skills directory, based on actual __dirname structure
-    const possiblePaths = [
-      path.join(__dirname, '..', 'skills'),                  // extension/out/ -> extension/skills/
-      path.join(__dirname, '..', '..', 'extension', 'skills'), // workspace root -> extension/skills/
-      path.join(__dirname, '..', '..', '..', 'agentsociety', 'extension', 'skills'), // higher level
-      path.join(process.cwd(), 'agentsociety', 'extension', 'skills'), // from project root
-      path.join(process.cwd(), 'extension', 'skills'),        // alternative
-    ];
-
-    const sourceSkillsDir = possiblePaths.find(p => fs.existsSync(p)) || '';
+    const sourceSkillsDir = this.skillsSourcePath;
 
     // Verify extension skills directory exists
-    if (!sourceSkillsDir) {
-      this.log(`Extension skills directory not found. Tried paths: ${possiblePaths.join(', ')}`);
+    if (!fs.existsSync(sourceSkillsDir)) {
+      this.log(`Extension skills directory not found: ${sourceSkillsDir}`);
       return {
         success: false,
         message: `Extension skills directory not found. Please check extension installation.`,
@@ -800,7 +788,6 @@ export class WorkspaceManager {
     this.outputChannel.show();
     this.log('='.repeat(60));
     this.log('Copying official office skills from extension...');
-    this.log(`Extension __dirname: ${__dirname}`);
     this.log(`Resolved source path: ${sourceSkillsDir}`);
     this.log(`Target: ${targetDir}`);
     this.log('='.repeat(60));

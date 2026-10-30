@@ -65,6 +65,7 @@ const DEFAULT_VALUES: ConfigValues = {
   backendHost: '127.0.0.1',
   backendPort: 8001,
   pythonPath: '/usr/local/bin/python3',
+  backendAutoStart: false,
   llmApiBase: 'https://api.openai.com/v1',
   llmModel: 'gpt-5.5',
   llmThinking: '',
@@ -251,6 +252,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
   const [claudeProvidersLoading, setClaudeProvidersLoading] = React.useState(false);
   const [gatewayUsageRecords, setGatewayUsageRecords] = React.useState<TokenUsageRecord[]>([]);
   const [gatewayUsageLoading, setGatewayUsageLoading] = React.useState(false);
+  const [pageVisible, setPageVisible] = React.useState(true);
   const [codexRouting, setCodexRouting] = React.useState<{ configPath: string; routed: boolean; directUrl?: string } | null>(null);
   const [failoverEnabled, setFailoverEnabled] = React.useState(false);
   const [providerUsage, setProviderUsage] = React.useState<
@@ -488,11 +490,14 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
   }, [vscode]);
 
   React.useEffect(() => {
+    if (!pageVisible) {
+      return;
+    }
     requestBackendStatus();
     const intervalMs = startingBackend ? 1000 : 3000;
     const intervalId = window.setInterval(requestBackendStatus, intervalMs);
     return () => window.clearInterval(intervalId);
-  }, [requestBackendStatus, startingBackend]);
+  }, [pageVisible, requestBackendStatus, startingBackend]);
 
   React.useEffect(() => {
     if (!wizardMode || WIZARD_STEPS[wizardStep]?.key !== 'backend') {
@@ -881,13 +886,24 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
     vscode.postMessage({ command: 'gatewayGetUsage' });
   }, [vscode]);
 
+  const gatewayUsageVisible = pageVisible && (
+    wizardMode
+      ? WIZARD_STEPS[wizardStep]?.key === 'cli'
+      : isDashboardMode && isConfigCollapsed
+        ? showUsageChart
+        : pageTab === 'cli'
+  );
+
   React.useEffect(() => {
+    if (!gatewayUsageVisible) {
+      return;
+    }
     handleRefreshUsage();
     const timer = window.setInterval(() => {
       handleRefreshUsage();
     }, 10_000);
     return () => window.clearInterval(timer);
-  }, [handleRefreshUsage]);
+  }, [gatewayUsageVisible, handleRefreshUsage]);
 
   const handleClearUsage = React.useCallback(() => {
     vscode.postMessage({ command: 'gatewayClearUsage' });
@@ -1420,6 +1436,8 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
           setAiCliGatewayStatus(usageMsg.gatewayStatus);
         }
         vscode.postMessage({ command: 'gatewayGetPricing' });
+      } else if (message.command === 'configPageVisibility') {
+        setPageVisible((message as { visible?: boolean }).visible !== false);
       } else if (message.command === 'gatewayPricingData') {
         const priceMsg = message as { custom?: ModelPricingMap };
         setCustomPricing(priceMsg.custom ?? {});

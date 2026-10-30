@@ -48,26 +48,12 @@
 from __future__ import annotations
 
 import os
+from importlib import import_module
+from typing import TYPE_CHECKING
 
 os.environ["LITELLM_LOCAL_MODEL_COST_MAP"] = "True"
 
 __version__ = "2.9.3"
-
-# Import main components for easy access
-from .agent import AgentBase, PersonAgent
-from .env import (
-    CodeGenRouter,
-    EnvBase,
-    PlanExecuteRouter,
-    ReActRouter,
-    RouterBase,
-    SearchToolRouter,
-    TwoTierPlanExecuteRouter,
-    TwoTierReActRouter,
-    tool,
-)
-from .society import AgentSocietyHelper
-from .storage import ReplayWriter
 
 __all__ = [
     "AgentBase",
@@ -84,3 +70,56 @@ __all__ = [
     "TwoTierReActRouter",
     "tool",
 ]
+
+# 仅在访问公开对象时加载其实现；轻量上下文导入不启动整个 SDK。
+_EXPORT_MODULES = {
+    "AgentBase": "agentsociety2.agent",
+    "PersonAgent": "agentsociety2.agent",
+    "CodeGenRouter": "agentsociety2.env",
+    "EnvBase": "agentsociety2.env",
+    "PlanExecuteRouter": "agentsociety2.env",
+    "ReActRouter": "agentsociety2.env",
+    "RouterBase": "agentsociety2.env",
+    "SearchToolRouter": "agentsociety2.env",
+    "TwoTierPlanExecuteRouter": "agentsociety2.env",
+    "TwoTierReActRouter": "agentsociety2.env",
+    "tool": "agentsociety2.env",
+    "AgentSocietyHelper": "agentsociety2.society",
+    "ReplayWriter": "agentsociety2.storage",
+}
+
+if TYPE_CHECKING:
+    from .agent import AgentBase, PersonAgent
+    from .env import (
+        CodeGenRouter,
+        EnvBase,
+        PlanExecuteRouter,
+        ReActRouter,
+        RouterBase,
+        SearchToolRouter,
+        TwoTierPlanExecuteRouter,
+        TwoTierReActRouter,
+        tool,
+    )
+    from .society import AgentSocietyHelper
+    from .storage import ReplayWriter
+
+
+def __getattr__(name: str):
+    """按需解析公开导出，并缓存对象以保持导入身份一致。
+
+    :param name: 公开导出名称。
+    :returns: 对应实现模块中的对象。
+    :raises AttributeError: 名称不属于公开导出。
+    """
+    module_name = _EXPORT_MODULES.get(name)
+    if module_name is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    value = getattr(import_module(module_name), name)
+    globals()[name] = value
+    return value
+
+
+def __dir__() -> list[str]:
+    """列出已有属性及尚未加载的公开导出。"""
+    return sorted(set(globals()) | set(__all__))

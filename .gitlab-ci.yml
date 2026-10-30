@@ -169,6 +169,7 @@ test:
   script:
     - |
       uv run pytest -v \
+        -m "not network" \
         --junitxml=junit.xml \
         -o junit_family=xunit2 \
         -o junit_suite_name="agentsociety2-py${PYTHON_VERSION}"

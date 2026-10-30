@@ -186,7 +186,7 @@ This agent participates in a 10-round Prisoner's Dilemma game where two players 
         except Exception as e:
             error_message = f"Step execution failed: {type(e).__name__} - {e!s}"
             self._logger.error(f"[{self.name}] {error_message}")
-            return f"[{self.name}] [ERROR] {error_message}"
+            raise RuntimeError(f"[{self.name}] {error_message}") from e
 
     async def _decide_action(
         self, round_num: int, opponent_name: str
@@ -214,25 +214,12 @@ This agent participates in a 10-round Prisoner's Dilemma game where two players 
         )
 
         try:
-            response = await self.acompletion(
+            content = await self._completion_text(
                 [{"role": "user", "content": prompt}],
-                stream=False,
                 max_retries=5,
                 max_delay=90.0,
             )
-
-            if not response or not response.choices or len(response.choices) == 0:
-                raise ValueError("LLM returned empty response")
-
-            choice = response.choices[0]
-            if not hasattr(choice, "message") or not choice.message:
-                raise ValueError("LLM returned empty response")
-
-            content = choice.message.content or ""  # type: ignore
             self._logger.debug(f"[{self.name}] [DEBUG] 原始响应: {content}")
-
-            if not content or content.isspace():
-                raise ValueError("LLM返回空响应")
 
             # Extract Action using regex
             action_match = re.search(

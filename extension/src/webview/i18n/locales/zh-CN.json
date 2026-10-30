@@ -420,6 +420,11 @@
       "backendStopped": "未启动",
       "backendStoppedHint": "点击启动"
     },
+    "backend": {
+      "autoStartTitle": "启动行为",
+      "autoStartLabel": "打开工作区后自动启动本地后端",
+      "autoStartHint": "启用后，插件完成加载且工作区配置有效时会静默启动后端；关闭时仍可从状态面板手动启动。"
+    },
     "metrics": {
       "noWorkspace": "未打开工作区",
       "llmHintMissing": "填写 API 密钥与模型",
@@ -1291,7 +1296,7 @@
     "usageOutputRatio": "输出占有效 Token {{value}}%",
     "usagePricingComplete": "全部请求已匹配定价",
     "usagePricingCoverage": "已定价 {{priced}} / {{total}} 次请求",
-    "usageCostIncludesCache": "费用按输入、输出、缓存命中与缓存写入分别估算；命中缓存的部分会按更低单价计算。",
+    "usageCostIncludesCache": "优先采用上游报告费用，否则按当前美元单价区分普通输入、输出、缓存读取和短时/长时缓存写入进行估算；长上下文、处理层级、地域及工具调用附加费以供应商账单为准。",
     "usageRangeToday": "今天",
     "usageRange7d": "7 天",
     "usageRange30d": "30 天",
@@ -1330,6 +1335,7 @@
     "usagePricingOutput": "输出价格 ($/M tokens)",
     "usagePricingCacheRead": "缓存读取",
     "usagePricingCacheCreation": "缓存写入",
+    "usagePricingCacheCreationLong": "长时缓存写入",
     "usagePricingSave": "保存定价",
     "usagePricingReset": "重置为内置默认",
     "usageCacheSavings": "缓存节省估算",

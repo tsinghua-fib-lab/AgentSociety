@@ -8,6 +8,9 @@ type SessionUsage = {
   output_tokens?: unknown;
   cache_read_input_tokens?: unknown;
   cache_creation_input_tokens?: unknown;
+  cache_creation?: {
+    ephemeral_1h_input_tokens?: unknown;
+  };
 };
 
 type SessionMessage = {
@@ -63,6 +66,9 @@ export function parseClaudeSessionUsageLine(
   const outputTokens = tokenCount(usage.output_tokens);
   const cacheReadTokens = tokenCount(usage.cache_read_input_tokens);
   const cacheCreationTokens = tokenCount(usage.cache_creation_input_tokens);
+  const cacheCreationLongTokens = tokenCount(
+    usage.cache_creation?.ephemeral_1h_input_tokens
+  );
   if (
     inputTokens === 0 &&
     outputTokens === 0 &&
@@ -79,6 +85,7 @@ export function parseClaudeSessionUsageLine(
     outputTokens,
     cacheReadTokens,
     cacheCreationTokens,
+    ...(cacheCreationLongTokens > 0 ? { cacheCreationLongTokens } : {}),
     serverToolUseTokens: 0,
     requestId: messageId,
     upstream: 'claude-session',

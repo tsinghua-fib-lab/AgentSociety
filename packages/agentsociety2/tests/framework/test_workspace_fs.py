@@ -1,5 +1,6 @@
-import pytest
 import shutil
+
+import pytest
 
 from agentsociety2.agent.base.workspace_fs import WorkspaceFS
 

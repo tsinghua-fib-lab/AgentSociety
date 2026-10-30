@@ -709,6 +709,34 @@ class AgentBase(ABC):
             **kwargs,
         )
 
+    async def _completion_text(
+        self,
+        messages: list[dict[str, Any]],
+        *,
+        empty_attempts: int = 3,
+        **kwargs: Any,
+    ) -> str:
+        """Return nonempty completion text with bounded empty-response retries."""
+        if empty_attempts < 1:
+            raise ValueError("empty_attempts must be positive")
+        for attempt in range(1, empty_attempts + 1):
+            response = await self.acompletion(messages, stream=False, **kwargs)
+            choices = getattr(response, "choices", None)
+            message = getattr(choices[0], "message", None) if choices else None
+            content = getattr(message, "content", None)
+            if isinstance(content, str) and content.strip():
+                return content
+            if attempt < empty_attempts:
+                self._logger.warning(
+                    "[%s] Empty LLM response (%d/%d); retrying",
+                    self.name,
+                    attempt,
+                    empty_attempts,
+                )
+        raise RuntimeError(
+            f"LLM returned empty responses after {empty_attempts} attempts"
+        )
+
     async def close(self):
         """Close the agent and release resources. Subclasses may override."""
 

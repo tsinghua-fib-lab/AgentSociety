@@ -4,9 +4,11 @@
 展示如何创建一个基础的环境模块。
 """
 
-from agentsociety2.env import EnvBase, tool
 from datetime import datetime
+
 from pydantic import BaseModel, Field
+
+from agentsociety2.env import EnvBase, tool
 
 
 class SimpleEnvConfig(BaseModel):

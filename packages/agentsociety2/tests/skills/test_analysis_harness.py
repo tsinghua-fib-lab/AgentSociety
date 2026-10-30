@@ -10,12 +10,13 @@ from pathlib import Path
 
 import pytest
 
-from agentsociety2.skills.analysis.harness import state as harness_state
 from agentsociety2.skills.analysis.harness import capabilities as harness_capabilities
+from agentsociety2.skills.analysis.harness import cli as harness_cli
+from agentsociety2.skills.analysis.harness import json_io as harness_json_io
+from agentsociety2.skills.analysis.harness import state as harness_state
 from agentsociety2.skills.analysis.harness.capabilities import (
     analysis_capability_statuses,
 )
-from agentsociety2.skills.analysis.harness.guidance import get_harness_guidance
 from agentsociety2.skills.analysis.harness.execution import (
     OperationRunReceipt,
     execute_operation,
@@ -25,14 +26,24 @@ from agentsociety2.skills.analysis.harness.execution import (
     save_run_receipt,
     unresolved_retryable_runs,
 )
+from agentsociety2.skills.analysis.harness.guidance import get_harness_guidance
+from agentsociety2.skills.analysis.harness.json_io import load_model_from_text
 from agentsociety2.skills.analysis.harness.models import (
     AnalysisPlan,
     Claim,
-    ClaimsDocument,
     ClaimMode,
+    ClaimsDocument,
     FigureContract,
     HypothesisAnalysisState,
     ReflectionReport,
+)
+from agentsociety2.skills.analysis.harness.operations import operation_registry
+from agentsociety2.skills.analysis.harness.paths import analysis_operation_lock_path
+from agentsociety2.skills.analysis.harness.preflight import (
+    evaluate_operation_availability,
+)
+from agentsociety2.skills.analysis.harness.report_assets import (
+    sync_report_assets_from_reports,
 )
 from agentsociety2.skills.analysis.harness.review import (
     REPORT_DIMENSION_KEYS,
@@ -40,11 +51,9 @@ from agentsociety2.skills.analysis.harness.review import (
     save_report_review,
 )
 from agentsociety2.skills.analysis.harness.schemas import (
+    ReportOutline,
     ReportQualityReview,
     ReviewVerdict,
-)
-from agentsociety2.skills.analysis.harness.report_assets import (
-    sync_report_assets_from_reports,
 )
 from agentsociety2.skills.analysis.harness.validators import (
     validate_chart_script,
@@ -56,15 +65,6 @@ from agentsociety2.skills.analysis.harness.validators import (
     validate_report_quality,
     validate_synthesis,
 )
-from agentsociety2.skills.analysis.harness import cli as harness_cli
-from agentsociety2.skills.analysis.harness.json_io import load_model_from_text
-from agentsociety2.skills.analysis.harness import json_io as harness_json_io
-from agentsociety2.skills.analysis.harness.operations import operation_registry
-from agentsociety2.skills.analysis.harness.paths import analysis_operation_lock_path
-from agentsociety2.skills.analysis.harness.preflight import (
-    evaluate_operation_availability,
-)
-from agentsociety2.skills.analysis.harness.schemas import ReportOutline
 
 
 @pytest.fixture

@@ -6,6 +6,7 @@ export type TokenUsageRecord = {
   outputTokens: number;
   cacheReadTokens: number;
   cacheCreationTokens: number;
+  cacheCreationLongTokens?: number;
   serverToolUseTokens: number;
   requestId: string;
   upstream: string;
@@ -13,6 +14,7 @@ export type TokenUsageRecord = {
   status?: number;
   durationMs?: number;
   streaming?: boolean;
+  reportedCostUsd?: number;
   ts: string;
 };
 

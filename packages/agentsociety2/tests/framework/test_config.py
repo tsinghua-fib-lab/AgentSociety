@@ -2,7 +2,7 @@
 
 import os
 
-from agentsociety2.config.config import extract_json, Config
+from agentsociety2.config.config import Config, extract_json
 
 
 class TestExtractJson:

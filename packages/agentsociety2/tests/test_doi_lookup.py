@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from agentsociety2.skills.literature import doi_lookup as doi_lookup_module
 from agentsociety2.skills.literature.doi_lookup import (
     classify_identifier,
     extract_identifier_from_pdf,
@@ -94,6 +95,32 @@ def test_record_to_bibtex_shape() -> None:
     assert "title = {Hello \\{World\\}}" in bib
     assert "author = {Ada Lovelace and Alan Turing}" in bib
     assert "doi = {10.1000/example}" in bib
+
+
+def test_lookup_identifier_dispatches_without_network(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[tuple[str, str, float]] = []
+    doi_result = object()
+    arxiv_result = object()
+
+    def fake_lookup_doi(identifier: str, *, timeout: float) -> object:
+        calls.append(("doi", identifier, timeout))
+        return doi_result
+
+    def fake_lookup_arxiv(identifier: str, *, timeout: float) -> object:
+        calls.append(("arxiv", identifier, timeout))
+        return arxiv_result
+
+    monkeypatch.setattr(doi_lookup_module, "lookup_doi", fake_lookup_doi)
+    monkeypatch.setattr(doi_lookup_module, "lookup_arxiv", fake_lookup_arxiv)
+
+    assert lookup_identifier("doi:10.1038/nature14539", timeout=1.25) is doi_result
+    assert lookup_identifier("arxiv:1706.03762", timeout=2.5) is arxiv_result
+    assert calls == [
+        ("doi", "10.1038/nature14539", 1.25),
+        ("arxiv", "1706.03762", 2.5),
+    ]
 
 
 @pytest.mark.network

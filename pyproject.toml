@@ -1,5 +1,6 @@
 [tool.uv]
 index-url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+constraint-dependencies = ["virtualenv==20.35.4", "filelock==3.20.3"]
 
 [tool.uv.workspace]
 

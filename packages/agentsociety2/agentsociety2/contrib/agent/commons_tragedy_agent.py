@@ -201,7 +201,7 @@ This agent participates in a 10-round Tragedy of the Commons game where multiple
         except Exception as e:
             error_message = f"Step execution failed: {type(e).__name__} - {e!s}"
             self._logger.error(f"[{self.name}] {error_message}")
-            return f"[{self.name}] [ERROR] {error_message}"
+            raise RuntimeError(f"[{self.name}] {error_message}") from e
 
     def _build_history_string(self, all_agent_names: list) -> str:
         """Build history string"""
@@ -365,22 +365,10 @@ This agent participates in a 10-round Tragedy of the Commons game where multiple
         )
 
         try:
-            response = await self.acompletion(
-                [{"role": "user", "content": prompt}], stream=False
+            content = await self._completion_text(
+                [{"role": "user", "content": prompt}]
             )
-
-            if not response or not response.choices or len(response.choices) == 0:
-                raise ValueError("LLM returned empty response")
-
-            choice = response.choices[0]
-            if not hasattr(choice, "message") or not choice.message:
-                raise ValueError("LLM returned empty response")
-
-            content = choice.message.content or ""  # type: ignore
             self._logger.debug(f"[{self.name}] [DEBUG] Raw response: {content}")
-
-            if not content or content.isspace():
-                raise ValueError("LLM returned empty response")
 
             # Extract extraction using regex
             extraction_match = re.search(
@@ -391,10 +379,10 @@ This agent participates in a 10-round Tragedy of the Commons game where multiple
                 if 1 <= parsed_extraction <= self.max_extraction:
                     extraction = parsed_extraction
                 else:
-                    self._logger.warning(
-                        f"[{self.name}] [WARNING] Extraction value out of range: {parsed_extraction}, using default 1"
+                    raise ValueError(
+                        f"Extraction {parsed_extraction} is outside "
+                        f"1..{self.max_extraction}"
                     )
-                    extraction = 1
 
                 # Extract explanation
                 explanation_match = re.search(
@@ -426,7 +414,10 @@ This agent participates in a 10-round Tragedy of the Commons game where multiple
                     if 1 <= parsed_extraction <= self.max_extraction:
                         extraction = parsed_extraction
                     else:
-                        extraction = 1
+                        raise ValueError(
+                            f"Extraction {parsed_extraction} is outside "
+                            f"1..{self.max_extraction}"
+                        )
                     explanation = (
                         " ".join(lines[1:]).strip()
                         or "Single-line match successful, no detailed explanation"
@@ -442,7 +433,10 @@ This agent participates in a 10-round Tragedy of the Commons game where multiple
                         if 1 <= parsed_extraction <= self.max_extraction:
                             extraction = parsed_extraction
                         else:
-                            extraction = 1
+                            raise ValueError(
+                                f"Extraction {parsed_extraction} is outside "
+                                f"1..{self.max_extraction}"
+                            )
                         explanation = f"Extracted keyword from response: {extraction}"
                         self._logger.info(
                             f"[{self.name}] [KEYWORD] Keyword match successful: extraction={extraction}"
@@ -455,11 +449,7 @@ This agent participates in a 10-round Tragedy of the Commons game where multiple
         except Exception as e:
             error_message = f"Parsing/call failed: {type(e).__name__} - {e!s}"
             self._logger.error(f"[{self.name}] [ERROR] {error_message}")
-
-            extraction = 1
-            explanation = (
-                f"[CRITICAL FAILURE] {error_message}, using default selection: 1"
-            )
+            raise RuntimeError(error_message) from e
 
         self._logger.debug(f"[{self.name}] [DEBUG] Final selection: {extraction}")
         return extraction, explanation

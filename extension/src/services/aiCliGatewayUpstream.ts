@@ -49,6 +49,24 @@ export function buildLocalGatewayBaseUrl(port: number): string {
   return `http://127.0.0.1:${port}`;
 }
 
+export function upstreamTargetsLocalGateway(baseUrl: string, port: number): boolean {
+  try {
+    const parsed = new URL(baseUrl.trim());
+    const hostname = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, '');
+    const ipv4Loopback = /^127(?:\.\d{1,3}){3}$/.test(hostname);
+    const isLoopback =
+      hostname === 'localhost' ||
+      hostname === '::1' ||
+      ipv4Loopback ||
+      hostname === '::ffff:7f00:1' ||
+      hostname === '::ffff:127.0.0.1';
+    const parsedPort = Number(parsed.port || (parsed.protocol === 'https:' ? 443 : 80));
+    return isLoopback && parsedPort === port;
+  } catch {
+    return false;
+  }
+}
+
 export function resolveUpstreamTargetUrl(upstreamBase: string, requestPath: string): string {
   const base = normalizeUpstreamBaseUrl(upstreamBase);
   const rawPath = requestPath.startsWith('/') ? requestPath : `/${requestPath}`;
