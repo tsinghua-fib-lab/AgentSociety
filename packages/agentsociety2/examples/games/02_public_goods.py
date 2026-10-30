@@ -97,7 +97,7 @@ async def main() -> None:
             latest = hist[-1]
             print(
                 f"  total={latest.get('total_contribution')} "
-                f"gain_per_agent={latest.get('gain_per_agent')} "
+                f"payoffs={latest.get('payoffs')} "
                 f"contributions={latest.get('contributions')}"
             )
         else:

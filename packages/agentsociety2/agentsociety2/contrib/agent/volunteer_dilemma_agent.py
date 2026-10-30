@@ -202,7 +202,7 @@ Players aim to maximize cumulative coins while balancing personal gain and colle
         except Exception as e:
             error_message = f"Step execution failed: {type(e).__name__} - {e!s}"
             self._logger.error(f"[{self.name}] {error_message}")
-            return f"[{self.name}] [ERROR] {error_message}"
+            raise RuntimeError(f"[{self.name}] {error_message}") from e
 
     async def _decide_choice(
         self, round_num: int, all_agent_names: list
@@ -225,22 +225,10 @@ Players aim to maximize cumulative coins while balancing personal gain and colle
         )
 
         try:
-            response = await self.acompletion(
-                [{"role": "user", "content": prompt}], stream=False
+            content = await self._completion_text(
+                [{"role": "user", "content": prompt}]
             )
-
-            if not response or not response.choices or len(response.choices) == 0:
-                raise ValueError("LLM returned empty response")
-
-            choice_obj = response.choices[0]
-            if not hasattr(choice_obj, "message") or not choice_obj.message:
-                raise ValueError("LLM returned empty response")
-
-            content = choice_obj.message.content or ""  # type: ignore
             self._logger.debug(f"[{self.name}] [DEBUG] Raw response: {content}")
-
-            if not content or content.isspace():
-                raise ValueError("LLM returned empty response")
 
             # Use regex to match choice and explanation
             match_volunteer = re.search(r"volunteer", content, re.IGNORECASE)
@@ -278,9 +266,7 @@ Players aim to maximize cumulative coins while balancing personal gain and colle
         except Exception as e:
             error_message = f"Parsing/call failed: {type(e).__name__} - {e!s}"
             self._logger.error(f"[{self.name}] [ERROR] {error_message}")
-
-            choice = self.decision_options[1]
-            explanation = f"[CRITICAL FAILURE] {error_message}, using default selection: {self.decision_options[1]}"
+            raise RuntimeError(error_message) from e
 
         self._logger.debug(f"[{self.name}] [DEBUG] Final selection: {choice}")
         return choice, explanation

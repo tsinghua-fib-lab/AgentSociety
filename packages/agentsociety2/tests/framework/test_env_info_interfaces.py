@@ -1,6 +1,9 @@
 from agentsociety2.contrib.env.economy_space import EconomySpace
 from agentsociety2.contrib.env.mobility_space.environment import MobilitySpace
-from agentsociety2.registry import get_registered_agent_modules, get_registered_env_modules
+from agentsociety2.registry import (
+    get_registered_agent_modules,
+    get_registered_env_modules,
+)
 
 
 def test_registered_modules_expose_description_and_init_description():

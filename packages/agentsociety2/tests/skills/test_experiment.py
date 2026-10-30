@@ -1,11 +1,11 @@
 """Tests for experiment module discovery functionality."""
 
 from agentsociety2.skills.experiment.module_discovery import (
-    get_available_env_modules,
     get_available_agent_modules,
+    get_available_env_modules,
     get_modules_summary,
-    validate_module_selection,
     validate_hypothesis_modules,
+    validate_module_selection,
 )
 
 
@@ -48,7 +48,7 @@ class TestValidateModuleSelection:
 
     def test_invalid_selection_missing_agents(self):
         """Test selection with no agent classes."""
-        is_valid, errors = validate_module_selection(
+        is_valid, _errors = validate_module_selection(
             agent_classes=None,
             env_modules=["simple_social_space"],
         )
@@ -57,7 +57,7 @@ class TestValidateModuleSelection:
 
     def test_invalid_selection_missing_env(self):
         """Test selection with no environment modules."""
-        is_valid, errors = validate_module_selection(
+        is_valid, _errors = validate_module_selection(
             agent_classes=["basic_agent"],
             env_modules=None,
         )
@@ -65,7 +65,7 @@ class TestValidateModuleSelection:
 
     def test_invalid_selection_empty_lists(self):
         """Test selection with empty lists."""
-        is_valid, errors = validate_module_selection(
+        is_valid, _errors = validate_module_selection(
             agent_classes=[],
             env_modules=[],
         )
@@ -92,7 +92,7 @@ class TestValidateHypothesisModules:
         hypothesis_data = {
             "env_modules": ["simple_social_space"],
         }
-        is_valid, errors, guidance = validate_hypothesis_modules(hypothesis_data)
+        is_valid, _errors, _guidance = validate_hypothesis_modules(hypothesis_data)
         assert isinstance(is_valid, bool)
 
     def test_hypothesis_missing_env_modules(self):
@@ -100,7 +100,7 @@ class TestValidateHypothesisModules:
         hypothesis_data = {
             "agent_classes": ["basic_agent"],
         }
-        is_valid, errors, guidance = validate_hypothesis_modules(hypothesis_data)
+        is_valid, _errors, _guidance = validate_hypothesis_modules(hypothesis_data)
         assert isinstance(is_valid, bool)
 
     def test_hypothesis_empty_modules(self):
@@ -109,7 +109,7 @@ class TestValidateHypothesisModules:
             "agent_classes": [],
             "env_modules": [],
         }
-        is_valid, errors, guidance = validate_hypothesis_modules(hypothesis_data)
+        is_valid, _errors, guidance = validate_hypothesis_modules(hypothesis_data)
         assert isinstance(is_valid, bool)
         assert isinstance(guidance, dict)
 
@@ -120,7 +120,7 @@ class TestValidateHypothesisModules:
             "agent_classes": [],
             "env_modules": [],
         }
-        is_valid, errors, guidance = validate_hypothesis_modules(hypothesis_data)
+        _is_valid, _errors, guidance = validate_hypothesis_modules(hypothesis_data)
         # Guidance should be generated
         assert isinstance(guidance, dict)
 
@@ -135,7 +135,7 @@ class TestModuleDiscoveryIntegration:
 
         # If modules are available, they should be valid
         if env_modules and agent_modules:
-            is_valid, errors = validate_module_selection(
+            is_valid, _errors = validate_module_selection(
                 agent_classes=list(agent_modules.keys())[:1],
                 env_modules=list(env_modules.keys())[:1],
             )

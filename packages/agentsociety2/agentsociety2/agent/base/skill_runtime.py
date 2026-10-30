@@ -17,7 +17,7 @@ import sys
 import traceback
 import types
 from collections.abc import Iterable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -27,6 +27,7 @@ from agentsociety2.agent.base.skill_hook_context import (
     _set_hook_context,
 )
 from agentsociety2.agent.base.skill_registry import SkillDescriptor
+from agentsociety2.agent.base.skill_script_context import SkillScriptContext
 from agentsociety2.agent.base.workspace_fs import CommandResult, WorkspaceFS
 from agentsociety2.agent.person_prompt import skill_content_xml
 from agentsociety2.trace import JsonlTraceWriter
@@ -143,29 +144,6 @@ class ScriptRunResult:
             "stderr": self.stderr,
             "error_type": self.error_type,
         }
-
-
-@dataclass(frozen=True)
-class SkillScriptContext:
-    """Per-call context handed to an in-process skill ``entrypoint``.
-
-    Replaces the process-global env vars (``AGENT_WORK_DIR`` etc.) that the
-    subprocess path relied on, so 50 agents can run their hooks in-process in
-    parallel without racing on ``os.environ`` / ``cwd`` / ``sys.stdout``.
-
-    Args:
-        workspace_root: This agent's workspace root (was ``AGENT_WORK_DIR``).
-        skill_dir: The skill package root (was ``SKILL_DIR``).
-        skill_id: Registry skill id (was ``SKILL_ID``).
-        skill_name: Display name (was ``SKILL_NAME``).
-        env: Snapshot of the env-var dict the subprocess path would have set.
-    """
-
-    workspace_root: Path
-    skill_dir: Path
-    skill_id: str
-    skill_name: str
-    env: dict[str, str] = field(default_factory=dict)
 
 
 # Serializes the dynamic (entrypoint-less) in-process wrapper, which must touch

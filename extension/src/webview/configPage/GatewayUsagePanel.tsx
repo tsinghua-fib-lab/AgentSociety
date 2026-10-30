@@ -174,14 +174,20 @@ export function GatewayUsagePanel({
           r.cacheReadTokens,
           r.cacheCreationTokens,
           customPricing,
-          { app: recordApp(r) }
+          {
+            app: recordApp(r),
+            reportedCostUsd: r.reportedCostUsd,
+            cacheCreationLongTokens: r.cacheCreationLongTokens,
+          }
         );
         return sum + (cost?.total ?? 0);
       }, 0),
     [filteredRecords, customPricing]
   );
   const pricedRecords = React.useMemo(
-    () => filteredRecords.filter((record) => getModelPrice(record.model, customPricing) !== null).length,
+    () => filteredRecords.filter(
+      (record) => record.reportedCostUsd !== undefined || getModelPrice(record.model, customPricing) !== null
+    ).length,
     [filteredRecords, customPricing]
   );
 
@@ -223,7 +229,11 @@ export function GatewayUsagePanel({
         r.cacheReadTokens,
         r.cacheCreationTokens,
         customPricing,
-        { app: recordApp(r) }
+        {
+          app: recordApp(r),
+          reportedCostUsd: r.reportedCostUsd,
+          cacheCreationLongTokens: r.cacheCreationLongTokens,
+        }
       );
       map.set(matchKey, (map.get(matchKey) ?? 0) + (cost?.total ?? 0));
     }
@@ -428,7 +438,11 @@ export function GatewayUsagePanel({
               record.cacheReadTokens,
               record.cacheCreationTokens,
               customPricing,
-              { app: recordApp(record) }
+              {
+                app: recordApp(record),
+                reportedCostUsd: record.reportedCostUsd,
+                cacheCreationLongTokens: record.cacheCreationLongTokens,
+              }
             );
             return sum + (itemCost?.total ?? 0);
           }, 0);
@@ -833,7 +847,11 @@ export function GatewayUsagePanel({
                   row.cacheReadTokens,
                   row.cacheCreationTokens,
                   customPricing,
-                  { app: recordApp(row) }
+                  {
+                    app: recordApp(row),
+                    reportedCostUsd: row.reportedCostUsd,
+                    cacheCreationLongTokens: row.cacheCreationLongTokens,
+                  }
                 );
                 return <Text style={{ fontSize: 11 }}>{cost ? formatCost(cost.total) : '—'}</Text>;
               },
@@ -919,7 +937,7 @@ export function GatewayUsagePanel({
         open={pricingModalOpen}
         onOk={() => { onSavePricing(editingPricing); setPricingModalOpen(false); }}
         onCancel={() => setPricingModalOpen(false)}
-        width={720}
+        width={820}
         okText={t('claudeCodeConfig.usagePricingSave')}
       >
         <Space style={{ marginBottom: 12, width: '100%', justifyContent: 'space-between' }}>
@@ -940,6 +958,7 @@ export function GatewayUsagePanel({
           <Text type="secondary" style={{ fontSize: 10, width: 88 }}>{t('claudeCodeConfig.usagePricingOutput')}</Text>
           <Text type="secondary" style={{ fontSize: 10, width: 88 }}>{t('claudeCodeConfig.usagePricingCacheRead')}</Text>
           <Text type="secondary" style={{ fontSize: 10, width: 88 }}>{t('claudeCodeConfig.usagePricingCacheCreation')}</Text>
+          <Text type="secondary" style={{ fontSize: 10, width: 88 }}>{t('claudeCodeConfig.usagePricingCacheCreationLong')}</Text>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {Object.entries(editingPricing).map(([modelId, price]) => (
@@ -980,6 +999,14 @@ export function GatewayUsagePanel({
                 min={0}
                 step={0.01}
                 placeholder="Cache write"
+              />
+              <InputNumber
+                value={price.cacheCreationLongPerMillion ?? price.cacheCreationPerMillion ?? 0}
+                onChange={(v) => updatePricingEntry(modelId, 'cacheCreationLongPerMillion', v ?? 0)}
+                style={{ width: 88 }}
+                min={0}
+                step={0.01}
+                placeholder="Long cache"
               />
               <Button size="small" danger icon={<DeleteOutlined />} onClick={() => {
                 setEditingPricing((prev) => {

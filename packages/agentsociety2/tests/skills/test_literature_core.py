@@ -1,10 +1,10 @@
 """Tests for literature search core functions."""
 
 from agentsociety2.skills.literature.core import (
-    is_chinese_text,
-    _split_query_by_keywords,
-    merge_literature_results,
     _convert_api_response,
+    _split_query_by_keywords,
+    is_chinese_text,
+    merge_literature_results,
 )
 
 

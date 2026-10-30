@@ -7,7 +7,7 @@
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Any, List
+from typing import Any
 
 from agentsociety2.agent.base import AgentBase
 
@@ -102,7 +102,7 @@ class AdvancedAgent(AgentBase):
         self._bind_services(service_proxy)
         self._step_count = int(meta.get("step_count", 0))
         # 自定义属性
-        self._memories: List[str] = list(meta.get("memories", []))
+        self._memories: list[str] = list(meta.get("memories", []))
         self._mood: str = str(meta.get("mood", "平静"))
 
     async def to_workspace(self, workspace_path: Path) -> None:

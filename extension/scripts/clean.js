@@ -41,6 +41,7 @@ function removeVsixArtifacts() {
 
 const targets = [
   path.join(root, 'out'),
+  path.join(root, 'dist'),
   path.join(root, 'node_modules', '.cache'),
 ];
 

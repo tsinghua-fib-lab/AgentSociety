@@ -45,8 +45,10 @@ docs/**
 .nvmrc
 
 # 构建产物中的测试与 source map
-out/test/**
-out/**/*.map
+out/**
+!out/webview/**
+out/webview/**/*.map
+dist/**/*.map
 
 # 运行期杂项
 .env
@@ -59,33 +61,5 @@ yarn-error.log*
 **/__pycache__
 **/__pycache__/**
 
-# 主扩展进程运行时依赖；其余依赖由 webview bundle 内联或仅开发期使用
+# 主扩展进程与 Webview 均已打包，运行时不发布依赖树
 node_modules/**
-!node_modules/js-yaml/
-!node_modules/js-yaml/index.js
-!node_modules/js-yaml/package.json
-!node_modules/js-yaml/lib/
-!node_modules/js-yaml/lib/**
-!node_modules/smol-toml/
-!node_modules/smol-toml/**
-!node_modules/write-file-atomic/
-!node_modules/write-file-atomic/**
-!node_modules/signal-exit/
-!node_modules/signal-exit/**
-# gatewayOutboundProxy → https-proxy-agent / socks-proxy-agent（及传递依赖）
-!node_modules/https-proxy-agent/
-!node_modules/https-proxy-agent/**
-!node_modules/socks-proxy-agent/
-!node_modules/socks-proxy-agent/**
-!node_modules/agent-base/
-!node_modules/agent-base/**
-!node_modules/debug/
-!node_modules/debug/**
-!node_modules/ms/
-!node_modules/ms/**
-!node_modules/socks/
-!node_modules/socks/**
-!node_modules/smart-buffer/
-!node_modules/smart-buffer/**
-!node_modules/ip-address/
-!node_modules/ip-address/**

@@ -127,6 +127,23 @@ def test_brand_icon_resolves_from_installed_workspace_skill(
     assert brand_icon_source_path() == skill_asset.resolve()
 
 
+def test_brand_icon_resolves_without_workspace(tmp_path: Path, monkeypatch) -> None:
+    from importlib.resources import files
+    from xml.etree import ElementTree
+
+    monkeypatch.delenv("AGENTSOCIETY_ANALYSIS_SKILL_ROOT", raising=False)
+    monkeypatch.setattr(sys, "argv", [str(tmp_path / "standalone.py")])
+    monkeypatch.chdir(tmp_path)
+    packaged = files("agentsociety2.skills.analysis").joinpath(
+        "assets", "agentsociety_icon.svg"
+    )
+    resolved = brand_icon_source_path()
+    assert resolved == Path(str(packaged)).resolve()
+    assert ElementTree.fromstring(resolved.read_bytes()).tag == (
+        "{http://www.w3.org/2000/svg}svg"
+    )
+
+
 def test_empty_eda_is_an_id_free_child_fragment(tmp_path: Path) -> None:
     fragment = build_interactive_eda_section(tmp_path, lang="en")
 

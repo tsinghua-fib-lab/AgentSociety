@@ -37,7 +37,6 @@ import { AiCliGatewayManager } from './services/aiCliGatewayManager';
 import { ConfigHealthStatusBar } from './services/configHealthStatus';
 import { LanguageStatusBar } from './services/languageStatusBar';
 import { formatDurationMs } from './shared/formatDuration';
-import { disposeAllSharedOutputChannels } from './shared/outputChannels';
 import { WorkspaceExportManager } from './services/workspaceExportManager';
 import { WorkspaceImportManager } from './services/workspaceImportManager';
 import { filePathToAtReference } from './atReference';
@@ -1361,7 +1360,6 @@ async function restoreAiCliGatewayIfEnabled(): Promise<void> {
 
 export function deactivate() {
   if (backendManager) {
-    backendManager.stop();
+    void backendManager.stop();
   }
-  disposeAllSharedOutputChannels();
 }

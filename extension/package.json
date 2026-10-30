@@ -84,7 +84,7 @@
     "onCommand:aiSocialScientist.toggleLanguage"
   ],
   "icon": "resources/icon128.png",
-  "main": "./out/extension.js",
+  "main": "./dist/extension.js",
   "contributes": {
     "walkthroughs": [
       {
@@ -840,22 +840,24 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run build",
-    "build": "npm run compile && npm run build-webview",
+    "build": "npm run check-types && npm run build-extension && npm run build-webview",
     "rebuild": "npm run clean && npm run build",
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./",
+    "check-types": "tsc -p ./",
+    "compile": "npm run check-types && npm run build-extension",
+    "build-extension": "WEBPACK_TARGET=extension NODE_ENV=production NODE_OPTIONS=--max-old-space-size=4096 webpack --mode production",
+    "watch": "concurrently -k -n types,extension \"tsc -watch -p ./\" \"WEBPACK_TARGET=extension NODE_ENV=development webpack --mode development --watch\"",
     "dev": "concurrently -k -n tsc,webview \"npm:watch\" \"npm:watch-webview\"",
     "clean": "node ./scripts/clean.js",
     "clean:dry-run": "node ./scripts/clean.js --dry-run",
     "clean:deep": "node ./scripts/clean.js --deep",
     "clean-webview": "node -e \"const fs=require('fs'); fs.rmSync('out/webview', { recursive: true, force: true }); fs.mkdirSync('out/webview', { recursive: true });\"",
-    "build-webview": "npm run clean-webview && NODE_ENV=production NODE_OPTIONS=--max-old-space-size=8192 node ./node_modules/webpack/bin/webpack.js --mode production",
-    "watch-webview": "NODE_ENV=development NODE_OPTIONS=--max-old-space-size=4096 webpack --mode development --watch",
+    "build-webview": "npm run clean-webview && WEBPACK_TARGET=webview NODE_ENV=production NODE_OPTIONS=--max-old-space-size=8192 node ./node_modules/webpack/bin/webpack.js --mode production",
+    "watch-webview": "WEBPACK_TARGET=webview NODE_ENV=development NODE_OPTIONS=--max-old-space-size=4096 webpack --mode development --watch",
     "check": "npm run lint && npm run test:gateway && npm run build",
     "package": "vsce package -o ai-social-scientist.vsix",
     "package:check": "npm run check && npm run package",
     "lint": "eslint src",
-    "test:gateway": "npm run compile && node --test test/*.test.js"
+    "test:gateway": "npm run check-types && node --test test/*.test.js"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -904,6 +906,7 @@
     "write-file-atomic": "^8.0.0"
   },
   "overrides": {
+    "@azure/msal-node": "^7.1.0",
     "serialize-javascript": ">=7.0.3",
     "minimist": ">=1.0.0",
     "diff": ">=3.5.1",

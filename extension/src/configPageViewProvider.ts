@@ -121,6 +121,16 @@ export class ConfigPageViewProvider {
     this._panel.webview.html = this._getHtmlForWebview(this._panel.webview);
 
     this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
+    this._panel.onDidChangeViewState(
+      ({ webviewPanel }) => {
+        void webviewPanel.webview.postMessage({
+          command: 'configPageVisibility',
+          visible: webviewPanel.visible,
+        });
+      },
+      null,
+      this._disposables
+    );
 
     this._panel.webview.onDidReceiveMessage(
       async (message: {
@@ -146,6 +156,10 @@ export class ConfigPageViewProvider {
         switch (message.command) {
           case 'requestConfig':
             await this._sendInitialConfig();
+            await this._panel.webview.postMessage({
+              command: 'configPageVisibility',
+              visible: this._panel.visible,
+            });
             break;
           case 'requestBackendStatus':
             await this._postOverviewStatus();
@@ -385,6 +399,9 @@ export class ConfigPageViewProvider {
       backendHost: envConfig.backendHost || '127.0.0.1',
       backendPort: envConfig.backendPort ?? 8001,
       pythonPath: envConfig.pythonPath || '',
+      backendAutoStart: vscode.workspace
+        .getConfiguration('aiSocialScientist')
+        .get<boolean>('backend.autoStart', false),
       llmApiBase: envConfig.llmApiBase || DEFAULT_LLM_API_BASE,
       llmModel: envConfig.llmModel || DEFAULT_LLM_MODEL,
       backendLogLevel: envConfig.backendLogLevel || 'info',
@@ -799,7 +816,10 @@ export class ConfigPageViewProvider {
       return;
     }
     await manager.syncClaudeSessionUsage();
-    await manager.persistUsage();
+    await this._postStoredGatewayUsage(manager);
+  }
+
+  private async _postStoredGatewayUsage(manager: AiCliGatewayManager): Promise<void> {
     const persisted = await manager.getPersistedUsage();
     const session = manager.getSessionUsage();
     const records = session.length > 0 ? [...persisted, ...session] : persisted;
@@ -811,10 +831,13 @@ export class ConfigPageViewProvider {
   }
 
   async _pushGatewayUsageData(): Promise<void> {
-    if (!this._panel) {
+    const manager = ConfigPageViewProvider.gatewayManager;
+    if (!manager || !this._panel.visible) {
       return;
     }
-    await this._handleGatewayGetUsage();
+    // Gateway records are already persisted by the manager before this listener
+    // fires. Avoid rescanning external CLI session files for every live request.
+    await this._postStoredGatewayUsage(manager);
   }
 
   private async _handleGatewayClearUsage(): Promise<void> {
@@ -849,7 +872,7 @@ export class ConfigPageViewProvider {
     if (!manager || !pricing || typeof pricing !== 'object') {
       return;
     }
-    const typed = JSON.parse(JSON.stringify(pricing)) as Record<string, { inputPerMillion: number; outputPerMillion: number; cacheReadPerMillion?: number; cacheCreationPerMillion?: number }>;
+    const typed = JSON.parse(JSON.stringify(pricing)) as Record<string, { inputPerMillion: number; outputPerMillion: number; cacheReadPerMillion?: number; cacheCreationPerMillion?: number; cacheCreationLongPerMillion?: number }>;
     await manager.saveCustomPricing(typed);
     await this._handleGatewayGetPricing();
   }
@@ -1349,6 +1372,12 @@ export class ConfigPageViewProvider {
       literatureSearchMcpUrl: config.literatureSearchMcpUrl,
       literatureSearchApiKey: config.literatureSearchApiKey,
     });
+
+    if (typeof config.backendAutoStart === 'boolean') {
+      await vscode.workspace
+        .getConfiguration('aiSocialScientist')
+        .update('backend.autoStart', config.backendAutoStart, vscode.ConfigurationTarget.Global);
+    }
 
     const llmKey = (config.llmApiKey ?? '').trim();
     if (llmKey) {

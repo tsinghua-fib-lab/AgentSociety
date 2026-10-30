@@ -46,7 +46,8 @@ def test_parse_nearby_pois_from_ctx_response_object():
             self.distance = 500.0
 
     class Resp:
-        pois = [Poi()]
+        def __init__(self):
+            self.pois = [Poi()]
 
     ctx = {"status": "success", "response": Resp()}
     pois = parse_nearby_pois_from_ctx(ctx)

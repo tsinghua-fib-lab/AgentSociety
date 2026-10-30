@@ -132,10 +132,14 @@ def calc_gyration_radius(points: list) -> float:
 
 
 def jsd_1d(a: np.ndarray, b: np.ndarray, bins: int = 50) -> float:
-    h1, edges = np.histogram(a, bins=bins, density=True)
-    h2, _ = np.histogram(b, bins=edges, density=True)
-    eps = 1e-10
-    h1, h2 = h1 + eps, h2 + eps
+    a, b = np.asarray(a).ravel(), np.asarray(b).ravel()
+    if not a.size or not b.size or not np.isfinite(a).all() or not np.isfinite(b).all():
+        raise ValueError("JSD requires nonempty, finite samples")
+    # Both populations must contribute to the range. Using only ground truth
+    # drops valid out-of-range simulation values and produces a zero histogram.
+    edges = np.histogram_bin_edges(np.concatenate((a, b)), bins=bins)
+    h1, _ = np.histogram(a, bins=edges)
+    h2, _ = np.histogram(b, bins=edges)
     h1, h2 = h1 / h1.sum(), h2 / h2.sum()
     return float(jensenshannon(h1, h2))
 

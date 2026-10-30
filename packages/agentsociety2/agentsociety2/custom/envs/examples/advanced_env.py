@@ -4,10 +4,11 @@
 展示带有资源管理、多 Agent 交互等高级功能的环境模块。
 """
 
-from agentsociety2.env import EnvBase, tool
 from datetime import datetime
+
 from pydantic import BaseModel, Field
-from typing import Dict
+
+from agentsociety2.env import EnvBase, tool
 
 
 class AdvancedEnvConfig(BaseModel):
@@ -31,8 +32,8 @@ class AdvancedEnv(EnvBase):
             config = AdvancedEnvConfig(**config)
         self._config = config
         self._resources = config.total_resources
-        self._agent_contributions: Dict[int, float] = {}
-        self._agent_consumptions: Dict[int, float] = {}
+        self._agent_contributions: dict[int, float] = {}
+        self._agent_consumptions: dict[int, float] = {}
 
     @classmethod
     def description(cls) -> str:

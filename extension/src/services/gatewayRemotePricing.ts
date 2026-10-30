@@ -50,7 +50,7 @@ function perTokenToPerMillion(value: unknown): number | undefined {
   if (!Number.isFinite(n) || n < 0) {
     return undefined;
   }
-  return n * 1_000_000;
+  return Number((n * 1_000_000).toPrecision(15));
 }
 
 function readFirstNumber(entry: JsonObject, keys: string[]): number | undefined {
@@ -79,6 +79,7 @@ function addPrice(
     outputPerMillion: price.outputPerMillion,
     cacheReadPerMillion: price.cacheReadPerMillion,
     cacheCreationPerMillion: price.cacheCreationPerMillion,
+    cacheCreationLongPerMillion: price.cacheCreationLongPerMillion,
   };
 }
 
@@ -110,8 +111,7 @@ function findPriceForModel(modelId: string, pricing: ModelPricingMap): ModelPric
   return undefined;
 }
 
-async function fetchOpenRouterPricing(): Promise<ModelPricingMap> {
-  const json = await fetchJson(OPENROUTER_MODELS_URL);
+export function parseOpenRouterPricing(json: unknown): ModelPricingMap {
   const map: ModelPricingMap = {};
   if (!isObject(json) || !Array.isArray(json.data)) {
     return map;
@@ -123,13 +123,19 @@ async function fetchOpenRouterPricing(): Promise<ModelPricingMap> {
     addPrice(map, model.id, {
       inputPerMillion: perTokenToPerMillion(model.pricing.prompt),
       outputPerMillion: perTokenToPerMillion(model.pricing.completion),
+      cacheReadPerMillion: perTokenToPerMillion(model.pricing.input_cache_read),
+      cacheCreationPerMillion: perTokenToPerMillion(model.pricing.input_cache_write),
+      cacheCreationLongPerMillion: perTokenToPerMillion(model.pricing.input_cache_write_1h),
     });
   }
   return map;
 }
 
-async function fetchLiteLlmPricing(): Promise<ModelPricingMap> {
-  const json = await fetchJson(LITELLM_PRICING_URL);
+async function fetchOpenRouterPricing(): Promise<ModelPricingMap> {
+  return parseOpenRouterPricing(await fetchJson(OPENROUTER_MODELS_URL));
+}
+
+export function parseLiteLlmPricing(json: unknown): ModelPricingMap {
   const map: ModelPricingMap = {};
   if (!isObject(json)) {
     return map;
@@ -151,9 +157,17 @@ async function fetchLiteLlmPricing(): Promise<ModelPricingMap> {
         'input_cache_write_cost_per_token',
         'cache_creation_input_cost_per_token',
       ]),
+      cacheCreationLongPerMillion: readFirstNumber(entry, [
+        'cache_creation_input_token_cost_above_12hr',
+        'cache_creation_input_token_cost_above_1hr',
+      ]),
     });
   }
   return map;
+}
+
+async function fetchLiteLlmPricing(): Promise<ModelPricingMap> {
+  return parseLiteLlmPricing(await fetchJson(LITELLM_PRICING_URL));
 }
 
 export async function fetchRemoteGatewayPricing(): Promise<{

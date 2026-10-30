@@ -233,51 +233,24 @@ class TrustGameEnv(EnvBase):
             if not self.partner_mapping:
                 self._auto_setup_partner_mapping(trustor_name)
 
-            # Normalize trustor_name: try to find matching name in partner_mapping
-            normalized_name = trustor_name
-
-            if trustor_name in self.partner_mapping:
-                # Direct match - use as is
-                normalized_name = trustor_name
-            elif trustor_name.isdigit():
-                # If given a bare ID like "1", search for matching full name
-                for mapped_name in self.partner_mapping:
-                    if "_Trustor_" in mapped_name and mapped_name.startswith(
-                        f"Agent-{trustor_name}_"
-                    ):
-                        normalized_name = mapped_name
-                        break
-            else:
-                # Try to extract agent ID from name and find correct name
-                # Handle cases like "Agent-2_Trustor_G1" -> should be "Agent-2_Trustor_G2"
-                import re
-
-                match = re.match(r"Agent-(\d+)_Trustor_G\d+", trustor_name)
-                if match:
-                    agent_id = match.group(1)
-                    # Find the correct name for this agent ID
-                    for mapped_name in self.partner_mapping:
-                        if "_Trustor_" in mapped_name and mapped_name.startswith(
-                            f"Agent-{agent_id}_"
-                        ):
-                            normalized_name = mapped_name
-                            logger.info(
-                                f"Normalized trustor name from '{trustor_name}' to '{normalized_name}'"
-                            )
-                            break
-
-            # Validate investment
             if (
-                not isinstance(investment, int)
-                or investment < 0
-                or investment > self.initial_funds
+                trustor_name not in self.partner_mapping
+                or "_Trustor_" not in trustor_name
             ):
-                investment = 0
-
-            self._pending_investments[normalized_name] = investment
+                raise ValueError(f"Unknown trustor: {trustor_name}")
+            if type(investment) is not int or not 0 <= investment <= self.initial_funds:
+                raise ValueError(
+                    "Investment must be an integer between zero and initial_funds"
+                )
+            if (
+                trustor_name in self._pending_investments
+                and self._pending_investments[trustor_name] != investment
+            ):
+                raise ValueError("An investment cannot change before the round settles")
+            self._pending_investments[trustor_name] = investment
 
             return SubmitInvestmentResponse(
-                trustor_name=normalized_name,
+                trustor_name=trustor_name,
                 investment=investment,
                 status="success",
                 message=f"Investment of {investment} coins submitted successfully. Wait for your partner (trustee) to respond.",
@@ -302,57 +275,26 @@ class TrustGameEnv(EnvBase):
             if not self.partner_mapping:
                 self._auto_setup_partner_mapping(trustee_name)
 
-            # Normalize trustee_name: try to find matching name in partner_mapping
-            normalized_name = trustee_name
-
-            if trustee_name in self.partner_mapping:
-                # Direct match - use as is
-                normalized_name = trustee_name
-            elif trustee_name.isdigit():
-                # If given a bare ID like "5", search for matching full name
-                for mapped_name in self.partner_mapping:
-                    if "_Trustee_" in mapped_name and mapped_name.startswith(
-                        f"Agent-{trustee_name}_"
-                    ):
-                        normalized_name = mapped_name
-                        break
-            elif trustee_name.startswith("agent"):
-                # Handle lowercase variations like "agent_5"
-                for mapped_name in self.partner_mapping:
-                    if "_Trustee_" in mapped_name and mapped_name.lower().replace(
-                        "_", ""
-                    ).replace("-", "") == trustee_name.lower().replace("_", "").replace(
-                        "-", ""
-                    ):
-                        normalized_name = mapped_name
-                        break
-            else:
-                # Try to extract agent ID from name and find correct name
-                # Handle cases like "Agent-3_Trustee_G3" -> should be "Agent-7_Trustee_G3"
-                import re
-
-                match = re.match(r"Agent-(\d+)_Trustee_G\d+", trustee_name)
-                if match:
-                    agent_id = match.group(1)
-                    # Find the correct name for this agent ID
-                    for mapped_name in self.partner_mapping:
-                        if "_Trustee_" in mapped_name and mapped_name.startswith(
-                            f"Agent-{agent_id}_"
-                        ):
-                            normalized_name = mapped_name
-                            logger.info(
-                                f"Normalized trustee name from '{trustee_name}' to '{normalized_name}'"
-                            )
-                            break
-
-            # Validate return amount (will be validated against received amount in step)
-            if not isinstance(return_amount, int) or return_amount < 0:
-                return_amount = 0
-
-            self._pending_returns[normalized_name] = return_amount
+            if (
+                trustee_name not in self.partner_mapping
+                or "_Trustee_" not in trustee_name
+            ):
+                raise ValueError(f"Unknown trustee: {trustee_name}")
+            trustor = self.partner_mapping[trustee_name]
+            investment = self._pending_investments.get(trustor)
+            if investment is None:
+                raise ValueError(
+                    "Wait for the partner's investment before submitting a return"
+                )
+            received = investment * self.multiplication_factor
+            if type(return_amount) is not int or not 0 <= return_amount <= received:
+                raise ValueError(
+                    "Return must be an integer between zero and the received amount"
+                )
+            self._pending_returns[trustee_name] = return_amount
 
             return SubmitReturnResponse(
-                trustee_name=normalized_name,
+                trustee_name=trustee_name,
                 return_amount=return_amount,
                 status="success",
                 message=f"Return of {return_amount} coins submitted successfully. The round will execute when all submissions are complete.",
@@ -639,41 +581,18 @@ class TrustGameEnv(EnvBase):
             self.t = t
             last_round = self.round_history[-1] if self.round_history else None
 
-            # Check if we have enough submissions to execute a round
-            # Need all trustors' investments; if trustees haven't submitted returns yet, default to 0
-            if len(self._pending_investments) >= self.num_pairs:
-                # Execute the round
+            # Both phases must finish; an absent return is not a zero decision.
+            if (
+                len(self._pending_investments) == self.num_pairs
+                and len(self._pending_returns) == self.num_pairs
+            ):
                 self.round_number += 1
-
-                # Calculate received amounts for trustees
-                trustee_received = {}
-                # 仅保留有效的trustor_name（在partner_mapping中存在的）
-                valid_investments = {}
-                for trustor_name, investment in self._pending_investments.items():
-                    trustee_name = self.partner_mapping.get(trustor_name)
-                    if trustee_name:
-                        trustee_received[trustee_name] = (
-                            investment * self.multiplication_factor
-                        )
-                        valid_investments[trustor_name] = investment
-
-                # Validate returns against received amounts
-                # If a trustee hasn't submitted a return, default to 0 (no return)
-                validated_returns = {}
-                for trustee_name in trustee_received:
-                    if trustee_name in self._pending_returns:
-                        return_amount = self._pending_returns[trustee_name]
-                        received = trustee_received.get(trustee_name, 0)
-                        if (
-                            isinstance(return_amount, int)
-                            and 0 <= return_amount <= received
-                        ):
-                            validated_returns[trustee_name] = return_amount
-                        else:
-                            validated_returns[trustee_name] = 0
-                    else:
-                        # Trustee hasn't submitted, default to 0
-                        validated_returns[trustee_name] = 0
+                valid_investments = dict(self._pending_investments)
+                trustee_received = {
+                    self.partner_mapping[name]: amount * self.multiplication_factor
+                    for name, amount in valid_investments.items()
+                }
+                validated_returns = dict(self._pending_returns)
 
                 # Calculate payoffs
                 payoffs = {}

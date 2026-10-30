@@ -1,10 +1,10 @@
 """Tests for the extension analysis CLI helpers."""
 
-from importlib.util import module_from_spec, spec_from_file_location
 import json
-from pathlib import Path
 import re
 import sqlite3
+from importlib.util import module_from_spec, spec_from_file_location
+from pathlib import Path
 
 import pytest
 

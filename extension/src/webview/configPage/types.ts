@@ -15,6 +15,7 @@ export interface ConfigValues {
   backendHost: string;
   backendPort: number;
   pythonPath: string;
+  backendAutoStart: boolean;
   // LLM 默认配置
   llmApiBase: string;
   llmModel: string;

@@ -1,6 +1,5 @@
 """Tests for MobilityMap._route_to_xys driving vs walking segment handling."""
 
-from unittest.mock import MagicMock
 
 import numpy as np
 import pytest

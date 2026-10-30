@@ -1,6 +1,5 @@
 """Tests for literature search with mocked API calls."""
 
-import asyncio
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -8,14 +7,14 @@ import pytest
 
 from agentsociety2.skills.literature.core import (
     _search_literature_single,
-    translate_to_english,
     split_query_into_subtopics,
+    translate_to_english,
 )
 from agentsociety2.skills.literature.search import (
-    search_literature_and_save,
-    generate_summary,
     format_search_results,
+    generate_summary,
     load_literature_index,
+    search_literature_and_save,
 )
 
 
@@ -51,7 +50,8 @@ class TestTranslateToEnglish:
         """Test that original text is returned on translation failure."""
 
         class FailingRouter:
-            model_list = [{"model_name": "test-model"}]
+            def __init__(self):
+                self.model_list = [{"model_name": "test-model"}]
 
             async def acompletion(self, **kwargs):
                 raise Exception("API Error")
@@ -104,7 +104,8 @@ class TestSplitQueryIntoSubtopics:
         """Test handling malformed LLM response."""
 
         class BadResponseRouter:
-            model_list = [{"model_name": "test-model"}]
+            def __init__(self):
+                self.model_list = [{"model_name": "test-model"}]
 
             async def acompletion(self, **kwargs):
                 mock_response = MagicMock()
@@ -194,7 +195,7 @@ class TestSearchLiteratureSingle:
         """Test handling of request timeout."""
         with patch(
             "agentsociety2.skills.literature.core.call_literature_search_mcp",
-            new=AsyncMock(side_effect=asyncio.TimeoutError()),
+            new=AsyncMock(side_effect=TimeoutError()),
         ):
             result = await _search_literature_single(
                 query="test query",

@@ -45,10 +45,3 @@ export function appendSharedOutputLine(name: string, line: string): void {
 export function getMainOutputChannel(): vscode.OutputChannel {
   return getSharedOutputChannel(OUTPUT_CHANNEL_MAIN);
 }
-
-export function disposeAllSharedOutputChannels(): void {
-  for (const channel of channels.values()) {
-    channel.dispose();
-  }
-  channels.clear();
-}

@@ -123,7 +123,6 @@ def _brand_icon_candidates() -> tuple[Path, ...]:
 
     roots.extend(
         (
-            here.parent,
             Path.cwd() / ".codex" / "skills" / "agentsociety-analysis",
             Path.cwd() / ".claude" / "skills" / "agentsociety-analysis",
         )
@@ -139,6 +138,9 @@ def _brand_icon_candidates() -> tuple[Path, ...]:
             )
         )
 
+    # Workspace skills may supply their own branding; use the packaged icon
+    # as the standalone-install fallback after those explicit locations.
+    roots.append(here.parent)
     candidates = [root / "assets" / BRAND_ICON_NAME for root in roots]
     candidates.extend(
         base / "static" / BRAND_ICON_NAME

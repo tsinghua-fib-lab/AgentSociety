@@ -6,6 +6,7 @@ export type TokenUsageRecord = {
   outputTokens: number;
   cacheReadTokens: number;
   cacheCreationTokens: number;
+  cacheCreationLongTokens?: number;
   serverToolUseTokens: number;
   requestId: string;
   upstream: string;
@@ -13,6 +14,8 @@ export type TokenUsageRecord = {
   status?: number;
   durationMs?: number;
   streaming?: boolean;
+  /** Authoritative per-request USD cost reported by the upstream, when available. */
+  reportedCostUsd?: number;
   ts: string;
 };
 
@@ -43,6 +46,7 @@ export type UsageRecordContext = {
   durationMs?: number;
   streaming?: boolean;
   providerName?: string;
+  reportedCostUsd?: number;
 };
 
 export type UsageModelStats = {
@@ -191,13 +195,23 @@ export function parseSseMessages(input: string): SseMessage[] {
   return messages;
 }
 
-function tryParseAnthropicUsage(obj: unknown): {
+type ParsedTokenUsage = {
   inputTokens: number;
   outputTokens: number;
   cacheReadTokens: number;
   cacheCreationTokens: number;
+  cacheCreationLongTokens?: number;
   serverToolUseTokens: number;
-} | null {
+  reportedCostUsd?: number;
+};
+
+function validReportedCost(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0
+    ? value
+    : undefined;
+}
+
+function tryParseAnthropicUsage(obj: unknown): ParsedTokenUsage | null {
   if (!obj || typeof obj !== 'object') {
     return null;
   }
@@ -211,10 +225,23 @@ function tryParseAnthropicUsage(obj: unknown): {
     typeof u.output_tokens === 'number' ||
     typeof u.cache_read_input_tokens === 'number' ||
     typeof u.cache_creation_input_tokens === 'number' ||
+    typeof u.cache_creation === 'object' ||
     typeof u.server_tool_use_input_tokens === 'number';
   if (!hasAnthropicUsage) {
     return null;
   }
+  const cacheCreation =
+    typeof u.cache_creation === 'object' && u.cache_creation !== null
+      ? u.cache_creation as Record<string, unknown>
+      : {};
+  const cacheCreation5m =
+    typeof cacheCreation.ephemeral_5m_input_tokens === 'number'
+      ? cacheCreation.ephemeral_5m_input_tokens
+      : 0;
+  const cacheCreation1h =
+    typeof cacheCreation.ephemeral_1h_input_tokens === 'number'
+      ? cacheCreation.ephemeral_1h_input_tokens
+      : 0;
   return {
     inputTokens: typeof u.input_tokens === 'number' ? u.input_tokens : 0,
     outputTokens: typeof u.output_tokens === 'number' ? u.output_tokens : 0,
@@ -229,21 +256,19 @@ function tryParseAnthropicUsage(obj: unknown): {
         ? u.cache_creation_input_tokens
         : typeof u.cache_creation_tokens === 'number'
           ? u.cache_creation_tokens
-          : 0,
+          : cacheCreation5m + cacheCreation1h,
+    ...(cacheCreation1h > 0 ? { cacheCreationLongTokens: cacheCreation1h } : {}),
     serverToolUseTokens:
       typeof u.server_tool_use_input_tokens === 'number'
         ? u.server_tool_use_input_tokens
         : 0,
+    ...(validReportedCost(u.cost) !== undefined
+      ? { reportedCostUsd: validReportedCost(u.cost) }
+      : {}),
   };
 }
 
-function tryParseOpenAIUsage(obj: unknown): {
-  inputTokens: number;
-  outputTokens: number;
-  cacheReadTokens: number;
-  cacheCreationTokens: number;
-  serverToolUseTokens: number;
-} | null {
+function tryParseOpenAIUsage(obj: unknown): ParsedTokenUsage | null {
   if (!obj || typeof obj !== 'object') {
     return null;
   }
@@ -272,8 +297,28 @@ function tryParseOpenAIUsage(obj: unknown): {
       : typeof inputDetails.cached_tokens === 'number'
         ? inputDetails.cached_tokens
         : 0;
+  const cacheWriteTokens =
+    typeof inputDetails.cache_write_tokens === 'number'
+      ? inputDetails.cache_write_tokens
+      : typeof promptDetails.cache_write_tokens === 'number'
+        ? promptDetails.cache_write_tokens
+        : 0;
+  const cacheWriteDetailsRaw =
+    typeof inputDetails.cache_write_tokens_details === 'object' &&
+    inputDetails.cache_write_tokens_details !== null
+      ? inputDetails.cache_write_tokens_details as Record<string, unknown>
+      : typeof promptDetails.cache_write_tokens_details === 'object' &&
+          promptDetails.cache_write_tokens_details !== null
+        ? promptDetails.cache_write_tokens_details as Record<string, unknown>
+        : {};
+  const longCacheWriteTokens =
+    typeof cacheWriteDetailsRaw.ttl_12h_tokens === 'number'
+      ? cacheWriteDetailsRaw.ttl_12h_tokens
+      : 0;
   return {
-    inputTokens: Math.max(0, promptTokens - cachedTokens),
+    // OpenAI includes cache reads and writes in the input total. Store mutually
+    // exclusive buckets so pricing never bills either bucket twice.
+    inputTokens: Math.max(0, promptTokens - cachedTokens - cacheWriteTokens),
     outputTokens:
       typeof u.completion_tokens === 'number'
         ? u.completion_tokens
@@ -281,8 +326,12 @@ function tryParseOpenAIUsage(obj: unknown): {
           ? u.output_tokens
           : 0,
     cacheReadTokens: cachedTokens,
-    cacheCreationTokens: 0,
+    cacheCreationTokens: cacheWriteTokens,
+    ...(longCacheWriteTokens > 0 ? { cacheCreationLongTokens: longCacheWriteTokens } : {}),
     serverToolUseTokens: 0,
+    ...(validReportedCost(u.cost) !== undefined
+      ? { reportedCostUsd: validReportedCost(u.cost) }
+      : {}),
   };
 }
 
@@ -294,7 +343,9 @@ export function tokenUsageFromAnthropicUsageObject(
   outputTokens: number;
   cacheReadTokens: number;
   cacheCreationTokens: number;
+  cacheCreationLongTokens?: number;
   serverToolUseTokens: number;
+  reportedCostUsd?: number;
   model: string;
 } | null {
   const parsed = tryParseAnthropicUsage({ usage });
@@ -317,7 +368,9 @@ export function extractTokenUsage(body: unknown): {
   outputTokens: number;
   cacheReadTokens: number;
   cacheCreationTokens: number;
+  cacheCreationLongTokens?: number;
   serverToolUseTokens: number;
+  reportedCostUsd?: number;
   model: string;
 } | null {
   if (!body || typeof body !== 'object') {
@@ -345,14 +398,20 @@ export function extractTokenUsage(body: unknown): {
   const usage = o.usage && typeof o.usage === 'object'
     ? o.usage as Record<string, unknown>
     : {};
+  const hasAnthropicUsage =
+    typeof usage.cache_read_input_tokens === 'number' ||
+    typeof usage.cache_creation_input_tokens === 'number' ||
+    typeof usage.cache_creation === 'object' ||
+    typeof usage.server_tool_use_input_tokens === 'number';
   const hasOpenAiUsage =
-    typeof usage.prompt_tokens === 'number' ||
-    typeof usage.completion_tokens === 'number' ||
-    typeof usage.input_tokens === 'number' ||
-    typeof usage.output_tokens === 'number' ||
-    typeof usage.prompt_tokens_details === 'object' ||
-    typeof usage.completion_tokens_details === 'object' ||
-    typeof usage.input_tokens_details === 'object';
+    !hasAnthropicUsage &&
+    (typeof usage.prompt_tokens === 'number' ||
+      typeof usage.completion_tokens === 'number' ||
+      typeof usage.input_tokens === 'number' ||
+      typeof usage.output_tokens === 'number' ||
+      typeof usage.prompt_tokens_details === 'object' ||
+      typeof usage.completion_tokens_details === 'object' ||
+      typeof usage.input_tokens_details === 'object');
 
   let parsed = hasOpenAiUsage ? tryParseOpenAIUsage(o) : tryParseAnthropicUsage(o);
   if (!parsed) {
