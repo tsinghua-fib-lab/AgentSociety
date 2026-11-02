@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Button, Flex, Select, Slider, SliderSingleProps, Space, Tooltip } from 'antd';
 import { PlayCircleOutlined, PauseCircleOutlined, FastForwardOutlined, FastBackwardOutlined, UpOutlined, ReloadOutlined } from '@ant-design/icons';
 import { parseT } from '../../components/util';
@@ -24,7 +24,7 @@ const TimelinePlayer = observer(({ initialInterval }: {
 
     const currentTimeline = store.timeline[currentIndex] || { day: 0, t: 0 };
 
-    const nextIndex = () => {
+    const nextIndex = useCallback(() => {
         if (isLiveMode) {
             store.refresh().then(() => {
                 setCurrentIndex(store.timeline.length - 1);
@@ -37,7 +37,7 @@ const TimelinePlayer = observer(({ initialInterval }: {
                 setIsPlaying(false);
             }
         }
-    };
+    }, [isLiveMode, store, currentIndex]);
 
     const prevIndex = () => {
         if (currentIndex > 0) {
@@ -52,7 +52,7 @@ const TimelinePlayer = observer(({ initialInterval }: {
             clearInterval(intervalRef.current);
         }
         return () => clearInterval(intervalRef.current);
-    }, [isPlaying, playInterval, currentIndex, isLiveMode]);
+    }, [isPlaying, playInterval, nextIndex]);
 
     const handleSliderChange = (value) => {
         setSliderChanging(true);
@@ -74,11 +74,10 @@ const TimelinePlayer = observer(({ initialInterval }: {
     }
 
     useEffect(() => {
-        console.log('currentTimeline', `${t('replay.day', { day: currentTimeline.day })} ${parseT(currentTimeline.t)}`);
         if (!sliderChanging) {
-            store.fetchByTime(currentTimeline);
+            store.fetchByTime({ day: currentTimeline.day, t: currentTimeline.t });
         }
-    }, [currentTimeline, sliderChanging]);
+    }, [currentTimeline.day, currentTimeline.t, sliderChanging, store]);
 
     // 当实验是Completed状态时，禁用Live模式
     useEffect(() => {

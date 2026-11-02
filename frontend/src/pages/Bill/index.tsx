@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useAsyncResource } from '../../hooks/useAsyncResource';
+import { useState, useCallback } from "react";
 import { Card, Row, Col, Button, message, Space, Modal, InputNumber, Popconfirm } from "antd";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
 import { ActionType } from "@ant-design/pro-table";
@@ -27,7 +28,6 @@ interface Bill {
 
 const Page = () => {
     const { t } = useTranslation();
-    const [account, setAccount] = useState<Account | null>(null);
     const [rechargeVisible, setRechargeVisible] = useState(false);
     const [rechargeAmount, setRechargeAmount] = useState<number>(100);
     const [paymentStatus, setPaymentStatus] = useState<'pending' | 'success' | 'failed'>('pending');
@@ -37,24 +37,19 @@ const Page = () => {
 
     const presetAmounts = [10, 20, 50, 100, 1000];
 
-    const fetchAccount = async () => {
-        try {
-            const res = await fetchCustom('/api/account');
-            if (res.ok) {
-                const data = await res.json();
-                setAccount(data.data);
-            } else {
-                throw new Error(await res.text());
-            }
-            message.success(t('bill.refreshSuccess'));
-        } catch (_err) {
-            message.error(t('bill.fetchAccountFailed'));
-        }
-    };
-
-    useEffect(() => {
-        fetchAccount();
+    const loadResource = useCallback(async (): Promise<Account | null> => {
+        const response = await fetchCustom('/api/account');
+        if (!response.ok) throw new Error(await response.text());
+        const data = await response.json();
+        return data.data;
     }, []);
+    const handleLoadError = useCallback((error: unknown) => {
+        console.error('Failed to load account:', error);
+        message.error(t('bill.fetchAccountFailed'));
+    }, [t]);
+    const { data: account, reload: fetchAccount } = useAsyncResource(
+        loadResource, handleLoadError, null,
+    );
 
     const checkPaymentStatus = async (id: string) => {
         try {

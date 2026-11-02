@@ -23,7 +23,7 @@ const Replay: React.FC = observer(() => {
 
     useEffect(() => {
         store.init(expID)
-    }, [expID]);
+    }, [expID, store]);
 
     return (
         <>

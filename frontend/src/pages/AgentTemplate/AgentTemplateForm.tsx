@@ -458,7 +458,7 @@ const AgentTemplateForm: React.FC = observer(() => {
       }
     }
     fetch();
-  }, [id]);
+  }, [id, agentTemplateStore, form]);
 
   const handleSubmit = async () => {
     try {

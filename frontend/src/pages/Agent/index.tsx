@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Table, Button, Card, Space, Modal, message, Tooltip, Input, Popconfirm, Form, Col, Row, InputNumber, Select, Divider, Typography, Descriptions } from 'antd';
 import { PlusOutlined, EyeOutlined, DeleteOutlined, ExportOutlined, MinusCircleOutlined } from '@ant-design/icons';
 import { AgentsConfig, ConfigWrapper, AgentConfig } from '../../types/config';
@@ -81,7 +81,7 @@ const AgentList: React.FC = () => {
     }, []);
 
     // Load agent configurations
-    const loadAgents = async () => {
+    const loadAgents = useCallback(async () => {
         setLoading(true);
         try {
             const res = await fetchCustom('/api/agent-configs');
@@ -96,15 +96,14 @@ const AgentList: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    };
-
+    }, [t]);
     // Initialize data
     useEffect(() => {
         const init = async () => {
             await loadAgents();
         };
         init();
-    }, []);
+    }, [loadAgents]);
 
     // Handle search
     const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import { useAsyncResource } from '../../../hooks/useAsyncResource';
+import React, { useState, useCallback } from 'react';
 import { Table, Button, Modal, Form, Input, Space, Flex, Popconfirm, Dropdown, Tabs, App } from 'antd';
 import dayjs from 'dayjs';
 import 'survey-core/survey-core.min.css';
@@ -25,47 +26,25 @@ const EmptySurvey: EditingSurvey = {
 const SurveyTableInner = () => {
     const { t } = useTranslation();
     const { message } = App.useApp();
-    const [surveys, setSurveys] = useState<Survey[]>([]);
     const [open, setOpen] = useState(false);
     const [editingSurvey, setEditingSurvey] = useState<EditingSurvey>(EmptySurvey);
     const [form] = useForm();
     const [activeTab, setActiveTab] = useState('builder');
     const [formValues, setFormValues] = useState({ name: '', data: '' });
 
-    useEffect(() => {
-        if (editingSurvey) {
-            const values = {
-                name: editingSurvey.name,
-                data: editingSurvey.data,
-            };
-            form.setFieldsValue(values);
-            setFormValues(values);
-        }
-    }, [editingSurvey.id, editingSurvey.name, editingSurvey.data, form]);
-
-    useEffect(() => {
-        fetchSurveys();
+    const loadResource = useCallback(async (): Promise<Survey[]> => {
+        const response = await fetchCustom('/api/surveys');
+        if (!response.ok) throw new Error(await response.text());
+        const data = await response.json();
+        return data.data || [];
     }, []);
-
-
-    // const handleJsonButton = () => {
-    //     window.open('https://surveyjs.io/create-free-survey', '_blank');
-    // };
-
-
-    const fetchSurveys = async () => {
-        try {
-            const res = await fetchCustom('/api/surveys');
-            if (!res.ok) {
-                const errMessage = await res.text();
-                throw new Error(errMessage);
-            }
-            const data = await res.json();
-            setSurveys(data.data);
-        } catch (err) {
-            message.error(`${t('survey.fetchFailed')} ${err}`);
-        }
-    };
+    const handleLoadError = useCallback((error: unknown) => {
+        console.error('Failed to load surveys:', error);
+        message.error(`${t('survey.fetchFailed')} ${error}`);
+    }, [message, t]);
+    const { data: surveys, reload: fetchSurveys } = useAsyncResource(
+        loadResource, handleLoadError, [],
+    );
 
     const handleDelete = async (id) => {
         try {

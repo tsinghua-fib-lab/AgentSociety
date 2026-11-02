@@ -1,5 +1,5 @@
 import { t } from "i18next";
-import { getAccessToken } from "./Auth";
+import { getAccessToken } from "./authState";
 import { message } from "antd";
 
 export const WITH_AUTH = import.meta.env.VITE_WITH_AUTH === 'true';

@@ -3,13 +3,13 @@ import { AndroidOutlined, ArrowUpOutlined, CommentOutlined, ProfileOutlined, Smi
 import { AgentDialog } from './components/type';
 import { Bubble, Sender } from '@ant-design/x';
 import { parseT } from '../../components/util';
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, Suspense } from 'react';
 import { observer } from 'mobx-react-lite';
 import { StoreContext } from './store';
-import { Model, Survey as SurveyUI } from 'survey-react-ui';
+import SurveyPreview from '../../components/SurveyPreview';
 import { fetchCustom } from '../../components/fetch';
 import { useTranslation } from 'react-i18next';
-import Plot from 'react-plotly.js';
+import Plot from '../../components/MetricPlot';
 
 const roles: GetProp<typeof Bubble.List, 'role'> = {
     self: {
@@ -255,90 +255,82 @@ export const RightPanel = observer(() => {
 
                     return (
                         <div key={key}>
-                            <Plot
-                                data={[
-                                    {
-                                        x: x,
-                                        y: y,
-                                        type: 'scatter',
-                                        mode: 'lines+markers',
-                                        name: key,
-                                        line: {
-                                            width: 2,
-                                            color: '#1890ff'
-                                        },
-                                        marker: {
-                                            size: 6,
-                                            color: '#1890ff'
+                            <Suspense fallback={null}>
+                                <Plot
+                                    data={[
+                                        {
+                                            x: x,
+                                            y: y,
+                                            type: 'scatter',
+                                            mode: 'lines+markers',
+                                            name: key,
+                                            line: {
+                                                width: 2,
+                                                color: '#1890ff'
+                                            },
+                                            marker: {
+                                                size: 6,
+                                                color: '#1890ff'
+                                            }
                                         }
-                                    }
-                                ]}
-                                layout={{
-                                    title: {
-                                        text: key,
-                                        font: {
-                                            size: 16,
-                                            family: 'Arial'
-                                        }
-                                    },
-                                    autosize: true,
-                                    width: null,
-                                    height: 200,
-                                    margin: {
-                                        l: 30,
-                                        r: 10,
-                                        t: 30,
-                                        b: 30
-                                    },
-                                    xaxis: {
+                                    ]}
+                                    layout={{
                                         title: {
-                                            text: t('replay.chatbox.metrics.step'),
+                                            text: key,
                                             font: {
-                                                size: 12
+                                                size: 16,
+                                                family: 'Arial'
                                             }
                                         },
-                                        showgrid: true,
-                                        gridcolor: '#f0f0f0'
-                                    },
-                                    yaxis: {
-                                        title: {
-                                            text: t('replay.chatbox.metrics.value'),
-                                            font: {
-                                                size: 12
-                                            }
+                                        autosize: true,
+                                        width: null,
+                                        height: 200,
+                                        margin: {
+                                            l: 30,
+                                            r: 10,
+                                            t: 30,
+                                            b: 30
                                         },
-                                        showgrid: true,
-                                        gridcolor: '#f0f0f0'
-                                    },
-                                    paper_bgcolor: 'rgba(0,0,0,0)',
-                                    plot_bgcolor: 'rgba(0,0,0,0)'
-                                }}
-                                config={{
-                                    responsive: true,
-                                    displaylogo: false,
-                                    modeBarButtonsToRemove: ['lasso2d', 'select2d']
-                                }}
-                                style={{
-                                    width: '100%',
-                                    height: '100%'
-                                }}
-                            />
+                                        xaxis: {
+                                            title: {
+                                                text: t('replay.chatbox.metrics.step'),
+                                                font: {
+                                                    size: 12
+                                                }
+                                            },
+                                            showgrid: true,
+                                            gridcolor: '#f0f0f0'
+                                        },
+                                        yaxis: {
+                                            title: {
+                                                text: t('replay.chatbox.metrics.value'),
+                                                font: {
+                                                    size: 12
+                                                }
+                                            },
+                                            showgrid: true,
+                                            gridcolor: '#f0f0f0'
+                                        },
+                                        paper_bgcolor: 'rgba(0,0,0,0)',
+                                        plot_bgcolor: 'rgba(0,0,0,0)'
+                                    }}
+                                    config={{
+                                        responsive: true,
+                                        displaylogo: false,
+                                        modeBarButtonsToRemove: ['lasso2d', 'select2d']
+                                    }}
+                                    style={{
+                                        width: '100%',
+                                        height: '100%'
+                                    }}
+                                />
+                            </Suspense>
                         </div>
                     );
                 })}
             </div>
         );
     };
-
-    let model = new Model({});
-    if (previewSurvey !== undefined) {
-        try {
-            model = new Model(JSON.parse(previewSurvey));
-        } catch (e) {
-            console.error('Failed to parse JSON data:', e);
-        }
-    }
-    model.showCompleteButton = false;
 
     const rootClass = "right-inner";
 
@@ -372,7 +364,7 @@ export const RightPanel = observer(() => {
             footer={null}
         >
             <div style={{ overflow: 'auto', height: '70vh', width: '100%' }}>
-                <SurveyUI model={model} />
+                {openPreview && <Suspense fallback={null}><SurveyPreview value={previewSurvey} /></Suspense>}
             </div>
         </Modal>
     </>);

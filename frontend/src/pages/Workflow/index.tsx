@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import { useAsyncResource } from '../../hooks/useAsyncResource';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Table, Button, Card, Space, Modal, message, Tooltip, Input, Popconfirm, Form, Col, Row, InputNumber, Select, Divider, Alert } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, CopyOutlined, ExportOutlined, MinusCircleOutlined, QuestionCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { ConfigWrapper, WorkflowStepConfig, AgentFilterConfig } from '../../types/config';
@@ -68,42 +69,30 @@ const WorkflowList: React.FC = () => {
     const [surveyList, setSurveyList] = useState<Survey[]>([]);
     const [form] = Form.useForm<FormValues>();
     const [targetAgentModes, setTargetAgentModes] = useState<{ [key: string]: 'list' | 'expression' }>({});
-    const [agentClasses, setAgentClasses] = useState<{ [agentType: string]: { value: string; label: string }[] }>({});
-    const [loadingAgentClasses, setLoadingAgentClasses] = useState<{ [agentType: string]: boolean }>({});
-
-    // 获取agent classes的函数
-    const fetchAgentClasses = async () => {
-        if (agentClasses['citizen'] && agentClasses['supervisor']) return; // 如果已经加载过，直接返回
-        
-        setLoadingAgentClasses({ citizen: true, supervisor: true });
-        try {
-            const [citizenResponse, supervisorResponse] = await Promise.all([
-                fetchCustom('/api/agent-classes?agent_type=citizen'),
-                fetchCustom('/api/agent-classes?agent_type=supervisor')
-            ]);
-            
-            const citizenData = citizenResponse.ok ? await citizenResponse.json() : { data: [] };
-            const supervisorData = supervisorResponse.ok ? await supervisorResponse.json() : { data: [] };
-            
-            setAgentClasses({
-                citizen: citizenData.data || [],
-                supervisor: supervisorData.data || []
-            });
-        } catch (error) {
-            console.error('获取agent classes失败:', error);
-            setAgentClasses({
-                citizen: [],
-                supervisor: []
-            });
-        } finally {
-            setLoadingAgentClasses({ citizen: false, supervisor: false });
+    const loadAgentClasses = useCallback(async () => {
+        const responses = await Promise.all([
+            fetchCustom('/api/agent-classes?agent_type=citizen'),
+            fetchCustom('/api/agent-classes?agent_type=supervisor'),
+        ]);
+        const [citizen, supervisor] = await Promise.all(responses.map(async response => {
+            if (!response.ok) throw new Error(await response.text());
+            return (await response.json()).data || [];
+        }));
+        return { citizen, supervisor };
+    }, []);
+    const handleClassLoadError = useCallback((error: unknown) => {
+        console.error('获取 agent classes 失败:', error);
+        message.error(t('workflow.messages.loadFailed'));
+    }, [t]);
+    const { data: agentClasses, loading: classesLoading, reload: reloadAgentClasses } = useAsyncResource<{
+        [agentType: string]: { value: string; label: string }[];
+    }>(loadAgentClasses, handleClassLoadError, {});
+    const loadingAgentClasses = { citizen: classesLoading, supervisor: classesLoading };
+    const fetchAgentClasses = () => {
+        if (!classesLoading && (!agentClasses.citizen || !agentClasses.supervisor)) {
+            void reloadAgentClasses();
         }
     };
-
-    // 初始化时获取所有agent classes
-    useEffect(() => {
-        fetchAgentClasses();
-    }, []);
 
     // 获取函数列表
     useEffect(() => {
@@ -137,7 +126,7 @@ const WorkflowList: React.FC = () => {
     }, []);
 
     // Load workflow configurations
-    const loadWorkflows = async () => {
+    const loadWorkflows = useCallback(async () => {
         setLoading(true);
         try {
             const res = await fetchCustom('/api/workflow-configs');
@@ -152,15 +141,14 @@ const WorkflowList: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    };
-
+    }, [t]);
     // Initialize data
     useEffect(() => {
         const init = async () => {
             await loadWorkflows();
         };
         init();
-    }, []);
+    }, [loadWorkflows]);
 
     // Handle search
     const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {

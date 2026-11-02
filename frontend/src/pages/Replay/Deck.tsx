@@ -1,7 +1,8 @@
 import React, { useContext, useState } from 'react';
 import DeckGL from '@deck.gl/react';
 import { FlyToInterpolator, MapView, MapViewState } from '@deck.gl/core';
-import { HeatmapLayer, TextLayer, IconLayer, ScatterplotLayer } from 'deck.gl';
+import { HeatmapLayer } from '@deck.gl/aggregation-layers';
+import { TextLayer, IconLayer, ScatterplotLayer } from '@deck.gl/layers';
 import { Map as MapGL } from 'react-map-gl/mapbox';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { observer } from 'mobx-react-lite';

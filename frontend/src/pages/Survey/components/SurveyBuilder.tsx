@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, Button, Form, Input, Select, Space, List, Modal, InputNumber, Typography, Row, Col, Tag, Popconfirm } from 'antd';
 import { PlusOutlined, DeleteOutlined, EditOutlined, ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
@@ -38,77 +38,38 @@ interface SurveyBuilderProps {
 
 const SurveyBuilder: React.FC<SurveyBuilderProps> = ({ value, onChange }) => {
     const { t } = useTranslation();
-    const [questions, setQuestions] = useState<Question[]>([]);
+
     // const [surveyTitle, setSurveyTitle] = useState('');
     // const [surveyDescription, setSurveyDescription] = useState('');
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
     const [editingIndex, setEditingIndex] = useState<number>(-1);
     const [form] = Form.useForm();
-    const [isInitialized, setIsInitialized] = useState(false);
-
-    // 初始化：从JSON字符串解析问卷数据
-    useEffect(() => {
-        // 重置初始化状态
-        setIsInitialized(false);
-        
-        if (value) {
-            try {
-                const surveyData = JSON.parse(value);
-                // setSurveyTitle(surveyData.title || '');
-                // setSurveyDescription(surveyData.description || '');
-                if (surveyData.pages && surveyData.pages[0] && surveyData.pages[0].elements) {
-                    setQuestions(surveyData.pages[0].elements);
-                } else {
-                    setQuestions([]);
-                }
-                setIsInitialized(true);
-            } catch (e) {
-                console.warn('Failed to parse survey JSON:', e);
-                setQuestions([]);
-                setIsInitialized(true);
-            }
-        } else {
-            setQuestions([]);
-            setIsInitialized(true);
+    const [localValue, setLocalValue] = useState('');
+    const jsonValue = value ?? localValue;
+    const survey = useMemo(() => {
+        try {
+            const parsed = JSON.parse(jsonValue || '{}');
+            return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+        } catch {
+            return {};
         }
-    }, [value]);
+    }, [jsonValue]);
+    const pages = Array.isArray(survey.pages) ? survey.pages : [];
+    const questions: Question[] = Array.isArray(pages[0]?.elements) ? pages[0].elements : [];
 
-    // 当问题数据改变时，生成JSON并回调 - 只有在初始化完成后才触发
-    useEffect(() => {
-        if (!isInitialized) {
-            return;
-        }
-        
-        const surveyJson = {
-            // title: surveyTitle,
-            // description: surveyDescription,
+    // Notify the parent only for user edits. Prop changes are rendered directly.
+    const setQuestions = (nextQuestions: Question[]) => {
+        const json = JSON.stringify({
+            ...survey,
             pages: [
-                {
-                    name: 'page1',
-                    elements: questions
-                }
-            ]
-        };
-        const jsonString = JSON.stringify(surveyJson, null, 2);
-        onChange?.(jsonString);
-    // }, [questions, surveyTitle, surveyDescription, onChange]);
-    }, [questions, isInitialized]);
-
-    // 只有在真正没有任何数据且问题列表为空时，才生成默认JSON
-    useEffect(() => {
-        if (isInitialized && (!value || value.trim() === '') && questions.length === 0) {
-            const initialJson = {
-                pages: [
-                    {
-                        name: 'page1',
-                        elements: []
-                    }
-                ]
-            };
-            onChange?.(JSON.stringify(initialJson, null, 2));
-        }
-    }, [isInitialized, value, questions.length]);
+                { ...pages[0], name: pages[0]?.name ?? 'page1', elements: nextQuestions },
+                ...pages.slice(1),
+            ],
+        }, null, 2);
+        if (value === undefined) setLocalValue(json);
+        onChange?.(json);
+    };
 
     const showQuestionModal = (question?: Question, index?: number) => {
         if (question && index !== undefined) {

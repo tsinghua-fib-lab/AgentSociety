@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useAsyncResource } from '../../hooks/useAsyncResource';
+import { useCallback, useRef, useState } from "react";
 import {
   Button, message, Modal, Space, Tag, Popconfirm,
   Form, Input, Upload, Typography, Switch,
@@ -28,32 +29,26 @@ interface SkillItem {
 const SkillsPage = () => {
   const { t } = useTranslation();
   const actionRef = useRef<ActionType | undefined>(undefined);
-  const [skills, setSkills] = useState<SkillItem[]>([]);
-  const [loading, setLoading] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [viewOpen, setViewOpen] = useState(false);
   const [viewContent, setViewContent] = useState("");
   const [viewSkillName, setViewSkillName] = useState("");
   const [createForm] = Form.useForm();
 
-  const fetchSkills = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetchCustom("/api/v1/agent-skills/list");
-      const data = await res.json();
-      if (data.success) {
-        setSkills(data.skills);
-      }
-    } catch {
-      message.error(t("skill.messages.operationFailed"));
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
-
-  useEffect(() => {
-    void fetchSkills();
-  }, [fetchSkills]);
+    const loadResource = useCallback(async (): Promise<SkillItem[]> => {
+        const response = await fetchCustom('/api/v1/agent-skills/list');
+        if (!response.ok) throw new Error(await response.text());
+        const data = await response.json();
+        if (!data.success) throw new Error(data.message || "Failed to load skills");
+        return data.skills || [];
+    }, []);
+    const handleLoadError = useCallback((error: unknown) => {
+        console.error('Failed to load skills:', error);
+        message.error(t("skill.messages.operationFailed"));
+    }, [t]);
+    const { data: skills, loading, reload: fetchSkills } = useAsyncResource(
+        loadResource, handleLoadError, [],
+    );
 
   const handleToggleEnabled = async (name: string, enabled: boolean) => {
     try {
