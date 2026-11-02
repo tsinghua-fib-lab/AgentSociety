@@ -44,7 +44,7 @@ wheels = [
 
 [[package]]
 name = "agentsociety2"
-version = "2.10.0"
+version = "2.10.1"
 source = { editable = "packages/agentsociety2" }
 dependencies = [
     { name = "aiohttp" },

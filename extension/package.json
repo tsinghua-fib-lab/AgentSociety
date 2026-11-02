@@ -2,7 +2,7 @@
   "name": "ai-social-scientist",
   "displayName": "AI Social Scientist",
   "description": "AI Social Scientist - Next-generation human-AI interaction interface for social science research",
-  "version": "1.8.0",
+  "version": "1.8.1",
   "publisher": "tsinghua-fib-lab",
   "license": "Apache-2.0",
   "homepage": "https://github.com/tsinghua-fib-lab/agentsociety",

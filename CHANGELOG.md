@@ -14,6 +14,18 @@ Git 发版标签：`agentsociety2-v{major}.{minor}.{patch}`（见 `CONTRIBUTING.
 
 ## [Unreleased]
 
+## [2.10.1] - 2026-11-02
+
+- **agentsociety2** `2.10.1` · **extension** `1.8.1` · 标签 `agentsociety2-v2.10.1`
+
+### Fixed
+
+- **CI**：VSIX 发版校验适配 webpack 打包布局——主进程入口改为 `dist/extension.js`，
+  运行时依赖已内联、不再检查 `node_modules/js-yaml`；并补上 `helpPage` /
+  `skillMarketplace` webview。2.10.0 的 PyPI 已发布，但 `Build VSCode extension`
+  因旧路径误判失败、GitHub Release / VSIX 被跳过。本版无功能变更，重新发版以落成
+  VSIX 与 Release。
+
 ## [2.10.0] - 2026-11-02
 
 - **agentsociety2** `2.10.0` · **extension** `1.8.0` · 标签 `agentsociety2-v2.10.0`

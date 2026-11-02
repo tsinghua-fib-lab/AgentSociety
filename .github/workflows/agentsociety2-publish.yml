@@ -130,14 +130,17 @@ jobs:
         working-directory: ./extension
         run: |
           unzip -Z1 ai-social-scientist.vsix > vsix-contents.txt
-          grep -q '^extension/out/extension.js$' vsix-contents.txt
+          # extension host is webpack-bundled to dist/; webviews remain under out/webview/
+          grep -q '^extension/dist/extension.js$' vsix-contents.txt
           grep -q '^extension/out/webview/configPage.js$' vsix-contents.txt
+          grep -q '^extension/out/webview/helpPage.js$' vsix-contents.txt
           grep -q '^extension/out/webview/initConfig.js$' vsix-contents.txt
           grep -q '^extension/out/webview/prefillParams.js$' vsix-contents.txt
           grep -q '^extension/out/webview/replay.js$' vsix-contents.txt
           grep -q '^extension/out/webview/simSettings.js$' vsix-contents.txt
-          # js-yaml >= 5 ships its CJS entry as dist/js-yaml.cjs.js (no root index.js)
-          grep -q '^extension/node_modules/js-yaml/dist/js-yaml.cjs.js$' vsix-contents.txt
+          grep -q '^extension/out/webview/skillMarketplace.js$' vsix-contents.txt
+          # runtime deps are inlined into the host bundle; node_modules is not shipped
+          ! grep -q '^extension/node_modules/' vsix-contents.txt
 
       - name: Store the VSIX package
         uses: actions/upload-artifact@v7

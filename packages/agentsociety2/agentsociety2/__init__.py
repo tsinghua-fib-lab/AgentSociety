@@ -53,7 +53,7 @@ from typing import TYPE_CHECKING
 
 os.environ["LITELLM_LOCAL_MODEL_COST_MAP"] = "True"
 
-__version__ = "2.10.0"
+__version__ = "2.10.1"
 
 __all__ = [
     "AgentBase",
