@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from agentsociety2.agent.base import AgentBase
+from agentsociety2.agent.xml_utils import extract_xml_tag_value
 
 
 class PrisonersDilemmaAgent(AgentBase):
@@ -222,21 +223,13 @@ This agent participates in a 10-round Prisoner's Dilemma game where two players 
             self._logger.debug(f"[{self.name}] [DEBUG] 原始响应: {content}")
 
             # Extract Action using regex
-            action_match = re.search(
-                r"<action>\s*(Yes|No)\s*</action>", content, re.IGNORECASE
-            )
-            if action_match:
-                action = action_match.group(1).capitalize()
+            action_value = extract_xml_tag_value(content, "action", "Yes|No")
+            if action_value is not None:
+                action = action_value.capitalize()
 
                 # Extract Explanation
-                explanation_match = re.search(
-                    r"<explanation>(.*?)</explanation>",
-                    content,
-                    re.DOTALL | re.IGNORECASE,
-                )
-                if explanation_match:
-                    explanation = explanation_match.group(1).strip()
-                else:
+                explanation = extract_xml_tag_value(content, "explanation", dotall=True)
+                if explanation is None:
                     explanation = f"选择了 '{action}'，但未在 XML 中提供解释"
 
                 self._logger.info(

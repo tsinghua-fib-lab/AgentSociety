@@ -1,13 +1,11 @@
-"""Base ReAct loop data structures and scaffolding.
+"""ReAct 循环基础数据结构与脚手架。
 
 中文：提供 ReAct 循环的数据结构（``ReactDecision`` / ``ReactToolResult``）。
 English: Provides the ReAct loop data structures (``ReactDecision`` / ``ReactToolResult``).
 
-The concrete ReAct loop orchestration (message building, LLM dispatch, tool
-execution) lives in the agent subclasses and their support modules
-(``person_prompt.py``, ``person_tools.py``).  This module only owns the
-shared dataclasses so that the base tool dispatch and the person-specific
-react loop can reference a single canonical definition.
+具体的 ReAct 循环编排(消息构建、LLM 调度、工具执行)位于 agent 子类及其
+支撑模块(``person_prompt.py``、``person_tools.py``)。本模块只持有共享的
+dataclass,使基础工具分发与 person 专属 react 循环引用同一份规范定义。
 """
 
 from __future__ import annotations
@@ -24,21 +22,17 @@ __all__ = [
 
 @dataclass(frozen=True)
 class ReactDecision:
-    """One parsed ReAct tool decision.
+    """一条解析后的 ReAct 工具决策。
 
-    Args:
-        thought: Optional model thought text.
-        action: Tool/action name.
-        args: Parsed tool arguments.
-        final: Final text when the action is ``finish``.
-        call_id: The provider's tool-call id for this decision. Empty when the
-            decision came from the text-parsing fallback (models that emit the
-            call as text rather than as a native tool call), which has no ids.
-            The ReAct loop echoes it back on the ``role: "tool"`` reply, so a
-            native turn's ids are answered 1:1 and the next request stays valid.
+    :param action: 工具/动作名。
+    :param args: 解析出的工具参数。
+    :param final: 动作为 ``finish`` 时的最终文本。
+    :param call_id: 该决策对应的 provider tool-call id。当决策来自文本
+        解析回退(以文本而非原生 tool call 形式发出调用的模型)时为空——
+        该路径没有 id。ReAct 循环会在 ``role: "tool"`` 回复中原样回填,使
+        原生轮次的 id 逐一得到应答,下一个请求保持有效。
     """
 
-    thought: str
     action: str
     args: dict[str, Any]
     final: str
@@ -47,19 +41,16 @@ class ReactDecision:
 
 @dataclass(frozen=True)
 class ReactTurn:
-    """One ReAct completion: what was parsed plus what to append to the thread.
+    """一次 ReAct 补全:解析出的内容与待追加进线程的内容。
 
-    The loop appends ``assistant_message`` (followed by its tool replies, or by
-    error text when ``error`` is set) so that every request is a strict
-    prefix-extension of the previous one — which is what lets the provider's
-    prompt-prefix cache grow across turns instead of resetting.
+    循环会追加 ``assistant_message``(其后跟随工具回复,或 ``error`` 置位
+    时跟随错误文本),使每个请求都是前一个请求的严格前缀扩展——正因如此,
+    provider 的 prompt-prefix 缓存才能跨轮增长而非每轮重置。
 
-    Args:
-        decisions: Parsed decisions (empty when the response was unusable).
-        error: Schema/parse error text, or ``""`` when the turn was clean.
-        assistant_message: Normalized assistant message to append, or ``None``
-            when the provider returned nothing appendable (no choices / no
-            content).
+    :param decisions: 解析出的决策(响应不可用时为空)。
+    :param error: schema/解析错误文本;轮次干净时为 ``""``。
+    :param assistant_message: 待追加的规范化 assistant 消息;provider 未
+        返回任何可追加内容(无 choices / 无 content)时为 ``None``。
     """
 
     decisions: list[ReactDecision]
@@ -69,12 +60,11 @@ class ReactTurn:
 
 @dataclass(frozen=True)
 class ReactToolResult:
-    """Result returned by one ReAct tool dispatch.
+    """一次 ReAct 工具分发的返回结果。
 
-    Args:
-        ok: Whether the tool call succeeded.
-        observation: Text shown to the next ReAct turn.
-        data: Structured result data for tracing and tests.
+    :param ok: 工具调用是否成功。
+    :param observation: 展示给下一个 ReAct 轮次的文本。
+    :param data: 供 tracing 与测试使用的结构化结果数据。
     """
 
     ok: bool

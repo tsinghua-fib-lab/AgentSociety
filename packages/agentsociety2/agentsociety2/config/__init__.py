@@ -7,7 +7,7 @@
 - **get_llm_router_and_model**: 同时获取 Router 与模型名称
 - **get_model_name**: 获取指定角色的模型名称
 - **extract_json**: 从 LLM 响应中提取 JSON
-- **get_dispatcher**: 获取指定 role 的 :class:`LLMClient`（per-process 调度）
+- **get_dispatcher**: 获取指定 role 的 :class:`LLMClient` （per-process 调度）
 
 角色类型：
 - ``default``: 默认 LLM（通用任务）

@@ -153,7 +153,7 @@ class EconomySpace(EnvBase):
         self._step_counter: int = 0
 
     async def to_workspace(self, workspace_path=None) -> None:
-        """写入 ``state/ENV_STATE.json``（原子写）。
+        """写入 ``state/ENV_STATE.json`` （原子写）。
 
         嵌套 pydantic（``EconomyPerson``/``TaxBracket``）用 model_dump；
         ``_last_run_datetime`` 用 isoformat；``_lock`` 不存盘。
@@ -190,7 +190,7 @@ class EconomySpace(EnvBase):
     async def restore(self, workspace_path) -> bool:
         """从 ``state/ENV_STATE.json`` 恢复。
 
-        晚于 ``init()``（会重置 ``_last_run_datetime``）执行；仅在 checkpoint 含
+        晚于 ``init()`` （会重置 ``_last_run_datetime``）执行；仅在 checkpoint 含
         ``last_run_datetime`` 时覆盖，缺失则保留 init() 的 start_datetime
         （绝不注入墙钟，避免日切判断错乱）。``_lock`` 由 ``__init__`` 重建。
         """

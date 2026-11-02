@@ -50,6 +50,7 @@ AGENT_CONFIG_KEYS: frozenset[str] = frozenset(
         "max_react_turns",
         "enable_memory",
         "enable_todo_list",
+        "idle_skip_enabled",
         "disabled_skill_ids",
         "default_activated_skill_ids",
         "extra_skill_paths",
@@ -205,22 +206,18 @@ class ExperimentRunner:
         self,
         agent_args: list[dict[str, Any]],
     ) -> tuple[list[dict], str]:
-        """Build record-based agent specs (no agent objects instantiated).
+        """构建 record-based agent spec(不实例化任何 agent 对象)。
 
-        Emits ``{"id", "profile", "config"}`` specs. The ``AgentSociety`` then
-        batch-creates workspaces via ``create_agents_batch`` Ray Tasks, and
-        agents are reconstructed on demand (``from_workspace``) inside
-        step/query tasks.
+        产出 ``{"id", "profile", "config"}`` spec;``AgentSociety`` 随后经
+        ``create_agents_batch`` Ray Task 批量建 workspace,agent 在
+        step/query 任务内按需重建(``from_workspace``)。
 
-        The agent class is resolved from the registry and validated to be unique
-        across the population (the streaming model assumes a single agent class
-        per society — the common case).
+        agent 类从 registry 解析,并校验全种群唯一(流式模型假设单一
+        agent 类——常见形态)。
 
-        Args:
-            agent_args: Per-agent config dicts (``agent_id`` / ``agent_type`` / ``kwargs``).
-
-        Returns:
-            ``(agent_specs, agent_class_name)``.
+        :param agent_args: 逐 agent 配置 dict(``agent_id`` / ``agent_type`` /
+            ``kwargs``)。
+        :returns: ``(agent_specs, agent_class_name)``。
         """
         agent_type_map = {
             agent_type: agent_class
@@ -334,11 +331,11 @@ class ExperimentRunner:
         :param config_path: 配置文件路径（init_config.json）
         :param steps_path: steps.yaml 文件路径
         :param experiment_id: 实验ID（可选）
-        :param replay_disable: 为 True 时构造一个禁用的 ``ReplayProxy``（无 replay JSONL 写）。
+        :param replay_disable: 为 True 时构造一个禁用的 ``ReplayProxy`` （无 replay JSONL 写）。
         :param batch_size: 每个 ``step_agent_batch`` Ray Task 处理的 agent 数；
-            ``None`` 时回落 ``Config.BATCH_SIZE``（环境变量 ``AGENTSOCIETY_BATCH_SIZE``，缺省 256）。
+            ``None`` 时回落 ``Config.BATCH_SIZE`` （环境变量 ``AGENTSOCIETY_BATCH_SIZE``，缺省 256）。
         :param resume: 为 True 时从 ``run_dir/SOCIETY.json`` 恢复 env 模块状态与 society
-            时钟/步数，跳过已完成的 ``RunStep``（Ask/Intervene/Questionnaire 会重跑）。
+            时钟/步数，跳过已完成的 ``RunStep`` （Ask/Intervene/Questionnaire 会重跑）。
         """
         try:
             # 验证环境变量（必须在任何操作之前）
@@ -752,14 +749,29 @@ class ExperimentRunner:
                         exc_info=True,
                     )
 
-                    # 更新进度到 pid.json（步骤失败）
-                    self._update_progress()
+                    # 已推进的状态可能只部分落盘，不能继续后续步骤或报告成功。
+                    # 外层统一标记 failed、记录错误并关闭自有资源。
+                    raise
 
             # 关闭society
             self._log_llm_stats()
+            step_failure_count = getattr(self.society, "_step_failure_count", 0)
             await self.society.close()
-            logger.info("Experiment completed successfully")
-            self._update_pid_file("completed")
+            if step_failure_count:
+                # Some top-level steps caught their errors and the loop ran to
+                # the end, but agent steps failed inside — an unqualified
+                # "completed" here is how broken runs went unnoticed before.
+                logger.warning(
+                    "Experiment completed with %d agent step failure(s) "
+                    "(see core_step_failures in replay for details)",
+                    step_failure_count,
+                )
+                self._update_pid_file(
+                    "completed_with_errors", step_failures=step_failure_count
+                )
+            else:
+                logger.info("Experiment completed successfully")
+                self._update_pid_file("completed")
 
         except Exception as e:
             logger.error(f"Experiment failed: {e}", exc_info=True)
@@ -878,9 +890,10 @@ def main():
         action="store_true",
         help=(
             "Resume an interrupted run from run_dir/SOCIETY.json. Env module "
-            "state and the society clock/step-count are restored; already-"
-            "completed RunSteps are skipped. Ask/Intervene/Questionnaire steps "
-            "re-execute (low cost; artifacts get fresh timestamps)."
+            "state and the society clock/step-count are restored; every "
+            "already-completed top-level step (Run/Ask/Intervene/"
+            "Questionnaire, persisted per step via mark_step_completed) is "
+            "skipped, and execution continues from the first incomplete step."
         ),
     )
 

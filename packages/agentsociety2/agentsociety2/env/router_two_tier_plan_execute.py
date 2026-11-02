@@ -4,12 +4,11 @@ Two-Tier Plan-and-Execute Router Implementation
 """
 
 import json
-import re
 from typing import Any
 
-import json_repair
 from litellm import AllMessageValues
 
+from agentsociety2.agent.json_utils import loads_llm_json
 from agentsociety2.env.base import EnvBase
 from agentsociety2.env.router_base import RouterBase
 from agentsociety2.logger import get_logger
@@ -354,25 +353,12 @@ Your selection and plan:"""
         return "\n".join(descriptions)
 
     def _extract_json_from_text(self, text: str) -> Any:
-        """从文本中提取JSON"""
-
-        # 尝试找到JSON对象
-        json_match = re.search(r"\{[\s\S]*\}", text)
-        if json_match:
-            try:
-                return json_repair.loads(json_match.group())
-            except Exception:
-                get_logger().debug(
-                    "Failed to parse JSON object from text", exc_info=True
-                )
-
-        # 尝试直接解析
+        """从文本中提取 JSON；失败时返回空对象。"""
         try:
-            return json_repair.loads(text)
-        except Exception:
+            return loads_llm_json(text, expect="any")
+        except ValueError:
             get_logger().debug("Failed to parse JSON from text", exc_info=True)
-
-        return {}
+            return {}
 
     async def _execute_module_plan(
         self, module_name: str, plan: list[dict[str, Any]], ctx: dict, readonly: bool

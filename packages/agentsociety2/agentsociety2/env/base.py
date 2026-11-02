@@ -62,20 +62,12 @@ __all__ = [
 
 
 def dump_int_map(mapping: dict[int, Any]) -> dict[str, Any]:
-    """Convert integer mapping keys to their JSON-compatible string form.
-
-    :param mapping: Mapping with integer keys.
-    :returns: Copy of the mapping with string keys.
-    """
+    """``dict[int, ...]`` → JSON 友好的 ``dict[str, ...]`` （JSON 键只能是字符串）。"""
     return {str(k): v for k, v in mapping.items()}
 
 
 def load_int_map(mapping: dict[str, Any] | None) -> dict[int, Any]:
-    """Restore integer keys from a JSON-compatible mapping.
-
-    :param mapping: Mapping with string keys, or ``None``.
-    :returns: Mapping with integer keys.
-    """
+    """JSON 还原后的 ``dict[str, ...]`` → ``dict[int, ...]``。"""
     if not mapping:
         return {}
     return {int(k): v for k, v in mapping.items()}
@@ -91,7 +83,7 @@ def tool(
     description: str | None = None,
     kind: Literal["observe", "statistics"] = ...,
 ) -> Callable[[F], F]:
-    """Overload for observe/statistics tools that must be readonly."""
+    """observe/statistics 工具(必须只读)的重载。"""
 
 
 @overload
@@ -101,7 +93,7 @@ def tool(
     description: str | None = None,
     kind: None = None,
 ) -> Callable[[F], F]:
-    """Overload for regular tools."""
+    """常规工具的重载。"""
 
 
 def tool(
@@ -113,7 +105,7 @@ def tool(
     """将环境方法注册为可调用工具（供 Router/LLM 调用）。
 
     :param readonly: 是否只读。
-        当 ``kind`` 为 ``observe`` 或 ``statistics`` 时必须为 ``True``（运行时强校验）。
+        当 ``kind`` 为 ``observe`` 或 ``statistics`` 时必须为 ``True`` （运行时强校验）。
     :param name: 可选。工具名（默认使用函数名）。
     :param description: 可选。工具描述（用于模型函数调用 schema）。
     :param kind: 可选。工具类型：
@@ -190,12 +182,12 @@ def tool(
 
         def _normalize_to_kwargs(args, kwargs):
             """
-            Convert args and kwargs to unified kwargs dict based on function signature.
+            按函数签名把 args 与 kwargs 归并为统一的 kwargs dict。
 
-            :param args: Positional arguments (excluding self)
-            :param kwargs: Keyword arguments
+            :param args: 位置参数(不含 self)。
+            :param kwargs: 关键字参数。
 
-            :returns: Dict of arguments with parameter names as keys
+            :returns: 以参数名为键的参数 dict。
             """
             normalized_kwargs = {}
 
@@ -220,7 +212,7 @@ def tool(
             exception_info,
             trace_ctx,
         ):
-            """Helper function to create a call record."""
+            """创建调用记录的辅助函数。"""
             # Convert args and kwargs to unified kwargs dict
             normalized_kwargs = _normalize_to_kwargs(args, kwargs)
             kwargs_repr = _serialize_to_literal(normalized_kwargs)
@@ -322,11 +314,11 @@ def tool(
 
 def _serialize_to_literal(value: Any) -> Any:
     """
-    Serialize a value to a JSON-serializable literal representation.
+    把值序列化为 JSON 可序列化的字面量表示。
 
-    :param value: The value to serialize
+    :param value: 待序列化的值。
 
-    :returns: A JSON-serializable representation of the value
+    :returns: 该值的 JSON 可序列化表示。
     """
     try:
         # Try to serialize directly
@@ -388,17 +380,14 @@ class EnvBase(metaclass=EnvMeta):
 
     @classmethod
     def is_concurrency_safe(cls) -> bool:
-        """Return whether this module's tools may be called concurrently.
+        """返回本模块的工具是否允许被并发调用。
 
-        Concurrency-safe modules do not mutate shared (cross-agent) state in
-        their tools, so the router can execute their generated code without the
-        global ``_execute_lock`` and the env Ray actor can fan out parallel
-        ``ask`` calls. Default is ``False`` (conservative); modules that keep
-        only per-agent state (keyed by agent_id, no shared mutable structures)
-        override this to ``True``.
+        并发安全的模块不在其工具中修改共享(跨 agent)状态,因此 router
+        可以不加全局 ``_execute_lock`` 执行其生成的代码,env Ray actor 也能
+        并行扇出 ``ask`` 调用。默认为 ``False``(保守);只持有 per-agent
+        状态(以 agent_id 为键、无共享可变结构)的模块应将其覆写为 ``True``。
 
-        Returns:
-            True if concurrent tool calls are safe.
+        :returns: 并发调用工具安全时为 True。
         """
         return False
 
@@ -461,12 +450,12 @@ class EnvBase(metaclass=EnvMeta):
 
     @property
     def name(self):
-        """Name of the environment module"""
+        """环境模块名称。"""
         return self.__class__.__name__
 
     @classmethod
     def description(cls) -> str:
-        """Return a short module description for router/world orientation."""
+        """返回用于 router/world 定位的模块简短描述。"""
         if cls is EnvBase:
             return "Abstract base class for environment modules."
         doc = (cls.__doc__ or "").strip().splitlines()
@@ -478,10 +467,10 @@ class EnvBase(metaclass=EnvMeta):
     @classmethod
     def init_description(cls) -> str:
         """
-        Return AI-readable initialization guidance for this environment module.
+        返回本环境模块的可供 AI 阅读的初始化指引。
 
-        :returns: Markdown text with class name, constructor kwargs,
-            accepted data shapes, defaults, and a minimal kwargs example when useful.
+        :returns: 包含类名、构造 kwargs、接受的数据形态、默认值,以及必要
+            时最小 kwargs 示例的 Markdown 文本。
         """
         # Check if this is the base class being called directly
         if cls is EnvBase:
@@ -504,25 +493,24 @@ class EnvBase(metaclass=EnvMeta):
 
     @classmethod
     def skill_dirs(cls) -> list[Path]:
-        """Return directories containing agent skills provided by this environment module.
+        """返回本环境模块提供的 agent skill 所在目录。
 
-        This method enables environment modules to bundle specialized skills that agents
-        should use when operating within that environment. Skills are discovered by scanning
-        the returned directories for SKILL.md files.
+        本方法使环境模块能捆绑 agent 在该环境中操作时应使用的专用 skill。
+        skill 通过扫描返回目录中的 SKILL.md 文件来发现。
 
-        **Default Discovery Convention:**
+        **默认发现约定：**
 
-        The base implementation automatically discovers skills from:
+        基类实现自动从以下位置发现 skill:
 
-        1. Package modules (e.g., ``mobility_space/__init__.py``):
-           Scans ``<module_dir>/agent_skills/`` directory.
+        1. 包模块(如 ``mobility_space/__init__.py``):
+           扫描 ``<module_dir>/agent_skills/`` 目录。
 
-        2. Single-file modules (e.g., ``economy_space.py``):
-           Scans ``<module_dir>/<stem>_agent_skills/`` directory.
+        2. 单文件模块(如 ``economy_space.py``):
+           扫描 ``<module_dir>/<stem>_agent_skills/`` 目录。
 
-        **Override for Custom Paths:**
+        **自定义路径时覆写：**
 
-        Subclasses can override this method to specify custom skill directories::
+        子类可覆写本方法以指定自定义 skill 目录::
 
             @classmethod
             def skill_dirs(cls) -> list[Path]:
@@ -530,13 +518,14 @@ class EnvBase(metaclass=EnvMeta):
                 skills_dir = Path(__file__).parent.parent / "skills"
                 return [skills_dir] if skills_dir.is_dir() else []
 
-        **Skill Directory Structure:**
+        **skill 目录结构：**
 
-        Each skill directory should contain subdirectories with SKILL.md files,
-        for example ``agent_skills/navigation/SKILL.md`` and optional
-        ``agent_skills/navigation/scripts/``.
+        每个 skill 目录应包含带 SKILL.md 文件的子目录,例如
+        ``agent_skills/navigation/SKILL.md`` 及可选的
+        ``agent_skills/navigation/scripts/``。
 
-        :returns: List of Path objects pointing to directories containing skill subdirectories. Empty list if no skills are provided.
+        :returns: 指向含 skill 子目录的目录的 Path 对象列表。无 skill 时
+            为空列表。
         """
         import inspect
 
@@ -593,11 +582,8 @@ class EnvBase(metaclass=EnvMeta):
         """把动态状态写入 workspace（每步由 society 经 router 调用）。
 
         默认 no-op。子类按自选的格式/文件名把需要跨重启保留的状态写到
-        ``self._workspace_root``（或传入的 ``workspace_path``）下。建议用
+        ``self._workspace_root`` （或传入的 ``workspace_path``）下。建议用
         :func:`~agentsociety2.storage.workspace_state.atomic_write_text` 原子写。
-
-        :param workspace_path: Optional workspace directory to bind before
-            persisting state.
         """
         if workspace_path is not None:
             self._bind_workspace(workspace_path)
@@ -608,9 +594,6 @@ class EnvBase(metaclass=EnvMeta):
         默认返回 ``False``。子类读取自己写入的状态并还原；返回是否成功加载
         （供 router 区分 fresh / resume）。仅在 ``__init__`` 与 ``init()`` 之后调用，
         故可安全覆盖 ``init()`` 设置的字段。
-
-        :param workspace_path: Workspace directory containing persisted state.
-        :returns: Whether persisted state was loaded.
         """
         self._bind_workspace(workspace_path)
         return False
@@ -621,9 +604,7 @@ class EnvBase(metaclass=EnvMeta):
     ) -> "EnvBase":
         """从 workspace 重建就绪模块：``cls(**init_kwargs)`` 后 ``restore``。
 
-        :param workspace_path: Workspace directory containing persisted state.
         :param init_kwargs: 构造该模块用的 kwargs（resume 时由 actor 从 ``SOCIETY.json`` 取）。
-        :returns: Initialized module restored from ``workspace_path``.
         """
         module = cls(**init_kwargs)
         await module.restore(Path(workspace_path))
@@ -666,10 +647,7 @@ class EnvBase(metaclass=EnvMeta):
 
     @staticmethod
     def _on_register_state_tables_done(task: "asyncio.Task[None]") -> None:
-        """Log an exception raised while registering replay state tables.
-
-        :param task: Completed asynchronous registration task.
-        """
+        """_register_state_tables 任务的回调,用于记录异常日志。"""
         if task.cancelled():
             return
         exc = task.exception()

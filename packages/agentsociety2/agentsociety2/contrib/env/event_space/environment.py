@@ -229,7 +229,7 @@ class EventSpace(EnvBase):
         self._step_counter: int = 0
 
     async def to_workspace(self, workspace_path=None) -> None:
-        """写入 ``state/ENV_STATE.json``（原子写）。CurrentEvent(pydantic) 用 model_dump。"""
+        """写入 ``state/ENV_STATE.json`` （原子写）。CurrentEvent(pydantic) 用 model_dump。"""
         if workspace_path is not None:
             self._bind_workspace(workspace_path)
         if self._workspace_root is None:
@@ -479,14 +479,11 @@ class EventSpace(EnvBase):
         event_type: str,
         expected_duration_seconds: float,
     ) -> float:
-        """Normalize common unit mistakes in event durations.
+        """归一化事件时长中常见的单位错误。
 
-        Args:
-            event_type: Event category.
-            expected_duration_seconds: Raw duration passed to start_event.
-
-        Returns:
-            Duration in seconds.
+        :param event_type: 事件类别。
+        :param expected_duration_seconds: 传给 start_event 的原始时长。
+        :returns: 秒为单位的时长。
         """
         duration = float(expected_duration_seconds)
         if event_type == "sleep":
@@ -498,14 +495,11 @@ class EventSpace(EnvBase):
 
     @staticmethod
     def _is_passive_placeholder_event(event_type: str, event_name: str) -> bool:
-        """Return whether a requested event is only a passive wait/check.
+        """判断请求的事件是否只是被动等待/检查。
 
-        Args:
-            event_type: Requested event type.
-            event_name: Requested event name.
-
-        Returns:
-            True when the request should not replace a real active activity.
+        :param event_type: 请求的事件类型。
+        :param event_name: 请求的事件名称。
+        :returns: 该请求不应替代真实主动活动时为 True。
         """
         value = f"{event_type} {event_name}".lower()
         passive_terms = (

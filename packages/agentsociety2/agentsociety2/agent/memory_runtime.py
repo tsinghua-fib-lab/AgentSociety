@@ -1,4 +1,4 @@
-"""Core memory runtime for PersonAgent.
+"""PersonAgent 的核心记忆运行时。
 
 中文：封装 PersonAgent 的记忆上下文、检索工具、抽取和合并流程。
 English: Encapsulates memory context, retrieval tools, extraction, and consolidation.
@@ -87,13 +87,12 @@ Do not promote into long-term memory:
 
 @dataclass(frozen=True)
 class MemoryRuntimeConfig:
-    """Runtime config for core file-backed memory.
+    """核心文件记忆的运行时配置。
 
-    Args:
-        enabled: Whether core memory is enabled.
-        context_max_chars: Character budget for MEMORY.md prompt context.
-        recent_limit: Number of recent episodes to include in prompt context.
-        consolidation: Programmatic consolidation trigger config.
+    :param enabled: 是否启用核心记忆。
+    :param context_max_chars: MEMORY.md 提示上下文的字符预算。
+    :param recent_limit: 纳入提示上下文的最近 episode 数量。
+    :param consolidation: 程序化的合并触发配置。
     """
 
     enabled: bool = True
@@ -105,66 +104,57 @@ class MemoryRuntimeConfig:
 
 
 class PersonMemoryRuntime:
-    """Owns memory context, retrieval tools, extraction, and consolidation.
+    """持有记忆上下文、检索工具、抽取与合并流程。
 
-    Args:
-        agent_id: Numeric agent id.
-        agent_name: Display name of the simulated person.
-        config: Memory runtime configuration.
-        get_model_name: Callback returning the active LLM model name.
-        dispatch_llm: Callback used to call the LLM dispatcher.
-        get_profile: Callback returning the current agent profile.
-        logger: Logger-like object used for warnings.
+    :param agent_id: 数字 agent id。
+    :param config: 记忆运行时配置。
+    :param get_model_name: 返回当前生效 LLM 模型名的回调。
+    :param dispatch_llm: 用于调用 LLM dispatcher 的回调。
+    :param logger: 用于输出告警的 logger 类对象。
     """
 
     def __init__(
         self,
         *,
         agent_id: int,
-        agent_name: str,
         config: MemoryRuntimeConfig,
         get_model_name: Callable[[], str | None],
         dispatch_llm: Callable[..., Awaitable[Any]],
-        get_profile: Callable[[], Any],
         logger: Any,
         trace_span: Callable[..., Any] | None = None,
+        consolidation_system_prompt: str | None = None,
     ) -> None:
-        """Initialize the memory runtime.
+        """初始化记忆运行时。
 
-        Args:
-            agent_id: Numeric agent id.
-            agent_name: Display name of the simulated person.
-            config: Memory runtime configuration.
-            get_model_name: Callback returning the active LLM model name.
-            dispatch_llm: Callback used to call the LLM dispatcher.
-            get_profile: Callback returning the current agent profile.
-            logger: Logger-like object used for warnings.
-            trace_span: Optional context-manager factory for OTel spans, used to
-                trace memory LLM calls and file-I/O phases (which otherwise have
-                no span and appear as unexplained gaps in agent.step).
-
-        Returns:
-            None.
+        :param agent_id: 数字 agent id。
+        :param config: 记忆运行时配置。
+        :param get_model_name: 返回当前生效 LLM 模型名的回调。
+        :param dispatch_llm: 用于调用 LLM dispatcher 的回调。
+        :param logger: 用于输出告警的 logger 类对象。
+        :param trace_span: 可选的 OTel span 上下文管理器工厂,用于追踪记忆
+            LLM 调用与文件 I/O 阶段(否则这些阶段没有 span,在 agent.step
+            中呈现为无法解释的空档)。
+        :param consolidation_system_prompt: run 级 MEMORY.md 合并 system
+            prompt override;``None`` 用编译期默认(逐字节一致)。
+        :returns: 无返回值。
         """
         self.agent_id = agent_id
-        self.agent_name = agent_name
+        self._consolidation_system_prompt = (
+            consolidation_system_prompt or MEMORY_CONSOLIDATION_SYSTEM_PROMPT
+        )
         self.config = config
         self._get_model_name = get_model_name
         self._dispatch_llm = dispatch_llm
-        self._get_profile = get_profile
         self._logger = logger
         self._trace_span_cb = trace_span
         self._store: AgentMemoryStore | None = None
 
     def _span(self, name: str, **attributes: Any) -> Any:
-        """Return a span context manager (or a no-op when tracing is absent).
+        """返回一个 span 上下文管理器(未启用追踪时为 no-op)。
 
-        Args:
-            name: Span name.
-            attributes: Start attributes.
-
-        Returns:
-            Context manager.
+        :param name: span 名称。
+        :param attributes: 起始属性。
+        :returns: 上下文管理器。
         """
         if self._trace_span_cb is None:
             return nullcontext()
@@ -172,24 +162,17 @@ class PersonMemoryRuntime:
 
     @property
     def enabled(self) -> bool:
-        """Return whether memory is enabled.
+        """返回是否启用记忆。
 
-        Args:
-            None.
-
-        Returns:
-            True when core memory should run.
+        :returns: 核心记忆应当运行时返回 True。
         """
         return self.config.enabled
 
     def ensure_store(self, workspace_root: Path) -> AgentMemoryStore | None:
-        """Return initialized core memory store when enabled.
+        """启用时返回已初始化的核心记忆存储。
 
-        Args:
-            workspace_root: Root directory of one agent workspace.
-
-        Returns:
-            Memory store when enabled, otherwise None.
+        :param workspace_root: 单个 agent 工作区的根目录。
+        :returns: 启用时返回记忆存储,否则返回 None。
         """
         if not self.enabled:
             return None
@@ -200,24 +183,16 @@ class PersonMemoryRuntime:
 
     @property
     def store(self) -> AgentMemoryStore | None:
-        """Return the current memory store.
+        """返回当前的记忆存储。
 
-        Args:
-            None.
-
-        Returns:
-            Memory store when enabled and initialized, otherwise None.
+        :returns: 已启用且已初始化时返回记忆存储,否则返回 None。
         """
         return self._store if self.enabled else None
 
     def build_context(self) -> dict[str, Any]:
-        """Build compact prompt context from MEMORY.md and recent episodes.
+        """从 MEMORY.md 与最近的 episodes 构建紧凑的提示上下文。
 
-        Args:
-            None.
-
-        Returns:
-            Prompt-ready memory context dictionary.
+        :returns: 可直接进入提示的记忆上下文字典。
         """
         store = self.store
         if store is None:
@@ -236,14 +211,11 @@ class PersonMemoryRuntime:
     def dispatch_tool(
         self, action: str, args: dict[str, Any]
     ) -> tuple[bool, str, dict[str, Any]]:
-        """Dispatch built-in read-only memory retrieval tools.
+        """分发内置的只读记忆检索工具。
 
-        Args:
-            action: Memory tool name.
-            args: Tool arguments from the model.
-
-        Returns:
-            Tuple of ``(ok, observation, data)``.
+        :param action: 记忆工具名。
+        :param args: 模型给出的工具参数。
+        :returns: ``(ok, observation, data)`` 三元组。
         """
         store = self.store
         if store is None:
@@ -311,23 +283,19 @@ class PersonMemoryRuntime:
         step_count: int,
         finish_memories: list[dict[str, Any]] | None = None,
     ) -> list[dict[str, Any]]:
-        """Ingest step memories and refresh MEMORY.md when triggers fire.
+        """摄取步骤记忆并在触发条件满足时刷新 MEMORY.md。
 
-        Memory generation lives entirely in the step-mode ``finish`` tool —
-        there is no dedicated extraction LLM call (no fallback). ``finish_memories``
-        carries the episodes the model recorded inline; when it is absent or
-        empty (e.g. the loop hit the turn limit without a finish, or the model
-        reported nothing notable) nothing is recorded this step.
+        记忆生成完全发生在 step 模式的 ``finish`` 工具中,没有专门的
+        抽取 LLM 调用(也没有回退)。``finish_memories`` 携带模型内联记录
+        的 episodes,当其缺失或为空(如循环达到轮次上限仍未 finish,或模型
+        未报告任何值得记录的内容)时,本步骤不记录任何内容。
 
-        Args:
-            tick: Current simulation tick.
-            t: Current simulation time.
-            step_count: Current agent step count.
-            finish_memories: Memories recorded inline by the step-mode finish
-                tool. ``None`` / empty means record nothing this step.
-
-        Returns:
-            Episode records written during this step.
+        :param tick: 当前仿真 tick。
+        :param t: 当前仿真时间。
+        :param step_count: 当前 agent 步数。
+        :param finish_memories: step 模式 finish 工具内联记录的记忆,
+            ``None`` 或为空表示本步骤不记录任何内容。
+        :returns: 本步骤写入的 episode 记录。
         """
         store = self.store
         if store is None or not finish_memories:
@@ -367,9 +335,19 @@ class PersonMemoryRuntime:
                 config=self.config.consolidation,
             )
         if should:
+            state = await asyncio.to_thread(store.read_state)
+            cooldown_until = int(state.get("consolidation_cooldown_until_step") or 0)
+            if step_count < cooldown_until:
+                self._logger.info(
+                    "Agent %s: memory consolidation skipped (fuse active until "
+                    "step %d; last merges returned empty).",
+                    self.agent_id,
+                    cooldown_until,
+                )
+                return written
             try:
                 with self._span("memory.consolidate", operation_type="memory"):
-                    await self._consolidate_memory_md(
+                    merged_ok = await self._consolidate_memory_md(
                         tick=tick,
                         t=t,
                         step_count=step_count,
@@ -379,20 +357,58 @@ class PersonMemoryRuntime:
                 self._logger.warning(
                     "Agent %s: memory consolidation failed: %s", self.agent_id, exc
                 )
+            else:
+                await asyncio.to_thread(
+                    self._record_consolidation_outcome,
+                    store,
+                    merged_ok,
+                    step_count,
+                )
         return written
 
+    def _record_consolidation_outcome(
+        self,
+        store: Any,
+        merged_ok: bool,
+        step_count: int,
+    ) -> None:
+        """持久化合并熔断的计数器(不调用 LLM)。
+
+        先重新读取状态:一次成功的合并已经重写了它(游标已前进),直接
+        修补合并前的快照会把游标回滚。成功的合并清零连续计数,连续两次
+        空合并将触发冷却,否则游标永不前进,每一步都会为同样的必然为空
+        的结果消耗一次完整的合并 LLM 调用。
+        """
+        state = store.read_state()
+        streak = int(state.get("consolidation_empty_streak") or 0)
+        if merged_ok:
+            if streak:
+                state["consolidation_empty_streak"] = 0
+                store.write_state(state)
+            return
+        streak += 1
+        state["consolidation_empty_streak"] = streak
+        if streak >= 2:
+            # 2x the default interval (8) as a fuse horizon; readable steps.
+            state["consolidation_cooldown_until_step"] = step_count + 16
+            state["consolidation_empty_streak"] = 0
+            self._logger.warning(
+                "Agent %s: memory consolidation returned empty twice; pausing "
+                "consolidation attempts until step %d.",
+                self.agent_id,
+                state["consolidation_cooldown_until_step"],
+            )
+        store.write_state(state)
+
     def _validate_finish_memories(self, raw: Any) -> list[dict[str, Any]]:
-        """Validate memories supplied inline by the step-mode ``finish`` tool.
+        """校验 step 模式 ``finish`` 工具内联给出的记忆。
 
-        Same episode shape as the ``record_step_memories`` tool; validated
-        through :class:`MemoryExtractionResult` so malformed input raises (the
-        caller then falls back to a dedicated extraction call). No LLM call.
+        通过 :class:`MemoryExtractionResult` 校验,失败时调用方
+        (:meth:`after_step`)回退到逐条宽松转换。不调用 LLM,记忆生成完全
+        在 finish 工具中完成。
 
-        Args:
-            raw: The ``memories`` list from the finish tool arguments.
-
-        Returns:
-            Validated episode dicts ready for ``store.append_episodes``.
+        :param raw: finish 工具参数中的 ``memories`` 列表。
+        :returns: 可直接传给 ``store.append_episodes`` 的已校验 episode 字典。
         """
         if not isinstance(raw, list):
             raise ValueError("finish `memories` must be a list")
@@ -400,21 +416,17 @@ class PersonMemoryRuntime:
         return [item.model_dump() for item in parsed.memories]
 
     def _validate_finish_memories_lenient(self, raw: Any) -> list[dict[str, Any]]:
-        """Best-effort fallback validation for finish memories.
+        """finish 记忆的尽力而为回退校验。
 
-        Used when strict :meth:`_validate_finish_memories` raises (one bad
-        item poisoned the whole list). Validates each item independently:
-        valid episodes are kept as-is; invalid items are coerced into a
-        minimal valid ``observation`` episode built from whatever text the
-        model provided, tagged ``source=finish_memory_coerced`` so the
-        downgrade is traceable. Items with no usable text are dropped.
+        在严格的 :meth:`_validate_finish_memories` 抛出异常时使用(某个坏
+        条目污染了整个列表)。逐条独立校验:合法的 episode 原样保留,非法
+        条目被转换为用模型给出的任意文本构造的最小合法 ``observation``
+        episode,并打上 ``source=finish_memory_coerced`` 标签使降级可追踪。
+        没有可用文本的条目被丢弃。
 
-        Args:
-            raw: The ``memories`` list from the finish tool arguments.
-
-        Returns:
-            Validated/coerced episode dicts ready for ``store.append_episodes``
-            (possibly empty).
+        :param raw: finish 工具参数中的 ``memories`` 列表。
+        :returns: 可直接传给 ``store.append_episodes`` 的已校验/已转换
+            episode 字典(可能为空)。
         """
         if not isinstance(raw, list):
             return []
@@ -463,17 +475,15 @@ class PersonMemoryRuntime:
         t: datetime,
         step_count: int,
         reason: str,
-    ) -> None:
-        """Refresh MEMORY.md from current compact memory and recent episodes.
+    ) -> bool:
+        """从当前紧凑记忆与最近的 episodes 刷新 MEMORY.md。
 
-        Args:
-            tick: Current simulation tick.
-            t: Current simulation time.
-            step_count: Current agent step count.
-            reason: Programmatic trigger reason.
-
-        Returns:
-            None.
+        :param tick: 当前仿真 tick。
+        :param t: 当前仿真时间。
+        :param step_count: 当前 agent 步数。
+        :param reason: 程序化触发原因。
+        :returns: MEMORY.md 被重写时返回 True;模型返回空内容时返回 False
+            (文件保持不变,游标不前进,由调用方计入合并熔断)。
         """
         model_name = self._require_model_name()
         store = self._require_store()
@@ -521,7 +531,7 @@ class PersonMemoryRuntime:
         messages = [
             {
                 "role": "system",
-                "content": MEMORY_CONSOLIDATION_SYSTEM_PROMPT,
+                "content": self._consolidation_system_prompt,
             },
             {
                 "role": "user",
@@ -555,81 +565,31 @@ class PersonMemoryRuntime:
             # so this is visible — because the consolidation cursor is only
             # advanced on a successful write, a model that consistently returns
             # empty would re-trigger consolidation every step and burn LLM
-            # calls. The caller already bounds this via interval_steps.
+            # calls. The caller's fuse now pauses attempts after repeats.
             self._logger.warning(
                 "Agent %s: memory consolidation returned empty content; "
                 "MEMORY.md left unchanged (consolidation may re-trigger).",
                 self.agent_id,
             )
-            return
+            return False
         await asyncio.to_thread(
             store.write_memory_md, content, step_count=step_count, tick=tick
         )
-
-    def _parse_tool_call_response(
-        self, response: Any, expected_name: str
-    ) -> dict[str, Any]:
-        """Parse one required tool call argument object from an LLM response.
-
-        Args:
-            response: Raw LLM response object.
-            expected_name: Required tool call function name.
-
-        Returns:
-            Parsed tool argument dictionary.
-        """
-        if not getattr(response, "choices", None):
-            return {}
-        message = getattr(response.choices[0], "message", None)
-        tool_calls = getattr(message, "tool_calls", None) or []
-        for tool_call in tool_calls:
-            function = getattr(tool_call, "function", None)
-            name = str(getattr(function, "name", "") or "").strip()
-            if name != expected_name:
-                continue
-            raw_args = str(getattr(function, "arguments", "") or "{}")
-            try:
-                from agentsociety2.agent.json_utils import jr_parse_from_llm
-
-                parsed = jr_parse_from_llm(raw_args)
-            except Exception:
-                parsed = json.loads(raw_args)
-            return dict(parsed) if isinstance(parsed, Mapping) else {}
-        content = str(getattr(message, "content", "") or "").strip()
-        if not content:
-            return {}
-        try:
-            from agentsociety2.agent.json_utils import jr_parse_from_llm
-
-            parsed = jr_parse_from_llm(content)
-        except Exception:
-            try:
-                parsed = json.loads(content)
-            except Exception:
-                return {}
-        return dict(parsed) if isinstance(parsed, Mapping) else {}
+        return True
 
     def _require_model_name(self) -> str:
-        """Return the configured model name.
+        """返回配置的模型名。
 
-        Args:
-            None.
-
-        Returns:
-            Active model name.
+        :returns: 当前生效的模型名。
         """
         model_name = self._get_model_name()
         assert model_name is not None, "LLM is not initialized"
         return model_name
 
     def _require_store(self) -> AgentMemoryStore:
-        """Return the initialized memory store.
+        """返回已初始化的记忆存储。
 
-        Args:
-            None.
-
-        Returns:
-            Active memory store.
+        :returns: 当前生效的记忆存储。
         """
         store = self.store
         if store is None:

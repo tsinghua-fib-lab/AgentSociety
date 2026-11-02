@@ -1,5 +1,5 @@
 """
-Code Generation Router Implementation
+代码生成式 Router 实现
 通过代码生成的方式调用环境模块中的@tool标记的接口
 
 架构说明:
@@ -12,6 +12,8 @@ Code Generation Router Implementation
 
 import ast
 import asyncio
+import hashlib
+import hmac
 import inspect
 import json
 import math
@@ -26,6 +28,7 @@ from contextlib import nullcontext
 from dataclasses import dataclass, field
 from datetime import datetime
 from io import StringIO
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, Optional, Protocol
 
 if TYPE_CHECKING:
@@ -95,6 +98,28 @@ class CacheStats:
             if self.request_count > 0
             else 0.0
         )
+
+    def to_dict(self) -> dict[str, float | int]:
+        """导出可序列化的统计快照(供落盘与归档)。
+
+        :returns: 全部计数字段与派生比率。
+        """
+        return {
+            "request_count": self.request_count,
+            "predefined_hit_count": self.predefined_hit_count,
+            "cache_hit_count": self.cache_hit_count,
+            "cache_miss_count": self.cache_miss_count,
+            "cache_hit_rate": round(self.cache_hit_rate, 4),
+            "total_input_tokens": self.total_input_tokens,
+            "total_output_tokens": self.total_output_tokens,
+            "avg_input_tokens": round(self.avg_input_tokens, 1),
+            "avg_output_tokens": round(self.avg_output_tokens, 1),
+            "code_execution_success_count": self.code_execution_success_count,
+            "code_execution_failure_count": self.code_execution_failure_count,
+            "code_execution_success_rate": round(self.code_execution_success_rate, 4),
+            "total_code_retry_count": self.total_code_retry_count,
+            "avg_retry_count": round(self.avg_retry_count, 3),
+        }
 
 
 @dataclass
@@ -255,10 +280,10 @@ def _entry_usable_with(entry: CacheEntry, current_keys: set[str]) -> bool:
 
 
 def _collect_async_tool_names(router: "CodeGenRouter") -> set[str]:
-    """Collect the names of all async ``@tool`` methods across env modules.
+    """收集所有 env 模块中 async ``@tool`` 方法的方法名。
 
-    Used by :func:`_ensure_await_async_calls` to know which calls in
-    LLM-generated code need ``await``.
+    供 :func:`_ensure_await_async_calls` 判断 LLM 生成代码中哪些调用
+    需要 ``await``。
     """
     names: set[str] = set()
     for module in router._modules.values():
@@ -273,16 +298,15 @@ def _collect_async_tool_names(router: "CodeGenRouter") -> set[str]:
 
 
 class _EnsureAwaitTransformer(ast.NodeTransformer):
-    """Wrap calls to known async functions in ``Await`` nodes.
+    """把对已知 async 函数的调用包进 ``Await`` 节点。
 
-    If the LLM forgets ``await`` before an async tool call (e.g.
-    ``person = get_person(agent_id)``), this transformer rewrites it
-    to ``person = await get_person(agent_id)`` at the AST level —
-    no regex, no false positives.
+    若 LLM 忘记在 async 工具调用前加 ``await``(如
+    ``person = get_person(agent_id)``),本 transformer 会在 AST 层面
+    把它改写成 ``person = await get_person(agent_id)``——不用正则、
+    无误报。
 
-    Already-awaited calls are left untouched (``visit_Await`` skips
-    the direct child Call but still visits its arguments for nested
-    un-awaited calls).
+    已 await 的调用保持原样(``visit_Await`` 跳过直接子级 Call,但仍会
+    访问其参数,以处理嵌套的未 await 调用)。
     """
 
     def __init__(self, async_names: set[str]) -> None:
@@ -295,9 +319,9 @@ class _EnsureAwaitTransformer(ast.NodeTransformer):
         return bool(isinstance(func, ast.Name) and func.id in self._async_names)
 
     def visit_Await(self, node: ast.Await) -> Any:
-        """Don't visit the awaited Call itself (prevent double-wrap).
+        """不访问被 await 的 Call 本身(防止二次包裹)。
 
-        But DO visit its args/kwargs (nested calls might need await).
+        但一定要访问其 args/kwargs(嵌套调用可能需要 await)。
         """
         if isinstance(node.value, ast.Call):
             call = node.value
@@ -314,18 +338,18 @@ class _EnsureAwaitTransformer(ast.NodeTransformer):
 
 
 def _ensure_await_async_calls(code: str, async_names: set[str]) -> str:
-    """AST-transform generated code so async tool calls use ``await``.
+    """对生成代码做 AST 变换,使 async 工具调用带上 ``await``。
 
-    Multi-layer guard (Layer 1):
-    - Parse the code → AST.
-    - Wrap every un-awaited Call to an async tool in an Await node.
-    - Unparse back to source.
+    多层防护(Layer 1):
+    - 解析代码 → AST。
+    - 把每个未 await 的 async 工具 Call 包进 Await 节点。
+    - unparse 回源码。
 
-    Layers 2-3 (already present):
-    - ``clean_coroutines_from_results`` catches coroutines in results.
-    - Error-feedback retry on execution failure.
+    Layer 2-3(已存在):
+    - ``clean_coroutines_from_results`` 捕获 results 中的 coroutine。
+    - 执行失败时的错误反馈重试。
 
-    Falls back to the original code on parse error (SyntaxError).
+    解析出错(SyntaxError)时回退为原始代码。
     """
     if not async_names:
         return code
@@ -372,11 +396,13 @@ class AskContext:
     cache_entry: Optional["CacheEntry"] = None
     cache_miss_reason: str | None = None
     code_source: str | None = None  # "predefined" | "cache" | "llm" | "builtin"
+    normalized_from: str | None = None  # 归一层命中的语义类(未命中/关闭为 None)
 
     # === LLM 重试状态 ===
     retry_count: int = 0
     previous_code: str | None = None
     previous_errors: list[str] = field(default_factory=list)
+    codegen_error: str | None = None  # 输出截断等不可用语法重试修复的错误
     dialog_history: list[AllMessageValues] = field(default_factory=list)
 
     # === 执行结果 ===
@@ -510,6 +536,34 @@ def _build_deterministic_final_answer(
     return f"{time_tag} {body}" if body else time_tag
 
 
+#: 缓存帧魔数(4 字节)——旧格式(裸 pickle)无此前缀,首载即弃。
+_CACHE_MAGIC = b"AS2C"
+_CACHE_SECRET_FILE = os.path.join(os.path.expanduser("~"), ".agentsociety_cache_secret")
+
+
+def _cache_secret() -> bytes:
+    """取本机缓存签名密钥(惰性生成,0600 权限)。
+
+    :returns: 32 字节密钥。
+    """
+    try:
+        return Path(_CACHE_SECRET_FILE).read_bytes()
+    except FileNotFoundError:
+        secret = os.urandom(32)
+        fd = os.open(_CACHE_SECRET_FILE, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        try:
+            os.write(fd, secret)
+        finally:
+            os.close(fd)
+        return secret
+    except OSError:
+        # 只读环境/权限受限时退化为进程内随机密钥:签名跨进程不共享,
+        # 缓存退化为进程本地(写读同进程,签名仍有效;篡改面从持久
+        # 文件缩小到运行内存)。确定性空密钥不可取——HMAC(空钥)
+        # 可被离线伪造。
+        return os.urandom(32)
+
+
 class TemplateCacheDB:
     """
     持久化模板缓存，支持跨运行共用。
@@ -529,20 +583,50 @@ class TemplateCacheDB:
         os.makedirs(os.path.dirname(cache_path), exist_ok=True)
 
     def _load_data(self) -> dict:
-        """从 pickle 文件加载数据。"""
+        """从带完整性校验的缓存文件加载数据。
+
+        反序列化 pickle 等价于执行任意代码——缓存文件若被篡改即 RCE
+        入口(bandit B301,2026-10-19 安全审计)。改用 HMAC 帧格式:
+        ``MAGIC + hmac_sha256(payload) + payload``;签名不匹配即拒绝
+        加载(视为损坏,回退空缓存),密钥为安装期生成的本机随机密钥。
+        旧格式(裸 pickle)首次加载即弃,重建新格式缓存。
+        """
         if not os.path.exists(self._cache_path):
             return {"next_id": 1, "by_env": {}}
         try:
-            with open(self._cache_path, "rb") as f:
-                return pickle.load(f)
+            raw = Path(self._cache_path).read_bytes()
+            if not raw.startswith(_CACHE_MAGIC) or len(raw) < 36:
+                get_logger().warning(
+                    "Template cache has legacy/corrupt format; rebuilding"
+                )
+                return {"next_id": 1, "by_env": {}}
+            digest = hmac.new(_cache_secret(), raw[36:], hashlib.sha256).digest()
+            if not hmac.compare_digest(digest, raw[4:36]):
+                get_logger().warning(
+                    "Template cache integrity check failed; refusing to load"
+                )
+                return {"next_id": 1, "by_env": {}}
+            return pickle.loads(raw[36:])
         except Exception as e:
             get_logger().warning(f"Failed to load cache from {self._cache_path}: {e}")
             return {"next_id": 1, "by_env": {}}
 
     def _save_data(self, data: dict) -> None:
-        """保存数据到 pickle 文件。"""
-        with open(self._cache_path, "wb") as f:
-            pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
+        """以 HMAC 完整性帧保存缓存数据。
+
+        :param data: 待持久化的缓存 dict。
+        :returns: 无返回值。
+        """
+        payload = pickle.dumps(data, protocol=pickle.HIGHEST_PROTOCOL)
+        frame = (
+            _CACHE_MAGIC
+            + hmac.new(_cache_secret(), payload, hashlib.sha256).digest()
+            + payload
+        )
+        tmp = self._cache_path + ".tmp"
+        with open(tmp, "wb") as f:
+            f.write(frame)
+        os.replace(tmp, self._cache_path)
 
     def load_entries(
         self, env_class_type: str
@@ -582,7 +666,7 @@ class TemplateCacheDB:
         env_class_type: str,
         entry: CacheEntry,
     ) -> int:
-        """新增缓存条目并持久化。Returns 新条目的 id。"""
+        """新增缓存条目并持久化。返回新条目的 id。"""
         data = self._load_data()
         next_id = data.get("next_id", 1)
         by_env = data.setdefault("by_env", {})
@@ -646,8 +730,7 @@ class TemplateCacheDB:
 class AskObserver(Protocol):
     """Ask流程观察者协议：流程结束后接收最终 context"""
 
-    async def on_final(self, context: AskContext) -> None:
-        raise NotImplementedError
+    async def on_final(self, context: AskContext) -> None: ...
 
 
 # ==================== 责任链：Code 获取 ====================
@@ -659,13 +742,13 @@ class CodeProvider(Protocol):
     @property
     def name(self) -> str:
         """提供者名称，用于 context.code_source"""
-        raise NotImplementedError
+        ...
 
     async def get_code(
         self, context: AskContext, router: "CodeGenRouter"
     ) -> str | None:
         """返回代码则链终止，返回 None 则传递至下一节点"""
-        raise NotImplementedError
+        ...
 
 
 # ==================== 管道-过滤器 ====================
@@ -674,8 +757,9 @@ class CodeProvider(Protocol):
 class PipelineStage(Protocol):
     """管道阶段协议，接收 AskContext，返回可能被修改的 AskContext"""
 
-    async def process(self, context: AskContext, router: "CodeGenRouter") -> AskContext:
-        raise NotImplementedError
+    async def process(
+        self, context: AskContext, router: "CodeGenRouter"
+    ) -> AskContext: ...
 
 
 # --- 观察者具体实现：统一在 on_final 中根据 context 记录 ---
@@ -813,6 +897,121 @@ class PredefinedCodeProvider:
             return router._observe_code if router._observe_code else None
         if context.instruction_stripped == "<statistics>":
             return router._statistics_code if router._statistics_code else None
+        return None
+
+
+#: 高频语义类归一规则(codegen 长尾审计 2026-10-28;L0 回放验证 58→9)。
+#: 顺序敏感;保守设计:未命中返回原样(继续走 Cache/LLM 既有链)。
+_NORMALIZE_RULES: list[tuple[str, "re.Pattern[str]", str]] = [
+    (
+        "status_query",
+        re.compile(
+            r"^(?:please\s+)?(?:report|get|observe|check|query|show|tell me|"
+            r"confirm|what is)\s+"
+            r"(?:the\s+|my\s+|agent\s+\{?[a-z_0-9]*\}?[’']s\s+)*"
+            r".{0,60}?(?:status|position|location|state)"
+            r"(?:.{0,80})?"
+            r"[.?!]?\s*$",
+            re.IGNORECASE,
+        ),
+        "Report current status and location of {detail}",
+    ),
+    (
+        "move",
+        re.compile(
+            r"^(?:use\s+move_to:\s*|move\s+)?"
+            r"(?:person\s+|agent\s+)?"
+            r"(\{[a-z_0-9]+\}|[a-z_0-9]+|\d+)\s*[,.]?\s*"
+            r"(?:to\s+|target\s+)?"
+            r"(.*?)\s+"
+            r"(?:by|using|via|with|mode)\s+"
+            r"(walking|driving|cycling|transit|bus|car|\{[a-z_]+\})"
+            r"(?:\s|\.|,|$)",
+            re.IGNORECASE,
+        ),
+        "Move {who} to {target} using {mode}",
+    ),
+    (
+        "poi_recommend",
+        re.compile(r"^use\s+recommend_poi_by_gravity\b", re.IGNORECASE),
+        "USE_RECOMMEND_POI_BY_GRAVITY_TEMPLATE",
+    ),
+    (
+        "poi_search",
+        re.compile(
+            r"^(?:list|find|search for|search|look for)\s+"
+            r"(?:nearby\s+|near\s+|the\s+|some\s+|a few\s+|"
+            r"around\s+person\s+\{?[a-z_0-9]*\}?[’']s\s+)*"
+            r"(?:POIs\s+)?(?:of\s+category\s+|of\s+)?"
+            r"([a-z_ ]+?)\s*"
+            r"(?:POIs|POI|places)\s*"
+            r"(?:near|around|within)\b(.+)$"
+            r"|^(?:list|find|search for|search|look for)\s+"
+            r"(?:nearby\s+)?([a-z_ ]+?)\s+(?:near|around|within)\b(.+)$",
+            re.IGNORECASE,
+        ),
+        "Find {category} POIs {scope}",
+    ),
+]
+
+
+def normalize_env_instruction(instruction: str) -> tuple[str | None, str]:
+    """高频语义类指令归一(L0 验证:batchJ 357 条回放 llm 58→9)。
+
+    :param instruction: agent 提交的原始 ask_env 指令。
+    :returns: (规范化模板串, 语义类);未命中 (None, "unmatched")。
+        规范化串是该类既有缓存模板的语义同构形态——交给 Cache 精确
+        匹配快路径,变量覆盖由既有 variable_keys 检查把关。
+    """
+    text = instruction.strip()
+    if text.lower() in ("<observe>", "<statistics>", "observe", "statistics"):
+        return text.lower(), "observe_builtin"
+    for sem_class, pattern, template in _NORMALIZE_RULES:
+        m = pattern.match(text)
+        if m:
+            groups = [g for g in m.groups() if g is not None]
+            parts = iter(groups)
+            # 绑定为默认参数,避免闭包晚绑定循环变量(B023)。
+            filled = re.sub(
+                r"\{[a-z_]+\}", lambda _m, _it=parts: next(_it, ""), template
+            )
+            return filled, sem_class
+    return None, "unmatched"
+
+
+class NormalizedInstructionProvider:
+    """指令归一提供者(优先级第二,Predefined 后 Cache 前)。
+
+    自由措辞 × FAISS 相似度阈值的系统性失配是 codegen 长尾主因
+    (57/65 miss 为 below_similarity_threshold,语义 96% 已有模板)。
+    本 provider 不产出代码——命中语义类时把 ``context.instruction``
+    改写为规范化模板串并返回 None,让 CacheCodeProvider 用归一串走
+    精确匹配快路径(复用 variable_keys 检查);类内无模板则照旧走
+    FAISS/LLM(归一层不吞新语义)。
+
+    开关:``AGENTSOCIETY_ENV_INSTRUCTION_NORMALIZE=0`` 关闭(L1 A/B
+    配对的基线臂用)。
+    """
+
+    @property
+    def name(self) -> str:
+        return "normalize"
+
+    async def get_code(
+        self, context: AskContext, router: "CodeGenRouter"
+    ) -> str | None:
+        if router._instruction_normalization_enabled is False:
+            return None
+        if not context.template_mode or context.is_observe_or_statistics:
+            return None
+        norm, sem_class = normalize_env_instruction(context.instruction)
+        if norm is None:
+            return None
+        # 归一串与原串同型(已是语义占位形态)才改写;类内无既有模板时
+        # 归一串照样落 FAISS miss → LLM,行为不变
+        context.instruction = norm
+        context.instruction_stripped = norm
+        context.normalized_from = sem_class
         return None
 
 
@@ -1013,7 +1212,7 @@ summary step). So write it the way you would explain the result to a person:
 - Inspect each tool's return value for a `status` field.
 - Map an explicit status: success -> `results['status'] = 'success'`; error ->
   `'fail'`; still running -> `'in_progress'`.
-- A tool that returns a plain value, or a dict without an error status, completed
+- A tool returning a plain value, or a dict without an error status, completed
   successfully: set `results['status'] = 'success'`.
 - On failure also set `results['reason'] = "<short why>"`.
 
@@ -1062,15 +1261,10 @@ Please generate the corrected code:"""
             response = await router.acompletion_with_system_prompt(
                 model="coder",
                 messages=context.dialog_history,
-                # Reasoning models share this budget between thinking and code.
-                # Leave room for both, with a bounded increase on correction.
-                max_tokens=8192 if context.retry_count == 0 else 16384,
+                max_tokens=router.max_codegen_tokens,
             )
             choice = response.choices[0]
             raw = choice.message.content or ""  # type: ignore[union-attr]
-            pattern = r"```(?:python)?\s*\n(.*?)```"
-            matches = re.findall(pattern, raw, re.DOTALL)
-            code = matches[0].strip() if matches else raw.strip()
             usage = getattr(response, "usage", None)
             token_usage = None
             if usage is not None:
@@ -1079,10 +1273,17 @@ Please generate the corrected code:"""
                     "output_tokens": getattr(usage, "completion_tokens", 0),
                 }
             if getattr(choice, "finish_reason", None) == "length":
-                get_logger().warning(
-                    "Code generation exhausted its output budget; discarding truncated code"
+                context.codegen_error = (
+                    "Code generation truncated (finish_reason=length; "
+                    f"max_codegen_tokens={router.max_codegen_tokens}; "
+                    f"output_tokens={(token_usage or {}).get('output_tokens', 0)}). "
+                    "No generated code was executed. Review the output budget."
                 )
+                get_logger().warning(context.codegen_error)
                 return "", token_usage
+            pattern = r"```(?:python)?\s*\n(.*?)```"
+            matches = re.findall(pattern, raw, re.DOTALL)
+            code = matches[0].strip() if matches else raw.strip()
             return code, token_usage
         except Exception as e:
             get_logger().error(f"{_get_debug_info('LLM代码生成失败')} - {e}")
@@ -1183,7 +1384,7 @@ class CodeStage:
                 )
 
             def _is_truthy_constant(node: ast.expr) -> bool:
-                """Check if an AST node is a compile-time truthy constant."""
+                """判断 AST 节点是否为编译期真值常量。"""
                 if isinstance(node, ast.Constant):
                     return bool(node.value)
                 if isinstance(node, ast.Name) and node.id in {"True", "__debug__"}:
@@ -1193,13 +1394,14 @@ class CodeStage:
                 return False
 
             def _loop_has_break(node: ast.AST) -> bool:
-                """Check if a while/for loop body contains a reachable break."""
+                """判断 while/for 循环体中是否含有可达的 break。"""
                 for child in ast.walk(node):
                     if isinstance(child, ast.Break):
                         return True
                 return False
 
             def _assigns_result_status(node: ast.stmt) -> bool:
+                """判断语句是否为 ``results['status'] = ...`` 终态赋值(合并自 main)。"""
                 targets = node.targets if isinstance(node, ast.Assign) else []
                 if isinstance(node, ast.AnnAssign):
                     targets = [node.target]
@@ -1245,14 +1447,52 @@ class CodeStage:
                             "Potential infinite loop: while True without break"
                         )
 
+            # 终态契约(合并自 main 6897ea07):末语句必须显式落
+            # ``results['status']``,且禁止把结果归类为 "unknown"——
+            # 公共物品博弈验证曾因模型产出 unknown 终态被误判成功。
             if not tree.body or not _assigns_result_status(tree.body[-1]):
                 violations.append("Final statement must assign results['status']")
-            if any(
-                isinstance(node, ast.Constant)
-                and isinstance(node.value, str)
-                and node.value.lower() == "unknown"
-                for node in ast.walk(tree)
-            ):
+            # Only execution-status expressions determine this contract. An
+            # unknown sender/location in business data is valid and must not
+            # trigger another paid code-generation attempt.
+            bindings: dict[str, list[ast.expr]] = {}
+            status_values: list[ast.expr] = []
+            for node in ast.walk(tree):
+                if (
+                    not isinstance(node, (ast.Assign, ast.AnnAssign))
+                    or node.value is None
+                ):
+                    continue
+                if _assigns_result_status(node):
+                    status_values.append(node.value)
+                targets = (
+                    node.targets if isinstance(node, ast.Assign) else [node.target]
+                )
+                for target in targets:
+                    if isinstance(target, ast.Name):
+                        bindings.setdefault(target.id, []).append(node.value)
+
+            def status_has_unknown(
+                value: ast.AST, seen: frozenset[str] = frozenset()
+            ) -> bool:
+                if isinstance(value, ast.Constant):
+                    return (
+                        isinstance(value.value, str)
+                        and value.value.lower() == "unknown"
+                    )
+                if isinstance(value, ast.Name):
+                    if value.id in seen:
+                        return False
+                    return any(
+                        status_has_unknown(bound, seen | {value.id})
+                        for bound in bindings.get(value.id, ())
+                    )
+                return any(
+                    status_has_unknown(child, seen)
+                    for child in ast.iter_child_nodes(value)
+                )
+
+            if any(status_has_unknown(value) for value in status_values):
                 violations.append(
                     "Generated code must classify the outcome as success, fail, "
                     "in_progress, or error instead of unknown"
@@ -1424,6 +1664,12 @@ class CodeStage:
                     router, context, retry_only=bool(context.previous_errors)
                 )
                 if not ok:
+                    if context.codegen_error:
+                        context.early_return = (
+                            {"status": "error", "error": context.codegen_error},
+                            context.codegen_error,
+                        )
+                        return context
                     context.retry_count += 1
                     context.previous_errors.append("Failed to generate code from LLM.")
                     context.previous_code = None
@@ -1458,6 +1704,7 @@ class CodeStage:
                             return context
                         context.code = None
                         continue
+
             code = context.code
             if code is None:
                 return context
@@ -1576,6 +1823,10 @@ class CodeGenRouter(RouterBase):
     4. 使用 AST 解析检查代码安全性
     5. 通过 compile 和 exec 执行代码，捕获打印输出
     6. 根据执行结果和打印输出生成最终响应
+
+    :param max_codegen_tokens: 代码生成的输出 token 上限，默认为 16384。
+        推理模型的思考也消耗该预算；可按模型能力显式调整。
+    :raises ValueError: 输出上限非正数。
     """
 
     # 允许的内置函数
@@ -1676,7 +1927,12 @@ class CodeGenRouter(RouterBase):
         | None = None,  # 缓存数据库目录，None 则用 {Config.HOME_DIR}/codegen_router_cache
         # Injected serializable LLM clients. See RouterBase.
         llm_clients_spec: dict[str, Any] | None = None,
+        max_codegen_tokens: int = 16384,
     ):
+        # 预算包含推理与代码正文，避免网关默认 4096 tokens 在输出代码前耗尽。
+        if max_codegen_tokens < 1:
+            raise ValueError("max_codegen_tokens must be positive")
+        self.max_codegen_tokens = max_codegen_tokens
         super().__init__(
             env_modules=env_modules,
             max_steps=max_steps,
@@ -1724,20 +1980,14 @@ class CodeGenRouter(RouterBase):
             embedding_dims=Config.EMBEDDING_DIMS,
             max_size_per_env=template_cache_max_size,
         )
-        # 每步统计：用于计算 delta 并写入 JSONL
-        self._cache_stats_jsonl_path = os.path.join(cache_dir, "cache_stats.jsonl")
-        self._prev_step_stats: CacheStats | None = None
-        self._step_index: int = 0
-        self._run_id: str | None = None  # 在 init() 时设置，用于区分不同次模拟
+        # 每步统计计数器（CacheStatsObserver 维护；持久化写盘在 Phase 0.4 接回）
+        self._cache_stats = CacheStats()
 
         # 当前 env 的缓存集（从 DB 加载，在 init() 时填充）
         self._cache_entries: list[CacheEntry] = []
         self._cache_faiss_index: faiss.Index | None = None
         self._cache_faiss_entry_indices: list[int] = []
         self._template_cache_lock: asyncio.Lock = asyncio.Lock()
-
-        # 缓存统计信息
-        self._cache_stats = CacheStats()
 
         # Embedding缓存
         self._embedding_cache: dict[str, np.ndarray] = {}
@@ -1767,19 +2017,22 @@ class CodeGenRouter(RouterBase):
         # Code 获取责任链：Predefined -> Cache -> LLM（LLM 在 pipeline 中单独处理）
         self._code_provider_chain: list[CodeProvider] = [
             PredefinedCodeProvider(),
+            NormalizedInstructionProvider(),
             CacheCodeProvider(),
             LLMCodegenProvider(),
         ]
+        # 指令归一层开关(候选 7 L1 判读 rejected(weak_effect)后默认关——
+        # 2026-10-28 配对实测:llm-codegen -33% 但墙钟 +3.3%,预注册弱效线;
+        # AGENTSOCIETY_ENV_INSTRUCTION_NORMALIZE=1 可显式开启复测)
+        self._instruction_normalization_enabled = (
+            os.environ.get("AGENTSOCIETY_ENV_INSTRUCTION_NORMALIZE", "0") == "1"
+        )
 
     def _exec_lock_ctx(self):
-        """Return the exec serialization context manager (lock or a no-op).
+        """返回执行串行化的上下文管理器(锁或 no-op)。
 
-        Args:
-            None.
-
-        Returns:
-            An async context manager — the lock when any module is not
-            concurrency-safe, otherwise a no-op (parallel exec allowed).
+        :returns: async 上下文管理器——任一模块非并发安全时为锁,否则为
+            no-op(允许并行执行)。
         """
         if self._exec_needs_lock:
             return self._execute_lock
@@ -1860,6 +2113,9 @@ class CodeGenRouter(RouterBase):
         # CodeStage/SummaryStage emit llm.completion spans parented to this ask.
         agent_id = ctx.get("agent_id") if isinstance(ctx, dict) else None
         _trace_token = self._set_trace_context(trace_id, parent_span_id, agent_id)
+        t0 = time.time_ns()
+        status = "ok"
+        error_text = ""
         try:
             stages: list[PipelineStage] = [
                 InitStage(),
@@ -1869,19 +2125,116 @@ class CodeGenRouter(RouterBase):
             ]
             for stage in stages:
                 context = await stage.process(context, self)
+        except Exception as exc:
+            status = "error"
+            error_text = str(exc)
+            raise
         finally:
+            self._emit_ask_span(
+                context, t0, status, error_text, trace_id, parent_span_id, agent_id
+            )
+            self._persist_cache_stats()
             self._reset_trace_context(_trace_token)
             self.clear_trace_context()
         if context.early_return:
             return context.early_return
         return context.results, context.final_answer
 
+    def _emit_ask_span(
+        self,
+        context: AskContext,
+        start_ns: int,
+        status: str,
+        error_text: str,
+        trace_id: str | None,
+        parent_span_id: str | None,
+        agent_id: Any,
+    ) -> None:
+        """为一次完整 env ask 发 ``env.ask`` span(best-effort)。
+
+        此前 trace 里只有 env 侧的 ``llm.completion`` 子调用,缓存命中
+        的 ask(无 LLM 调用)完全不可见,无法回答"这次 ask 走的哪条
+        路、重试了几轮"。span 聚合 code_source/cache 命中/重试/成败,
+        填上这块观测盲区。sink 或 trace 上下文缺失时静默跳过。
+
+        :param context: 管道走完(或异常中断)后的 ask 状态。
+        :param start_ns: ask 开始时刻(纳秒)。
+        :param status: "ok" 或 "error"。
+        :param error_text: 异常消息(仅失败时)。
+        :param trace_id: OTel trace id。
+        :param parent_span_id: 父 span id(agent 侧 react.tool)。
+        :param agent_id: 发起 ask 的 agent id(仅入 span 属性)。
+        """
+        import uuid
+
+        sink = self._trace_sink
+        if sink is None or trace_id is None:
+            return
+        answer = context.final_answer or (
+            context.early_return[1] if context.early_return else ""
+        )
+        record = {
+            "resource": {
+                "service.name": "agentsociety2.env_router",
+                "agent.id": agent_id if agent_id is not None else 0,
+            },
+            "scope": {"name": "agentsociety2.env.codegen", "version": "1"},
+            "trace_id": trace_id,
+            "span_id": uuid.uuid4().hex[:16],
+            "parent_span_id": parent_span_id or "",
+            "name": "env.ask",
+            "kind": "internal",
+            "start_time_unix_nano": start_ns,
+            "end_time_unix_nano": time.time_ns(),
+            "status": {"code": status, "message": error_text},
+            "attributes": {
+                "operation.type": "env",
+                "env.readonly": context.readonly,
+                "env.template_mode": context.template_mode,
+                "env.code_source": context.code_source or "",
+                "env.cache_miss_reason": context.cache_miss_reason or "",
+                "env.retry_count": context.retry_count,
+                "env.early_return": context.early_return is not None,
+                "env.answer_chars": len(str(answer)),
+                "event.sequence": getattr(self._cache_stats, "request_count", 0),
+            },
+            "events": [],
+        }
+        try:
+            sink.append_record(record)
+        except Exception:
+            get_logger().debug("Failed to append env.ask span", exc_info=True)
+
+    def _persist_cache_stats(self) -> None:
+        """把缓存统计快照原子落盘到 ``run_dir/env/cache_stats.json``。
+
+        统计此前只活在 actor 内存,进程退出即失,driver 也无从读取。
+        每 ask 后写一次小 JSON(原子替换);失败仅 debug 记录,不影响
+        ask 主流程。
+
+        :returns: 无返回值。
+        """
+        if self.run_dir is None:
+            return
+        try:
+            from agentsociety2.storage.workspace_state import atomic_write_text
+
+            out = Path(self.run_dir) / "env" / "cache_stats.json"
+            out.parent.mkdir(parents=True, exist_ok=True)
+            atomic_write_text(
+                out,
+                json.dumps(self._cache_stats.to_dict(), ensure_ascii=False, indent=2),
+            )
+        except Exception:
+            get_logger().debug("Failed to persist cache stats", exc_info=True)
+
     async def init(self, start_datetime: datetime) -> bool:
         """
-        Initialize the router with the start datetime and generate code using LLM.
+        以起始时间初始化 router,并用 LLM 生成代码。
         从本地缓存数据库加载当前 env 类型的缓存集，构建 FAISS 索引。
 
         :returns: 是否有 env 模块恢复了 checkpoint（透传自 ``RouterBase.init``）。
+        :raises ValueError: 初始化代码输出被截断，或未通过生成及执行校验。
         """
         restored = await super().init(start_datetime)
 
@@ -1891,9 +2244,6 @@ class CodeGenRouter(RouterBase):
         # 从持久化 DB 加载当前 env_class_type 的缓存，用于 embedding 相似度检索
         if self._template_cache_enabled:
             self._load_cache_from_db()
-
-        # 为本次模拟生成 run_id，便于在 JSONL 中区分不同次模拟
-        self._run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
 
         # Generate code using LLM if not already done
         if not self._llm_code_generated:
@@ -1917,7 +2267,7 @@ class CodeGenRouter(RouterBase):
         return restored
 
     async def step(self, tick: int, t: datetime):
-        """Run forward one step for all simulation modules."""
+        """推进所有仿真模块一个仿真步。"""
         await super().step(tick, t)
 
     async def _generate_initialization_code_with_retry(
@@ -1955,6 +2305,8 @@ class CodeGenRouter(RouterBase):
                         "output_tokens", 0
                     )
 
+            if tmp_ctx.codegen_error:
+                raise ValueError(tmp_ctx.codegen_error)
             if not code:
                 previous_errors.append("Failed to generate code from LLM.")
                 if retry_count >= self.max_llm_call_retry:

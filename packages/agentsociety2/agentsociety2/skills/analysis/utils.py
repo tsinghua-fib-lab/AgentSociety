@@ -4,6 +4,7 @@
 行为与目录约定见同包 `README.md`。
 """
 
+import json
 import re
 import sqlite3
 import xml.etree.ElementTree as ET
@@ -12,9 +13,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, TypeVar
 
-import json_repair
 from pydantic import BaseModel
 
+from agentsociety2.agent.json_utils import loads_llm_json
 from agentsociety2.storage.replay_metadata import (
     COLUMN_CATALOG_TABLE,
     DATASET_CATALOG_TABLE,
@@ -407,7 +408,7 @@ def parse_llm_json_response(content: str) -> dict[str, Any]:
     json_str = _take_json_string(content)
     if not json_str:
         raise ValueError("No JSON content extracted")
-    data = json_repair.loads(json_str)
+    data = loads_llm_json(json_str, expect="object")
     if not isinstance(data, dict):
         raise ValueError("JSON root must be an object")
     return data
@@ -563,8 +564,8 @@ def extract_database_schema(db_path: Path) -> dict[str, Any]:
         dataset_rows = cursor.fetchall()
         dataset_meta_by_table: dict[str, dict[str, Any]] = {}
         for row in dataset_rows:
-            default_order = json_repair.loads(row[8]) if row[8] else []
-            capabilities = json_repair.loads(row[9]) if row[9] else []
+            default_order = json.loads(row[8]) if row[8] else []
+            capabilities = json.loads(row[9]) if row[9] else []
             dataset_meta_by_table[row[1]] = {
                 "dataset_id": row[0],
                 "kind": row[2],
@@ -586,9 +587,9 @@ def extract_database_schema(db_path: Path) -> dict[str, Any]:
         column_rows = cursor.fetchall()
         columns_by_dataset: dict[str, list[dict[str, Any]]] = {}
         for row in column_rows:
-            enum_values = json_repair.loads(row[8]) if row[8] else None
-            example = json_repair.loads(row[9]) if row[9] else None
-            tags = json_repair.loads(row[11]) if row[11] else []
+            enum_values = json.loads(row[8]) if row[8] else None
+            example = json.loads(row[9]) if row[9] else None
+            tags = json.loads(row[11]) if row[11] else []
             columns_by_dataset.setdefault(row[0], []).append(
                 {
                     "name": row[1],

@@ -1,4 +1,4 @@
-"""Person-specific tool schemas.
+"""PersonAgent 专属的工具 schema。
 
 中文：集中定义 PersonAgent 专属的记忆抽取 / 合并 OpenAI function/tool schema。
 English: Defines PersonAgent-specific memory extraction / consolidation
@@ -18,16 +18,12 @@ from agentsociety2.agent.memory import MemoryEpisodeType
 
 
 def memory_episode_item_schema() -> dict[str, Any]:
-    """JSON schema for one memory episode item.
+    """单条记忆 episode 的 JSON schema。
 
-    Used by the step-mode ``finish`` tool's ``memories`` argument
-    (:func:`finish_step_tool_schema`).
+    供 step 模式 ``finish`` 工具的 ``memories`` 参数使用
+    (:func:`finish_step_tool_schema`)。
 
-    Args:
-        None.
-
-    Returns:
-        JSON schema dict for one episode object.
+    :returns: 单个 episode 对象的 JSON schema dict。
     """
     episode_types = list(MemoryEpisodeType.__args__)
     return {
@@ -73,13 +69,12 @@ def memory_episode_item_schema() -> dict[str, Any]:
 
 
 def finish_ask_tool_schema() -> dict[str, Any]:
-    """``finish`` tool for ask / readonly mode: answer-only.
+    """ask / readonly 模式的 ``finish`` 工具:仅含答案。
 
-    PersonAgent overrides the base ``finish`` with this in ask mode so the
-    model can only return its external answer (no ``final`` / ``memories``).
+    PersonAgent 在 ask 模式下用此 schema 覆盖基类 ``finish``,使模型只能返回
+    外部答案(没有 ``final`` / ``memories``)。
 
-    Returns:
-        Tool schema dict for the ask-mode ``finish``.
+    :returns: ask 模式 ``finish`` 的工具 schema dict。
     """
     return {
         "type": "function",
@@ -108,16 +103,14 @@ def finish_ask_tool_schema() -> dict[str, Any]:
 
 
 def finish_step_tool_schema() -> dict[str, Any]:
-    """``finish`` tool for step mode: inline step memories only.
+    """step 模式的 ``finish`` 工具:仅内联 step 记忆。
 
-    PersonAgent overrides the base ``finish`` with this in step mode. The step's
-    outcome is recorded entirely as memory episodes in ``memories`` (there is no
-    separate ``final`` text and no separate extraction pass), so ``memories`` is
-    the sole required argument — use an empty list only when nothing notable
-    happened this tick.
+    PersonAgent 在 step 模式下用此 schema 覆盖基类 ``finish``。step 的结果
+    完全以记忆 episode 形式记入 ``memories``(没有单独的 ``final`` 文本、也
+    没有单独的抽取流程),因此 ``memories`` 是唯一必填参数;仅当本 tick 没有
+    值得记录的事情时才传空列表。
 
-    Returns:
-        Tool schema dict for the step-mode ``finish``.
+    :returns: step 模式 ``finish`` 的工具 schema dict。
     """
     return {
         "type": "function",
@@ -147,36 +140,6 @@ def finish_step_tool_schema() -> dict[str, Any]:
                     },
                 },
                 "required": ["memories"],
-                "additionalProperties": False,
-            },
-        },
-    }
-
-
-def memory_consolidation_tool_schema() -> dict[str, Any]:
-    """Build the MEMORY.md consolidation tool schema.
-
-    Args:
-        None.
-
-    Returns:
-        Tool schema for ``rewrite_memory_md``.
-    """
-    return {
-        "type": "function",
-        "function": {
-            "name": "rewrite_memory_md",
-            "description": "Return the refreshed compact MEMORY.md content.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "memory_md": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 20000,
-                    }
-                },
-                "required": ["memory_md"],
                 "additionalProperties": False,
             },
         },

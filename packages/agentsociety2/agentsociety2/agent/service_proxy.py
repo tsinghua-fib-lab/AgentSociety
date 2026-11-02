@@ -1,14 +1,13 @@
-"""Shared-service handle container :class:`ServiceProxy`.
+"""共享服务句柄容器 :class:`ServiceProxy`。
 
-Agents do not own runtime objects (LLM dispatchers, env routers, trace/replay
-writers). Instead these shared services are injected as serializable handles via
-a single :class:`ServiceProxy`, received in :meth:`from_workspace`. The proxy
-holds only handles/data (no locks, connections, or threads), so it crosses Ray
-Task boundaries cleanly.
+Agent 不持有运行时对象(LLM dispatcher、env router、trace/replay
+writer)。这些共享服务改为以可序列化句柄的形式,经由单个
+:class:`ServiceProxy` 在 :meth:`from_workspace` 中注入。该 proxy 只持有
+句柄/数据(不含锁、连接或线程),因此能干净地跨越 Ray Task 边界。
 
-The proxy, protocol, and factory live here; the concrete proxy classes live in
-their runtime modules (:class:`~agentsociety2.trace.TraceProxy`,
-:class:`~agentsociety2.storage.replay_proxy.ReplayProxy`).
+proxy、协议与工厂位于本模块,具体的 proxy 类位于各自的运行时模块
+(:class:`~agentsociety2.trace.TraceProxy`、
+:class:`~agentsociety2.storage.replay_proxy.ReplayProxy`)。
 """
 
 from __future__ import annotations
@@ -24,7 +23,7 @@ from typing import Any, Protocol, runtime_checkable
 
 @runtime_checkable
 class EnvLike(Protocol):
-    """Environment router protocol (in-process ``RouterBase`` or remote ``EnvRouterProxy``)."""
+    """环境路由协议(进程内 ``RouterBase`` 或远程 ``EnvRouterProxy``)。"""
 
     async def ask(
         self,
@@ -49,7 +48,7 @@ class EnvLike(Protocol):
 
 @runtime_checkable
 class LLMClientLike(Protocol):
-    """LLM client protocol: a single completion request."""
+    """LLM client 协议:单次补全请求。"""
 
     async def call(
         self,
@@ -64,7 +63,7 @@ class LLMClientLike(Protocol):
 
 @runtime_checkable
 class TraceLike(Protocol):
-    """Trace writer protocol."""
+    """Trace writer 协议。"""
 
     def append_record(self, record: dict[str, Any]) -> None:
         raise NotImplementedError
@@ -75,7 +74,7 @@ class TraceLike(Protocol):
 
 @runtime_checkable
 class ReplayLike(Protocol):
-    """Replay writer protocol."""
+    """Replay writer 协议。"""
 
     async def write_batch(self, table: str, rows: list[dict[str, Any]]) -> None:
         raise NotImplementedError
@@ -88,9 +87,9 @@ class ReplayLike(Protocol):
 
 @dataclass
 class LLMClients:
-    """LLM client set organized by role.
+    """按角色组织的 LLM client 集合。
 
-    Agents use ``default``; the env router uses ``coder`` / ``default``.
+    Agent 使用 ``default``,env router 使用 ``coder`` / ``default``。
     """
 
     coder: Any
@@ -100,17 +99,16 @@ class LLMClients:
 
 @dataclass
 class ServiceProxy:
-    """One-stop container for all shared-service handles.
+    """所有共享服务句柄的一站式容器。
 
-    ``from_workspace(path, service_proxy)`` receives only this object. All
-    fields are serializable handles (LLM clients, env router, optional trace
-    and replay proxies), so the container travels across Ray Task boundaries.
+    ``from_workspace(path, service_proxy)`` 只接收本对象。所有字段都是
+    可序列化句柄(LLM client、env router、可选的 trace 与 replay proxy),
+    因此该容器可跨 Ray Task 边界传输。
 
-    The ``llm`` clients carry only connection params (no live Router/semaphore);
-    each Ray Task / actor that receives a deserialized copy rebuilds its own
-    per-loop runtime on first ``call()``. :meth:`take_token_stats` drains the
-    per-task token-usage delta so a Ray Task can carry it back in its return
-    value (no actor, no module-global aggregate).
+    ``llm`` client 只携带连接参数(不含活跃的 Router/semaphore),每个接收
+    反序列化副本的 Ray Task / actor 会在首次 ``call()`` 时重建自己的按事件
+    循环的运行时。:meth:`take_token_stats` 排空按任务的 token 使用增量,
+    使 Ray Task 能把它带回返回值中(无 actor,无模块级全局聚合)。
     """
 
     env: Any  # EnvLike
@@ -120,11 +118,10 @@ class ServiceProxy:
     run_dir: Path | None = None
 
     def take_token_stats(self) -> dict[str, dict[str, int]]:
-        """Drain + return this proxy's LLM clients' token usage (a delta).
+        """排空并返回本 proxy 各 LLM client 的 token 用量(增量)。
 
-        Called at the end of a Ray Task so it can fold the delta into its
-        return value. Each ``LLMClient`` clears its own stats, so a reused
-        worker process never double-counts across tasks.
+        在 Ray Task 结束时调用,以便把增量并入其返回值。每个 ``LLMClient``
+        自行清零统计,因此复用的 worker 进程不会跨任务重复计数。
         """
         from agentsociety2.config.llm_dispatcher import merge_token_stats
 
@@ -141,26 +138,13 @@ class ServiceProxy:
 
 
 def _role_configured(role: str) -> bool:
-    """Whether a role is configured (avoids forcing a dispatcher for unconfigured embedding)."""
+    """某个角色是否已配置(避免为未配置的 embedding 强建 dispatcher)。"""
     try:
         from agentsociety2.config import get_model_name
 
         return bool(get_model_name(role))
     except Exception:
         return False
-
-
-def _client_for_role(role: str) -> Any:
-    """Build a serializable :class:`LLMClient` carrying one role's connection params.
-
-    Thin delegation to :func:`agentsociety2.config.llm_dispatcher.build_client_for_role`.
-    This used to duplicate that function's body, which meant every new client
-    field (e.g. the thinking settings) had to be added in two places or the
-    driver path would silently miss it.
-    """
-    from agentsociety2.config.llm_dispatcher import build_client_for_role
-
-    return build_client_for_role(role)
 
 
 def build_service_proxy(
@@ -173,59 +157,55 @@ def build_service_proxy(
     replay_db_path: Path | str | None = None,
     replay_sample_rate: float = 1.0,
 ) -> ServiceProxy:
-    """Compose a :class:`ServiceProxy` from local LLM clients and optional actors.
+    """由本地 LLM client 与可选 actor 组装一个 :class:`ServiceProxy`。
 
-    Builds serializable LLM clients whose Routers are created per process /
-    event loop on first use, plus optional :class:`~agentsociety2.trace.TraceProxy`
-    and :class:`~agentsociety2.storage.replay_proxy.ReplayProxy` pointing at
-    append-only replay/trace directories. All fields are serializable handles, so the resulting
-    proxy can be passed into agent Ray tasks / ``from_workspace``.
+    构建可序列化的 LLM client(其 Router 在每个进程/事件循环首次使用时
+    创建),以及指向 append-only replay/trace 目录的可选
+    :class:`~agentsociety2.trace.TraceProxy` 和
+    :class:`~agentsociety2.storage.replay_proxy.ReplayProxy`。所有字段都是
+    可序列化句柄,因此组装出的 proxy 可传入 agent Ray task /
+    ``from_workspace``。
 
-    Args:
-        env: An in-process router (``RouterBase``) or an ``EnvRouterProxy`` —
-            both satisfy :class:`EnvLike`. This is the only variation; the rest
-            of the wiring is identical.
-        run_dir: Run directory (also the default base for trace / replay paths).
-        trace: Trace wiring. Accepts:
+    :param env: 进程内 router(``RouterBase``)或 ``EnvRouterProxy``,两者都
+        满足 :class:`EnvLike`。这是唯一的可变项,其余接线完全一致。
+    :param run_dir: 运行目录(同时也是 trace / replay 路径的默认基目录)。
+    :param trace: trace 接线,接受:
 
-            * a pre-built :class:`~agentsociety2.trace.TraceProxy`
-              (used as-is) — lets the driver share one trace dir between the
-              agents' ``ServiceProxy`` and the env router actor;
-            * ``True`` — build a :class:`~agentsociety2.trace.TraceProxy`
-              pointing at ``trace_dir`` (or ``run_dir / "trace"``);
-            * ``False`` / ``None`` — ``trace`` is ``None`` on the proxy (no-op).
+        * 预构建的 :class:`~agentsociety2.trace.TraceProxy`(原样使用),
+          让驱动端在 agent 的 ``ServiceProxy`` 与 env router actor 之间
+          共享同一个 trace 目录;
+        * ``True``,构建一个指向 ``trace_dir``(或 ``run_dir / "trace"``)
+          的 :class:`~agentsociety2.trace.TraceProxy`;
+        * ``False`` / ``None``,proxy 上的 ``trace`` 为 ``None``(no-op)。
 
-            Trace is distributed and lock-free: the proxy only carries an output
-            dir, and each consumer builds its own append-only
-            :class:`~agentsociety2.trace.ShardedAppendSink`.
-        trace_dir: Override for the trace base directory (defaults to
-            ``run_dir / "trace"``). Ignored when ``trace`` is a
-            :class:`~agentsociety2.trace.TraceProxy`.
-        replay: Replay wiring. Accepts:
+        trace 是分布式且无锁的:proxy 只携带输出目录,每个消费者各自构建
+        append-only 的 :class:`~agentsociety2.trace.ShardedAppendSink`。
+    :param trace_dir: trace 基目录的覆盖值(默认 ``run_dir / "trace"``)。
+        当 ``trace`` 是 :class:`~agentsociety2.trace.TraceProxy` 时被忽略。
+    :param replay: replay 接线,接受:
 
-            * a pre-built :class:`~agentsociety2.storage.replay_proxy.ReplayProxy`
-              (used as-is) — lets the driver hand the same replay directory to
-              the agents' ``ServiceProxy`` and the env router actor;
-            * ``True`` — create a new ``ReplayProxy`` here;
-            * ``False`` / ``None`` — a disabled ``ReplayProxy`` (no-op).
+        * 预构建的 :class:`~agentsociety2.storage.replay_proxy.ReplayProxy`
+          (原样使用),让驱动端把同一 replay 目录交给 agent 的
+          ``ServiceProxy`` 与 env router actor;
+        * ``True``,在此创建新的 ``ReplayProxy``;
+        * ``False`` / ``None``,禁用的 ``ReplayProxy``(no-op)。
 
-        replay_db_path: Legacy parameter name. It now overrides the replay
-            output directory (defaults to ``run_dir / "replay"``). Ignored when
-            ``replay`` is a :class:`~agentsociety2.storage.replay_proxy.ReplayProxy`.
-        replay_sample_rate: Sampling rate for replay writes (1.0 = all).
-            Ignored when ``replay`` is a
-            :class:`~agentsociety2.storage.replay_proxy.ReplayProxy`.
-
-    Returns:
-        A fully wired :class:`ServiceProxy`.
+    :param replay_db_path: 旧参数名,现在覆盖 replay 输出目录(默认
+        ``run_dir / "replay"``)。当 ``replay`` 是
+        :class:`~agentsociety2.storage.replay_proxy.ReplayProxy` 时被忽略。
+    :param replay_sample_rate: replay 写入的采样率(1.0 = 全量)。当
+        ``replay`` 是 :class:`~agentsociety2.storage.replay_proxy.ReplayProxy`
+        时被忽略。
+    :returns: 接线完备的 :class:`ServiceProxy`。
     """
+    from agentsociety2.config.llm_dispatcher import build_client_for_role
     from agentsociety2.storage.replay_proxy import ReplayProxy
     from agentsociety2.trace import TraceProxy
 
     llm = LLMClients(
-        coder=_client_for_role("coder"),
-        default=_client_for_role("default"),
-        embedding=_client_for_role("embedding")
+        coder=build_client_for_role("coder"),
+        default=build_client_for_role("default"),
+        embedding=build_client_for_role("embedding")
         if _role_configured("embedding")
         else None,
     )

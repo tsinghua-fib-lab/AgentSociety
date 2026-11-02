@@ -38,18 +38,22 @@ async def test_truncated_code_is_discarded_and_correction_has_room_to_finish():
         )
 
     router = SimpleNamespace(
+        max_codegen_tokens=16384,
         acompletion_with_system_prompt=AsyncMock(
             side_effect=[response("length"), response("stop")]
-        )
+        ),
     )
     ctx = AskContext(ctx={}, instruction="Observe", readonly=True, template_mode=False)
     result, usage = await LLMCodegenProvider._call_llm(router, ctx)
     assert result == ""
     assert usage == {"input_tokens": 100, "output_tokens": 8192}
+    # 截断的 codegen_error 必须带预算诊断(合并自本分支语义)。
+    assert "max_codegen_tokens=16384" in ctx.codegen_error
     ctx.retry_count = 1
     result, _ = await LLMCodegenProvider._call_llm(router, ctx)
     assert result == code
+    # 预算是路由配置的统一值:首发与纠错重试都拿满额,不做逐次加码。
     assert [
         call.kwargs["max_tokens"]
         for call in router.acompletion_with_system_prompt.call_args_list
-    ] == [8192, 16384]
+    ] == [16384, 16384]

@@ -144,13 +144,13 @@ async def call_literature_mcp_tool(
     ):
         await session.initialize()
         result = await session.call_tool(tool_name, arguments=payload)
-        message = _extract_tool_json(result) if result.content else {"error": "unknown"}
 
-    # Raise after the AnyIO-backed MCP contexts have closed. Raising inside them
-    # wraps the application error in an ExceptionGroup in MCP 2.x.
+    # 在 transport 退出后提取并抛应用错误,避免 AnyIO 将其包装成 ExceptionGroup
+    # (含 _extract_tool_json 对畸形内容抛出的 ValueError——提取也放在上下文外)。
     if result.is_error:
+        message = _extract_tool_json(result) if result.content else {"error": "unknown"}
         raise RuntimeError(f"MCP tool error: {message}")
-    return message
+    return _extract_tool_json(result)
 
 
 async def call_literature_search_mcp(

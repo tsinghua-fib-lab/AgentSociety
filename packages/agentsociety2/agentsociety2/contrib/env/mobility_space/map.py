@@ -266,7 +266,7 @@ class Map:
 
         :param position: 含 ``aoi_position`` 或 ``lane_position`` 的位置。
         :param lane_id: 车道 ID。
-        :returns: 车道上的 ``s``（与 proto 定义一致）。
+        :returns: 车道上的 ``s`` （与 proto 定义一致）。
         :raises AssertionError: ``aoi`` 内找不到该车道连接，或 ``position`` 无有效 oneof 字段时。
         """
         # 处理起点处的截断

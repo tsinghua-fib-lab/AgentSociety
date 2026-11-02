@@ -1,12 +1,12 @@
-"""Context exposed to no-arg skill lifecycle-hook functions.
+"""无入参 skill 生命周期 hook 函数的运行上下文。
 
 中文：为无入参的 skill 生命周期 hook 函数提供运行上下文。
 English: Runtime context for no-arg skill lifecycle-hook functions.
 
-When the skill runtime detects a hook function (e.g. ``pre_step``) in a skill
-script module, it activates a :class:`HookContext` via a contextvar before
-calling the function. The function reads it with :func:`get_hook_context`
-instead of taking arguments — keeping the signature no-arg (sync or async).
+当 skill 运行时在 skill 脚本模块中检测到 hook 函数(如 ``pre_step``)时,会在
+调用该函数前通过 contextvar 激活一个 :class:`HookContext`。函数用
+:func:`get_hook_context` 读取它,而非接收参数,从而保持无入参签名
+(sync 或 async)。
 """
 
 from __future__ import annotations
@@ -19,15 +19,14 @@ from typing import Any
 
 @dataclass(frozen=True)
 class HookContext:
-    """Active hook context.
+    """激活中的 hook 上下文。
 
-    Args:
-        workspace_root: The agent workspace root (replaces AGENT_WORK_DIR).
-        skill_dir: The skill package root (replaces SKILL_DIR).
-        skill_id: Registry skill id (``namespace@name``).
-        hook_type: Lifecycle hook name (``pre_step`` / ``post_step``).
-        payload: The lifecycle payload dict (``time``, ``agent_id``,
-            ``step_count``, ``tick``, ...).
+    :param workspace_root: agent workspace 根目录(取代 AGENT_WORK_DIR)。
+    :param skill_dir: skill 包根目录(取代 SKILL_DIR)。
+    :param skill_id: 注册表 skill id(``namespace@name``)。
+    :param hook_type: 生命周期 hook 名(``pre_step`` / ``post_step``)。
+    :param payload: 生命周期 payload dict(``time``、``agent_id``、
+        ``step_count``、``tick``、...)。
     """
 
     workspace_root: Path
@@ -43,16 +42,10 @@ _hook_ctx: contextvars.ContextVar[HookContext | None] = contextvars.ContextVar(
 
 
 def get_hook_context() -> HookContext:
-    """Return the active hook context (raises if called outside a hook).
+    """返回激活中的 hook 上下文(在 hook 之外调用会抛错)。
 
-    Args:
-        None.
-
-    Returns:
-        The active :class:`HookContext`.
-
-    Raises:
-        RuntimeError: When no hook is active.
+    :returns: 激活中的 :class:`HookContext`。
+    :raises RuntimeError: 没有 hook 处于激活状态时抛出。
     """
     ctx = _hook_ctx.get()
     if ctx is None:
@@ -61,24 +54,18 @@ def get_hook_context() -> HookContext:
 
 
 def _set_hook_context(ctx: HookContext) -> contextvars.Token[HookContext | None]:
-    """Activate a hook context (internal — used by the runtime).
+    """激活一个 hook 上下文(内部使用,由运行时调用)。
 
-    Args:
-        ctx: The hook context to activate.
-
-    Returns:
-        A token to pass to :func:`_reset_hook_context`.
+    :param ctx: 要激活的 hook 上下文。
+    :returns: 一个需传给 :func:`_reset_hook_context` 的 token。
     """
     return _hook_ctx.set(ctx)
 
 
 def _reset_hook_context(token: contextvars.Token[HookContext | None]) -> None:
-    """Deactivate a hook context (internal — used by the runtime).
+    """停用一个 hook 上下文(内部使用,由运行时调用)。
 
-    Args:
-        token: The token returned by :func:`_set_hook_context`.
-
-    Returns:
-        None.
+    :param token: :func:`_set_hook_context` 返回的 token。
+    :returns: 无返回值。
     """
     _hook_ctx.reset(token)

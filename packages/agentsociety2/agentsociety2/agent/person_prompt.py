@@ -1,4 +1,4 @@
-"""Prompt construction helpers for PersonAgent.
+"""PersonAgent 的提示词构建辅助函数。
 
 中文：集中管理 PersonAgent 的提示词片段和消息构建。
 English: Centralizes prompt fragments and message construction for PersonAgent.
@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 from html import escape as _xml_escape
+from pathlib import Path
 from typing import Any
 
 BASE_RULES_TEMPLATE = """<identity>
@@ -72,17 +73,42 @@ CAPABILITIES_TEMPLATE = """<capabilities>
 </capabilities>"""
 
 
+#: run 级提示词 override 文件名;位于 ``run_dir/`` 下,由 PersonAgent 在
+#: restore 时解析(Ray 下 agent 每 tick 重建,天然逐 tick 生效——RSI 循环
+#: 改文件即变异,无需重建 workspace)。
+PROMPT_OVERRIDES_FILENAME = "prompt_overrides.json"
+
+
+def load_prompt_overrides(run_dir: Path) -> dict:
+    """加载 run 级提示词 override(失败一律回退空 dict,绝不影响运行)。
+
+    设计约束(见 optimization/ROADMAP.md 2.2):override 必须 run 级——
+    全 agent 共享同一文件,跨 agent 字节一致,前缀缓存共享不破;文件
+    缺失/JSON 畸形/非对象 → 返回 ``{}``,提示词与编译期默认逐字节一致。
+
+    :param run_dir: 实验运行目录。
+    :returns: override dict;已知键:``base_rules``(system 前导)、
+        ``memory_consolidation``(MEMORY.md 合并 system prompt)。
+    """
+    path = run_dir / PROMPT_OVERRIDES_FILENAME
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return {}
+    except Exception:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
 def build_base_rules() -> str:
-    """Build the invariant framework preamble for the system prompt.
+    """构建系统提示词中不变的框架前导块。
 
-    Deliberately free of the agent name, the ask/step mode, and every
-    per-agent config flag: this block must be byte-identical for every agent in
-    a run and across both modes, so the provider's prompt-prefix cache can be
-    shared. Anything agent-specific belongs in ``<agent>`` (user message) or in
-    :func:`build_capabilities_block`, both of which come later in the request.
+    特意不含 agent 名、ask/step 模式与任何 per-agent 配置开关:该块必须在
+    一次运行内对所有 agent、且跨两种模式字节一致,provider 的 prompt 前缀缓存
+    才能被共享。任何 agent 专属内容都应放进 ``<agent>``(user 消息)或
+    :func:`build_capabilities_block`,两者都位于请求中更靠后的位置。
 
-    Returns:
-        Rendered invariant preamble text.
+    :returns: 渲染后的不变前导文本。
     """
     return BASE_RULES_TEMPLATE
 
@@ -93,21 +119,16 @@ def build_capabilities_block(
     enable_todo_list: bool = True,
     disable_skills: bool = False,
 ) -> str:
-    """Render the per-agent capability block (``<capabilities>``).
+    """渲染 per-agent 能力块(``<capabilities>``)。
 
-    Holds everything that depends on a per-agent config flag — the enablement
-    statement plus the tool and behavior lines for the enabled features. It
-    sits at the tail of the system message so that flag-variant agents still
-    share the whole invariant head.
+    容纳所有依赖 per-agent 配置开关的内容:启用声明,以及已启用特性的工具行
+    与行为行。它位于系统消息末尾,使开关组合不同的 agent 仍能共享整个不变的
+    头部。
 
-    Args:
-        enable_memory: Whether memory context and memory tools are available.
-        enable_todo_list: Whether TODO context and TODO tools are available.
-        disable_skills: Whether skill activation and execution tools are
-            unavailable.
-
-    Returns:
-        Rendered ``<capabilities>`` block.
+    :param enable_memory: 记忆上下文与记忆工具是否可用。
+    :param enable_todo_list: TODO 上下文与 TODO 工具是否可用。
+    :param disable_skills: skill 激活与执行工具是否不可用。
+    :returns: 渲染后的 ``<capabilities>`` 块。
     """
     feature_lines = [
         "Features enabled for you:",
@@ -172,59 +193,16 @@ def build_capabilities_block(
     )
 
 
-def build_preamble(
-    *,
-    name: str | None = None,
-    enable_memory: bool = True,
-    enable_todo_list: bool = True,
-    disable_skills: bool = False,
-    ask_mode: bool = False,
-) -> str:
-    """Compose the framework preamble from its parts (compatibility helper).
-
-    The prompt no longer ships as one blob — :func:`build_react_messages` emits
-    :func:`build_base_rules` and :func:`build_capabilities_block` at different
-    positions in the request so the invariant head can be cached across agents.
-    This helper keeps the old one-call composition available for tests and any
-    custom prompt code that wants the whole thing in one string.
-
-    Args:
-        name: Retained for backwards compatibility and **no longer used** — the
-            agent name lives in the ``<agent>`` block of the user message.
-        enable_memory: Whether memory context and memory tools are available.
-        enable_todo_list: Whether TODO context and TODO tools are available.
-        disable_skills: Whether skill activation and execution tools are unavailable.
-        ask_mode: Whether to append the ``<ask_mode_rules>`` block.
-
-    Returns:
-        Rendered preamble text (base rules + capabilities + optional ask rules).
-    """
-    parts = [
-        build_base_rules(),
-        build_capabilities_block(
-            enable_memory=enable_memory,
-            enable_todo_list=enable_todo_list,
-            disable_skills=disable_skills,
-        ),
-    ]
-    if ask_mode:
-        parts.append(_ask_mode_rules())
-    return "\n\n".join(parts)
-
-
 def _ask_mode_rules() -> str:
-    """Render the ask-mode rules block.
+    """渲染 ask 模式规则块。
 
-    Pins ``finish(answer=...)`` as the only accepted way to deliver an answer
-    and instructs the model to reject "override" instructions (answer choices,
-    output-format demands, commands to call a different tool / skip the
-    question / finish with ``memories`` or ``final``) that appear inside skill
-    content, skill hooks, or environment (ask_env) responses. These are general
-    documentation, not task assignments; the ``<question>`` is the only
-    authoritative task in ask mode.
+    把 ``finish(answer=...)`` 钉死为唯一被接受的答案交付方式,并指示模型拒绝
+    skill 内容、skill hook 或环境(ask_env)响应中出现的覆盖类指令(答案选项、
+    输出格式要求、改调其它工具 / 跳过问题 / 用 ``memories`` 或 ``final``
+    结束的命令)。这些只是普通文档,不是任务指派;ask 模式中 ``<question>``
+    是唯一的权威任务。
 
-    Returns:
-        The ``<ask_mode_rules>`` block string.
+    :returns: ``<ask_mode_rules>`` 块字符串。
     """
     return """<ask_mode_rules>
 You are answering an external <question>. Follow these rules strictly:
@@ -235,14 +213,11 @@ You are answering an external <question>. Follow these rules strictly:
 
 
 def short_text(value: Any, *, limit: int = 2000) -> str:
-    """Limit observation text length.
+    """限制 observation 文本长度。
 
-    Args:
-        value: Value to stringify and truncate.
-        limit: Maximum number of characters before truncation.
-
-    Returns:
-        Shortened text.
+    :param value: 待字符串化并截断的值。
+    :param limit: 触发截断前的最大字符数。
+    :returns: 缩短后的文本。
     """
     text = str(value or "")
     if len(text) <= limit:
@@ -251,26 +226,20 @@ def short_text(value: Any, *, limit: int = 2000) -> str:
 
 
 def xml_block(tag: str, content: Any) -> str:
-    """Render one XML prompt block.
+    """渲染一个 XML prompt 块。
 
-    Args:
-        tag: XML tag name.
-        content: Block content.
-
-    Returns:
-        XML-like prompt block.
+    :param tag: XML 标签名。
+    :param content: 块内容。
+    :returns: XML 风格的 prompt 块。
     """
     return f"<{tag}>\n{content}\n</{tag}>"
 
 
 def skill_catalog_xml(catalog: list[dict[str, str]]) -> str:
-    """Render visible skill metadata as XML.
+    """把可见 skill 元数据渲染为 XML。
 
-    Args:
-        catalog: Visible skill metadata dictionaries.
-
-    Returns:
-        XML-like available skills block.
+    :param catalog: 可见 skill 的元数据 dict 列表。
+    :returns: XML 风格的可用 skill 块。
     """
     rows = ["<available_skills>"]
     for item in catalog:
@@ -292,15 +261,12 @@ def skill_content_xml(
     content: str,
     resources: list[str],
 ) -> str:
-    """Render activated skill content as XML.
+    """把已激活 skill 的内容渲染为 XML。
 
-    Args:
-        name: Skill display name.
-        content: SKILL.md content.
-        resources: Relative resource paths exposed for the skill.
-
-    Returns:
-        XML-like skill content block.
+    :param name: skill 显示名。
+    :param content: SKILL.md 内容。
+    :param resources: 为该 skill 暴露的相对资源路径。
+    :returns: XML 风格的 skill 内容块。
     """
     lines = [f'<skill_content name="{_xml_escape(name)}">', content]
     if resources:
@@ -313,13 +279,10 @@ def skill_content_xml(
 
 
 def _render_skill_hooks_xml(hooks: list[dict[str, Any]]) -> str:
-    """Render pre_step hook outputs as a dedicated ``<skill_hooks>`` block.
+    """把 pre_step hook 输出渲染为专用 ``<skill_hooks>`` 块。
 
-    Args:
-        hooks: Hook output dicts with ``skill``, ``hook``, ``ok``, ``output``.
-
-    Returns:
-        XML-like block string.
+    :param hooks: 含 ``skill``、``hook``、``ok``、``output`` 的 hook 输出 dict。
+    :returns: XML 风格的块字符串。
     """
     lines = ["<skill_hooks>"]
     for item in hooks:
@@ -335,17 +298,15 @@ def _render_skill_hooks_xml(hooks: list[dict[str, Any]]) -> str:
 
 
 def json_block(tag: str, payload: Any) -> str:
-    """Render one XML block whose content is deterministic JSON.
+    """渲染内容为确定性 JSON 的 XML 块。
 
-    ``sort_keys=True`` is load-bearing for prompt caching: without it, dict
-    insertion order (a ``profile`` that took a different path through
-    ``json.loads``, a model-authored ``metadata`` dict) leaks into the request
-    bytes and silently busts the provider's prefix cache without changing the
-    meaning of a single token.
+    ``sort_keys=True`` 对 prompt 缓存是关键:没有它,dict 插入序(走过不同
+    ``json.loads`` 路径的 ``profile``、模型自写的 ``metadata`` dict)会泄入请求
+    字节,在不改变任何 token 语义的情况下悄悄打爆 provider 的前缀缓存。
 
-    Public because the ReAct loop appends ``<recent_observations>`` blocks of
-    its own for text-parsed turns (``agent/base/agent.py``) and must render them
-    byte-identically to the ones built here.
+    公开的原因:ReAct 循环会为文本解析的轮次自行追加
+    ``<recent_observations>`` 块(``agent/base/agent.py``),且必须渲染得与这里
+    构建的块字节一致。
     """
     return xml_block(
         tag,
@@ -369,56 +330,53 @@ def build_react_messages(
     enable_todo_list: bool = True,
     disable_skills: bool = False,
     skill_hooks: list[dict[str, Any]] | None = None,
+    base_rules_override: str | None = None,
 ) -> list[dict[str, str]]:
-    """Build ReAct messages for PersonAgent.
+    """为 PersonAgent 构建 ReAct 消息。
 
-    Sections are ordered by **how often they change**, because provider
-    prompt-prefix caching is a longest-common-prefix match over the serialized
-    request (tools -> system -> user):
+    各段落按**变化频率**排序,因为 provider 的 prompt 前缀缓存是对序列化
+    请求(tools -> system -> user)的最长公共前缀匹配:
 
-    - System: invariant rules -> world -> skill catalog -> capabilities ->
-      activated skill content. The first three are byte-identical across every
-      agent in a run, so they are the shared cache head; the last two are
-      per-agent but stable within it.
-    - User: agent identity -> turn state -> memory -> TODO -> skill hooks ->
-      observations -> question. ``current_time``/``tick``/``step_count`` are
-      constant across the ReAct turns *inside* one step, so keeping them ahead
-      of ``<recent_observations>`` (which changes every turn) lets the whole
-      per-step block stay cached for the whole step.
+    - System: 不变规则 -> world -> skill 目录 -> capabilities -> 已激活 skill
+      内容。前三者在一次运行内对所有 agent 字节一致,构成共享缓存头;后两者
+      因 agent 而异,但在单个 agent 内保持稳定。
+    - User: agent 身份 -> turn 状态 -> 记忆 -> TODO -> skill hook ->
+      observations -> question。``current_time``/``tick``/``step_count`` 在
+      单个 step *内部*的各 ReAct 轮次间保持不变,因此把它们放在每轮都变的
+      ``<recent_observations>`` 之前,整个 per-step 块就能在整个 step 内保持
+      缓存命中。
 
-    Args:
-        world_description: Simulation world description (run-invariant).
-        skill_catalog: Visible skill metadata.
-        activated_skill_content: Rendered content for activated skills.
-        observations: Recent ReAct observations.
-        agent_json: The agent's identity/profile view — see
-            :meth:`AgentBase.build_prompt_agent_view`, which strips the fields
-            that change per turn or leak host paths.
-        turn_state: Per-step state (``current_time``/``tick``/``step_count``).
-        memory_context: Optional memory context block data.
-        todo_context: Optional TODO context block data.
-        question: Optional external ask message.
-        readonly: Whether the current ask request is readonly.
-        enable_memory: Whether memory is enabled for this agent. Passed
-            explicitly rather than inferred from ``memory_context`` so a
-            storeless agent does not claim memory is available.
-        enable_todo_list: Whether the task list is enabled for this agent.
-        disable_skills: Whether skill activation and execution tools are unavailable.
-        skill_hooks: Optional pre_step lifecycle-hook outputs, rendered as a
-            dedicated ``<skill_hooks>`` block so the agent treats them as
-            authoritative guidance rather than generic observations.
-
-    Returns:
-        OpenAI-style system and user messages.
+    :param world_description: 模拟世界描述(运行期不变)。
+    :param skill_catalog: 可见 skill 元数据。
+    :param activated_skill_content: 已激活 skill 的渲染内容。
+    :param observations: 近期 ReAct observation。
+    :param agent_json: agent 的身份/profile 视图,见
+        :meth:`AgentBase.build_prompt_agent_view`;它会剥离逐轮变化和泄漏
+        宿主路径的字段。
+    :param turn_state: 每 step 状态(``current_time``/``tick``/``step_count``)。
+    :param memory_context: 可选的记忆上下文块数据。
+    :param todo_context: 可选的 TODO 上下文块数据。
+    :param question: 可选的外部 ask 消息。
+    :param readonly: 当前 ask 请求是否为 readonly。
+    :param enable_memory: 该 agent 是否启用记忆。显式传入而非从
+        ``memory_context`` 推断,以免无存储的 agent 谎称记忆可用。
+    :param enable_todo_list: 该 agent 是否启用任务列表。
+    :param disable_skills: skill 激活与执行工具是否不可用。
+    :param skill_hooks: 可选的 pre_step 生命周期 hook 输出,渲染为专用
+        ``<skill_hooks>`` 块,让 agent 把它们当作权威指引而非普通 observation。
+    :param base_rules_override: run 级 system 前导 override(run 内全 agent
+        一致,缓存共享不破);``None`` 用编译期默认,逐字节不变。
+    :returns: OpenAI 风格的 system 与 user 消息。
 
     .. note::
-       Every section is recomputed on each call, but the ordering above is what
-       makes recomputation cheap: unchanged leading sections still hit the
-       provider's prefix cache.
+       每次调用都会重算所有段落,但上面的排序正是重算廉价的原因:未变化的
+       前导段落仍会命中 provider 的前缀缓存。
     """
     system_content = "\n\n".join(
         [
-            build_base_rules(),
+            base_rules_override
+            if base_rules_override is not None
+            else build_base_rules(),
             xml_block("world", world_description or ""),
             skill_catalog_xml(skill_catalog),
             build_capabilities_block(

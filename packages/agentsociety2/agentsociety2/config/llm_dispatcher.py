@@ -19,6 +19,7 @@ from __future__ import annotations
 import asyncio
 import os
 import re
+import tempfile
 import time
 from collections import deque
 from dataclasses import dataclass, field
@@ -28,7 +29,7 @@ from typing import Any
 os.environ["LITELLM_LOCAL_MODEL_COST_MAP"] = "True"
 
 from litellm import AllMessageValues
-from litellm.exceptions import RateLimitError
+from litellm.exceptions import ContextWindowExceededError, RateLimitError
 from litellm.types.router import RouterRateLimitError
 from litellm.types.utils import ModelResponse
 
@@ -60,6 +61,92 @@ _LLM_REQUEST_TIMEOUT = float(os.getenv("AGENTSOCIETY_LLM_REQUEST_TIMEOUT", "60")
 
 # Disable Ray's uv-runtime-env packaging (see comment below in init_dispatchers).
 os.environ.setdefault("RAY_ENABLE_UV_RUN_RUNTIME_ENV", "0")
+
+# 跨进程共享配额门(2026-10-19,评审 P0):同机多实验并行时,各进程的
+# AIMD 只看自己窗口内的 429/延迟,会互相踩踏(T2 生产实锤:100 agent
+# 并发把网关打进持续 429,AIMD 退到 1 仍撞)。网关不暴露配额头,故
+# 采用保守可调上限 + 跨进程文件锁轮询:env AGENTSOCIETY_SHARED_LLM_QUOTA
+# 设为正整数即启用(表示本机所有进程合计的在途请求数上限);未设置=
+# 关闭(默认,单实验行为与现状一致)。锁走 flock,轮询在 asyncio 循环
+# 内小步进行；归还计数在线程中等待锁，避免阻塞事件循环。
+_SHARED_QUOTA_LIMIT = int(os.getenv("AGENTSOCIETY_SHARED_LLM_QUOTA", "0") or 0)
+_SHARED_QUOTA_FILE = os.getenv(
+    "AGENTSOCIETY_SHARED_QUOTA_FILE",
+    os.path.join(tempfile.gettempdir(), "agentsociety_llm_quota.lock"),
+)
+_SHARED_QUOTA_POLL = float(os.getenv("AGENTSOCIETY_SHARED_QUOTA_POLL", "0.2"))
+_SHARED_QUOTA_WAIT = float(os.getenv("AGENTSOCIETY_SHARED_QUOTA_WAIT", "300"))
+
+
+async def _acquire_shared_quota() -> None:
+    """获取一份跨进程共享配额额度(轮询 flock)。
+
+    :returns: 无返回值;配额未启用时立即返回(零开销路径)。
+    :raises TimeoutError: 超过 ``AGENTSOCIETY_SHARED_QUOTA_WAIT``
+        秒仍未获得额度时抛出,交由 call() 既有错误路径处理。
+    """
+    if _SHARED_QUOTA_LIMIT <= 0:
+        return
+    import fcntl
+
+    deadline = time.monotonic() + _SHARED_QUOTA_WAIT
+    while True:
+        acquired = False
+        fd = os.open(_SHARED_QUOTA_FILE, os.O_RDWR | os.O_CREAT, 0o644)
+        try:
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                # LOCK_NB 下"锁被他人持有"是预期信号而非异常:本轮
+                # 抢锁失败,sleep 后重试(2026-10-19 修复——此前该
+                # 异常直接炸穿,并发竞争下 ~30% 复现率使配额门不可用)。
+                pass
+            else:
+                try:
+                    raw = os.read(fd, 64).decode("utf-8", "ignore") or "0"
+                    inflight = int(raw.strip() or 0)
+                except ValueError:
+                    inflight = 0
+                if inflight < _SHARED_QUOTA_LIMIT:
+                    os.lseek(fd, 0, os.SEEK_SET)
+                    os.ftruncate(fd, 0)
+                    os.write(fd, str(inflight + 1).encode("ascii"))
+                    acquired = True
+                fcntl.flock(fd, fcntl.LOCK_UN)
+        finally:
+            os.close(fd)
+        if acquired:
+            return
+        if time.monotonic() > deadline:
+            raise TimeoutError(f"shared LLM quota wait exceeded {_SHARED_QUOTA_WAIT}s")
+        await asyncio.sleep(_SHARED_QUOTA_POLL)
+
+
+def _release_shared_quota() -> None:
+    """等待计数锁并归还一份跨进程共享配额额度。
+
+    异步调用方在线程中执行，避免锁竞争阻塞事件循环。
+
+    :returns: 无返回值;配额未启用时零开销。
+    """
+    if _SHARED_QUOTA_LIMIT <= 0:
+        return
+    import fcntl
+
+    fd = os.open(_SHARED_QUOTA_FILE, os.O_RDWR | os.O_CREAT, 0o644)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        try:
+            raw = os.read(fd, 64).decode("utf-8", "ignore") or "0"
+            inflight = int(raw.strip() or 0)
+        except ValueError:
+            inflight = 1
+        os.lseek(fd, 0, os.SEEK_SET)
+        os.ftruncate(fd, 0)
+        os.write(fd, str(max(inflight - 1, 0)).encode("ascii"))
+        fcntl.flock(fd, fcntl.LOCK_UN)
+    finally:
+        os.close(fd)
 
 
 # ═══════════════════════════════════════════════════════════
@@ -101,6 +188,32 @@ def rate_limit_retry_seconds(error: Exception, fallback: float) -> float:
     if match:
         return float(match.group(1))
     return fallback
+
+
+def is_context_limit_error(error: Exception) -> bool:
+    """Whether the request can never succeed at its current size.
+
+    Context-window-exceeded errors are deterministic: retrying re-sends the
+    same oversized prompt (the most expensive request in the run) for a
+    guaranteed-identical failure. ``call`` fails fast on these instead of
+    burning ``max_retries`` extra attempts.
+    """
+    if isinstance(error, ContextWindowExceededError):
+        return True
+    # Some gateways wrap the upstream 400 generically; match common provider
+    # phrasings so the fail-fast still applies behind proxies.
+    err_text = str(error).lower()
+    return any(
+        marker in err_text
+        for marker in (
+            "context_length_exceeded",
+            "context length",
+            "context window",
+            "maximum context",
+            "input length and",
+            "prompt is too long",
+        )
+    )
 
 
 # ═══════════════════════════════════════════════════════════
@@ -605,20 +718,16 @@ class LLMClient:
     def _resolve_thinking_kwargs(
         self, thinking: str, kwargs: dict[str, Any]
     ) -> dict[str, Any]:
-        """Merge this client's thinking settings under the caller's kwargs.
+        """在调用方 kwargs 之上合并本 client 的思考设置。
 
-        Only ``"inherit"`` and ``"off"`` are meaningful: the client carries a
-        single already-resolved payload per role, so there is no separate "on"
-        payload to force. A call that wants reasoning enabled despite an
-        ``off`` role policy passes ``reasoning_effort`` / ``extra_body``
-        directly — those win here.
+        仅 ``"inherit"`` 与 ``"off"`` 有意义:client 每角色只携带一份已
+        解析的负载,不存在单独的"on"负载可强制。若调用方想在 ``off``
+        角色策略下仍启用推理,直接传 ``reasoning_effort`` /
+        ``extra_body``——它们在此胜出。
 
-        Args:
-            thinking: ``"inherit"`` or ``"off"``.
-            kwargs: Caller-supplied completion kwargs (win on conflict).
-
-        Returns:
-            The kwargs to forward to ``router.acompletion``.
+        :param thinking: ``"inherit"`` 或 ``"off"``。
+        :param kwargs: 调用方的 completion kwargs(冲突时胜出)。
+        :returns: 转发给 ``router.acompletion`` 的 kwargs。
         """
         if thinking == "off" or self.thinking is None:
             effective: dict[str, Any] = {}
@@ -693,8 +802,32 @@ class LLMClient:
 
         for attempt in range(max_retries + 1):
             await sem.acquire()
+            # 跨进程共享配额(评审 P0):多实验并行时限制全机在途请求数。
+            # 未启用(默认)时 _acquire_shared_quota 立即返回,零开销;
+            # 超时抛 asyncio.TimeoutError,走本循环既有异常路径计入
+            # 重试(与限流同型处理)。
+            quota_held = False
+            try:
+                await _acquire_shared_quota()
+                quota_held = True
+            except TimeoutError as e:
+                overloaded = True
+                last_error = e
+                last_error_was_rate_limit = True
+                if attempt >= max_retries:
+                    raise LLMDispatchError(
+                        f"Shared LLM quota wait exceeded after {max_retries + 1} "
+                        f"attempts. Last error: {e!s}",
+                        rate_limit_like=True,
+                    ) from e
+                continue
+            finally:
+                # 等待配额失败（包括取消）时也必须归还本地容量。
+                if not quota_held:
+                    await sem.release(overloaded=False)
             t0 = time.monotonic()
             overloaded = False
+            retry_delay = 0.0
             try:
                 response = await router.acompletion(
                     model=effective_model,
@@ -713,6 +846,23 @@ class LLMClient:
                 sem.record_latency(latency_ms, is_error=overloaded)
                 last_error = e
                 last_error_was_rate_limit = overloaded
+                if is_context_limit_error(e):
+                    # Deterministic failure: retrying re-sends the same
+                    # oversized prompt (the most expensive request in the
+                    # run) for a guaranteed-identical outcome. Fail now.
+                    logger.error(
+                        "Context window exceeded for '%s' via LLMClient(%s); "
+                        "not retrying. Error: %s",
+                        effective_model,
+                        self.model_type,
+                        e,
+                    )
+                    raise LLMDispatchError(
+                        f"Context window exceeded for '{effective_model}' "
+                        f"via LLMClient({self.model_type}); request not "
+                        f"retried. Error: {e!s}",
+                        rate_limit_like=False,
+                    ) from e
                 if attempt >= max_retries:
                     raise LLMDispatchError(
                         f"Failed to get valid response after {max_retries + 1} "
@@ -735,19 +885,31 @@ class LLMClient:
                         delay,
                         e,
                     )
-                    await asyncio.sleep(delay)
+                    retry_delay = delay
                 else:
+                    # 连接错误也可能是短暂故障；立即连发会在恢复前耗尽重试次数。
+                    retry_delay = min(base_delay * (2**attempt), max_delay)
                     logger.warning(
                         "Request failed for '%s' via LLMClient(%s) (attempt %d/%d). "
-                        "Retrying immediately. Error: %s",
+                        "Backoff %.1fs. Error: %s",
                         effective_model,
                         self.model_type,
                         attempt + 1,
                         max_retries + 1,
+                        retry_delay,
                         e,
+                        exc_info=True,
                     )
             finally:
-                await sem.release(overloaded=overloaded)
+                try:
+                    if quota_held and _SHARED_QUOTA_LIMIT > 0:
+                        # 在线程中等待计数锁，不阻塞事件循环。
+                        await asyncio.to_thread(_release_shared_quota)
+                finally:
+                    await sem.release(overloaded=overloaded)
+            # 退避期间没有在途请求，不占共享额度和本地容量。
+            if retry_delay:
+                await asyncio.sleep(retry_delay)
 
         raise LLMDispatchError(
             f"Failed to get valid response after {max_retries + 1} attempts. "

@@ -225,9 +225,7 @@ Players aim to maximize cumulative coins while balancing personal gain and colle
         )
 
         try:
-            content = await self._completion_text(
-                [{"role": "user", "content": prompt}]
-            )
+            content = await self._completion_text([{"role": "user", "content": prompt}])
             self._logger.debug(f"[{self.name}] [DEBUG] Raw response: {content}")
 
             # Use regex to match choice and explanation

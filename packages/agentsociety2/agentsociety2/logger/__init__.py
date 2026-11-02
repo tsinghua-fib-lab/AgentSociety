@@ -104,7 +104,7 @@ class ColoredFormatter(logging.Formatter):
 def get_logger():
     """获取 agentsociety logger 单例。
 
-    :returns: :class:`logging.Logger`（name 固定为 ``agentsociety``）。
+    :returns: :class:`logging.Logger` （name 固定为 ``agentsociety``）。
     """
     logger = logging.getLogger("agentsociety")
     # check if there is already a handler, avoid duplicate output

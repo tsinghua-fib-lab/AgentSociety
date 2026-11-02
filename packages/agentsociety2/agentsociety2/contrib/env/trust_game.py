@@ -119,7 +119,7 @@ class TrustGameEnv(EnvBase):
         self._step_counter: int = 0
 
     async def to_workspace(self, workspace_path=None) -> None:
-        """写入 ``state/ENV_STATE.json``（原子写）。"""
+        """写入 ``state/ENV_STATE.json`` （原子写）。"""
         if workspace_path is not None:
             self._bind_workspace(workspace_path)
         if self._workspace_root is None:
@@ -190,13 +190,11 @@ class TrustGameEnv(EnvBase):
         """Set partner mapping (trustor_name -> trustee_name, trustee_name -> trustor_name)"""
         self.partner_mapping = partner_mapping
 
-    def _auto_setup_partner_mapping(self, agent_name: str | None = None) -> None:
-        """Auto-setup partner mapping based on agent name convention.
+    def _auto_setup_partner_mapping(self) -> None:
+        """按命名约定自动建立 partner 映射。
 
-        Convention: Agent-{id}_Trustor_G{n} pairs with Agent-{id'}_Trustee_G{n}
-        where both have the same game number G{n}.
-
-        :param agent_name: Optional agent name (not used, kept for compatibility)
+        约定: Agent-{id}_Trustor_G{n} 与 Agent-{id'}_Trustee_G{n} 配对,
+        两者游戏编号 G{n} 相同。
         """
         if self.partner_mapping:
             return  # Already set up
@@ -231,7 +229,7 @@ class TrustGameEnv(EnvBase):
         async with self._lock:
             # Auto-setup partner mapping if not set
             if not self.partner_mapping:
-                self._auto_setup_partner_mapping(trustor_name)
+                self._auto_setup_partner_mapping()
 
             if (
                 trustor_name not in self.partner_mapping
@@ -273,7 +271,7 @@ class TrustGameEnv(EnvBase):
         async with self._lock:
             # Auto-setup partner mapping if not set
             if not self.partner_mapping:
-                self._auto_setup_partner_mapping(trustee_name)
+                self._auto_setup_partner_mapping()
 
             if (
                 trustee_name not in self.partner_mapping
@@ -422,7 +420,7 @@ class TrustGameEnv(EnvBase):
         async with self._lock:
             # Auto-setup partner mapping if not set
             if not self.partner_mapping:
-                self._auto_setup_partner_mapping(None)
+                self._auto_setup_partner_mapping()
 
             # Build agent pairings list
             pairs = []
@@ -470,7 +468,7 @@ class TrustGameEnv(EnvBase):
                 logger.info(
                     f"[get_trust_game_status] partner_mapping is empty, calling _auto_setup_partner_mapping for agent_id={agent_id}"
                 )
-                self._auto_setup_partner_mapping(f"Agent-{agent_id}_Trustor_G1")
+                self._auto_setup_partner_mapping()
                 logger.info(
                     f"[get_trust_game_status] after _auto_setup_partner_mapping, partner_mapping={self.partner_mapping}"
                 )

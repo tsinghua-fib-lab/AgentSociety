@@ -25,6 +25,14 @@ SIMULATION_TIMELINE_DATASET_ID = "core.simulation_timeline"
 SIMULATION_TIMELINE_TABLE_NAME = "core_simulation_timeline"
 SIMULATION_TIMELINE_CAPABILITY = "simulation_timeline"
 
+# Society-owned per-agent step failure records: a partially-failed tick
+# otherwise leaves the failed agents' workspaces a step behind with no
+# trace of what happened (the tick-level RuntimeError only surfaces in
+# logs). One row per (step, agent) failure.
+STEP_FAILURE_DATASET_ID = "core.step_failures"
+STEP_FAILURE_TABLE_NAME = "core_step_failures"
+STEP_FAILURE_CAPABILITY = "step_failures"
+
 
 @dataclass
 class ReplayDatasetSpec:

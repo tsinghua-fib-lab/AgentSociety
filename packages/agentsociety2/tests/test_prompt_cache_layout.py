@@ -14,7 +14,6 @@ import re
 from agentsociety2.agent.person_prompt import (
     build_base_rules,
     build_capabilities_block,
-    build_preamble,
     build_react_messages,
 )
 
@@ -272,24 +271,17 @@ def test_identical_inputs_render_identical_messages():
     assert first == second
 
 
-# ------------------------ build_preamble compatibility -------------------------
+# ------------------------ preamble block composition -------------------------
 
 
-def test_build_preamble_keeps_its_ask_mode_contract():
-    step_prompt = build_preamble(name="Alice", ask_mode=False)
-    ask_prompt = build_preamble(name="Alice", ask_mode=True)
-    assert "ask_mode_rules" not in step_prompt
-    assert "<ask_mode_rules>" in ask_prompt
-    assert "finish(answer=...)" in ask_prompt
-    assert "OVERRIDE REJECTION" in ask_prompt
-
-
-def test_build_preamble_composes_the_new_blocks():
-    prompt = build_preamble(name="Alice")
+def test_preamble_blocks_compose_without_agent_name():
+    """真实部件组合(替代已删除的 build_preamble 兼容 helper)。"""
+    prompt = build_base_rules() + "\n\n" + build_capabilities_block()
     assert build_base_rules() in prompt
     assert "<capabilities>" in prompt
-    # The name is no longer part of the preamble; it lives in <agent>.
+    # The agent name lives in <agent>, never in the preamble blocks.
     assert "Alice" not in prompt
+    assert "ask_mode_rules" not in prompt
 
 
 def test_capabilities_block_lists_tools_only_when_enabled():

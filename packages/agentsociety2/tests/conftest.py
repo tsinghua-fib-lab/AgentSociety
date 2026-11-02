@@ -10,9 +10,6 @@ def _ensure_llm_env_for_tests() -> None:
         os.environ["AGENTSOCIETY_LLM_API_KEY"] = "test-key"
     if not (os.environ.get("AGENTSOCIETY_LLM_API_BASE") or "").strip():
         os.environ["AGENTSOCIETY_LLM_API_BASE"] = "https://api.openai.com/v1"
-    # Use a synchronous trace writer under pytest so span reads are deterministic
-    # (no need to flush a background thread before asserting on trace files).
-    os.environ.setdefault("AGENTSOCIETY_TRACE_WRITER_ASYNC", "0")
     # Perf/regression knobs must exercise the *code defaults* — drop any value
     # exported by a developer's shell for local experiments (read at import time
     # by agentsociety2.config, so this has to happen before the first import).

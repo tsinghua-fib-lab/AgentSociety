@@ -62,7 +62,6 @@ def test_lazy_public_exports_keep_identity_and_discoverability(module_name):
 @pytest.mark.parametrize(
     "module_name,name",
     [
-        ("agentsociety2.agent", "MemoryConsolidationResult"),
         ("agentsociety2.agent.base", "ReactTurn"),
         ("agentsociety2.agent.base", "TodoStateStore"),
     ],

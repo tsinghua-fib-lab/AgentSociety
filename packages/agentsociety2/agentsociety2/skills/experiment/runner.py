@@ -260,8 +260,10 @@ async def list_experiments(
     def _check_experiment_status(
         exp_dir: Path,
     ) -> tuple[bool, bool, bool, int | None, bool, str | None]:
-        """Helper to check experiment status
-        Returns: (has_init, has_run, is_completed, pid, is_running, terminal_status)
+        """检查实验状态的辅助函数。
+
+        :returns: ``(has_init, has_run, is_completed, pid, is_running, terminal_status)``
+        六元组。
 
         Note:
             - has_init: checks init/init_config.json (simplified structure)

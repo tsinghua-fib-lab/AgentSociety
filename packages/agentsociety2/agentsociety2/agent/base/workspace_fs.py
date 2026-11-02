@@ -1,4 +1,4 @@
-"""Workspace filesystem for agent-local files.
+"""面向 agent 本地文件的工作区文件系统。
 
 中文：提供受限的 agent workspace 文件访问、搜索和命令执行能力。
 English: Provides restricted agent workspace file access, search, and command execution.
@@ -7,9 +7,12 @@ English: Provides restricted agent workspace file access, search, and command ex
 from __future__ import annotations
 
 import asyncio
+import os
 import re
 import shutil
+import signal
 import sys
+from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -18,12 +21,11 @@ RUNTIME_DIR = ".runtime"
 
 @dataclass(frozen=True)
 class FileInfo:
-    """Workspace file metadata.
+    """工作区文件元数据。
 
-    Args:
-        path: Path relative to the workspace root.
-        size: File size in bytes, or zero for directories.
-        is_dir: Whether the path is a directory.
+    :param path: 相对工作区根的路径。
+    :param size: 文件字节大小,目录为零。
+    :param is_dir: 该路径是否为目录。
     """
 
     path: str
@@ -33,13 +35,12 @@ class FileInfo:
 
 @dataclass(frozen=True)
 class FileOpResult:
-    """Workspace file operation result.
+    """工作区文件操作结果。
 
-    Args:
-        ok: Whether the operation succeeded.
-        path: Path relative to the workspace root.
-        bytes_written: Number of bytes written when applicable.
-        error: Optional error message.
+    :param ok: 操作是否成功。
+    :param path: 相对工作区根的路径。
+    :param bytes_written: 适用时写入的字节数。
+    :param error: 可选的错误信息。
     """
 
     ok: bool
@@ -50,12 +51,11 @@ class FileOpResult:
 
 @dataclass(frozen=True)
 class GrepMatch:
-    """One text search match.
+    """单条文本搜索匹配。
 
-    Args:
-        path: Path relative to the workspace root.
-        line: One-based line number.
-        text: Matched line text.
+    :param path: 相对工作区根的路径。
+    :param line: 从 1 开始计数的行号。
+    :param text: 匹配到的行文本。
     """
 
     path: str
@@ -65,14 +65,13 @@ class GrepMatch:
 
 @dataclass(frozen=True)
 class CommandResult:
-    """Restricted command execution result.
+    """受限命令执行结果。
 
-    Args:
-        ok: Whether the command exited successfully.
-        exit_code: Process exit code, or -1 for validation/timeout failures.
-        stdout: Captured standard output.
-        stderr: Captured standard error.
-        error_type: Error category.
+    :param ok: 命令是否成功退出。
+    :param exit_code: 进程退出码,校验/超时失败时为 -1。
+    :param stdout: 捕获的标准输出。
+    :param stderr: 捕获的标准错误。
+    :param error_type: 错误类别。
     """
 
     ok: bool
@@ -83,7 +82,7 @@ class CommandResult:
 
 
 class WorkspaceFS:
-    """Restricted filesystem facade for one agent workspace."""
+    """单个 agent 工作区的受限文件系统门面。"""
 
     def __init__(
         self,
@@ -91,26 +90,20 @@ class WorkspaceFS:
         *,
         ignored_dirs: set[str] | None = None,
     ) -> None:
-        """Initialize the workspace filesystem.
+        """初始化工作区文件系统。
 
-        Args:
-            root: Workspace root directory.
-            ignored_dirs: Directory names hidden from recursive listing/search.
-
-        Returns:
-            None.
+        :param root: 工作区根目录。
+        :param ignored_dirs: 在递归列目录/搜索中隐藏的目录名。
+        :returns: 无返回值。
         """
         self.root = root.resolve()
         self.ignored_dirs = ignored_dirs or {RUNTIME_DIR, "__pycache__"}
 
     def resolve(self, relative_path: str) -> Path:
-        """Resolve a path inside the workspace.
+        """解析工作区内的一个路径。
 
-        Args:
-            relative_path: Path relative to the workspace root.
-
-        Returns:
-            Absolute resolved path.
+        :param relative_path: 相对工作区根的路径。
+        :returns: 解析后的绝对路径。
         """
         target = (self.root / str(relative_path or ".")).resolve()
         if target != self.root and self.root not in target.parents:
@@ -118,13 +111,10 @@ class WorkspaceFS:
         return target
 
     def read_text(self, path: str) -> str:
-        """Read a UTF-8 text file.
+        """读取 UTF-8 文本文件。
 
-        Args:
-            path: Path relative to the workspace root.
-
-        Returns:
-            File text, or an empty string when the file does not exist.
+        :param path: 相对工作区根的路径。
+        :returns: 文件文本,文件不存在时返回空字符串。
         """
         target = self.resolve(path)
         if not target.exists() or not target.is_file():
@@ -132,14 +122,11 @@ class WorkspaceFS:
         return target.read_text(encoding="utf-8")
 
     def write_text(self, path: str, content: str) -> FileOpResult:
-        """Write a UTF-8 text file.
+        """写入 UTF-8 文本文件。
 
-        Args:
-            path: Path relative to the workspace root.
-            content: Text content to write.
-
-        Returns:
-            File operation result.
+        :param path: 相对工作区根的路径。
+        :param content: 要写入的文本内容。
+        :returns: 文件操作结果。
         """
         target = self.resolve(path)
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -152,14 +139,11 @@ class WorkspaceFS:
         )
 
     def append_text(self, path: str, content: str) -> FileOpResult:
-        """Append UTF-8 text to a file.
+        """向文件追加 UTF-8 文本。
 
-        Args:
-            path: Path relative to the workspace root.
-            content: Text content to append.
-
-        Returns:
-            File operation result.
+        :param path: 相对工作区根的路径。
+        :param content: 要追加的文本内容。
+        :returns: 文件操作结果。
         """
         target = self.resolve(path)
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -173,13 +157,10 @@ class WorkspaceFS:
         )
 
     def delete(self, path: str) -> FileOpResult:
-        """Delete one file.
+        """删除单个文件。
 
-        Args:
-            path: Path relative to the workspace root.
-
-        Returns:
-            File operation result.
+        :param path: 相对工作区根的路径。
+        :returns: 文件操作结果。
         """
         target = self.resolve(path)
         if not target.exists() or target.is_dir():
@@ -188,13 +169,10 @@ class WorkspaceFS:
         return FileOpResult(ok=True, path=target.relative_to(self.root).as_posix())
 
     def exists(self, path: str) -> bool:
-        """Return whether a workspace path exists.
+        """返回工作区路径是否存在。
 
-        Args:
-            path: Path relative to the workspace root.
-
-        Returns:
-            True when the path exists.
+        :param path: 相对工作区根的路径。
+        :returns: 路径存在时返回 True。
         """
         return self.resolve(path).exists()
 
@@ -205,15 +183,12 @@ class WorkspaceFS:
         glob: str | None = None,
         limit: int = 200,
     ) -> list[FileInfo]:
-        """List files and directories under a workspace path.
+        """列出工作区某路径下的文件和目录。
 
-        Args:
-            path: Path relative to the workspace root.
-            glob: Optional glob pattern.
-            limit: Maximum number of entries.
-
-        Returns:
-            File metadata entries.
+        :param path: 相对工作区根的路径。
+        :param glob: 可选的 glob 模式。
+        :param limit: 最大条目数。
+        :returns: 文件元数据条目。
         """
         target = self.resolve(path)
         if not target.exists():
@@ -239,15 +214,12 @@ class WorkspaceFS:
         *,
         limit: int = 100,
     ) -> list[GrepMatch]:
-        """Search text files with ripgrep or grep.
+        """用 ripgrep 或 grep 搜索文本文件。
 
-        Args:
-            pattern: Search pattern.
-            path: Path relative to the workspace root.
-            limit: Maximum number of matches.
-
-        Returns:
-            Search matches.
+        :param pattern: 搜索模式。
+        :param path: 相对工作区根的路径。
+        :param limit: 最大匹配数。
+        :returns: 搜索匹配结果。
         """
         target = self.resolve(path)
         if not target.exists():
@@ -303,17 +275,16 @@ class WorkspaceFS:
         timeout_sec: int = 30,
         cwd: str = ".",
         env: dict[str, str] | None = None,
+        input_text: str | None = None,
     ) -> CommandResult:
-        """Run an allowed command inside the workspace.
+        """在工作区内运行一条被允许的命令。
 
-        Args:
-            argv: Command argument vector.
-            timeout_sec: Timeout in seconds.
-            cwd: Working directory relative to the workspace root.
-            env: Optional process environment.
-
-        Returns:
-            Command execution result.
+        :param argv: 命令参数向量。
+        :param timeout_sec: 超时秒数。
+        :param cwd: 相对工作区根的工作目录。
+        :param env: 可选的进程环境变量。
+        :param input_text: 可选的标准输入，避免将结构化负载放入命令行。
+        :returns: 命令执行结果。
         """
         if not argv:
             return CommandResult(False, -1, "", "empty argv", "validation")
@@ -327,17 +298,29 @@ class WorkspaceFS:
             *argv,
             cwd=str(work_dir),
             env=env,
+            stdin=asyncio.subprocess.PIPE if input_text is not None else None,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
+            start_new_session=os.name == "posix",
         )
         try:
             stdout_b, stderr_b = await asyncio.wait_for(
-                proc.communicate(),
+                proc.communicate(
+                    input_text.encode("utf-8") if input_text is not None else None
+                ),
                 timeout=timeout_sec,
             )
-        except TimeoutError:
-            proc.kill()
-            await proc.wait()
+        except (TimeoutError, asyncio.CancelledError) as exc:
+            # 终止整组普通子进程，避免后代进程继续持有输出管道或写工作区。
+            # 子进程可能恰好已退出，只忽略进程不存在这一竞争结果。
+            with suppress(ProcessLookupError):
+                if os.name == "posix":
+                    os.killpg(proc.pid, signal.SIGKILL)
+                else:
+                    proc.kill()
+            await proc.communicate()
+            if isinstance(exc, asyncio.CancelledError):
+                raise
             return CommandResult(
                 False,
                 -1,
@@ -358,13 +341,10 @@ class WorkspaceFS:
         )
 
     def _file_info(self, path: Path) -> FileInfo:
-        """Build metadata for one path.
+        """构造单个路径的元数据。
 
-        Args:
-            path: Absolute path inside the workspace.
-
-        Returns:
-            File metadata.
+        :param path: 工作区内的绝对路径。
+        :returns: 文件元数据。
         """
         rel = path.relative_to(self.root).as_posix()
         return FileInfo(
@@ -404,14 +384,11 @@ class WorkspaceFS:
         return matches
 
     def _parse_grep_output(self, stdout_b: bytes, *, limit: int) -> list[GrepMatch]:
-        """Parse grep-compatible stdout.
+        """解析 grep 兼容的 stdout。
 
-        Args:
-            stdout_b: Raw grep output bytes.
-            limit: Maximum number of matches.
-
-        Returns:
-            Parsed search matches.
+        :param stdout_b: 原始 grep 输出字节。
+        :param limit: 最大匹配数。
+        :returns: 解析后的搜索匹配。
         """
         matches: list[GrepMatch] = []
         stdout = (stdout_b or b"").decode("utf-8", errors="replace")
@@ -433,13 +410,10 @@ class WorkspaceFS:
         return matches
 
     def _normalize_match_path(self, raw_path: str) -> str:
-        """Normalize one matched path to a workspace-relative path.
+        """将一个匹配路径规范化为工作区相对路径。
 
-        Args:
-            raw_path: Path string from grep output.
-
-        Returns:
-            Workspace-relative path when possible.
+        :param raw_path: grep 输出中的路径字符串。
+        :returns: 可行时返回工作区相对路径。
         """
         path = Path(raw_path)
         if not path.is_absolute():

@@ -1,16 +1,14 @@
-"""Ray actor owning the CodeGenRouter (env router).
+"""持有 ``CodeGenRouter`` 的 Ray actor(env router)。
 
-Moving the env router into a dedicated Ray actor takes env codegen execution
-(and its former ``_execute_lock`` serialization) off the agents' event loop.
-A single Ray actor processes one method at a time (FIFO), which provides the
-same mutual exclusion the lock did, but in a separate process/loop.
+把 env router 移入专用 Ray actor,可使 env 代码生成执行(及其原先的
+``_execute_lock`` 串行化)离开 agent 的事件循环。单个 Ray actor 一次只处理
+一个方法(FIFO),与原锁提供相同的互斥,但在独立进程/事件循环中。
 
-The actor is built from a serializable spec (env-module types + kwargs +
-codegen kwargs). LLM is **injected** as serializable :class:`LLMClient` handles
-(coder + default) carrying connection parameters; each actor process builds its
-own litellm Router on first use. Replay is injected as a serializable
-:class:`ReplayProxy`. The actor never self-creates central runtime services, so
-there is no Ray-in-Ray (D8).
+actor 由可序列化 spec(env 模块类型 + kwargs + codegen kwargs)构建。LLM 以
+携带连接参数的可序列化 :class:`LLMClient` 句柄(coder + default)形式
+**注入**;每个 actor 进程在首次使用时自建 litellm Router。回放以可序列化
+:class:`ReplayProxy` 注入。actor 从不自行创建中心运行时服务,因此没有
+Ray-in-Ray(D8)。
 """
 
 from __future__ import annotations
@@ -25,13 +23,12 @@ _cached_env_actor_classes: dict[int, Any] = {}
 
 
 def get_env_router_actor_class(max_concurrency: int = 1) -> Any:
-    """Return (creating once per max_concurrency) the Ray env-router actor class.
+    """返回 Ray env-router actor 类(每个 max_concurrency 只创建一次)。
 
-    :param max_concurrency: Ray actor concurrency. ``1`` serializes ask calls
-        (default when any env module is not concurrency-safe); ``>1`` allows
-        parallel async ask calls only when all env modules declare
-        ``is_concurrency_safe()``.
-    :returns: A Ray actor class (``@ray.remote(max_concurrency=...)``).
+    :param max_concurrency: Ray actor 并发度。``1`` 串行化 ask 调用(任一
+        env 模块非并发安全时的默认值);``>1`` 仅当所有 env 模块声明
+        ``is_concurrency_safe()`` 时才允许并行 async ask 调用。
+    :returns: 一个 Ray actor 类(``@ray.remote(max_concurrency=...)``)。
     """
     if max_concurrency in _cached_env_actor_classes:
         return _cached_env_actor_classes[max_concurrency]
@@ -39,7 +36,7 @@ def get_env_router_actor_class(max_concurrency: int = 1) -> Any:
     import ray  # deferred import
 
     class EnvRouterActor:
-        """Owns a CodeGenRouter; lifecycle + ask methods run on its own loop."""
+        """持有一个 ``CodeGenRouter``;生命周期与 ask 方法运行在其自身的事件循环上。"""
 
         def __init__(
             self,
@@ -51,20 +48,20 @@ def get_env_router_actor_class(max_concurrency: int = 1) -> Any:
             replay_proxy: Any = None,
             trace_proxy: Any = None,
         ) -> None:
-            """Create the env router inside the actor process.
+            """在 actor 进程内创建 env router。
 
-            :param env_module_types: Serializable env-module type keys.
-            :param env_kwargs: Per-type constructor kwargs.
-            :param run_dir: Run directory (assigned to ``router.run_dir``).
-            :param codegen_kwargs: CodeGenRouter kwargs
-                (e.g. ``final_summary_enabled``).
-            :param llm_clients_spec: Optional dict with ``coder`` / ``default``
-                keys, each a serialized :class:`LLMClient`. When ``None``, the
-                router falls back to the per-process dispatcher client factory.
-            :param replay_proxy: Optional :class:`ReplayProxy` for shared
-                sharded JSONL replay. When ``None`` / disabled, env replay is off.
-            :param trace_proxy: Optional :class:`TraceProxy` for env-side
-                ``llm.completion`` spans. When ``None``, env LLM calls are untraced.
+            :param env_module_types: 可序列化的 env 模块类型键。
+            :param env_kwargs: 各类型的构造 kwargs。
+            :param run_dir: run 目录(赋给 ``router.run_dir``)。
+            :param codegen_kwargs: CodeGenRouter kwargs(如
+                ``final_summary_enabled``)。
+            :param llm_clients_spec: 可选。含 ``coder`` / ``default`` 键的
+                dict,每个值为序列化的 :class:`LLMClient`。为 ``None`` 时
+                router 回退到每进程 dispatcher 的 client 工厂。
+            :param replay_proxy: 可选。用于共享 sharded JSONL 回放的
+                :class:`ReplayProxy`。为 ``None`` / 未启用时,env 回放关闭。
+            :param trace_proxy: 可选。用于 env 侧 ``llm.completion`` span 的
+                :class:`TraceProxy`。为 ``None`` 时,env LLM 调用不被追踪。
             """
             from agentsociety2.env.router_codegen import CodeGenRouter
             from agentsociety2.registry import get_registered_env_modules, get_registry
@@ -126,11 +123,11 @@ def get_env_router_actor_class(max_concurrency: int = 1) -> Any:
             self._router.set_current_time(t)
 
         def set_replay_writer(self, writer: Any) -> None:
-            """Inject a replay writer/proxy into the router (and its modules).
+            """向 router(及其模块)注入回放 writer/proxy。
 
-            ``writer`` is typically a serializable :class:`ReplayProxy`. Also
-            stored on ``self._replay_proxy`` so :meth:`init` routes env replay
-            to the shared replay directory.
+            ``writer`` 通常是可序列化的 :class:`ReplayProxy`。同时存到
+            ``self._replay_proxy``,以便 :meth:`init` 把 env 回放路由到共享
+            回放目录。
             """
             self._replay_proxy = writer
             self._router.set_replay_writer(writer)

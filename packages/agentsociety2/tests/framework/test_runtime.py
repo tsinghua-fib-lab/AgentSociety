@@ -27,7 +27,7 @@ def _bind_runtime_workspace(runtime, tmp_path, agent_id):
 def test_runtime_visible_catalog_and_skill_files(tmp_path):
     registry = SkillRegistry()
     registry.scan_builtin()
-    runtime = AgentSkillRuntime(agent_id=13, registry=registry)
+    runtime = AgentSkillRuntime(registry=registry)
     _bind_runtime_workspace(runtime, tmp_path, 13)
 
     runtime.set_visible_skills(["built-in@daily-guidance", "built-in@memory"])
@@ -62,7 +62,7 @@ async def test_runtime_run_skill_script_uses_explicit_script_path(tmp_path):
 
     registry = SkillRegistry()
     registry.scan_custom(tmp_path / "skills")
-    runtime = AgentSkillRuntime(agent_id=14, registry=registry)
+    runtime = AgentSkillRuntime(registry=registry)
     _bind_runtime_workspace(runtime, tmp_path, 14)
     runtime.set_visible_skills(["custom@echo"])
 
@@ -106,7 +106,7 @@ async def test_runtime_run_skill_script_uses_default_script(tmp_path):
 
     registry = SkillRegistry()
     registry.scan_custom(tmp_path / "skills")
-    runtime = AgentSkillRuntime(agent_id=15, registry=registry)
+    runtime = AgentSkillRuntime(registry=registry)
     _bind_runtime_workspace(runtime, tmp_path, 15)
     runtime.set_visible_skills(["custom@echo"])
 
@@ -137,7 +137,7 @@ async def test_runtime_run_skill_script_maps_default_script_basename(tmp_path):
 
     registry = SkillRegistry()
     registry.scan_custom(tmp_path / "skills")
-    runtime = AgentSkillRuntime(agent_id=151, registry=registry)
+    runtime = AgentSkillRuntime(registry=registry)
     _bind_runtime_workspace(runtime, tmp_path, 151)
     runtime.set_visible_skills(["custom@echo"])
 
@@ -162,7 +162,7 @@ def test_runtime_infers_single_active_script_skill(tmp_path):
 
     registry = SkillRegistry()
     registry.scan_custom(tmp_path / "skills")
-    runtime = AgentSkillRuntime(agent_id=16, registry=registry)
+    runtime = AgentSkillRuntime(registry=registry)
     _bind_runtime_workspace(runtime, tmp_path, 16)
     runtime.set_visible_skills(["custom@echo"])
     runtime.set_activated_skills(["custom@echo"])
@@ -173,12 +173,12 @@ def test_runtime_infers_single_active_script_skill(tmp_path):
 def test_runtime_resolves_exact_visible_skill_id(tmp_path):
     registry = SkillRegistry()
     registry.scan_builtin()
-    runtime = AgentSkillRuntime(agent_id=17, registry=registry)
+    runtime = AgentSkillRuntime(registry=registry)
     _bind_runtime_workspace(runtime, tmp_path, 17)
     runtime.set_visible_skills(["built-in@daily-guidance"])
 
     assert (
-        runtime.resolve_skill_id_by_name("built-in@daily-guidance")
+        runtime.resolve_skill_id("built-in@daily-guidance")
         == "built-in@daily-guidance"
     )
 
@@ -186,7 +186,7 @@ def test_runtime_resolves_exact_visible_skill_id(tmp_path):
 def test_runtime_uses_bound_workspace_fs(tmp_path):
     registry = SkillRegistry()
     registry.scan_builtin()
-    runtime = AgentSkillRuntime(agent_id=11, registry=registry)
+    runtime = AgentSkillRuntime(registry=registry)
     workspace = _bind_runtime_workspace(runtime, tmp_path, 11)
 
     runtime.fs.write_text("state/a.json", json.dumps({"x": 1}))
