@@ -14,6 +14,30 @@ Git 发版标签：`agentsociety2-v{major}.{minor}.{patch}`（见 `CONTRIBUTING.
 
 ## [Unreleased]
 
+## [2.10.0] - 2026-11-02
+
+- **agentsociety2** `2.10.0` · **extension** `1.8.0` · 标签 `agentsociety2-v2.10.0`
+
+### Changed
+
+- **agentsociety2**：CLI 默认关闭环境路由 LLM 摘要阶段，以执行输出生成应答；保留摘要配置，
+  并分别记录 codegen / summary 调用来源。配套 codegen 输出预算与截断检查、技能执行超时与
+  子进程回收、跨进程 LLM 并发配额。实测多窗口 LLM 调用约降 30%–47%，环境摘要调用清零。
+- **agentsociety2**：Agent / 环境路由 / 分析工具的 LLM JSON 解析收敛到 `loads_llm_json`
+  （包装剥离、严格解析、jsonmend/json_repair 修复与工具参数归一）。
+- **agentsociety2 / extension / docker**：工程基础加固——SDK 导入与技能运行时、扩展网关定价
+  与用量追踪、Docker 文档模型依赖固定，以及示例博弈实验结构整理。
+
+### Fixed
+
+- **frontend**：清理检查警告；修复异步状态更新与回放加载。
+- **extension**：复用已有后端进程；修复状态循环刷新；修复 minimatch 漏洞并升级 i18n /
+  TypeScript ESLint 依赖。
+- **ci / deps**：固化 GitHub 镜像同步工具链；修复传递依赖与 community 安全告警；清理
+  CodeQL 代码质量告警。
+- **examples**：修复环境干预与公共物品博弈验证路径。
+- **agentsociety2**：多进程回放写入改用 spawn 验证，避免 fork 相关假阳性。
+
 ## [2.9.3] - 2026-09-24
 
 - **agentsociety2** `2.9.3` · **extension** `1.7.3` · 标签 `agentsociety2-v2.9.3`
