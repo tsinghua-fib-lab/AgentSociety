@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 import Editor from '@monaco-editor/react';
 import type * as Monaco from 'monaco-editor';
 
@@ -16,6 +16,32 @@ interface MonacoPromptEditorProps {
   editorId?: string;
 }
 
+const getCurrentPath = (textUntilPosition: string): string[] => {
+  const match = textUntilPosition.match(/[\w.]+$/);
+  return match ? match[0].split('.') : [];
+};
+
+const getSuggestionsForPath = (
+  path: string[],
+  suggestionItems: MonacoSuggestionItem[]
+): MonacoSuggestionItem[] => {
+  if (path.length <= 1) {
+    return suggestionItems;
+  }
+
+  let currentSuggestions = suggestionItems;
+  for (let i = 0; i < path.length - 1; i++) {
+    const currentSegment = path[i];
+    const matchingSuggestion = currentSuggestions.find(s => s.label === currentSegment);
+    if (matchingSuggestion && matchingSuggestion.children) {
+      currentSuggestions = matchingSuggestion.children;
+    } else {
+      return [];
+    }
+  }
+  return currentSuggestions;
+};
+
 const MonacoPromptEditor: React.FC<MonacoPromptEditorProps> = ({
   value = '',
   onChange,
@@ -27,7 +53,7 @@ const MonacoPromptEditor: React.FC<MonacoPromptEditorProps> = ({
   const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<typeof Monaco | null>(null);
 
-  const registerCompletionProvider = (monaco: typeof Monaco) => {
+  const registerCompletionProvider = useCallback((monaco: typeof Monaco) => {
     if (providerRef.current) {
       providerRef.current.dispose();
       providerRef.current = null;
@@ -122,7 +148,7 @@ const MonacoPromptEditor: React.FC<MonacoPromptEditorProps> = ({
         };
       }
     });
-  };
+  }, [editorId, suggestions]);
 
   const handleEditorDidMount = (
     editor: Monaco.editor.IStandaloneCodeEditor,
@@ -180,7 +206,7 @@ const MonacoPromptEditor: React.FC<MonacoPromptEditorProps> = ({
     if (monacoRef.current) {
       registerCompletionProvider(monacoRef.current);
     }
-  }, [suggestions]);
+  }, [registerCompletionProvider]);
 
   useEffect(() => {
     return () => {
@@ -189,32 +215,6 @@ const MonacoPromptEditor: React.FC<MonacoPromptEditorProps> = ({
       }
     };
   }, []);
-
-  const getCurrentPath = (textUntilPosition: string): string[] => {
-    const match = textUntilPosition.match(/[\w.]+$/);
-    return match ? match[0].split('.') : [];
-  };
-
-  const getSuggestionsForPath = (
-    path: string[],
-    suggestionItems: MonacoSuggestionItem[]
-  ): MonacoSuggestionItem[] => {
-    if (path.length <= 1) {
-      return suggestionItems;
-    }
-
-    let currentSuggestions = suggestionItems;
-    for (let i = 0; i < path.length - 1; i++) {
-      const currentSegment = path[i];
-      const matchingSuggestion = currentSuggestions.find(s => s.label === currentSegment);
-      if (matchingSuggestion && matchingSuggestion.children) {
-        currentSuggestions = matchingSuggestion.children;
-      } else {
-        return [];
-      }
-    }
-    return currentSuggestions;
-  };
 
   return (
     <Editor

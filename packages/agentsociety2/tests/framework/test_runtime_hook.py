@@ -50,7 +50,7 @@ async def test_runtime_run_skill_hook_selects_hook_type(tmp_path):
 
     registry = SkillRegistry()
     registry.scan_custom(tmp_path / "skills")
-    runtime = AgentSkillRuntime(agent_id=21, registry=registry)
+    runtime = AgentSkillRuntime(registry=registry)
     _bind_runtime_workspace(runtime, tmp_path, 21)
     runtime.set_visible_skills(["custom@hooks"])
 
@@ -73,7 +73,7 @@ async def test_runtime_run_skill_hook_selects_hook_type(tmp_path):
 async def test_runtime_run_skill_hook_requires_visible_skill(tmp_path):
     registry = SkillRegistry()
     registry.scan_builtin()
-    runtime = AgentSkillRuntime(agent_id=22, registry=registry)
+    runtime = AgentSkillRuntime(registry=registry)
     _bind_runtime_workspace(runtime, tmp_path, 22)
 
     result = await runtime.run_skill_hook("built-in@daily-guidance", "pre_step", [])

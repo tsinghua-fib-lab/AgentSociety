@@ -14,10 +14,10 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
-import json_repair
 from litellm import AllMessageValues
 from pydantic import BaseModel, Field
 
+from agentsociety2.agent.json_utils import loads_llm_json
 from agentsociety2.config import build_client_for_role, get_model_name
 from agentsociety2.env import RouterBase
 from agentsociety2.logger import get_logger
@@ -971,14 +971,13 @@ Generate the final answer as XML:"""
             if not text:
                 return []
             try:
-                return AgentSocietyHelper._coerce_agent_ids(json.loads(text))
-            except Exception:
-                try:
-                    return AgentSocietyHelper._coerce_agent_ids(json_repair.loads(text))
-                except Exception:
-                    if text.isdigit() or (text.startswith("-") and text[1:].isdigit()):
-                        return [int(text)]
-                    return []
+                return AgentSocietyHelper._coerce_agent_ids(
+                    loads_llm_json(text, expect="any")
+                )
+            except ValueError:
+                if text.isdigit() or (text.startswith("-") and text[1:].isdigit()):
+                    return [int(text)]
+                return []
         if isinstance(raw, dict):
             if "agent_ids" in raw:
                 return AgentSocietyHelper._coerce_agent_ids(raw.get("agent_ids"))

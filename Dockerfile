@@ -107,6 +107,7 @@ ENV LC_ALL=C.UTF-8
 
 # ---- Static Python tool stacks (independent of uv.lock / AS2 source) ----
 # Office skills + paper-toolkit: bumping agentsociety2 must not reinstall these.
+# Transformers 4 matches the tokenizers / huggingface-hub versions in uv.lock.
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv pip install --system --torch-backend=cpu \
         pypdf==6.21.4 \
@@ -121,6 +122,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
         python-docx==1.2.0 \
         python-dotenv==1.2.4 \
         docling==2.145.0 \
+        transformers==4.57.6 \
         torch==2.15.0 \
         torchvision==0.29.2 \
         "easypaper[docling,images]==0.2.4" \
@@ -167,6 +169,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv export --frozen --no-dev --no-emit-package agentsociety2 \
         --format requirements-txt -o /tmp/reqs.txt \
     && uv pip install --system --no-config --no-deps --require-hashes -r /tmp/reqs.txt \
+    && uv pip check --system \
     && rm /tmp/reqs.txt
 
 # ---- agentsociety2 source (editable, deps already present) ----

@@ -140,7 +140,9 @@ def test_proxy_disabled_and_no_dir(tmp_path):
     import asyncio
 
     assert build_replay_sink(ReplayProxy(replay_dir=None)) is None
-    assert build_replay_sink(ReplayProxy(replay_dir=str(tmp_path), enabled=False)) is None
+    assert (
+        build_replay_sink(ReplayProxy(replay_dir=str(tmp_path), enabled=False)) is None
+    )
     proxy = ReplayProxy(replay_dir=str(tmp_path), enabled=False)
     asyncio.run(proxy.write("t", {"id": 1}))  # no-op, no files
     assert list(tmp_path.glob("*.jsonl")) == []
@@ -162,11 +164,22 @@ def test_concurrent_multi_process_large_rows_no_corruption(tmp_path):
     shutil.rmtree(tmp_path, ignore_errors=True)
     tmp_path.mkdir()
     NW, N = 8, 300
-    procs = [mp.Process(target=_worker_write, args=(str(tmp_path), "t", N, True)) for _ in range(NW)]
+    ctx = mp.get_context("spawn")
+    procs = [
+        ctx.Process(target=_worker_write, args=(str(tmp_path), "t", N, True))
+        for _ in range(NW)
+    ]
     for p in procs:
         p.start()
-    for p in procs:
-        p.join()
+    try:
+        for p in procs:
+            p.join(timeout=60)
+            assert p.exitcode == 0, f"Replay writer {p.pid} did not exit successfully"
+    finally:
+        for p in procs:
+            if p.is_alive():
+                p.terminate()
+                p.join(timeout=10)
 
     rows = _read_table(tmp_path, "t")
     expected = NW * N

@@ -13,7 +13,7 @@ Ray Task（:mod:`agentsociety2.agent.runner`）流式处理。这使得内存占
   ``await`` 全部后再推进 env、前进时钟。
 - **交互接口**: ``ask()``/``intervene()``/``run_questionnaire()`` 为低频外部查询，在主进程
   内按需 ``from_workspace`` 重建目标 agent（workspace 在本地磁盘，无需 Ray Task）。
-- **状态持久化**: ``to_workspace()`` 每 step 写 ``run_dir/SOCIETY.json``（society
+- **状态持久化**: ``to_workspace()`` 每 step 写 ``run_dir/SOCIETY.json`` （society
   时间 / 步数 / env 模块配置）并让 env router 落盘各模块动态状态；``from_workspace()``
   从 ``run_dir`` 重建 society（agent 状态已落盘，env 由 actor 在 ``init`` 中恢复），
   支持中断后 CLI ``--resume`` 续跑。
@@ -24,7 +24,6 @@ from __future__ import annotations
 import asyncio
 import json
 from datetime import datetime, timedelta
-from importlib import import_module
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -35,6 +34,7 @@ from agentsociety2.agent.runner import (
 )
 from agentsociety2.env import RouterBase
 from agentsociety2.logger import get_logger
+from agentsociety2.society.helper import AgentSocietyHelper
 from agentsociety2.society.questionnaire import (
     AgentQuestionnaireResult,
     Questionnaire,
@@ -52,13 +52,15 @@ from agentsociety2.storage.replay_metadata import (
     SIMULATION_TIMELINE_CAPABILITY,
     SIMULATION_TIMELINE_DATASET_ID,
     SIMULATION_TIMELINE_TABLE_NAME,
+    STEP_FAILURE_CAPABILITY,
+    STEP_FAILURE_DATASET_ID,
+    STEP_FAILURE_TABLE_NAME,
 )
 from agentsociety2.storage.workspace_state import atomic_write_text
 
 if TYPE_CHECKING:
     from agentsociety2.agent.base import AgentBase
     from agentsociety2.agent.service_proxy import ServiceProxy
-    from agentsociety2.society.helper import AgentSocietyHelper
 
 __all__ = ["AgentSociety"]
 
@@ -159,7 +161,7 @@ class AgentSociety:
             处理必需——runner 任务通过它访问 LLM clients / env actor。提供时 :meth:`init`
             直接复用；``close`` 关闭其中 trace/replay actor。
         :param batch_size: 每 ``step_agent_batch`` Ray Task 处理的 agent 数；
-            ``None`` 时回落到 ``Config.BATCH_SIZE``（环境变量
+            ``None`` 时回落到 ``Config.BATCH_SIZE`` （环境变量
             ``AGENTSOCIETY_BATCH_SIZE``，缺省 256）。
         :param enable_replay: 是否启用回放记录。
         """
@@ -208,6 +210,11 @@ class AgentSociety:
         self._replay_writer: Any = None
         self._agent_profiles_persisted = False
         self._simulation_timeline_ready = False
+        self._step_failures_ready = False
+        # Running count of per-agent step failures, drained into pid.json
+        # so an experiment that "completed" with a broken batch is visible
+        # without opening the replay store.
+        self._step_failure_count = 0
         self._agents_created = False
         # SOCIETY.json（不可变全量）只在 init 写一次；resume 时由 from_workspace
         # 置 True 跳过，避免覆盖原 checkpoint。
@@ -432,6 +439,110 @@ class AgentSociety:
             {"step": int(step), "t": t},
         )
 
+    async def _ensure_step_failures_dataset(self) -> None:
+        """Register the society-owned per-agent step-failure table once."""
+        if self._replay_writer is None or self._step_failures_ready:
+            return
+        columns = [
+            ColumnDef(
+                "step",
+                "INTEGER",
+                nullable=False,
+                logical_type="step",
+                analysis_role="timestamp",
+                description="Simulation step index where the agent step failed.",
+            ),
+            ColumnDef(
+                "t",
+                "TIMESTAMP",
+                nullable=False,
+                logical_type="timestamp",
+                analysis_role="timestamp",
+                description="Simulation timestamp at failure.",
+            ),
+            ColumnDef(
+                "agent_id",
+                "INTEGER",
+                nullable=False,
+                logical_type="entity",
+                description="Agent whose step failed.",
+            ),
+            ColumnDef(
+                "state_persisted",
+                "BOOLEAN",
+                nullable=False,
+                logical_type="boolean",
+                description=(
+                    "Whether the agent workspace was still persisted "
+                    "best-effort after the failure."
+                ),
+            ),
+            ColumnDef(
+                "error",
+                "TEXT",
+                nullable=False,
+                logical_type="text",
+                description="Failure representation (repr of the exception).",
+            ),
+        ]
+        await self._replay_writer.register_table(
+            TableSchema(
+                name=STEP_FAILURE_TABLE_NAME,
+                columns=columns,
+                primary_key=["step", "agent_id"],
+                indexes=[["step"]],
+            )
+        )
+        await self._replay_writer.register_dataset(
+            ReplayDatasetSpec(
+                dataset_id=STEP_FAILURE_DATASET_ID,
+                table_name=STEP_FAILURE_TABLE_NAME,
+                module_name="AgentSociety",
+                kind="env_snapshot",
+                title="Step Failures",
+                description=(
+                    "Per-agent step failures: a partially-failed tick "
+                    "otherwise leaves the failed agents' workspaces behind "
+                    "with no record of what happened."
+                ),
+                step_key="step",
+                time_key="t",
+                default_order=["step", "agent_id"],
+                capabilities=[STEP_FAILURE_CAPABILITY, "env_snapshot"],
+            ),
+            columns,
+        )
+        self._step_failures_ready = True
+
+    async def _record_step_failures(
+        self, step: int, t: datetime, failures: list[dict[str, Any]]
+    ) -> None:
+        """Persist per-agent failure rows for one tick (best-effort).
+
+        Never raises: losing the failure record must not mask the
+        ``RuntimeError`` the tick already carries.
+        """
+        if not failures:
+            return
+        self._step_failure_count += len(failures)
+        if self._replay_writer is None:
+            return
+        try:
+            await self._ensure_step_failures_dataset()
+            for item in failures:
+                await self._replay_writer.write(
+                    STEP_FAILURE_TABLE_NAME,
+                    {
+                        "step": int(step),
+                        "t": t,
+                        "agent_id": int(item.get("id", -1)),
+                        "state_persisted": bool(item.get("state_persisted", False)),
+                        "error": str(item.get("error", ""))[:2000],
+                    },
+                )
+        except Exception:
+            logger.debug("Failed to record step failures", exc_info=True)
+
     # ------------------------------------------------------------------
     # Workspace helpers
     # ------------------------------------------------------------------
@@ -547,23 +658,20 @@ class AgentSociety:
     async def to_workspace(self, *, tick: int | None = None) -> None:
         """持久化 society + env 状态（每步调用，无状态 resume）。
 
-        让 env router 落盘各模块状态，并写 ``run_dir/SOCIETY_STEP.json``（仅少量
+        让 env router 落盘各模块状态，并写 ``run_dir/SOCIETY_STEP.json`` （仅少量
         标量：当前时间 / 步数 / 已完成前置步数 / terminated）。不可变的大字段
         （agent_specs 等）只在 :meth:`init` 写一次到 ``SOCIETY.json``，避免每步
-        重序列化。``run_dir`` 为空时 no-op；env 落盘失败只告警，不中断 step。
+        重序列化。``run_dir`` 为空时 no-op；env 落盘失败时抛错，不提交总进度。
 
         :param tick: 保留以兼容旧调用签名（不再单独持久化）。
         """
         if self._run_dir is None:
             return
-        try:
-            await self._env_router.to_workspaces()
-        except Exception as exc:
-            logger.warning("env to_workspaces failed: %s", exc)
+        await self._env_router.to_workspaces()
         self._write_society_step_json()
 
     def _write_society_json(self) -> None:
-        """写不可变全量 checkpoint 到 ``run_dir/SOCIETY.json``（init 时写一次）。
+        """写不可变全量 checkpoint 到 ``run_dir/SOCIETY.json`` （init 时写一次）。
 
         含 schema_version、agent_specs、env 模块类型+kwargs、batch_size、steps_hash。
         原子写入。
@@ -584,7 +692,7 @@ class AgentSociety:
         )
 
     def _write_society_step_json(self) -> None:
-        """写每步标量 checkpoint 到 ``run_dir/SOCIETY_STEP.json``（原子写入）。"""
+        """写每步标量 checkpoint 到 ``run_dir/SOCIETY_STEP.json`` （原子写入）。"""
         assert self._run_dir is not None
         payload = {
             "current_time": self._t.isoformat(),
@@ -657,15 +765,24 @@ class AgentSociety:
         """标记第 ``step_idx`` 个顶层 step 已完成并立即持久化进度。
 
         由 CLI 在每个顶层 step（含 Ask/Intervene/Questionnaire）成功后调用。
-        游标只推进连续完成前缀，后续成功不能跨过尚未完成的步骤。
-        缺口之后的步骤在恢复时可能重新执行；本游标不保证业务副作用幂等。
+        游标语义为**最大连续完成前缀**（2026-10-19 修复）：游标只在
+        ``step_idx == 游标`` 时前进,后续成功步不再把被失败步隔开的缺口
+        顶上去——失败步因此保持可重试,resume 不会永久跳过它。
+
+        背景(T2 生产实锤):旧语义 ``游标 = step_idx + 1`` 下,step 59 失败、
+        step 60 成功即把游标顶到 61,59 的时钟缺口永久丢失且 resume 空转
+        (96/96 全 skip)。间隔失败(非前缀)的 run step 必须由 resume 重跑;
+        问卷步重跑成本低(幂等重放),run 步从 checkpoint 时钟重放同样幂等。
         """
         if self._run_dir is None:
             return
-        if step_idx != self._completed_step_count:
-            return
-        self._completed_step_count = step_idx + 1
-        self._write_society_step_json()
+        if step_idx == self._completed_step_count:
+            self._completed_step_count = step_idx + 1
+            self._write_society_step_json()
+        elif step_idx > self._completed_step_count:
+            # 前缀之外的完成(缺口之后):记录最大见过的 step 供诊断,
+            # 但游标不动——缺口修复(resume 重跑失败步)后它会自然前进。
+            self._write_society_step_json()
 
     @staticmethod
     def _read_checkpoint(run_dir: Path) -> tuple[dict, dict]:
@@ -717,8 +834,8 @@ class AgentSociety:
     ) -> AgentSociety:
         """从 ``run_dir`` 重建 society（resume）。
 
-        读 ``SOCIETY.json``（不可变：agent specs、env 模块类型+kwargs）+
-        ``SOCIETY_STEP.json``（每步标量：当前时间、步数、已完成前置步数）。
+        读 ``SOCIETY.json`` （不可变：agent specs、env 模块类型+kwargs）+
+        ``SOCIETY_STEP.json`` （每步标量：当前时间、步数、已完成前置步数）。
         ``env_router`` 必须由调用方（CLI）预先构造（actor 不可在此重建）；
         env 模块状态由 actor 在自身 ``init()`` 中恢复。
 
@@ -818,6 +935,7 @@ class AgentSociety:
 
             batch_returns = await asyncio.gather(*[self._await_ref(r) for r in refs])
             failures: list[str] = []
+            failure_items: list[dict[str, Any]] = []
             for br in batch_returns:
                 if not isinstance(br, dict):
                     continue
@@ -828,7 +946,13 @@ class AgentSociety:
                 for item in br.get("results") or []:
                     if isinstance(item, dict) and not item.get("ok", True):
                         failures.append(f"agent {item.get('id')}: {item.get('error')}")
+                        failure_items.append(item)
             if failures:
+                # Persist per-agent failure rows BEFORE raising, so the tick's
+                # RuntimeError (which aborts the run) doesn't erase the record.
+                await self._record_step_failures(
+                    self._step_count, self._t, failure_items
+                )
                 preview = "; ".join(failures[:5])
                 more = "" if len(failures) <= 5 else f" (+{len(failures) - 5} more)"
                 raise RuntimeError(
@@ -898,8 +1022,7 @@ class AgentSociety:
         only the agents a specific plan needs.
         """
         if self._helper is None:
-            helper_module = import_module("agentsociety2.society.helper")
-            self._helper = helper_module.AgentSocietyHelper(
+            self._helper = AgentSocietyHelper(
                 env_router=self._env_router,
                 society=self,
             )

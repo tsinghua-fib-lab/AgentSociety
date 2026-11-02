@@ -49,17 +49,16 @@ if TYPE_CHECKING:
     from agentsociety2.storage import ReplayWriter
 
 import black
-import json_repair
 import yaml
 from litellm import AllMessageValues
 from litellm.litellm_core_utils.streaming_handler import CustomStreamWrapper
 from litellm.types.utils import ModelResponse
 from pydantic import BaseModel, ValidationError
 
+from agentsociety2.agent.json_utils import loads_llm_json
 from agentsociety2.config import (
     Config,
     LLMDispatchError,
-    extract_json,
     get_model_name,
 )
 from agentsociety2.env.base import EnvBase
@@ -71,7 +70,7 @@ T = TypeVar("T", bound=BaseModel)
 
 
 def _env_skill_catalog_row(skill_md: Path, *, module_name: str) -> str:
-    """Return one Markdown table row for an environment-provided skill."""
+    """为环境提供的 skill 返回一行 Markdown 表格。"""
     try:
         raw = skill_md.read_text(encoding="utf-8")
     except OSError:
@@ -92,19 +91,19 @@ def _env_skill_catalog_row(skill_md: Path, *, module_name: str) -> str:
 
 
 def _empty_env_skill_catalog() -> str:
-    """Return an empty Markdown table for environment skill catalog prompts."""
+    """为环境 skill 目录提示词返回空 Markdown 表格。"""
     return "| name | env_module | description |\n| --- | --- | --- |\n| - | - | No environment skills were declared by modules. |"
 
 
 class TokenUsageStats(BaseModel):
     """
-    Token usage statistics for a model.
+    模型 token 用量统计。
 
-    :ivar call_count: Number of API calls made.
-    :ivar input_tokens: Total number of input tokens consumed.
-    :ivar output_tokens: Total number of output tokens consumed.
-    :ivar cached_input_tokens: Input tokens served from the provider's
-        prompt-prefix cache (a subset of ``input_tokens``).
+    :ivar call_count: API 调用次数。
+    :ivar input_tokens: 消耗的输入 token 总数。
+    :ivar output_tokens: 消耗的输出 token 总数。
+    :ivar cached_input_tokens: 由 provider 的提示词前缀缓存服务的输入
+        token(``input_tokens`` 的子集)。
     """
 
     call_count: int = 0
@@ -114,7 +113,7 @@ class TokenUsageStats(BaseModel):
 
     @property
     def cache_hit_rate(self) -> float:
-        """Return ``cached_input_tokens / input_tokens``, clamped to ``[0, 1]``."""
+        """返回 ``cached_input_tokens / input_tokens``,截断到 ``[0, 1]`` 区间。"""
         if self.input_tokens <= 0:
             return 0.0
         return max(0.0, min(1.0, self.cached_input_tokens / self.input_tokens))
@@ -122,10 +121,10 @@ class TokenUsageStats(BaseModel):
 
 class FinalAnswerResponse(BaseModel):
     """
-    Pydantic model for LLM final answer response.
+    LLM 最终答案响应的 Pydantic 模型。
 
-    :ivar status: Execution status (success, in_progress, fail, error).
-    :ivar summary: Summary of what was accomplished or what went wrong.
+    :ivar status: 执行状态(success、in_progress、fail、error)。
+    :ivar summary: 已完成内容或出错原因的摘要。
     """
 
     status: Literal["success", "in_progress", "fail", "error"]
@@ -134,13 +133,13 @@ class FinalAnswerResponse(BaseModel):
 
 class ToolInfo(BaseModel):
     """
-    Pydantic model for tool information.
+    工具信息的 Pydantic 模型。
 
-    :ivar function_parts: Parsed function parts (signature, docstring, etc.).
-    :ivar name: Tool name.
-    :ivar description: Tool description.
-    :ivar readonly: Whether the tool is readonly.
-    :ivar kind: Tool kind (None, "observe", or "statistics").
+    :ivar function_parts: 解析出的函数部件(签名、docstring 等)。
+    :ivar name: 工具名。
+    :ivar description: 工具描述。
+    :ivar readonly: 工具是否只读。
+    :ivar kind: 工具类型(None、"observe" 或 "statistics")。
     """
 
     function_parts: FunctionParts
@@ -152,11 +151,10 @@ class ToolInfo(BaseModel):
 
 class ModuleToolsInfo(BaseModel):
     """
-    Pydantic model for module tools information.
+    模块工具信息的 Pydantic 模型。
 
-    Attributes:
-        description: Module description
-        tools: List of tool information
+    :ivar description: 模块描述。
+    :ivar tools: 工具信息列表。
     """
 
     description: str
@@ -245,32 +243,36 @@ class RouterBase(ABC):
         )
 
     def set_trace_sink(self, sink: Any) -> None:
-        """Inject a sync sharded-writer adapter for env-side trace spans.
+        """注入用于 env 侧 trace span 的同步 sharded-writer 适配器。
 
-        :param sink: An object exposing ``append_record(record_dict)`` (and
-            optionally ``flush()``), e.g. the adapter built by
-            :func:`~agentsociety2.trace.build_local_sink`.
-            Pass ``None`` to disable tracing.
+        :param sink: 暴露 ``append_record(record_dict)``(可选再暴露
+            ``flush()``)的对象,例如由
+            :func:`~agentsociety2.trace.build_local_sink` 构建的适配器。
+            传 ``None`` 可禁用追踪。
         """
         self._trace_sink = sink
 
     def _set_trace_context(
         self, trace_id: str | None, parent_span_id: str | None, agent_id: Any
     ):
-        """Bind the current ask()'s trace context (returns a reset token)."""
+        """绑定当前 ask() 的 trace 上下文(返回 reset token)。"""
         return self._trace_ctx.set((trace_id, parent_span_id, agent_id))
 
     def _reset_trace_context(self, token) -> None:
-        """Reset the trace context to its prior value."""
+        """把 trace 上下文重置回之前的值。"""
         self._trace_ctx.reset(token)
 
     @contextmanager
-    def _llm_completion_span(self, model_name: str, message_count: int):
-        """Emit an ``llm.completion`` span for an env-side LLM call.
+    def _llm_completion_span(
+        self, model_name: str, message_count: int, source: str = "env_router"
+    ):
+        """为 env 侧 LLM 调用发出 ``llm.completion`` span。
 
-        No-op when no trace sink or trace context is bound. The span is parented
-        to the current ask()'s ``parent_span_id`` so env codegen/summary LLM
-        calls appear in the agent's trace tree (previously a blind spot).
+        未绑定 trace sink 或 trace 上下文时为 no-op。span 以当前 ask() 的
+        ``parent_span_id`` 为父,使 env codegen/summary 的 LLM 调用出现在
+        agent 的 trace 树中(此前是盲区)。``source`` 区分调用路径
+        (``env_codegen`` / ``env_summary``),下游分析可据此把缓存未命中的
+        codegen 调用与 summary 阶段调用区分开。
         """
         trace_id, parent_span_id, agent_id = self._trace_ctx.get()
         sink = self._trace_sink
@@ -308,7 +310,7 @@ class RouterBase(ABC):
                 "attributes": {
                     "operation.type": "llm",
                     "llm.model": model_name or "",
-                    "llm.source": "env_router",
+                    "llm.source": source,
                     "input.message_count": message_count,
                 },
                 "events": [],
@@ -330,14 +332,13 @@ class RouterBase(ABC):
         }
 
     def set_current_time(self, t: datetime) -> None:
-        """Push the society's current clock to the router and env modules.
+        """把 society 当前时钟推送给 router 与 env 模块。
 
-        This is NOT time advancement — the society advances its own clock in
-        ``step()`` and calls this so that, during the agent phase (which runs
-        before :meth:`step`), env modules observe the correct simulation time.
-        Several env modules read ``self.t`` inside ``@tool`` methods (e.g. event
-        scheduling, social-media post timestamps), so the time must be set
-        before agents start querying the environment.
+        这不是时间推进——society 在 ``step()`` 中推进自己的时钟并调用本
+        方法,使 env 模块在 agent 阶段(先于 :meth:`step` 运行)观察到正确
+        的仿真时间。部分 env 模块会在 ``@tool`` 方法内读取 ``self.t``
+        (如事件调度、社交媒体发帖时间戳),因此时间必须在 agent 开始查询
+        环境之前设置好。
         """
         self.t = t
         for env_module in self.env_modules:
@@ -458,18 +459,22 @@ class RouterBase(ABC):
         """把每个模块的动态状态写入其 workspace。
 
         用 ``return_exceptions=True`` 收集结果，单个模块落盘失败不会让本步其它
-        模块的持久化全部丢失（否则一次序列化异常会导致整步 checkpoint 落后）。
+        模块的持久化全部丢失；收集结束后抛错，禁止提交不完整的总进度。
         """
         if self._env_workspace_root is None:
             return
         results = await asyncio.gather(
             *[m.to_workspace() for m in self.env_modules], return_exceptions=True
         )
+        failed = []
         for module, result in zip(self.env_modules, results):
             if isinstance(result, BaseException):
+                failed.append(module.name)
                 get_logger().error(
                     "Env module %s to_workspace failed: %s", module.name, result
                 )
+        if failed:
+            raise RuntimeError(f"Environment checkpoint failed for modules: {failed}")
 
     def get_tool_call_history(self) -> list[dict[str, Any]]:
         """汇总所有环境模块的工具调用历史（按时间排序）。
@@ -596,7 +601,11 @@ class RouterBase(ABC):
             self.codegen_model_name if model == "coder" else self.summary_model_name
         )
 
-        with self._llm_completion_span(model_name, len(messages)):
+        with self._llm_completion_span(
+            model_name,
+            len(messages),
+            source="env_codegen" if model == "coder" else "env_summary",
+        ):
             response = await dispatcher.call(
                 model_name,
                 messages,
@@ -710,15 +719,9 @@ Your corrected response:
                     raise ValueError("LLM returned empty content")
                 conversation_messages.append({"role": "assistant", "content": content})
 
-                # Extract JSON from response
-                json_str = extract_json(content)
-                if json_str is None:
-                    raise ValueError("Failed to extract JSON from LLM response")
-
-                # Repair JSON if needed
                 try:
-                    parsed_data = json_repair.loads(json_str)
-                except Exception as e:
+                    parsed_data = loads_llm_json(content, expect="object")
+                except ValueError as e:
                     raise ValueError(f"Failed to parse JSON: {e!s}") from e
 
                 # Validate against Pydantic model
@@ -797,11 +800,10 @@ Your corrected response:
         )
 
     def get_token_usages(self):
-        """Return aggregated token usage from this router's LLM clients.
+        """返回本 router 各 LLM client 聚合的 token 用量。
 
-        Each dispatcher (:class:`LLMClient`) tracks its own per-loop usage; we
-        snapshot them here (without clearing). Returns
-        ``{model: TokenUsageStats}``.
+        每个 dispatcher(:class:`LLMClient`)各自跟踪自己每循环的用量;此处
+        做快照(不清零)。返回 ``{model: TokenUsageStats}``。
         """
         from agentsociety2.config.llm_dispatcher import merge_token_stats
 
@@ -821,7 +823,7 @@ Your corrected response:
         }
 
     def reset_token_usages(self):
-        """Reset aggregated token usage on this router's LLM clients (drain)."""
+        """重置本 router 各 LLM client 上的聚合 token 用量(drain)。"""
         for dispatcher in (self._coder_dispatcher, self._summary_dispatcher):
             if dispatcher is not None and hasattr(dispatcher, "take_token_stats"):
                 dispatcher.take_token_stats()
@@ -829,13 +831,24 @@ Your corrected response:
     @staticmethod
     def get_status_descriptions() -> dict[str, str]:
         """
-        Get standard status descriptions.
+        获取标准状态描述。
 
-        The status indicates whether the user's instruction has been effectively
-        completed in the environment modules, or needs to wait for some time
-        before the user actively checks completion.
+        状态指示用户指令是否已在环境模块中有效完成,还是需要等待一段时间
+        后由用户主动检查完成情况。
 
-        :returns: Dictionary mapping status values to their descriptions: - success: The task has been completed successfully. All required operations finished without errors. - in_progress: The task is still being executed or more steps are needed. The agent need to check whether it is done in the next steps. - fail: The task could not be completed (e.g., unsupported instruction, missing data, invalid input). Include detailed reason in results. - error: An error occurred during code execution. Must include error details in results['error']. - unknown: Execution status unknown
+        :returns: 状态值到描述文本的映射字典:
+
+            - success: The task has been completed successfully. All required
+              operations finished without errors.
+            - in_progress: The task is still being executed or more steps are
+              needed. The agent need to check whether it is done in the next
+              steps.
+            - fail: The task could not be completed (e.g., unsupported
+              instruction, missing data, invalid input). Include detailed
+              reason in results.
+            - error: An error occurred during code execution. Must include
+              error details in results['error'].
+            - unknown: Execution status unknown
         """
         return {
             "success": "The task has been completed successfully. All required operations finished without errors.",
@@ -847,7 +860,7 @@ Your corrected response:
 
     async def get_world_description(self) -> str:
         """
-        Get the world description.
+        获取 world description。
         """
         if self._world_description is None:
             async with self._generate_world_description_lock:

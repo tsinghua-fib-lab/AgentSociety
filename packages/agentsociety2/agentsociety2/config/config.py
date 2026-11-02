@@ -102,7 +102,7 @@ def get_llm_thinking(role: str = "default") -> dict[str, Any]:
     环境变量（``coder`` 角色优先读 ``AGENTSOCIETY_CODER_LLM_*``，未设时回退到
     默认组；其他角色只读默认组）：
 
-    - ``AGENTSOCIETY_LLM_THINKING``：``on`` / ``off``（兼容 ``1/0/true/false``）。
+    - ``AGENTSOCIETY_LLM_THINKING``：``on`` / ``off`` （兼容 ``1/0/true/false``）。
       **未设 = 不发送任何新参数**，出站请求与不启用该功能时逐字节相同。
     - ``AGENTSOCIETY_LLM_REASONING_EFFORT``：作为 ``reasoning_effort`` 发送。
     - ``AGENTSOCIETY_LLM_EXTRA_BODY``：JSON 对象，合并进 ``extra_body``，用于
@@ -112,7 +112,7 @@ def get_llm_thinking(role: str = "default") -> dict[str, Any]:
     ``reasoning_effort``**（避免网关同时收到两个开关而报错）；没配则发
     ``reasoning_effort``，取 ``REASONING_EFFORT``，缺省 ``"minimal"``。
 
-    这里刻意在**调用时**读 ``os.getenv``（而非只在 import 时读），以便测试用
+    这里刻意在**调用时**读 ``os.getenv`` （而非只在 import 时读），以便测试用
     monkeypatch 覆盖；``Config`` 上的同名类属性仅作文档用途。
 
     :param role: ``default`` / ``coder`` / ``embedding``。
@@ -357,17 +357,6 @@ class Config:
     Common values are 384, 512, 768, 1024, or 1536 depending on the model.
     """
 
-    # Trace writer: flush spans via a background thread (default on for
-    # production so span writes never block the agent event loop). Tests set
-    # this False via conftest for deterministic synchronous reads.
-    TRACE_WRITER_ASYNC: bool = os.getenv(
-        "AGENTSOCIETY_TRACE_WRITER_ASYNC", "1"
-    ) not in (
-        "0",
-        "",
-        "false",
-        "False",
-    )
     # Env Ray actor concurrency ceiling (static, NOT AIMD). Only takes effect
     # (>1) when every mounted env module declares is_concurrency_safe();
     # otherwise the actor stays serial (concurrency=1). API rate-limit control
@@ -480,16 +469,31 @@ class Config:
     overhead; larger batches mean one slow agent can stall its whole batch.
     """
 
+    WORKSPACE_READ_MAX_BYTES: int = _env_int(
+        "AGENTSOCIETY_WORKSPACE_READ_MAX_BYTES", 65536
+    )
+    """
+    Hard cap on bytes returned by the agent ``read`` tool.
+
+    The observation joins the react thread and is re-sent (uncached tail)
+    on every subsequent turn, so one huge file balloons both context and
+    cost for the rest of the step. Larger reads are truncated with a
+    marker; the model is pointed at ``grep`` for targeted extraction.
+
+    Environment variable: AGENTSOCIETY_WORKSPACE_READ_MAX_BYTES
+    Default: 65536 (64 KiB)
+    """
+
     # 推理（thinking）开关。这些类属性只是文档用途：实际解析发生在
     # :func:`get_llm_thinking` 调用时（读取 os.getenv），以便按角色回退与测试覆盖。
     LLM_THINKING: str | None = os.getenv("AGENTSOCIETY_LLM_THINKING")
     """
-    是否启用模型推理（thinking）：``on`` / ``off``（兼容 ``1/0/true/false``）。
+    是否启用模型推理（thinking）：``on`` / ``off`` （兼容 ``1/0/true/false``）。
 
     Environment variable: AGENTSOCIETY_LLM_THINKING
     Default: unset（**不发送任何新参数**，行为与未启用该功能时完全一致）
 
-    ``off`` 时发送 ``reasoning_effort``（取 ``AGENTSOCIETY_LLM_REASONING_EFFORT``，
+    ``off`` 时发送 ``reasoning_effort`` （取 ``AGENTSOCIETY_LLM_REASONING_EFFORT``，
     缺省 ``"minimal"``）；若同时配置了 ``AGENTSOCIETY_LLM_EXTRA_BODY``，则只发
     ``extra_body`` 而不发 ``reasoning_effort``，以适配网关私有开关。
 

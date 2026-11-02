@@ -639,14 +639,11 @@ Please summarize their success patterns and provide suggestions: How should I ad
             )
 
     async def ask(self, message: str, readonly: bool = True) -> str:
-        """Answer a question using LLM and optionally memory.
+        """用 LLM(可选地结合记忆)回答一个问题。
 
-        Args:
-            message: The question to answer
-            readonly: Whether this is a readonly operation (default: True)
-
-        Returns:
-            The answer as a string
+        :param message: 要回答的问题。
+        :param readonly: 是否只读操作(默认 True)。
+        :returns: 字符串形式的回答。
         """
         # Try to get relevant memories if available
         memory_context = ""

@@ -6,8 +6,9 @@ import tempfile
 from pathlib import Path
 from typing import Any, TypeVar
 
-import json_repair
 from pydantic import BaseModel, ValidationError
+
+from agentsociety2.agent.json_utils import loads_llm_json
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -40,7 +41,7 @@ def atomic_write_json(path: Path, payload: Any) -> None:
 def loads_json_text(text: str) -> Any:
     if not text or not str(text).strip():
         raise ValueError("empty JSON payload")
-    return json_repair.loads(text)
+    return loads_llm_json(text, expect="any")
 
 
 def loads_json_file(path: Path) -> Any:

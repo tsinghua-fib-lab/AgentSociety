@@ -15,11 +15,26 @@ export default defineConfig({
             }
         }
     },
+    // Plotly's modular CommonJS dependencies use the browser global.
+    define: { global: 'globalThis' },
     plugins: [react()],
     base: '/',
     build: {
         outDir: 'dist',
         assetsDir: 'assets',
         sourcemap: false,
+        rolldownOptions: {
+            output: {
+                strictExecutionOrder: true,
+                codeSplitting: {
+                    groups: [{
+                        name: 'vendor',
+                        test: /node_modules/,
+                        minSize: 100_000,
+                        maxSize: 250_000,
+                    }],
+                },
+            },
+        },
     }
 })

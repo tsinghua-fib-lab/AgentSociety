@@ -1,5 +1,6 @@
 """数据层：replay/SQLite 读取（`DataReader`）、实验目录上下文（`ContextLoader`）。"""
 
+import json
 import sqlite3
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -704,14 +705,12 @@ class ContextLoader:
 
     def _load_duration(self, run_path: Path) -> float | None:
         """从 pid.json 读取运行时长"""
-        import json_repair
-
         pid_file = run_path / FILE_PID
         if not pid_file.exists():
             return None
 
         try:
-            data = json_repair.loads(pid_file.read_text(encoding="utf-8"))
+            data = json.loads(pid_file.read_text(encoding="utf-8"))
             start_s = data.get("start_time")
             end_s = data.get("end_time")
             if start_s and end_s:
@@ -727,8 +726,6 @@ class ContextLoader:
         run_path: Path,
     ) -> tuple[ExperimentStatus, float, list[str]]:
         """分析实验状态"""
-        import json_repair
-
         replay_dir = run_path / DIR_REPLAY
         legacy_db_path = run_path / FILE_SQLITE
         pid_file = run_path / FILE_PID
@@ -742,7 +739,7 @@ class ContextLoader:
         # 从 pid.json 读取状态
         if pid_file.exists():
             try:
-                data = json_repair.loads(pid_file.read_text(encoding="utf-8"))
+                data = json.loads(pid_file.read_text(encoding="utf-8"))
                 pid_status = (data.get("status") or "").strip().lower()
                 if pid_status in ("completed", "success", "done"):
                     status = ExperimentStatus.SUCCESSFUL

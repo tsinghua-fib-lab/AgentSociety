@@ -1,5 +1,6 @@
  
-import { AuthCallback, sdkConfig } from "../components/Auth";
+import { AuthCallback } from "../components/Auth";
+import { sdkConfig } from "../components/authState";
 
 const Callback = () => {
     return (

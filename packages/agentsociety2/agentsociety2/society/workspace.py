@@ -167,15 +167,16 @@ class MyAgent(AgentBase):
 
     @classmethod
     async def from_workspace(cls, workspace_path: Path, service_proxy: ServiceProxy) -> "MyAgent":
-        meta = json.loads((workspace_path / "AGENT.json").read_text(encoding="utf-8"))
-        agent = cls(meta["id"], meta["profile"])
-        agent._bind_services(service_proxy)
-        agent._step_count = meta.get("step_count", 0)
+        # 构造契约：__init__ 无参，restore() 才是真正的初始化。
+        agent = cls()
+        await agent.restore(workspace_path, service_proxy)
         return agent
 
     async def to_workspace(self, workspace_path: Path) -> None:
+        meta = json.loads((workspace_path / "AGENT.json").read_text(encoding="utf-8"))
+        meta["step_count"] = self._step_count
         (workspace_path / "AGENT.json").write_text(
-            json.dumps({"id": self._id, "profile": self.get_profile(), "step_count": getattr(self, "_step_count", 0)}),
+            json.dumps(meta, ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
 

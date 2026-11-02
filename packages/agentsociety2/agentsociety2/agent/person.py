@@ -1,4 +1,4 @@
-"""Workspace-backed PersonAgent (thin).
+"""基于 workspace 的 PersonAgent(轻量封装)。
 
 中文：``PersonAgent`` 现在只负责 person 专属逻辑（memory、todo、person prompt、
 observe），通用的 agent 机器（workspace / skill / tool / react）已下沉到
@@ -23,6 +23,7 @@ from agentsociety2.agent.memory_runtime import (
 from agentsociety2.agent.person_prompt import (
     build_react_messages,
     json_block,
+    load_prompt_overrides,
     xml_block,
 )
 from agentsociety2.logger import get_logger
@@ -33,23 +34,38 @@ if TYPE_CHECKING:
 logger = get_logger()
 
 
+def _str_override(overrides: Any, key: str) -> str | None:
+    """取出 run 级 override 的 str 值。
+
+    :param overrides: ``load_prompt_overrides`` 的返回(或 None)。
+    :param key: override 键名。
+    :returns: 非空字符串值;键缺失/非字符串/空串一律 ``None``
+        (回退编译期默认,防畸形文件悄悄打空提示词)。
+    """
+    if not isinstance(overrides, dict):
+        return None
+    value = overrides.get(key)
+    if isinstance(value, str) and value.strip():
+        return value
+    return None
+
+
 class PersonAgent(AgentBase):
-    """Workspace-backed simulated person agent.
+    """基于 workspace 的模拟人类 agent。
 
-    Person-specific responsibilities:
+    person 专属职责:
 
-    - Memory runtime (``PersonMemoryRuntime``): ``MEMORY.md`` + episodes, plus
-      the ``memory_*`` tool dispatch.
-    - ``todo_*`` tool dispatch (the generic TODO state store + helpers live on
-      :class:`AgentBase`; PersonAgent routes the ``todo_*`` prefix to them).
-    - Person prompt building (``build_react_messages``) — the prompt hook the
-      generic ReAct loop calls.
-    - ``step`` / ``ask`` orchestration (observe + react loop + lifecycle hooks).
+    - 记忆运行时(``PersonMemoryRuntime``): ``MEMORY.md`` + episodes,外加
+      ``memory_*`` 工具分发。
+    - ``todo_*`` 工具分发(通用 TODO 状态存储与辅助方法位于
+      :class:`AgentBase`;PersonAgent 把 ``todo_*`` 前缀路由过去)。
+    - person 提示词构建(``build_react_messages``),即通用 ReAct 循环调用的
+      提示词 hook。
+    - ``step`` / ``ask`` 编排(observe + react 循环 + 生命周期 hook)。
 
-    Generic agent machinery (workspace binding, skill discovery, file/skill/ask_env
-    tool dispatch, the ReAct loop, LLM dispatch, response parsing, TODO state,
-    trace spans, AGENT.json persistence, construction model) is inherited from
-    :class:`AgentBase`.
+    通用 agent 机器(workspace 绑定、skill 发现、文件/skill/ask_env 工具分发、
+    ReAct 循环、LLM 分发、响应解析、TODO 状态、trace span、AGENT.json 持久化、
+    构造模型)全部继承自 :class:`AgentBase`。
     """
 
     # ==================== Workspace contract ====================
@@ -62,16 +78,16 @@ class PersonAgent(AgentBase):
 
     @classmethod
     def description(cls) -> str:
-        """Return a short registry description."""
+        """返回简短的注册表描述。"""
         return (
-            "PersonAgent: lightweight workspace-backed person agent rewrite. "
-            "Current slice supports workspace lifecycle, skill catalog discovery, "
-            "and detailed behavior tracing; ReAct tools are added incrementally."
+            "PersonAgent: workspace-backed LLM-native person agent. Full ReAct "
+            "tool loop, metadata-first skill activation, workspace-backed "
+            "memory, and per-step behavior tracing."
         )
 
     @classmethod
     def init_description(cls) -> str:
-        """Return initialization guidance for generated configs."""
+        """返回供生成配置使用的初始化指引。"""
         return """PersonAgent initialization (workspace-based).
 
 Agents are created via ``PersonAgent.create(workspace_path, profile, config)``
@@ -106,12 +122,11 @@ Minimal config example:
     # ==================== Person-specific config helpers ====================
 
     def _apply_person_config(self) -> None:
-        """Parse person-specific config fields from ``self._config``.
+        """从 ``self._config`` 解析 person 专属配置字段。
 
-        Called by :meth:`restore` after the base restore.  The generic
-        react-loop / tool flags (``_max_react_turns``, ``_enable_todo_list``)
-        are now parsed by :meth:`AgentBase.restore`; this method only parses
-        the person-specific memory configuration.
+        在基类 restore 之后由 :meth:`restore` 调用。通用 react 循环 / 工具
+        开关(``_max_react_turns``、``_enable_todo_list``)已改由
+        :meth:`AgentBase.restore` 解析;本方法只解析 person 专属的记忆配置。
         """
         cfg = self._config
         self._enable_memory = bool(cfg.get("enable_memory", True))
@@ -119,6 +134,12 @@ Minimal config example:
             500, int(cfg.get("memory_context_max_chars", 4000) or 4000)
         )
         self._recent_memory_limit = max(0, int(cfg.get("recent_memory_limit", 8) or 0))
+        # 闲置跳过(Reflex 快路径):默认关闭,经配置逐实验开启。
+        # 开启后,pre_step hook 判定当前处于可确定性执行的静态活动段
+        # (如夜间睡眠)时,run step 跳过 observe + react 循环,写一条
+        # 合成记忆;问卷(ask 路径)不受影响。T1 实测:全部深夜 slot
+        # 80/80 回答 sleep——每步都是花钱让模型说"我在睡觉"。
+        self._idle_skip_enabled = bool(cfg.get("idle_skip_enabled", False))
 
     # ==================== restore override ====================
 
@@ -127,11 +148,10 @@ Minimal config example:
         workspace_path: Path,
         service_proxy: ServiceProxy,
     ) -> None:
-        """Restore base state, then build person-specific runtime (memory).
+        """先恢复基类状态,再构建 person 专属运行时(记忆)。
 
-        Args:
-            workspace_path: Agent workspace root.
-            service_proxy: Shared service container.
+        :param workspace_path: agent workspace 根目录。
+        :param service_proxy: 共享服务容器。
         """
         await super().restore(workspace_path, service_proxy)
         self._apply_person_config()
@@ -139,16 +159,25 @@ Minimal config example:
             (Path(workspace_path) / "AGENT.json").read_text(encoding="utf-8")
         )
         self._world_description = str(meta.get("world_description") or "")
+        # run 级提示词 override:workspace 布局为 run_dir/agents/agent_XXXX,
+        # 上溯两级即 run_dir;布局不符/文件缺失时 load_prompt_overrides
+        # 返回空 dict,提示词与默认逐字节一致(fail-safe)。Ray 下 agent
+        # 每 tick restore,RSI 循环改 override 文件下一 tick 即生效。
+        self._prompt_overrides = load_prompt_overrides(
+            Path(workspace_path).parent.parent
+        )
         self._build_memory_runtime()
 
     def _build_memory_runtime(self) -> None:
-        """Construct the ``PersonMemoryRuntime`` bound to this agent."""
+        """构建绑定到本 agent 的 ``PersonMemoryRuntime``。"""
         from agentsociety2.agent.memory import MemoryConsolidationConfig
 
         cfg = self._config
         self._memory_runtime = PersonMemoryRuntime(
             agent_id=self.id,
-            agent_name=self.name,
+            consolidation_system_prompt=_str_override(
+                self._prompt_overrides, "memory_consolidation"
+            ),
             config=MemoryRuntimeConfig(
                 enabled=self._enable_memory,
                 context_max_chars=self._memory_context_max_chars,
@@ -178,7 +207,6 @@ Minimal config example:
             ),
             get_model_name=lambda: self._model_name,
             dispatch_llm=lambda **kwargs: self._dispatcher.call(**kwargs),
-            get_profile=self.get_profile,
             logger=logger,
             trace_span=self.trace_span,
         )
@@ -186,15 +214,13 @@ Minimal config example:
     # ==================== to_workspace ====================
 
     async def to_workspace(self, workspace_path: Path) -> None:
-        """Write current dynamic state back to the workspace.
+        """把当前动态状态写回 workspace。
 
-        Writes ``AGENT.json`` (profile / step_count / current_time / skills /
-        initialized_at). ``config.json`` is NOT rewritten.  Memory
-        (``MEMORY.md`` + episodes) is persisted via the memory runtime's
-        ``after_step`` path during ``step()``.
+        写入 ``AGENT.json``(profile / step_count / current_time / skills /
+        initialized_at)。``config.json`` 不会被重写。记忆(``MEMORY.md`` +
+        episodes)在 ``step()`` 期间经记忆运行时的 ``after_step`` 路径持久化。
 
-        Args:
-            workspace_path: Agent workspace root.
+        :param workspace_path: agent workspace 根目录。
         """
         workspace_path = Path(workspace_path)
         if self._workspace_root is None:
@@ -212,7 +238,7 @@ Minimal config example:
         tick: int | None,
         t: datetime | None,
     ) -> dict[str, Any]:
-        """Build AGENT.json with person-specific memory / skill fields."""
+        """构建带 person 专属记忆 / skill 字段的 AGENT.json。"""
         data = super().build_agent_json(tick=tick, t=t)
         # Enrich with person-specific memory + skill-disabled/default fields.
         data["world_description"] = self._world_description
@@ -235,7 +261,7 @@ Minimal config example:
         tick: int | None,
         t: datetime | None,
     ) -> dict[str, Any]:
-        """Prompt ``<agent>`` view; world text stays in the separate ``<world>`` block."""
+        """Prompt 的 ``<agent>`` 视图;世界文本留在单独的 ``<world>`` 块中。"""
         data = super().build_prompt_agent_view(tick=tick, t=t)
         data.pop("world_description", None)
         return data
@@ -249,7 +275,7 @@ Minimal config example:
     # ==================== Memory helpers ====================
 
     def _ensure_memory_store(self):
-        """Return initialized core memory store when enabled."""
+        """启用时返回已初始化的核心记忆存储。"""
         from agentsociety2.agent.memory import AgentMemoryStore
 
         store: AgentMemoryStore | None = self._memory_runtime.ensure_store(
@@ -258,7 +284,7 @@ Minimal config example:
         return store
 
     def _build_memory_context(self) -> dict[str, Any]:
-        """Build compact prompt context from MEMORY.md and recent episodes."""
+        """从 MEMORY.md 和近期 episodes 构建紧凑的 prompt 上下文。"""
         store = self._ensure_memory_store()
         if store is None:
             return {}
@@ -273,16 +299,16 @@ Minimal config example:
         *,
         readonly: bool = False,
     ) -> ReactToolResult:
-        """Dispatch person-specific prefixes, then delegate the rest to base.
+        """分发 person 专属前缀,其余动作委托给基类。
 
-        Person-specific prefixes handled here:
+        这里处理的 person 专属前缀:
 
-        - ``memory_*`` → :meth:`_dispatch_memory_tool` (person memory runtime).
-        - ``todo_*`` → :meth:`dispatch_todo_tool` (inherited from
-          :class:`AgentBase`; the generic TODO store + arg normalization).
+        - ``memory_*`` → :meth:`_dispatch_memory_tool`(person 记忆运行时)。
+        - ``todo_*`` → :meth:`dispatch_todo_tool`(继承自
+          :class:`AgentBase`;通用 TODO 存储 + 参数归一化)。
 
-        All other actions (workspace / skill / ask_env) are delegated to
-        ``await super().dispatch_react_tool(action, args, readonly=readonly)``.
+        其余所有动作(workspace / skill / ask_env)委托给
+        ``await super().dispatch_react_tool(action, args, readonly=readonly)``。
         """
         try:
             if readonly and action.startswith("todo_") and action != "todo_list":
@@ -300,13 +326,12 @@ Minimal config example:
         return await super().dispatch_react_tool(action, args, readonly=readonly)
 
     def _react_tool_overrides(self, *, readonly: bool) -> dict[str, Any]:
-        """Replace the ``finish`` tool per mode.
+        """按模式替换 ``finish`` 工具。
 
-        - ask / readonly mode: answer-only ``finish`` (external question).
-        - step mode: ``finish`` with a short ``final`` AND inline ``memories``,
-          so the model records step memories in the same call that ends the
-          step — removing the separate memory-extraction LLM pass. ``step()``
-          feeds the captured memories into ``memory_runtime.after_step``.
+        - ask / readonly 模式: 仅含答案的 ``finish``(外部问题)。
+        - step 模式: ``finish`` 带简短 ``final`` 且内联 ``memories``,让模型
+          在结束 step 的同一次调用里记录 step 记忆,从而省去单独的记忆抽取
+          LLM 调用。``step()`` 把捕获到的记忆送入 ``memory_runtime.after_step``。
         """
         from agentsociety2.agent.person_tools import (
             finish_ask_tool_schema,
@@ -324,7 +349,7 @@ Minimal config example:
         action: str,
         args: dict[str, Any],
     ) -> ReactToolResult:
-        """Dispatch built-in read-only memory retrieval tools."""
+        """分发内置的只读记忆检索工具。"""
         ok, observation, data = self._memory_runtime.dispatch_tool(action, args)
         return ReactToolResult(ok, observation, data)
 
@@ -340,14 +365,14 @@ Minimal config example:
         readonly: bool = False,
         skill_hooks: list[dict[str, Any]] | None = None,
     ) -> list[dict[str, str]]:
-        """Build ReAct prompt messages (person-specific).
+        """构建 ReAct prompt 消息(person 专属)。
 
-        Splits the AGENT.json content into the two prompt blocks the layout
-        wants: a run-stable ``<agent>`` identity view (volatile and host-path
-        fields stripped) and a per-step ``<turn_state>``. Both come from the
-        same source dict so they cannot drift apart.
+        把 AGENT.json 内容拆成布局所需的两个 prompt 块:运行期稳定的
+        ``<agent>`` 身份视图(剥离易变与宿主路径字段)和逐 step 的
+        ``<turn_state>``。两者来自同一源 dict,因此不会漂移失配。
         """
         return build_react_messages(
+            base_rules_override=_str_override(self._prompt_overrides, "base_rules"),
             world_description=self._world_description,
             skill_catalog=self.skill_runtime.skill_catalog(),
             activated_skill_content=self.skill_runtime.activated_skill_content_xml(),
@@ -398,29 +423,23 @@ Minimal config example:
         tick: int,
         t: datetime,
     ) -> dict[str, Any] | None:
-        """Append refreshed blocks for state a tool just changed mid-step.
+        """为工具刚在 step 中途改变的状态追加刷新块。
 
-        The thread head is built once per step (that is what keeps the cached
-        prefix intact), so ``<todo_context>`` and the system ``<skill_content>``
-        block would otherwise stay stale for the rest of the step.
+        线程头每个 step 只构建一次(正是它保证了缓存前缀不被破坏),因此
+        ``<todo_context>`` 与系统 ``<skill_content>`` 块若不刷新,就会在 step
+        余下部分保持过期。
 
-        - TODO mutations re-send ``<todo_context>``: it aggregates state the
-          individual tool observations do not (``due_now``,
-          ``overdue_or_blocked``, ``counts``).
-        - Skill changes re-send only the **list** of active skills, not their
-          docs: ``activate_skill`` already returns the full SKILL.md as the tool
-          observation, so repeating it here would double a multi-KB block. The
-          list is what ``deactivate_skill`` genuinely needs — the observation
-          cannot retract content the model has already read.
+        - TODO 变更重发 ``<todo_context>``:它聚合单个工具 observation 不含的
+          状态(``due_now``、``overdue_or_blocked``、``counts``)。
+        - skill 变更只重发激活 skill 的**清单**,不重发其文档:
+          ``activate_skill`` 已把完整 SKILL.md 作为工具 observation 返回,在此
+          重复会使多 KB 块翻倍。清单才是 ``deactivate_skill`` 真正需要的;
+          observation 无法撤回模型已读过的内容。
 
-        Args:
-            actions: Names of the tool actions that succeeded this turn.
-            tick: Current simulation tick.
-            t: Current simulation time.
-
-        Returns:
-            A ``role: "user"`` refresh message, or ``None`` when nothing
-            relevant changed.
+        :param actions: 本轮成功执行的工具动作名列表。
+        :param tick: 当前模拟 tick。
+        :param t: 当前模拟时间。
+        :returns: 一条 ``role: "user"`` 刷新消息;没有相关变化时返回 ``None``。
         """
         blocks: list[str] = []
         if self._enable_todo_list and self._TODO_MUTATING_ACTIONS.intersection(actions):
@@ -441,7 +460,7 @@ Minimal config example:
         return {"role": "user", "content": "\n\n".join(blocks)}
 
     async def _load_world_description(self) -> str:
-        """Load the current world description from the environment."""
+        """从环境加载当前的世界描述。"""
         if self._env is None:
             return ""
         getter = getattr(self._env, "get_world_description", None)
@@ -455,7 +474,7 @@ Minimal config example:
         return str(value or "")
 
     async def _ensure_initialized(self) -> None:
-        """Lazily run first-use initialization (idempotent)."""
+        """惰性执行首次使用时的初始化(幂等)。"""
         if self._initialized_at is not None:
             return
         self._initialized_at = datetime.now().isoformat()
@@ -486,8 +505,46 @@ Minimal config example:
 
     # ==================== step / ask ====================
 
+    # 闲置跳过适用(可确定性执行)的静态活动集合。刻意保守起步:夜间
+    # 睡眠是唯一有 80/80 实测行为证据(全部深夜问卷回答 sleep)的
+    # 无争议静态段;扩展该集合须先配 T2 JSD 行为保真对照。
+    _IDLE_SKIP_ACTIVITIES = frozenset({"sleep"})
+
+    def _idle_skip_segment(self, pre_hooks: list[dict[str, Any]] | None) -> dict | None:
+        """从 pre_step hook 输出中判定当前是否处于可跳过的静态活动段。
+
+        daily-guidance 的 pre_step hook 以 YAML 返回 ``active_segment``
+        (含 activity/start/end 等);活动命中 ``_IDLE_SKIP_ACTIVITIES``
+        即认为该 step 可按剧本确定性执行。任何缺失/解析失败/未开启
+        都返回 ``None``,调用方回退完整 ReAct 路径(fail-open,绝不让
+        优化吞掉判断)。
+
+        :param pre_hooks: ``run_lifecycle_hooks`` 的原始返回项。
+        :returns: 命中的活动段字典,无则 ``None``。
+        """
+        if not self._idle_skip_enabled or not pre_hooks:
+            return None
+        try:
+            import yaml
+
+            for item in pre_hooks:
+                if not item.get("ok") or not item.get("output"):
+                    continue
+                data = yaml.safe_load(str(item["output"]))
+                if not isinstance(data, dict):
+                    continue
+                seg = data.get("active_segment")
+                if not isinstance(seg, dict):
+                    continue
+                activity = str(seg.get("activity") or "").strip().lower()
+                if activity in self._IDLE_SKIP_ACTIVITIES:
+                    return seg
+        except Exception:
+            logger.debug("idle-skip hook output parse failed", exc_info=True)
+        return None
+
     async def step(self, tick: int, t: datetime) -> str:
-        """Run one simulation step."""
+        """运行一个模拟 step。"""
         await self._ensure_initialized()
         self._step_count += 1
         self._current_time = t
@@ -505,6 +562,55 @@ Minimal config example:
 
             initial_obs: list[dict[str, Any]] = []
             pre_hooks = await self.run_lifecycle_hooks("pre_step", tick=tick, t=t)
+
+            # 闲置跳过(Reflex 快路径):静态活动段(夜间睡眠等)按剧本
+            # 确定性推进,不进 LLM 循环。任何解析失败/无段/未开启一律
+            # 回退完整 ReAct 路径(fail-open)。
+            idle_seg = self._idle_skip_segment(pre_hooks)
+            if idle_seg is not None:
+                result = (
+                    f"[idle-skip] {idle_seg.get('activity')} "
+                    f"({idle_seg.get('start', '?')}–{idle_seg.get('end', '?')}): "
+                    "deterministic step, no reasoning performed"
+                )
+                span.attributes.update(
+                    {
+                        "idle_skip.skipped": True,
+                        "idle_skip.activity": idle_seg.get("activity"),
+                        "output.summary": {"result": result},
+                    }
+                )
+                post_hooks = await self.run_lifecycle_hooks("post_step", tick=tick, t=t)
+                memory_episodes = await self._memory_runtime.after_step(
+                    tick=tick,
+                    t=t,
+                    step_count=self._step_count,
+                    finish_memories=[
+                        {
+                            "type": "observation",
+                            "importance": 0.2,
+                            "keywords": [
+                                str(idle_seg.get("activity") or "idle"),
+                                "idle-skip",
+                            ],
+                            "text": (
+                                f"Was {idle_seg.get('activity')} during "
+                                f"{idle_seg.get('start', '?')}–"
+                                f"{idle_seg.get('end', '?')} per the daily plan "
+                                "(step executed deterministically)."
+                            ),
+                        }
+                    ],
+                )
+                span.attributes.update(
+                    {
+                        "step.count": self._step_count,
+                        "skill.pre_hook_count": len(pre_hooks),
+                        "skill.post_hook_count": len(post_hooks),
+                        "memory.episode_count": len(memory_episodes),
+                    }
+                )
+                return result
             skill_hooks: list[dict[str, Any]] | None = None
             if pre_hooks:
                 skill_hooks = [
@@ -582,7 +688,7 @@ Minimal config example:
         *,
         t: datetime | None = None,
     ) -> str:
-        """Answer an external question through the ReAct loop."""
+        """通过 ReAct 循环回答外部问题。"""
         if self._env is None:
             raise RuntimeError("PersonAgent.ask requires an initialized environment")
         await self._ensure_initialized()

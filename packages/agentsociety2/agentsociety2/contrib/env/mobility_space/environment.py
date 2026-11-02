@@ -11,7 +11,7 @@ from typing import Any, ClassVar, Literal
 import aiohttp
 import shapely
 from pycityproto.city.trip.v2.trip_pb2 import TripMode
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 from shapely.geometry import LineString
 
 from agentsociety2.contrib.env.mobility_space.download_sim import download_binary
@@ -96,6 +96,25 @@ class Target(BaseModel):
     path_v: float = Field(..., description="The speed of the person on the path.")
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    @field_serializer("path", when_used="json")
+    def serialize_path(self, path: LineString) -> list[tuple[float, ...]]:
+        """以坐标序列保存路径，保留内存中的几何对象。
+
+        :param path: 当前移动路径。
+        :returns: 可写入 JSON 的路径坐标。
+        """
+        return list(path.coords)
+
+    @field_validator("path", mode="before")
+    @classmethod
+    def restore_path(cls, value: Any) -> Any:
+        """从检查点坐标恢复几何路径，供距离计算与插值继续使用。
+
+        :param value: 检查点坐标序列或运行时 LineString。
+        :returns: 恢复的路径；其他输入交给字段类型校验。
+        """
+        return LineString(value) if isinstance(value, list) else value
 
 
 class MobilityPerson(BaseModel):
@@ -1150,7 +1169,7 @@ class MobilitySpace(EnvBase):
     _STATE_REL = "state/ENV_STATE.json"
 
     async def to_workspace(self, workspace_path=None) -> None:
-        """写入 ``state/ENV_STATE.json``（原子写）。
+        """写入 ``state/ENV_STATE.json`` （原子写）。
 
         pydantic ``MobilityPerson`` 用 model_dump；轨迹 tuple → list、visited
         AOI set → list 以便 JSON；``_map`` 与 routing 进程不存盘（可重建）。
@@ -1190,7 +1209,7 @@ class MobilitySpace(EnvBase):
     async def restore(self, workspace_path) -> bool:
         """从 ``state/ENV_STATE.json`` 恢复。
 
-        晚于 ``__init__``（重建 map）与 ``init()``（重启 routing）执行，覆盖
+        晚于 ``__init__`` （重建 map）与 ``init()`` （重启 routing）执行，覆盖
         persons / 轨迹 / 已访问 AOI / step 计数。
         """
         self._bind_workspace(workspace_path)

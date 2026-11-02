@@ -6,10 +6,10 @@ Plan-and-Execute Router Implementation
 import json
 from typing import Any
 
-import json_repair
 from litellm import AllMessageValues
 from openai.types.chat import ChatCompletionToolParam
 
+from agentsociety2.agent.json_utils import loads_llm_json
 from agentsociety2.env.base import EnvBase
 from agentsociety2.env.router_base import RouterBase
 from agentsociety2.logger import get_logger
@@ -517,27 +517,12 @@ Your new plan:"""
         )
 
     def _extract_json_from_text(self, text: str) -> Any:
-        """从文本中提取JSON"""
-        import re
-
-        # 尝试找到JSON数组
-        json_match = re.search(r"\[[\s\S]*\]", text)
-        if json_match:
-            try:
-                return json_repair.loads(json_match.group())
-            except Exception:
-                get_logger().debug(
-                    "Failed to parse JSON array from text", exc_info=True
-                )
-
-        # 尝试直接解析整个文本
+        """从文本中提取 JSON；失败时返回空列表。"""
         try:
-            return json_repair.loads(text)
-        except Exception:
+            return loads_llm_json(text, expect="any")
+        except ValueError:
             get_logger().debug("Failed to parse JSON from text", exc_info=True)
-
-        # 如果都失败，返回空列表
-        return []
+            return []
 
     def _format_tools_description(self, tools: list[ChatCompletionToolParam]) -> str:
         """格式化工具描述"""

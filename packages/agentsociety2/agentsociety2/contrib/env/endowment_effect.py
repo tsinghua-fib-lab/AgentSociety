@@ -75,7 +75,7 @@ class EndowmentEffectEnv(EnvBase):
         self._step_counter: int = 0
 
     async def to_workspace(self, workspace_path=None) -> None:
-        """写入 ``state/ENV_STATE.json``（原子写）。int 键 dict 用 dump 形式。"""
+        """写入 ``state/ENV_STATE.json`` （原子写）。int 键 dict 用 dump 形式。"""
         if workspace_path is not None:
             self._bind_workspace(workspace_path)
         if self._workspace_root is None:

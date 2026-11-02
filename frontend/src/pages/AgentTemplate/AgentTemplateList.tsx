@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import { useAsyncResource } from '../../hooks/useAsyncResource';
+import React, { useState, useCallback } from 'react';
 import { Table, Button, Card, Space, message, Tooltip, Input, Popconfirm } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, CopyOutlined, ExportOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router';
@@ -9,38 +10,24 @@ import { ApiAgentTemplate } from '../../types/agentTemplate';
 
 
 const AgentTemplateList: React.FC = () => {
-  const [templates, setTemplates] = useState<ApiAgentTemplate[]>([]);
-  const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
   const navigate = useNavigate();
   const { t } = useTranslation();
 
   // Load templates
-  const loadTemplates = async () => {
-    try {
-      setLoading(true);
-      const res = await fetchCustom('/api/agent-templates');
-      console.log('API response for template list:', await res.clone().json());
-
-      if (!res.ok) {
-        throw new Error('Failed to load templates');
-      }
-
-      const data = await res.json();
-      console.log('Processed template data:', data);
-      setTemplates(data.data);
-    } catch (error) {
-      console.error('Error loading templates:', error);
-      message.error('Failed to load templates');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Initialize data
-  useEffect(() => {
-    loadTemplates();
+  const loadResource = useCallback(async (): Promise<ApiAgentTemplate[]> => {
+      const response = await fetchCustom('/api/agent-templates');
+      if (!response.ok) throw new Error(await response.text());
+      const data = await response.json();
+      return data.data || [];
   }, []);
+  const handleLoadError = useCallback((error: unknown) => {
+      console.error('Failed to load templates:', error);
+      message.error(t('template.messages.fetchFailed'));
+  }, [t]);
+  const { data: templates, loading, reload: loadTemplates } = useAsyncResource(
+      loadResource, handleLoadError, [],
+  );
 
   // Handle search
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -106,8 +106,8 @@ async def test_to_workspace_writes_step_scalars_and_delegates(
 
 
 @pytest.mark.asyncio
-async def test_to_workspace_env_failure_does_not_abort(tmp_path: Path) -> None:
-    """env 落盘失败只告警，不抛异常（step 必须存活），SOCIETY_STEP.json 仍写。"""
+async def test_to_workspace_env_failure_blocks_progress_commit(tmp_path: Path) -> None:
+    """env 落盘失败必须上报，不能生成虚假的总进度检查点。"""
     env_router = AsyncMock()
     env_router.to_workspaces = AsyncMock(side_effect=RuntimeError("boom"))
 
@@ -118,8 +118,9 @@ async def test_to_workspace_env_failure_does_not_abort(tmp_path: Path) -> None:
         start_t=datetime(2025, 1, 1),
         run_dir=tmp_path,
     )
-    await society.to_workspace(tick=1)  # 不抛
-    assert (tmp_path / "SOCIETY_STEP.json").is_file()
+    with pytest.raises(RuntimeError, match="boom"):
+        await society.to_workspace(tick=1)
+    assert not (tmp_path / "SOCIETY_STEP.json").exists()
 
 
 @pytest.mark.asyncio

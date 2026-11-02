@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Table, Button, Card, Space, Modal, message, Tooltip, Input, Popconfirm, Form, Col, Row, Select } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, CopyOutlined, ExportOutlined, MinusCircleOutlined } from '@ant-design/icons';
 import { ConfigWrapper, LLMConfig } from '../../types/config';
@@ -61,7 +61,7 @@ const LLM: React.FC = () => {
     const [form] = Form.useForm();
 
     // Load LLM configurations
-    const loadLLMs = async () => {
+    const loadLLMs = useCallback(async () => {
         setLoading(true);
         try {
             const res = await fetchCustom('/api/llm-configs');
@@ -76,15 +76,14 @@ const LLM: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    };
-
+    }, [t]);
     // Initialize data
     useEffect(() => {
         const init = async () => {
             await loadLLMs();
         };
         init();
-    }, []);
+    }, [loadLLMs]);
 
     // Handle search
     const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {

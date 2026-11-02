@@ -1,4 +1,4 @@
-"""Skill registry.
+"""Skill 注册表。
 
 中文：扫描、解析和查询 Agent skill 元数据。
 English: Scans, parses, and queries Agent skill metadata.
@@ -22,18 +22,17 @@ _RESOURCE_FILES_CACHE: dict[tuple[str, int], list[str]] = {}
 
 @dataclass(frozen=True)
 class SkillDescriptor:
-    """Skill metadata.
+    """Skill 元数据。
 
-    Args:
-        skill_id: Stable registry skill id.
-        name: Display name from SKILL.md.
-        namespace: Skill namespace.
-        description: Catalog description.
-        root: Skill root directory.
-        source: Source category.
-        source_label: Human-readable source label.
-        script: Optional default script path.
-        hooks: Lifecycle hook script map.
+    :param skill_id: 稳定的注册表 skill id。
+    :param name: 来自 SKILL.md 的显示名。
+    :param namespace: skill 命名空间。
+    :param description: 目录描述。
+    :param root: skill 根目录。
+    :param source: 来源类别。
+    :param source_label: 人类可读的来源标签。
+    :param script: 可选的默认脚本路径。
+    :param hooks: 生命周期钩子脚本映射。
     """
 
     skill_id: str
@@ -47,13 +46,9 @@ class SkillDescriptor:
     hooks: dict[str, str]
 
     def resource_files(self) -> list[str]:
-        """List files shipped under this skill root.
+        """列出随本 skill 根目录交付的文件。
 
-        Args:
-            None.
-
-        Returns:
-            Relative resource file paths under the skill root.
+        :returns: skill 根下的相对资源文件路径。
         """
         if not self.root.is_dir():
             return []
@@ -80,32 +75,21 @@ class SkillDescriptor:
 
 
 class SkillRegistry:
-    """Registry for Skill metadata.
-
-    Args:
-        None.
-    """
+    """Skill 元数据注册表。"""
 
     def __init__(self) -> None:
-        """Initialize an empty registry.
+        """初始化一个空注册表。
 
-        Args:
-            None.
-
-        Returns:
-            None.
+        :returns: 无返回值。
         """
         self._skills: dict[str, SkillDescriptor] = {}
         self._builtin_scanned = False
 
     def scan_builtin(self, root: Path | None = None) -> list[str]:
-        """Scan built-in skills once.
+        """扫描内置 skill(仅一次)。
 
-        Args:
-            root: Optional built-in skill root override.
-
-        Returns:
-            Added skill ids.
+        :param root: 可选的内置 skill 根目录覆盖值。
+        :returns: 新增的 skill id 列表。
         """
         if self._builtin_scanned:
             return []
@@ -119,14 +103,11 @@ class SkillRegistry:
         return added
 
     def scan_custom(self, skills_root: Path, namespace: str = "custom") -> list[str]:
-        """Scan a custom skill root.
+        """扫描一个自定义 skill 根目录。
 
-        Args:
-            skills_root: Directory containing skill subdirectories.
-            namespace: Namespace assigned to discovered skills.
-
-        Returns:
-            Added skill ids.
+        :param skills_root: 包含 skill 子目录的目录。
+        :param namespace: 赋予所发现 skill 的命名空间。
+        :returns: 新增的 skill id 列表。
         """
         ns = namespace.strip() or "custom"
         return self._scan_root(
@@ -137,14 +118,11 @@ class SkillRegistry:
         )
 
     def scan_env(self, skills_dir: Path, env_name: str) -> list[str]:
-        """Scan skills provided by an environment module.
+        """扫描某个环境模块提供的 skill。
 
-        Args:
-            skills_dir: Directory containing skill subdirectories.
-            env_name: Environment module name.
-
-        Returns:
-            Added skill ids.
+        :param skills_dir: 包含 skill 子目录的目录。
+        :param env_name: 环境模块名。
+        :returns: 新增的 skill id 列表。
         """
         namespace = f"env:{env_name.strip() or 'unknown'}"
         return self._scan_root(
@@ -155,46 +133,33 @@ class SkillRegistry:
         )
 
     def list_all(self) -> list[SkillDescriptor]:
-        """List all registered skills.
+        """列出全部已注册的 skill。
 
-        Args:
-            None.
-
-        Returns:
-            Registered skill descriptors.
+        :returns: 已注册的 skill 描述符。
         """
         return sorted(self._skills.values(), key=lambda item: item.skill_id)
 
     def get(self, skill_id: str) -> SkillDescriptor | None:
-        """Return one skill descriptor by id.
+        """按 id 返回单个 skill 描述符。
 
-        Args:
-            skill_id: Registry skill id.
-
-        Returns:
-            Matching descriptor, or None.
+        :param skill_id: 注册表 skill id。
+        :returns: 匹配的描述符,未找到时为 None。
         """
         return self._skills.get(skill_id)
 
     def find_by_name(self, name: str) -> list[SkillDescriptor]:
-        """Find skill descriptors by display name.
+        """按显示名查找 skill 描述符。
 
-        Args:
-            name: Skill display name.
-
-        Returns:
-            Matching descriptors.
+        :param name: skill 显示名。
+        :returns: 匹配的描述符列表。
         """
         return [item for item in self.list_all() if item.name == name]
 
     def read_skill_doc(self, skill_id: str) -> str:
-        """Read one skill's SKILL.md.
+        """读取某个 skill 的 SKILL.md。
 
-        Args:
-            skill_id: Registry skill id.
-
-        Returns:
-            Skill document text, or an empty string.
+        :param skill_id: 注册表 skill id。
+        :returns: skill 文档文本,否则返回空字符串。
         """
         info = self.get(skill_id)
         if info is None:
@@ -205,14 +170,11 @@ class SkillRegistry:
         return path.read_text(encoding="utf-8")
 
     def read_skill_file(self, skill_id: str, relative_path: str) -> str:
-        """Read one file inside a skill directory.
+        """读取 skill 目录内的一个文件。
 
-        Args:
-            skill_id: Registry skill id.
-            relative_path: Path relative to the skill root.
-
-        Returns:
-            File text, or an empty string.
+        :param skill_id: 注册表 skill id。
+        :param relative_path: 相对 skill 根的路径。
+        :returns: 文件文本,否则返回空字符串。
         """
         info = self.get(skill_id)
         if info is None:
@@ -223,29 +185,12 @@ class SkillRegistry:
         return target.read_text(encoding="utf-8")
 
     def list_hooks(self, hook_type: str) -> list[SkillDescriptor]:
-        """List skills declaring one hook.
+        """列出声明了某个钩子的 skill。
 
-        Args:
-            hook_type: Lifecycle hook name.
-
-        Returns:
-            Skill descriptors that declare the hook.
+        :param hook_type: 生命周期钩子名。
+        :returns: 声明了该钩子的 skill 描述符。
         """
         return [item for item in self.list_all() if item.hooks.get(hook_type)]
-
-    def copy(self) -> SkillRegistry:
-        """Copy this registry.
-
-        Args:
-            None.
-
-        Returns:
-            Shallow registry copy.
-        """
-        other = SkillRegistry()
-        other._skills = dict(self._skills)
-        other._builtin_scanned = self._builtin_scanned
-        return other
 
     def _scan_root(
         self,
@@ -255,16 +200,13 @@ class SkillRegistry:
         source: str,
         source_label: str,
     ) -> list[str]:
-        """Scan one skill root.
+        """扫描一个 skill 根目录。
 
-        Args:
-            root: Directory containing skill subdirectories.
-            namespace: Namespace assigned to discovered skills.
-            source: Source category.
-            source_label: Human-readable source label.
-
-        Returns:
-            Added skill ids.
+        :param root: 包含 skill 子目录的目录。
+        :param namespace: 赋予所发现 skill 的命名空间。
+        :param source: 来源类别。
+        :param source_label: 人类可读的来源标签。
+        :returns: 新增的 skill id 列表。
         """
         added: list[str] = []
         base = root.resolve()
@@ -308,14 +250,11 @@ class SkillRegistry:
 
     @staticmethod
     def _resolve_inside(root: Path, relative_path: str) -> Path | None:
-        """Resolve a path inside a root directory.
+        """解析根目录内的一个路径。
 
-        Args:
-            root: Root directory.
-            relative_path: Candidate relative path.
-
-        Returns:
-            Resolved path when it stays inside root, otherwise None.
+        :param root: 根目录。
+        :param relative_path: 候选相对路径。
+        :returns: 路径保持在根内时返回解析结果,否则返回 None。
         """
         base = root.resolve()
         target = (base / str(relative_path or ".")).resolve()
@@ -325,13 +264,10 @@ class SkillRegistry:
 
 
 def _parse_frontmatter(path: Path) -> dict[str, Any]:
-    """Parse YAML frontmatter from a SKILL.md file.
+    """从 SKILL.md 文件解析 YAML frontmatter。
 
-    Args:
-        path: SKILL.md path.
-
-    Returns:
-        Parsed frontmatter mapping.
+    :param path: SKILL.md 路径。
+    :returns: 解析出的 frontmatter 映射。
     """
     raw = path.read_text(encoding="utf-8")
     if not raw.startswith("---"):
@@ -344,14 +280,11 @@ def _parse_frontmatter(path: Path) -> dict[str, Any]:
 
 
 def _clean_relative_script(root: Path, raw: Any) -> str | None:
-    """Validate and normalize a script path.
+    """校验并规范化脚本路径。
 
-    Args:
-        root: Skill root directory.
-        raw: Raw script value from frontmatter.
-
-    Returns:
-        Normalized relative script path, or None.
+    :param root: skill 根目录。
+    :param raw: 来自 frontmatter 的原始 script 值。
+    :returns: 规范化后的相对脚本路径,无效时返回 None。
     """
     text = str(raw or "").strip()
     if not text:
@@ -364,13 +297,10 @@ def _clean_relative_script(root: Path, raw: Any) -> str | None:
 
 
 def _is_hidden_or_cache_path(relative_path: Path) -> bool:
-    """Return whether a relative resource path should be hidden from catalogs.
+    """判断一个相对资源路径是否应从目录中隐藏。
 
-    Args:
-        relative_path: Candidate path relative to a skill root.
-
-    Returns:
-        True when the path is hidden, cache-generated, or compiled output.
+    :param relative_path: 相对某个 skill 根的候选路径。
+    :returns: 路径为隐藏文件、缓存生成或编译产物时返回 True。
     """
     parts = relative_path.parts
     if any(part.startswith(".") for part in parts):
@@ -381,14 +311,11 @@ def _is_hidden_or_cache_path(relative_path: Path) -> bool:
 
 
 def _parse_hooks(root: Path, meta: dict[str, Any]) -> dict[str, str]:
-    """Parse lifecycle hook declarations.
+    """解析生命周期钩子声明。
 
-    Args:
-        root: Skill root directory.
-        meta: Parsed frontmatter mapping.
-
-    Returns:
-        Hook type to script path mapping.
+    :param root: skill 根目录。
+    :param meta: 已解析的 frontmatter 映射。
+    :returns: 钩子类型到脚本路径的映射。
     """
     hooks: dict[str, str] = {}
 
@@ -411,29 +338,12 @@ _registry: SkillRegistry | None = None
 
 
 def get_skill_registry() -> SkillRegistry:
-    """Return the global Skill registry.
+    """返回全局 Skill 注册表。
 
-    Args:
-        None.
-
-    Returns:
-        Global registry with built-in skills scanned.
+    :returns: 已扫描内置 skill 的全局注册表。
     """
     global _registry
     if _registry is None:
         _registry = SkillRegistry()
         _registry.scan_builtin()
     return _registry
-
-
-def reset_skill_registry() -> None:
-    """Reset the global Skill registry.
-
-    Args:
-        None.
-
-    Returns:
-        None.
-    """
-    global _registry
-    _registry = None

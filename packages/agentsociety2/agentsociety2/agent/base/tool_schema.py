@@ -1,4 +1,4 @@
-"""Generic OpenAI function/tool schemas for the ReAct tool loop.
+"""ReAct 工具循环使用的通用 OpenAI function/tool schema。
 
 中文：集中定义 ReAct 工具循环使用的通用 OpenAI function/tool schema
 （``react_tool_schemas`` 和 ``readonly_tool_names``）。这些 schema 与具体
@@ -9,8 +9,8 @@ tool loop (``react_tool_schemas`` and ``readonly_tool_names``). These schemas
 are agent-agnostic and only describe workspace / skill / memory retrieval /
 TODO / ask_env actions.
 
-Person-specific memory schemas (extraction, consolidation) still live in
-:mod:`agentsociety2.agent.person_tools`.
+person 专属的 memory schema(抽取、整理)仍位于
+:mod:`agentsociety2.agent.person_tools`。
 """
 
 from __future__ import annotations
@@ -26,22 +26,18 @@ def react_tool_schemas(
     readonly: bool = False,
     overrides: dict[str, dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
-    """Build OpenAI tool schemas for ReAct actions.
+    """为 ReAct 动作构建 OpenAI tool schema。
 
-    Args:
-        enable_todo_list: Whether TODO tools are exposed.
-        enable_memory: Whether memory retrieval tools are exposed.
-        disable_skills: Whether skill activation and execution tools are hidden.
-        readonly: Whether to filter to readonly-safe tools.
-        overrides: Optional map of tool name -> full tool-schema dict. Any tool
-            whose name matches a key is replaced by the given schema (or appended
-            if absent). Applied before the ``readonly`` filter, so subclasses can
-            swap a tool per mode (e.g. PersonAgent replaces ``finish`` with an
-            answer-only variant in ask mode and a result+memories variant in
-            step mode).
-
-    Returns:
-        Tool schema dictionaries accepted by the LLM dispatcher.
+    :param enable_todo_list: 是否暴露 TODO 工具。
+    :param enable_memory: 是否暴露 memory 检索工具。
+    :param disable_skills: 是否隐藏技能激活与执行工具。
+    :param readonly: 是否过滤为 readonly 安全的工具。
+    :param overrides: 可选的 tool name -> 完整 tool schema dict 映射。名字
+        命中键的工具被替换为给定 schema(不存在则追加)。在 ``readonly``
+        过滤之前应用,因此子类可按模式替换工具(如 PersonAgent 在 ask
+        模式把 ``finish`` 换成仅含 answer 的变体,step 模式换成
+        result+memories 变体)。
+    :returns: LLM dispatcher 接受的 tool schema dict 列表。
     """
     tools: list[dict[str, Any]] = []
 
@@ -51,16 +47,13 @@ def react_tool_schemas(
         properties: dict[str, Any] | None = None,
         required: list[str] | None = None,
     ) -> None:
-        """Append one function tool schema.
+        """追加一条 function tool schema。
 
-        Args:
-            name: Function tool name.
-            description: Function tool description.
-            properties: JSON schema properties for arguments.
-            required: Required argument names.
-
-        Returns:
-            None.
+        :param name: function tool 名称。
+        :param description: function tool 描述。
+        :param properties: 参数的 JSON schema properties。
+        :param required: 必填参数名。
+        :returns: 无。
         """
         tools.append(
             {
@@ -253,15 +246,6 @@ def react_tool_schemas(
                 ),
             },
             "readonly": {"type": "boolean", "default": False},
-            "template_mode": {
-                "type": "boolean",
-                "default": True,
-                "description": (
-                    "Always treated as true by the runtime for environment-module "
-                    "calls. This field is documented for compatibility; do not set "
-                    "it to false."
-                ),
-            },
             "ctx": {"type": "object", "additionalProperties": True},
             "variables": {
                 "type": "object",
@@ -333,6 +317,23 @@ def react_tool_schemas(
             ["todo_id", "reason"],
         )
         add(
+            "update_config",
+            (
+                "Update this agent's own config.json through the validated "
+                "channel. Only whitelisted keys are accepted (max_react_turns, "
+                "enable_todo_list, enable_memory, memory_context_max_chars, "
+                "recent_memory_limit, memory_consolidation_pending_threshold, "
+                "memory_consolidation_interval_steps, "
+                "memory_high_importance_threshold, idle_skip_enabled, "
+                "default_activated_skill_ids, disabled_skill_ids, "
+                "extra_skill_paths). Changes take effect on the next restore; "
+                "a backup snapshot is written before applying, and every "
+                "change is logged to config_changes.jsonl."
+            ),
+            {"changes": {"type": "object", "additionalProperties": True}},
+            ["changes"],
+        )
+        add(
             "todo_clear_completed",
             (
                 "Archive finished (done/cancelled) TODOs to state/todos_archive.jsonl "
@@ -356,13 +357,9 @@ def react_tool_schemas(
 
 
 def readonly_tool_names() -> set[str]:
-    """Return tools allowed for readonly external ask requests.
+    """返回 readonly 外部 ask 请求允许使用的工具集合。
 
-    Args:
-        None.
-
-    Returns:
-        Set of tool names that do not mutate simulation state directly.
+    :returns: 不会直接修改仿真状态的工具名集合。
     """
     return {
         "finish",

@@ -23,7 +23,11 @@ from agentsociety2.agent.base.agent import (
 )
 from agentsociety2.agent.base.react import ReactDecision
 from agentsociety2.agent.memory import MemoryExtractionResult
-from agentsociety2.agent.person_prompt import build_preamble
+from agentsociety2.agent.person_prompt import (
+    _ask_mode_rules,
+    build_base_rules,
+    build_capabilities_block,
+)
 
 
 class _DummyAgent(AgentBase):
@@ -134,10 +138,10 @@ def test_parse_ask_free_text_synthesizes_finish():
     agent = _agent()
     message = SimpleNamespace(tool_calls=None, content='{"answer": "left"}')
     response = SimpleNamespace(choices=[SimpleNamespace(message=message)])
-    decisions, error = agent._parse_react_responses(response, readonly=True)
-    assert error == ""
-    assert decisions[0].action == "finish"
-    assert decisions[0].final == "left"
+    turn = agent._parse_react_turn(response, readonly=True)
+    assert turn.error == ""
+    assert turn.decisions[0].action == "finish"
+    assert turn.decisions[0].final == "left"
     # Free text is stashed for the end-of-loop fallback.
     assert agent._last_raw_answer_text == '{"answer": "left"}'
 
@@ -146,9 +150,9 @@ def test_parse_ask_free_text_natural_language_returns_error():
     agent = _agent()
     message = SimpleNamespace(tool_calls=None, content="The answer is left.")
     response = SimpleNamespace(choices=[SimpleNamespace(message=message)])
-    decisions, error = agent._parse_react_responses(response, readonly=True)
-    assert decisions == []
-    assert "finish" in error.lower()
+    turn = agent._parse_react_turn(response, readonly=True)
+    assert turn.decisions == []
+    assert "finish" in turn.error.lower()
 
 
 # --------------------------- parse turn (append payload) ---------------------
@@ -165,18 +169,6 @@ def _native_response(*calls):
     ]
     message = SimpleNamespace(tool_calls=tool_calls, content=None)
     return SimpleNamespace(choices=[SimpleNamespace(message=message)])
-
-
-def test_parse_react_responses_still_returns_a_pair():
-    """The pair-returning parser is the shape callers and tests depend on."""
-    agent = _agent()
-    result = agent._parse_react_responses(
-        _native_response(("c1", "read", '{"path": "a"}'))
-    )
-    assert isinstance(result, tuple) and len(result) == 2
-    decisions, error = result
-    assert error == ""
-    assert decisions[0].action == "read"
 
 
 def test_parse_turn_surfaces_native_call_ids():
@@ -249,7 +241,7 @@ def test_parse_turn_empty_response_has_nothing_to_append():
 
 
 def test_react_decision_call_id_defaults_to_empty():
-    decision = ReactDecision("", "read", {"path": "a"}, "")
+    decision = ReactDecision("read", {"path": "a"}, "")
     assert decision.call_id == ""
 
 
@@ -298,14 +290,14 @@ def test_synthesize_ask_fallback_default_when_no_text():
 
 
 def test_ask_mode_rules_only_when_ask_mode():
-    step_prompt = build_preamble(name="Alice", ask_mode=False)
-    ask_prompt = build_preamble(name="Alice", ask_mode=True)
+    step_prompt = build_base_rules() + "\n\n" + build_capabilities_block()
+    ask_rules = _ask_mode_rules()
     assert "ask_mode_rules" not in step_prompt
-    assert "<ask_mode_rules>" in ask_prompt
+    assert "<ask_mode_rules>" in ask_rules
     # The finish-tool requirement must be present in ask mode.
-    assert "finish(answer=...)" in ask_prompt
+    assert "finish(answer=...)" in ask_rules
     # The override-rejection clause must be present.
-    assert "OVERRIDE REJECTION" in ask_prompt
+    assert "OVERRIDE REJECTION" in ask_rules
 
 
 # ------------------------ memory validation fallback -------------------------
@@ -319,11 +311,9 @@ def _memory_runtime():
 
     return PersonMemoryRuntime(
         agent_id=1,
-        agent_name="Alice",
         config=MemoryRuntimeConfig(),
         get_model_name=lambda: "m",
         dispatch_llm=lambda **k: None,
-        get_profile=dict,
         logger=__import__("logging").getLogger("test"),
     )
 

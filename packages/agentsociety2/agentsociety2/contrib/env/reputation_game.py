@@ -298,7 +298,7 @@ class ReputationGameEnv(EnvBase):
         self._init_state()
 
     async def to_workspace(self, workspace_path=None) -> None:
-        """写入 ``state/ENV_STATE.json``（原子写）。
+        """写入 ``state/ENV_STATE.json`` （原子写）。
 
         Reputation(int Enum) 存 .value；ActionLogEntry(pydantic) 用 model_dump。
         """

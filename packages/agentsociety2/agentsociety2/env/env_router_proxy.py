@@ -1,15 +1,15 @@
-"""Ray-only proxy for the env router.
+"""env router 的 Ray-only proxy。
 
-Society, agents, and helpers talk to this proxy exactly as they talk to the
-in-process ``CodeGenRouter`` (same method names: ``ask``, ``init``, ``step``,
-``close``, ``to_workspaces``, ``from_workspaces``, ``set_current_time``,
-``set_replay_writer``). The proxy forwards each call to a Ray actor that owns
-the real router in a separate process, so env codegen execution (and its
-former ``_execute_lock`` serialization) no longer blocks the agent event loop.
+society、agent 与 helper 和本 proxy 交互的方式与进程内 ``CodeGenRouter``
+完全相同(同名方法:``ask``、``init``、``step``、``close``、
+``to_workspaces``、``from_workspaces``、``set_current_time``、
+``set_replay_writer``)。proxy 把每次调用转发给在独立进程中持有真正
+router 的 Ray actor,因此 env 代码生成执行(及其原先的 ``_execute_lock``
+串行化)不再阻塞 agent 事件循环。
 
-In-process ``CodeGenRouter`` instances are **not** Ray-serializable. Examples
-and scripts must use :func:`create_env_router_proxy` (or the CLI actor path)
-so ``ServiceProxy`` can cross Ray Task boundaries.
+进程内 ``CodeGenRouter`` 实例 **不可** Ray 序列化。示例与脚本必须使用
+:func:`create_env_router_proxy`(或 CLI 的 actor 路径),``ServiceProxy``
+才能跨越 Ray Task 边界。
 """
 
 from __future__ import annotations
@@ -20,19 +20,16 @@ from typing import Any
 
 
 class EnvRouterProxy:
-    """Agent/society-facing handle delegating to a Ray env-router actor.
+    """面向 agent/society 的句柄,委托给持有 env router 的 Ray actor。
 
-    Unlike the in-process router, the proxy does NOT hold concrete env-module
-    instances (they live in the actor's process), so it cannot expose
-    ``env_modules``. To keep env-provided skills discoverable from the agent
-    side, the proxy carries ``env_skill_dirs`` — the union of every configured
-    env module's ``skill_dirs()`` resolved from the registry at construction
-    time, each paired with the module's class name (used as the
-    ``env:{ClassName}`` namespace). ``AgentBase.discover_skill_sources`` reads
-    this attribute in addition to ``env_modules``, so env skills are visible
-    regardless of whether the agent sees a real router or this proxy. The
-    attribute is plain JSON-serializable data (``list[(str, str)]``), so the
-    proxy still crosses the Ray boundary cleanly.
+    与进程内 router 不同,本 proxy 不持有具体的 env 模块实例(它们位于
+    actor 进程中),因此无法暴露 ``env_modules``。为了让 agent 侧仍能发现
+    env 提供的 skill,proxy 携带 ``env_skill_dirs``——构造时从 registry
+    解析出的全部已配置 env 模块 ``skill_dirs()`` 的并集,每项配对模块类名
+    (用作 ``env:{ClassName}`` 命名空间)。``AgentBase.discover_skill_sources``
+    在 ``env_modules`` 之外还会读取该属性,因此无论 agent 看到的是真实
+    router 还是本 proxy,env skill 都可见。该属性是纯 JSON 可序列化数据
+    (``list[(str, str)]``),proxy 仍能干净地跨越 Ray 边界。
     """
 
     def __init__(
@@ -49,21 +46,20 @@ class EnvRouterProxy:
         )
 
     def set_current_time(self, t: datetime) -> None:
-        """Forward the society clock to the actor (fire-and-forget).
+        """把 society 时钟转发给 actor(fire-and-forget)。
 
-        See :meth:`RouterBase.set_current_time` — this pushes the society's
-        current time so env modules observe it during the agent phase.
+        参见 :meth:`RouterBase.set_current_time`——推送 society 当前时间,
+        使 env 模块在 agent 阶段能观察到它。
         """
         self._actor.set_current_time.remote(t)
 
     def set_replay_writer(self, writer: Any) -> None:
-        """Forward a replay writer/proxy to the actor (fire-and-forget).
+        """把回放 writer/proxy 转发给 actor(fire-and-forget)。
 
-        The env actor normally receives its replay proxy at construction (so env
-        modules and agents share the same replay directory). This method lets a
-        caller additionally/alternatively inject a writer after construction; it
-        is forwarded to the actor via ``set_replay_writer``. A ``ReplayProxy`` is
-        serializable, so it travels across the Ray boundary cleanly.
+        env actor 通常在构造时即获得其回放 proxy(使 env 模块与 agent 共享
+        同一回放目录)。本方法允许调用方在构造之后额外/另行注入 writer;经
+        ``set_replay_writer`` 转发给 actor。``ReplayProxy`` 可序列化,能干净
+        地跨越 Ray 边界。
         """
         self._actor.set_replay_writer.remote(writer)
 
@@ -76,7 +72,7 @@ class EnvRouterProxy:
         trace_id: str | None = None,
         parent_span_id: str | None = None,
     ):
-        """Forward an env ask to the actor and await the (ctx, answer) result."""
+        """把 env ask 转发给 actor 并等待 ``(ctx, answer)`` 结果。"""
         return await self._actor.ask.remote(
             ctx, instruction, readonly, template_mode, trace_id, parent_span_id
         )
@@ -102,12 +98,12 @@ class EnvRouterProxy:
         return await self._actor.close.remote()
 
     def get_token_usages(self) -> dict[str, Any]:
-        """Return a snapshot of env-router (coder/summary) token usage."""
+        """返回 env router(coder/summary)token 用量快照。"""
         return ray_get_token_usages(self._actor)
 
 
 def ray_get_token_usages(actor_handle: Any) -> dict[str, Any]:
-    """Blocking fetch of token usage from the env actor (driver-side only)."""
+    """阻塞式从 env actor 拉取 token 用量(仅 driver 侧)。"""
     import ray
 
     return ray.get(actor_handle.get_token_usages.remote())
@@ -121,19 +117,19 @@ async def create_env_router_proxy(
     max_concurrency: int | None = None,
     final_summary_enabled: bool = False,
 ) -> EnvRouterProxy:
-    """Create a Ray ``EnvRouterProxy`` for examples / scripts (CLI-compatible).
+    """为示例 / 脚本创建 Ray ``EnvRouterProxy``(与 CLI 兼容)。
 
-    Initializes Ray + LLM dispatchers if needed, builds the env actor with the
-    same injection pattern as ``society.cli``, and returns a serializable proxy.
+    按需初始化 Ray 与 LLM dispatcher,以与 ``society.cli`` 相同的注入模式
+    构建 env actor,并返回可序列化的 proxy。
 
-    :param env_module_types: Registry keys (usually the env class name).
-    :param env_kwargs: Per-type constructor kwargs; defaults to ``{}`` per type.
-    :param run_dir: Experiment run directory (env workspaces under ``run_dir/env``).
-    :param max_concurrency: Ray actor concurrency. ``None`` chooses
-        ``Config.ENV_ACTOR_MAX_CONCURRENCY`` when every module declares
-        ``is_concurrency_safe()``, otherwise ``1``.
-    :param final_summary_enabled: Forwarded to ``CodeGenRouter``.
-    :returns: Serializable :class:`EnvRouterProxy` suitable for ``AgentSociety``.
+    :param env_module_types: registry 键(通常是 env 类名)。
+    :param env_kwargs: 各类型的构造 kwargs;默认每类型为 ``{}``。
+    :param run_dir: 实验 run 目录(env workspace 位于 ``run_dir/env`` 下)。
+    :param max_concurrency: Ray actor 并发度。``None`` 表示当每个模块都声明
+        ``is_concurrency_safe()`` 时取 ``Config.ENV_ACTOR_MAX_CONCURRENCY``,
+        否则取 ``1``。
+    :param final_summary_enabled: 转发给 ``CodeGenRouter``。
+    :returns: 可供 ``AgentSociety`` 使用的可序列化 :class:`EnvRouterProxy`。
     """
     from agentsociety2.config import Config
     from agentsociety2.config.llm_dispatcher import (
@@ -191,15 +187,14 @@ async def create_env_router_proxy(
 def _resolve_env_skill_dirs(
     env_module_types: list[str],
 ) -> list[tuple[str, str]]:
-    """Collect ``(module_class_name, skill_dir)`` for the given env module types.
+    """为给定 env 模块类型收集 ``(module_class_name, skill_dir)``。
 
-    Resolves each type's class from the global registry and reads its
-    ``skill_dirs()``. Failure to resolve a type or read its dirs is logged and
-    skipped — discovery must never crash agent construction over a missing
-    skill source. Duplicate ``(name, dir)`` pairs are removed.
+    从全局 registry 解析各类型的类并读取其 ``skill_dirs()``。无法解析类型
+    或读取目录时记录日志并跳过——发现过程绝不能因缺失 skill 源而让 agent
+    构建崩溃。重复的 ``(name, dir)`` 对会被去除。
 
-    :param env_module_types: Registry env-module type keys.
-    :returns: Ordered, de-duplicated ``(module_class_name, skill_dir_str)`` pairs.
+    :param env_module_types: registry 的 env 模块类型键。
+    :returns: 有序、去重后的 ``(module_class_name, skill_dir_str)`` 对。
     """
     if not env_module_types:
         return []

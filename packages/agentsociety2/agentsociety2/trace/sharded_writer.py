@@ -122,9 +122,7 @@ class ShardedAppendSink:
                 path = self._base / f"trace_{key}.jsonl"
                 # Cached descriptor is owned by this writer and released by close().
                 # codeql[py/file-not-closed]
-                fd = os.open(
-                    str(path), os.O_APPEND | os.O_CREAT | os.O_WRONLY, 0o600
-                )
+                fd = os.open(str(path), os.O_APPEND | os.O_CREAT | os.O_WRONLY, 0o600)
                 self._fds[key] = fd
 
     def append_record(self, record: dict[str, Any]) -> None:

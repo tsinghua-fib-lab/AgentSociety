@@ -14,7 +14,7 @@ AgentSociety UI is the **React + Vite** web dashboard for the AgentSociety 2 sim
 
 ### Tech Stack
 
-- **React 18** + **TypeScript**
+- **React 19** + **TypeScript**
 - **Vite** (build tool)
 - **Ant Design 6** / **Ant Design Pro Components** (UI framework)
 - **Monaco Editor** (code editing)
@@ -35,8 +35,13 @@ npm run dev
 # Build for production
 npm run build
 
-# Lint
+# Lint (zero warnings)
 npm run lint
+
+# Browser regressions against the production build, with mocked API responses
+npx playwright install chromium
+npm run build
+npm run test:e2e
 ```
 
 The dev server runs at `http://localhost:5173` by default.
@@ -72,7 +77,7 @@ AgentSociety UI 是 **AgentSociety 2** 仿真平台的 **React + Vite** Web 仪�
 
 ### 技术栈
 
-- **React 18** + **TypeScript**
+- **React 19** + **TypeScript**
 - **Vite**（构建工具）
 - **Ant Design 6** / **Ant Design Pro Components**（UI 框架）
 - **Monaco Editor**（代码编辑器）
@@ -93,8 +98,13 @@ npm run dev
 # 生产构建
 npm run build
 
-# 代码检查
+# 代码检查（零警告）
 npm run lint
+
+# 生产构建的浏览器回归测试，API 使用本地模拟响应
+npx playwright install chromium
+npm run build
+npm run test:e2e
 ```
 
 开发服务器默认运行在 `http://localhost:5173`。

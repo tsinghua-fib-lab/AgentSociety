@@ -37,13 +37,11 @@ def _now_iso() -> str:
 def _parse_time(value: Any) -> datetime | None:
     """宽松解析 ISO 时间字符串。
 
-    Args:
-        value: 可能来自 JSON 的 due 字段值。
+    :param value: 可能来自 JSON 的 due 字段值。
+    :returns: 能解析时返回 datetime；为空或格式非法时返回 None。
 
-    Returns:
-        能解析时返回 datetime；为空或格式非法时返回 None。
+    .. note::
 
-    Notes:
         这里用于 prompt 摘要排序，必须容忍旧状态文件或外部 seed 中的脏数据。
         严格写入校验由 TodoItem 的 Pydantic validator 完成。
     """
@@ -61,12 +59,9 @@ def _parse_time(value: Any) -> datetime | None:
 def _make_id(existing: set[str]) -> str:
     """生成全局唯一的 TODO id（UUID）。
 
-    Args:
-        existing: 当前状态中已经占用的 TODO id 集合（仅作防御性冲突检查）。
-
-    Returns:
-        形如 ``todo_<uuid hex>`` 的 id；UUID 保证跨归档也不复用，因此不再依赖
-        id 字典序推断创建顺序（归档改用列表位置，见 ``_archive_terminal``）。
+    :param existing: 当前状态中已经占用的 TODO id 集合（仅作防御性冲突检查）。
+    :returns: 形如 ``todo_<uuid hex>`` 的 id；UUID 保证跨归档也不复用，因此不再
+        依赖 id 字典序推断创建顺序（归档改用列表位置，见 ``_archive_terminal``）。
     """
     candidate = f"todo_{uuid.uuid4().hex}"
     while candidate in existing:  # 实践中不可能命中；纯防御。
@@ -77,19 +72,18 @@ def _make_id(existing: set[str]) -> str:
 class TodoItem(BaseModel):
     """单条 TODO 的权威 Pydantic schema。
 
-    字段说明：
-        id: TODO 唯一标识。为空或冲突时由 normalize_todo / TodoState 补齐。
-        title: 非空标题，是 agent 和 prompt 中展示任务的主要文本。
-        kind: 任务类型；不限制枚举，推荐 work/meal/sleep/commute/social/leisure/custom。
-        status: 固定生命周期状态，只允许 TodoStatus 中的值。
-        priority: 0.0-1.0 的优先级，越大越重要。
-        due: ISO datetime 字符串或 None；用于到期判断和 prompt 摘要排序。
-        duration_min: 预计持续分钟数，必须非负；未知时为 None。
-        recurrence: 重复规则文本；当前只保存，不自动展开实例。
-        created_by: 来源标识，例如 agent/system/seed/tool。
-        blocking_reason: blocked/deferred 的原因说明。
-        notes: 任务备注或完成结果。
-        metadata: 唯一扩展字段；地点、AOI/POI、环境模块参数都放这里。
+    :param id: TODO 唯一标识。为空或冲突时由 normalize_todo / TodoState 补齐。
+    :param title: 非空标题，是 agent 和 prompt 中展示任务的主要文本。
+    :param kind: 任务类型；不限制枚举，推荐 work/meal/sleep/commute/social/leisure/custom。
+    :param status: 固定生命周期状态，只允许 TodoStatus 中的值。
+    :param priority: 0.0-1.0 的优先级，越大越重要。
+    :param due: ISO datetime 字符串或 None；用于到期判断和 prompt 摘要排序。
+    :param duration_min: 预计持续分钟数，必须非负；未知时为 None。
+    :param recurrence: 重复规则文本；当前只保存，不自动展开实例。
+    :param created_by: 来源标识，例如 agent/system/seed/tool。
+    :param blocking_reason: blocked/deferred 的原因说明。
+    :param notes: 任务备注或完成结果。
+    :param metadata: 唯一扩展字段；地点、AOI/POI、环境模块参数都放这里。
     """
 
     model_config = ConfigDict(extra="ignore")
@@ -197,10 +191,9 @@ class TodoItem(BaseModel):
 class TodoState(BaseModel):
     """持久化 TODO 状态文件的 Pydantic schema。
 
-    字段说明：
-        todos: 全量 TODO 列表。
-        active_todo_id: 当前正在执行的 TODO id；同一时间最多一个。
-        updated_at: 最近一次保存状态的 ISO 时间。
+    :param todos: 全量 TODO 列表。
+    :param active_todo_id: 当前正在执行的 TODO id；同一时间最多一个。
+    :param updated_at: 最近一次保存状态的 ISO 时间。
     """
 
     model_config = ConfigDict(extra="ignore")
@@ -268,15 +261,10 @@ def normalize_todo(
 ) -> dict[str, Any]:
     """把一条原始 TODO 数据归一化为可持久化的公开 schema。
 
-    Args:
-        raw: 来自工具调用、seed 文件或已有状态的 TODO dict。
-        existing_ids: 已存在的 TODO id 集合；用于检测 id 冲突。
-
-    Returns:
-        已经过 Pydantic 校验、可 JSON 序列化的 TODO dict。
-
-    Raises:
-        pydantic.ValidationError: 字段不满足核心 schema 时抛出，例如非法 status/due。
+    :param raw: 来自工具调用、seed 文件或已有状态的 TODO dict。
+    :param existing_ids: 已存在的 TODO id 集合；用于检测 id 冲突。
+    :returns: 已经过 Pydantic 校验、可 JSON 序列化的 TODO dict。
+    :raises pydantic.ValidationError: 字段不满足核心 schema 时抛出，例如非法 status/due。
     """
     used = existing_ids or set()
     todo = TodoItem.model_validate(raw if isinstance(raw, dict) else {})
@@ -289,14 +277,9 @@ def normalize_todo(
 def normalize_state(raw: dict[str, Any] | None = None) -> dict[str, Any]:
     """把原始状态文件内容归一化为可持久化状态。
 
-    Args:
-        raw: 原始状态 dict；None 表示创建空状态。
-
-    Returns:
-        已经过 Pydantic 校验、可 JSON 序列化的状态 dict。
-
-    Raises:
-        pydantic.ValidationError: TODO 条目不满足核心 schema 时抛出。
+    :param raw: 原始状态 dict；None 表示创建空状态。
+    :returns: 已经过 Pydantic 校验、可 JSON 序列化的状态 dict。
+    :raises pydantic.ValidationError: TODO 条目不满足核心 schema 时抛出。
     """
     state = TodoState.model_validate(raw if isinstance(raw, dict) else {})
     return state.model_dump(mode="json")
@@ -306,10 +289,10 @@ def normalize_state(raw: dict[str, Any] | None = None) -> dict[str, Any]:
 class TodoStateStore:
     """agent workspace 中 TODO 状态文件的读写门面。
 
-    Args:
-        workspace_root: 单个 agent 的 workspace 根目录。
+    :param workspace_root: 单个 agent 的 workspace 根目录。
 
-    Notes:
+    .. note::
+
         所有公开 mutation 方法都会先 load，再通过 Pydantic 归一化，
         最后写回 ``state/todos.json``。外部调用者不应绕过 Store 直接改文件。
     """
@@ -333,8 +316,7 @@ class TodoStateStore:
     def ensure(self) -> dict[str, Any]:
         """确保状态文件存在，并返回归一化后的状态。
 
-        Returns:
-            当前 TODO 状态。若文件不存在，会创建空状态；若文件存在，会保留
+        :returns: 当前 TODO 状态。若文件不存在，会创建空状态；若文件存在，会保留
             seed 内容并写回一次归一化结果。
         """
         if not self.exists():
@@ -348,10 +330,10 @@ class TodoStateStore:
     def load(self) -> dict[str, Any]:
         """读取并归一化 TODO 状态。
 
-        Returns:
-            归一化后的状态 dict。文件不存在时返回空状态。
+        :returns: 归一化后的状态 dict。文件不存在时返回空状态。
 
-        Notes:
+        .. note::
+
             文件缺失、JSON 损坏或顶层不是 object 时，会按空状态处理。
             具体 TODO 字段仍由 Pydantic schema 负责校验。
         """
@@ -366,13 +348,11 @@ class TodoStateStore:
     def save(self, state: dict[str, Any]) -> dict[str, Any]:
         """保存 TODO 状态。
 
-        Args:
-            state: 待保存的状态 dict。
+        :param state: 待保存的状态 dict。
+        :returns: 写入磁盘后的归一化状态 dict。
 
-        Returns:
-            写入磁盘后的归一化状态 dict。
+        .. note::
 
-        Notes:
             写盘前会对「已结束」TODO（done/cancelled）做自动归档：主列表中超过
             ``MAX_TERMINAL_TODOS`` 条的旧记录会追加写入 ``todos_archive.jsonl``
             并从主列表移除，保证主列表不无限堆积；归档不丢失数据。pending/
@@ -392,11 +372,8 @@ class TodoStateStore:
     def _append_archive(self, records: list[dict[str, Any]]) -> None:
         """把待归档的 TODO 记录追加写入归档 JSONL。
 
-        Args:
-            records: 已从主列表移除的「已结束」TODO dict 列表。
-
-        Returns:
-            None。
+        :param records: 已从主列表移除的「已结束」TODO dict 列表。
+        :returns: 无返回值。
         """
         if not records:
             return
@@ -419,12 +396,9 @@ class TodoStateStore:
         最近创建/完成）的 ``max_keep`` 条，更早的移出 ``state["todos"]``。id 现为
         UUID、不再带时间序，故一律按列表位置判定新旧。
 
-        Args:
-            state: 被 mutate 的状态 dict（就地修改 todos 列表）。
-            max_keep: 主列表中保留的已结束 TODO 最大条数；负数视为 0。
-
-        Returns:
-            待归档的 TODO dict 列表（按原列表顺序，旧到新）。
+        :param state: 被 mutate 的状态 dict（就地修改 todos 列表）。
+        :param max_keep: 主列表中保留的已结束 TODO 最大条数；负数视为 0。
+        :returns: 待归档的 TODO dict 列表（按原列表顺序，旧到新）。
         """
         keep = max(0, int(max_keep))
         todos = list(state.get("todos") or [])
@@ -448,11 +422,8 @@ class TodoStateStore:
         比 ``save()`` 的自动软上限更激进：只保留最新的 ``keep_recent`` 条已结束
         TODO 在主列表，其余全部归档。归档而非删除，完整保留历史。
 
-        Args:
-            keep_recent: 主列表中保留的已结束 TODO 条数，默认 2。
-
-        Returns:
-            ``{"archived": 归档条数, "kept_terminal": 保留条数,
+        :param keep_recent: 主列表中保留的已结束 TODO 条数，默认 2。
+        :returns: ``{"archived": 归档条数, "kept_terminal": 保留条数,
             "remaining": 主列表剩余总数, "state": 更新后状态}``。
         """
         keep = max(0, int(keep_recent))
@@ -476,12 +447,9 @@ class TodoStateStore:
     ) -> dict[str, Any]:
         """列出 TODO。
 
-        Args:
-            status: 可选状态过滤条件；None 表示不过滤。
-            limit: 可选最大返回数量；None 表示不截断，负数也不截断。
-
-        Returns:
-            包含 ``todos``、``count``、``active_todo_id`` 的 dict。
+        :param status: 可选状态过滤条件；None 表示不过滤。
+        :param limit: 可选最大返回数量；None 表示不截断，负数也不截断。
+        :returns: 包含 ``todos``、``count``、``active_todo_id`` 的 dict。
         """
         state = self.load()
         todos = state["todos"]
@@ -498,15 +466,10 @@ class TodoStateStore:
     def add(self, payload: dict[str, Any]) -> dict[str, Any]:
         """新增一条 TODO。
 
-        Args:
-            payload: TODO 字段 dict；必须包含非空 title，其它字段走默认值或校验。
-
-        Returns:
-            ``{"todo": 新增条目, "state": 更新后状态}``。
-
-        Raises:
-            ValueError: title 缺失或为空。
-            pydantic.ValidationError: payload 不满足核心 schema。
+        :param payload: TODO 字段 dict；必须包含非空 title，其它字段走默认值或校验。
+        :returns: ``{"todo": 新增条目, "state": 更新后状态}``。
+        :raises ValueError: title 缺失或为空。
+        :raises pydantic.ValidationError: payload 不满足核心 schema。
         """
         title = str(payload.get("title") or "").strip()
         if not title:
@@ -521,17 +484,12 @@ class TodoStateStore:
     def update(self, todo_id: str, patch: dict[str, Any]) -> dict[str, Any]:
         """更新一条已有 TODO。
 
-        Args:
-            todo_id: 要更新的 TODO id。
-            patch: 局部字段补丁；id 不允许被 patch 改写。
-
-        Returns:
-            ``{"todo": 更新后条目, "state": 更新后状态}``。
-
-        Raises:
-            ValueError: todo_id 为空或 patch 不是 dict。
-            KeyError: 找不到对应 TODO。
-            pydantic.ValidationError: 合并后的 TODO 不满足核心 schema。
+        :param todo_id: 要更新的 TODO id。
+        :param patch: 局部字段补丁；id 不允许被 patch 改写。
+        :returns: ``{"todo": 更新后条目, "state": 更新后状态}``。
+        :raises ValueError: todo_id 为空或 patch 不是 dict。
+        :raises KeyError: 找不到对应 TODO。
+        :raises pydantic.ValidationError: 合并后的 TODO 不满足核心 schema。
         """
         todo_id = str(todo_id or "").strip()
         if not todo_id:
@@ -562,15 +520,10 @@ class TodoStateStore:
     def start(self, todo_id: str) -> dict[str, Any]:
         """把指定 TODO 设为唯一 active。
 
-        Args:
-            todo_id: 要开始执行的 TODO id。
-
-        Returns:
-            ``{"todo": active 条目, "state": 更新后状态}``。
-
-        Raises:
-            ValueError: todo_id 为空。
-            KeyError: 找不到对应 TODO。
+        :param todo_id: 要开始执行的 TODO id。
+        :returns: ``{"todo": active 条目, "state": 更新后状态}``。
+        :raises ValueError: todo_id 为空。
+        :raises KeyError: 找不到对应 TODO。
         """
         todo_id = str(todo_id or "").strip()
         if not todo_id:
@@ -595,12 +548,9 @@ class TodoStateStore:
     def complete(self, todo_id: str, outcome: str = "") -> dict[str, Any]:
         """完成指定 TODO。
 
-        Args:
-            todo_id: 要完成的 TODO id。
-            outcome: 可选完成结果说明，会写入 notes。
-
-        Returns:
-            ``{"todo": 完成后条目, "state": 更新后状态}``。
+        :param todo_id: 要完成的 TODO id。
+        :param outcome: 可选完成结果说明，会写入 notes。
+        :returns: ``{"todo": 完成后条目, "state": 更新后状态}``。
         """
         patch = {"status": "done"}
         if outcome:
@@ -619,13 +569,10 @@ class TodoStateStore:
     ) -> dict[str, Any]:
         """推迟指定 TODO。
 
-        Args:
-            todo_id: 要推迟的 TODO id。
-            new_due: 可选新到期时间，必须是 ISO datetime 字符串或 None。
-            reason: 可选推迟原因，会写入 blocking_reason。
-
-        Returns:
-            ``{"todo": 推迟后条目, "state": 更新后状态}``。
+        :param todo_id: 要推迟的 TODO id。
+        :param new_due: 可选新到期时间，必须是 ISO datetime 字符串或 None。
+        :param reason: 可选推迟原因，会写入 blocking_reason。
+        :returns: ``{"todo": 推迟后条目, "state": 更新后状态}``。
         """
         patch: dict[str, Any] = {
             "status": "deferred",
@@ -638,17 +585,13 @@ class TodoStateStore:
     def build_prompt_context(self, now: datetime) -> dict[str, Any]:
         """构建注入 step prompt 的短 TODO 摘要。
 
-        Args:
-            now: 当前模拟时间，用于判断 due_now 和 overdue。
+        :param now: 当前模拟时间，用于判断 due_now 和 overdue。
+        :returns: 一个短上下文 dict：``active`` 当前任务；``due_now`` 未来 30 分钟
+            内到期的 pending/active，最多 3 条；``overdue_or_blocked`` 已过期或
+            blocked 的任务，最多 2 条；``counts`` 各状态数量。
 
-        Returns:
-            一个短上下文 dict：
-            ``active`` 当前任务；
-            ``due_now`` 未来 30 分钟内到期的 pending/active，最多 3 条；
-            ``overdue_or_blocked`` 已过期或 blocked 的任务，最多 2 条；
-            ``counts`` 各状态数量。
+        .. note::
 
-        Notes:
             这里故意不返回完整 TODO List，避免每轮 ReAct prompt 过长。
         """
         state = self.load()

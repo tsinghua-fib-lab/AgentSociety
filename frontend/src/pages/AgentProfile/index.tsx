@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import { useAsyncResource } from '../../hooks/useAsyncResource';
+import React, { useState, useCallback } from 'react';
 import { Table, Button, Card, Space, Modal, message, Tooltip, Input, Popconfirm, Upload, Alert } from 'antd';
 import { DeleteOutlined, DownloadOutlined, UploadOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { fetchCustom } from '../../components/fetch';
@@ -8,8 +9,6 @@ import { ApiAgentProfile } from '../../types/profile';
 
 const ProfileList: React.FC = () => {
     const { t } = useTranslation();
-    const [profiles, setProfiles] = useState<ApiAgentProfile[]>([]);
-    const [loading, setLoading] = useState(false);
     const [searchText, setSearchText] = useState('');
     const [uploadModalVisible, setUploadModalVisible] = useState(false);
     const [uploading, setUploading] = useState(false);
@@ -17,24 +16,19 @@ const ProfileList: React.FC = () => {
     const [description, setDescription] = useState('');
 
     // Load profiles
-    const loadProfiles = async () => {
-        setLoading(true);
-        try {
-            const response = await fetchCustom('/api/agent-profiles');
-            const data = await response.json();
-            setProfiles(data.data as ApiAgentProfile[] || []);
-        } catch (error) {
-            console.error('Failed to fetch profiles:', error);
-            message.error(t('profile.messages.loadFailed'));
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // Initialize data
-    useEffect(() => {
-        loadProfiles();
+    const loadResource = useCallback(async (): Promise<ApiAgentProfile[]> => {
+        const response = await fetchCustom('/api/agent-profiles');
+        if (!response.ok) throw new Error(await response.text());
+        const data = await response.json();
+        return data.data || [];
     }, []);
+    const handleLoadError = useCallback((error: unknown) => {
+        console.error('Failed to load profiles:', error);
+        message.error(t('profile.messages.loadFailed'));
+    }, [t]);
+    const { data: profiles, loading, reload: loadProfiles } = useAsyncResource(
+        loadResource, handleLoadError, [],
+    );
 
     // Handle search
     const handleSearch = (e) => {

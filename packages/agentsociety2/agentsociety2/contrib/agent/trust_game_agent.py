@@ -240,9 +240,7 @@ Both roles aim to maximize cumulative coins while considering trust and reciproc
         investment = 0  # Default investment
 
         try:
-            content = await self._completion_text(
-                [{"role": "user", "content": prompt}]
-            )
+            content = await self._completion_text([{"role": "user", "content": prompt}])
             self._logger.debug(f"[{self.name}] Raw LLM response: {content[:200]}...")
 
             # Parse numerical value
@@ -282,9 +280,7 @@ Both roles aim to maximize cumulative coins while considering trust and reciproc
         return_amount = 0  # Default return
 
         try:
-            content = await self._completion_text(
-                [{"role": "user", "content": prompt}]
-            )
+            content = await self._completion_text([{"role": "user", "content": prompt}])
             self._logger.debug(f"[{self.name}] Raw LLM response: {content[:200]}...")
 
             # Parse numerical value

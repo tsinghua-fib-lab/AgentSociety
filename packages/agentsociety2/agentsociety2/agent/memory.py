@@ -1,4 +1,4 @@
-"""File-backed core memory for PersonAgent.
+"""基于工作区文件的核心记忆存储。
 
 中文：为 PersonAgent 提供基于工作区文件的核心记忆存储。
 English: Provides workspace-file storage for PersonAgent core memory.
@@ -18,14 +18,6 @@ MEMORY_MD_PATH = "MEMORY.md"
 MEMORY_DIR = "memory"
 EPISODES_PATH = f"{MEMORY_DIR}/episodes.jsonl"
 MEMORY_STATE_PATH = f"{MEMORY_DIR}/state.json"
-MEMORY_MD_SECTIONS = (
-    "Identity And Profile",
-    "Stable Preferences",
-    "Relationships",
-    "Durable Goals And Commitments",
-    "Important Past Events",
-    "Known Constraints",
-)
 MEMORY_STABLE_TYPES = {
     "identity",
     "preference",
@@ -58,13 +50,12 @@ DEFAULT_MEMORY_MD = """# Memory
 
 @dataclass(frozen=True)
 class MemoryConsolidationConfig:
-    """Configuration for deciding when to refresh MEMORY.md.
+    """决定何时刷新 MEMORY.md 的配置。
 
-    Args:
-        pending_threshold: Number of pending episodes that triggers consolidation.
-        interval_steps: Step interval that triggers consolidation.
-        high_importance_threshold: Importance score that triggers consolidation.
-        max_memory_chars: Maximum desired size for MEMORY.md prompt context.
+    :param pending_threshold: 触发合并的待处理 episode 数量阈值。
+    :param interval_steps: 触发合并的步数间隔。
+    :param high_importance_threshold: 触发合并的重要性分数。
+    :param max_memory_chars: MEMORY.md 提示上下文的期望最大尺寸。
     """
 
     pending_threshold: int = 10
@@ -87,15 +78,14 @@ MemoryEpisodeType = Literal[
 
 
 class ExtractedMemoryEpisode(BaseModel):
-    """Validated LLM-produced memory point before persistence metadata is added.
+    """已校验的 LLM 产出记忆点,尚未附加持久化元数据。
 
-    Args:
-        type: Memory category used for consolidation decisions.
-        importance: Importance score from 0.0 to 1.0.
-        keywords: Grep-friendly keywords for later retrieval.
-        text: One durable fact to remember.
-        source: Source label for the memory.
-        refs: Optional memory IDs referenced by this memory.
+    :param type: 用于合并决策的记忆类别。
+    :param importance: 0.0 到 1.0 之间的重要性分数。
+    :param keywords: 便于 grep、供后续检索的关键词。
+    :param text: 一条要记住的持久事实。
+    :param source: 该记忆的来源标签。
+    :param refs: 该记忆引用的可选记忆 ID。
     """
 
     type: MemoryEpisodeType = "observation"
@@ -108,13 +98,10 @@ class ExtractedMemoryEpisode(BaseModel):
     @field_validator("keywords", "refs", mode="before")
     @classmethod
     def _coerce_string_list(cls, value: Any) -> list[str]:
-        """Normalize optional list-like fields to unique strings.
+        """将可选的类列表字段规范化为去重后的字符串列表。
 
-        Args:
-            value: Raw field value from Pydantic validation.
-
-        Returns:
-            A list of stripped unique strings.
+        :param value: Pydantic 校验传入的原始字段值。
+        :returns: 去除首尾空白且去重后的字符串列表。
         """
         if value is None:
             return []
@@ -130,59 +117,42 @@ class ExtractedMemoryEpisode(BaseModel):
     @field_validator("text", "source")
     @classmethod
     def _strip_required_text(cls, value: str) -> str:
-        """Strip whitespace from required text fields.
+        """去除必填文本字段的首尾空白。
 
-        Args:
-            value: Raw text value.
-
-        Returns:
-            The stripped text.
+        :param value: 原始文本值。
+        :returns: 去除首尾空白后的文本。
         """
         return value.strip()
 
 
 class MemoryExtractionResult(BaseModel):
-    """Function-call result for step memory extraction.
+    """步骤记忆抽取的函数调用结果。
 
-    Args:
-        memories: Memory points extracted from one step.
+    :param memories: 从单个步骤抽取出的记忆点。
     """
 
     memories: list[ExtractedMemoryEpisode] = Field(default_factory=list, max_length=8)
 
 
 class MemoryConsolidationResult(BaseModel):
-    """Function-call result for MEMORY.md consolidation.
-
-    Args:
-        memory_md: Full refreshed MEMORY.md content.
-    """
+    """Legacy public result model retained for SDK import compatibility."""
 
     memory_md: str = Field(min_length=1, max_length=20000)
 
     @field_validator("memory_md")
     @classmethod
     def _strip_memory_md(cls, value: str) -> str:
-        """Strip whitespace from MEMORY.md content.
-
-        Args:
-            value: Raw MEMORY.md content.
-
-        Returns:
-            The stripped MEMORY.md content.
-        """
         return value.strip()
 
 
 class AgentMemoryStore:
-    """Workspace file store for core agent memory.
+    """核心 agent 记忆的工作区文件存储。
 
-    ``episodes.jsonl`` is the canonical append-only event memory source.
-    ``MEMORY.md`` is compact context derived from episodes.
+    ``episodes.jsonl`` 是权威的 append-only 事件记忆源,
+    ``MEMORY.md`` 是由 episodes 派生出的紧凑上下文。
 
-    Args:
-        workspace_root: Root directory of one agent workspace.
-        agent_id: Numeric agent id used in persisted episode records.
+    :param workspace_root: 单个 agent 工作区的根目录。
+    :param agent_id: 持久化 episode 记录中使用的数字 agent id。
     """
 
     trigger_types: ClassVar[set[str]] = {
@@ -196,14 +166,11 @@ class AgentMemoryStore:
     }
 
     def __init__(self, workspace_root: Path, *, agent_id: int) -> None:
-        """Initialize the file-backed memory store.
+        """初始化基于文件的记忆存储。
 
-        Args:
-            workspace_root: Root directory of one agent workspace.
-            agent_id: Numeric agent id used in memory records.
-
-        Returns:
-            None.
+        :param workspace_root: 单个 agent 工作区的根目录。
+        :param agent_id: 记忆记录中使用的数字 agent id。
+        :returns: 无返回值。
         """
         self.root = workspace_root
         self.agent_id = agent_id
@@ -215,48 +182,32 @@ class AgentMemoryStore:
 
     @property
     def memory_md_path(self) -> Path:
-        """Return the MEMORY.md path.
+        """返回 MEMORY.md 的路径。
 
-        Args:
-            None.
-
-        Returns:
-            Absolute path to MEMORY.md.
+        :returns: MEMORY.md 的绝对路径。
         """
         return self.root / MEMORY_MD_PATH
 
     @property
     def episodes_path(self) -> Path:
-        """Return the episodes JSONL path.
+        """返回 episodes JSONL 文件的路径。
 
-        Args:
-            None.
-
-        Returns:
-            Absolute path to memory/episodes.jsonl.
+        :returns: memory/episodes.jsonl 的绝对路径。
         """
         return self.root / EPISODES_PATH
 
     @property
     def state_path(self) -> Path:
-        """Return the memory state path.
+        """返回记忆状态文件的路径。
 
-        Args:
-            None.
-
-        Returns:
-            Absolute path to memory/state.json.
+        :returns: memory/state.json 的绝对路径。
         """
         return self.root / MEMORY_STATE_PATH
 
     def ensure(self) -> None:
-        """Create memory files if they do not exist.
+        """在记忆文件不存在时创建它们。
 
-        Args:
-            None.
-
-        Returns:
-            None.
+        :returns: 无返回值。
         """
         (self.root / MEMORY_DIR).mkdir(parents=True, exist_ok=True)
         if not self.episodes_path.exists():
@@ -267,13 +218,9 @@ class AgentMemoryStore:
             self.write_state(self.default_state())
 
     def default_state(self) -> dict[str, Any]:
-        """Build the default memory state.
+        """构造默认的记忆状态。
 
-        Args:
-            None.
-
-        Returns:
-            A new default memory state dictionary.
+        :returns: 新的默认记忆状态字典。
         """
         return {
             "schema_version": 1,
@@ -282,16 +229,20 @@ class AgentMemoryStore:
             "last_consolidated_step": 0,
             "pending_episode_count": 0,
             "episode_counter": 0,
+            # Consolidation fuse (Phase 1.8c): empty LLM merges don't advance
+            # the cursor, so they would otherwise re-fire every step. The
+            # streak counts consecutive empty results; once it hits 2, attempts
+            # pause until ``consolidation_cooldown_until_step``. Both survive
+            # agent rebuilds because agents are rehydrated from this state
+            # every tick.
+            "consolidation_empty_streak": 0,
+            "consolidation_cooldown_until_step": 0,
         }
 
     def read_state(self) -> dict[str, Any]:
-        """Read memory state from disk.
+        """从磁盘读取记忆状态。
 
-        Args:
-            None.
-
-        Returns:
-            State dictionary merged with default keys.
+        :returns: 与默认键合并后的状态字典。
         """
         self.ensure()
         try:
@@ -304,13 +255,10 @@ class AgentMemoryStore:
         return state
 
     def write_state(self, state: dict[str, Any]) -> None:
-        """Write memory state to disk.
+        """将记忆状态写入磁盘。
 
-        Args:
-            state: State dictionary to persist.
-
-        Returns:
-            None.
+        :param state: 要持久化的状态字典。
+        :returns: 无返回值。
         """
         (self.root / MEMORY_DIR).mkdir(parents=True, exist_ok=True)
         self.state_path.write_text(
@@ -319,13 +267,10 @@ class AgentMemoryStore:
         )
 
     def read_memory_md(self, *, max_chars: int | None = None) -> str:
-        """Read compact long-term memory.
+        """读取紧凑的长期记忆。
 
-        Args:
-            max_chars: Optional character budget. Long content is truncated.
-
-        Returns:
-            MEMORY.md text, possibly truncated.
+        :param max_chars: 可选的字符预算,超长内容会被截断。
+        :returns: MEMORY.md 文本,可能被截断。
         """
         self.ensure()
         text = self.memory_md_path.read_text(encoding="utf-8")
@@ -336,15 +281,12 @@ class AgentMemoryStore:
     def write_memory_md(
         self, content: str, *, step_count: int, tick: int | None
     ) -> None:
-        """Write compact long-term memory and update consolidation state.
+        """写入紧凑的长期记忆并更新合并状态。
 
-        Args:
-            content: Full MEMORY.md content.
-            step_count: Current agent step count.
-            tick: Current simulation tick, if available.
-
-        Returns:
-            None.
+        :param content: 完整的 MEMORY.md 内容。
+        :param step_count: 当前 agent 步数。
+        :param tick: 当前仿真 tick(可用时)。
+        :returns: 无返回值。
         """
         self.ensure()
         text = self.normalize_memory_md(
@@ -370,18 +312,14 @@ class AgentMemoryStore:
         *,
         max_chars: int = 4000,
     ) -> str:
-        """Apply minimal structural guards to LLM-produced MEMORY.md content.
+        """对 LLM 产出的 MEMORY.md 内容应用最小的结构保障。
 
-        The LLM is asked (via the consolidation prompt) to return well-formed
-        Markdown directly; this only ensures a top-level heading and a length
-        bound. It deliberately does NOT reflow or rewrite the text.
+        合并提示词已要求 LLM 直接返回格式良好的 Markdown;本函数只确保
+        顶层标题存在并限制长度,刻意不重排、不改写文本。
 
-        Args:
-            content: Raw MEMORY.md content produced by the LLM.
-            max_chars: Maximum output character budget.
-
-        Returns:
-            MEMORY.md text with a top-level heading and bounded length.
+        :param content: LLM 产出的原始 MEMORY.md 内容。
+        :param max_chars: 输出的最大字符预算。
+        :returns: 带顶层标题且长度受限的 MEMORY.md 文本。
         """
         text = str(content or "").strip()
         if not text:
@@ -400,16 +338,13 @@ class AgentMemoryStore:
         t: datetime,
         step_count: int,
     ) -> list[dict[str, Any]]:
-        """Append normalized memory episodes and return written records.
+        """追加规范化后的记忆 episodes 并返回写入的记录。
 
-        Args:
-            episodes: Raw episode dictionaries from the memory extractor.
-            tick: Current simulation tick.
-            t: Current simulation time.
-            step_count: Current agent step count.
-
-        Returns:
-            Episode records written to memory/episodes.jsonl.
+        :param episodes: 记忆抽取器给出的原始 episode 字典。
+        :param tick: 当前仿真 tick。
+        :param t: 当前仿真时间。
+        :param step_count: 当前 agent 步数。
+        :returns: 写入 memory/episodes.jsonl 的 episode 记录。
         """
         self.ensure()
         state = self.read_state()
@@ -473,29 +408,20 @@ class AgentMemoryStore:
         return written
 
     def iter_episodes(self) -> list[dict[str, Any]]:
-        """Read all valid memory episodes.
+        """读取全部有效的记忆 episodes。
 
-        Uses the in-memory cache (loaded once on first access, kept in sync by
-        append_episodes) so repeated calls no longer re-read/re-parse the whole
-        episodes.jsonl. Returns a shallow copy so callers cannot mutate the
-        cache.
+        使用内存缓存(首次访问时加载一次,由 append_episodes 保持同步),
+        重复调用不再重新读取/解析整个 episodes.jsonl。返回浅拷贝,调用方
+        无法修改缓存。
 
-        Args:
-            None.
-
-        Returns:
-            Parsed episode dictionaries in file order.
+        :returns: 按文件顺序排列的已解析 episode 字典。
         """
         return list(self._load_episodes_cache())
 
     def _load_episodes_cache(self) -> list[dict[str, Any]]:
-        """Lazily load and cache all episodes from disk.
+        """惰性地从磁盘加载并缓存全部 episodes。
 
-        Args:
-            None.
-
-        Returns:
-            The in-memory episode list (the cache itself).
+        :returns: 内存中的 episode 列表(即缓存本身)。
         """
         if self._episodes_cache is None:
             self.ensure()
@@ -513,26 +439,20 @@ class AgentMemoryStore:
         return self._episodes_cache
 
     def recent(self, *, limit: int = 8) -> list[dict[str, Any]]:
-        """Read the latest memory episodes.
+        """读取最近的记忆 episodes。
 
-        Args:
-            limit: Maximum number of episodes to return.
-
-        Returns:
-            Latest episode dictionaries in chronological order.
+        :param limit: 返回的最大 episode 数量。
+        :returns: 按时间先后排列的最新 episode 字典。
         """
         limit = max(1, int(limit or 8))
         return self.iter_episodes()[-limit:]
 
     def search(self, query: str, *, limit: int = 20) -> list[dict[str, Any]]:
-        """Search memory episodes by substring.
+        """按子串搜索记忆 episodes。
 
-        Args:
-            query: Case-insensitive substring to search in serialized episodes.
-            limit: Maximum number of matches to return.
-
-        Returns:
-            Matching episode dictionaries, newest first.
+        :param query: 在序列化后的 episode 中搜索的大小写不敏感子串。
+        :param limit: 返回的最大匹配数量。
+        :returns: 匹配的 episode 字典,最新在前。
         """
         q = str(query or "").strip().lower()
         if not q:
@@ -548,13 +468,10 @@ class AgentMemoryStore:
         return matches
 
     def read_ids(self, ids: list[str]) -> list[dict[str, Any]]:
-        """Read exact memory episodes by id.
+        """按 id 精确读取记忆 episodes。
 
-        Args:
-            ids: Memory episode IDs to read.
-
-        Returns:
-            Episode dictionaries whose IDs match the input list.
+        :param ids: 要读取的记忆 episode ID 列表。
+        :returns: ID 与输入列表匹配的 episode 字典。
         """
         wanted = {str(item).strip() for item in ids if str(item).strip()}
         if not wanted:
@@ -572,19 +489,16 @@ class AgentMemoryStore:
         end_time: str | None = None,
         limit: int = 50,
     ) -> list[dict[str, Any]]:
-        """Read memory episodes in a step, tick-duration, or time range.
+        """按 step、tick 时长或时间范围读取记忆 episodes。
 
-        Args:
-            start_step: Inclusive lower step-index bound.
-            end_step: Inclusive upper step-index bound.
-            start_tick: Inclusive lower tick bound.
-            end_tick: Inclusive upper tick bound.
-            start_time: Inclusive ISO datetime lower bound.
-            end_time: Inclusive ISO datetime upper bound.
-            limit: Maximum number of episodes to return.
-
-        Returns:
-            Matching episode dictionaries in chronological order.
+        :param start_step: 含端点的 step-index 下界。
+        :param end_step: 含端点的 step-index 上界。
+        :param start_tick: 含端点的 tick 下界。
+        :param end_tick: 含端点的 tick 上界。
+        :param start_time: 含端点的 ISO datetime 下界。
+        :param end_time: 含端点的 ISO datetime 上界。
+        :param limit: 返回的最大 episode 数量。
+        :returns: 按时间先后排列的匹配 episode 字典。
         """
         start_dt = self._parse_dt(start_time)
         end_dt = self._parse_dt(end_time)
@@ -614,13 +528,10 @@ class AgentMemoryStore:
 
     @staticmethod
     def _episode_step_index(item: dict[str, Any]) -> int | None:
-        """Return the event step index from a memory episode.
+        """从记忆 episode 中返回事件 step index。
 
-        Args:
-            item: Memory episode dictionary.
-
-        Returns:
-            Step index when present and parseable, otherwise None.
+        :param item: 记忆 episode 字典。
+        :returns: 存在且可解析时返回 step index,否则返回 None。
         """
         for key in ("step_index", "step_count"):
             raw = item.get(key)
@@ -630,13 +541,10 @@ class AgentMemoryStore:
 
     @staticmethod
     def _episode_tick_duration(item: dict[str, Any]) -> int | None:
-        """Return the per-step tick duration from a memory episode.
+        """从记忆 episode 中返回每步的 tick 时长。
 
-        Args:
-            item: Memory episode dictionary.
-
-        Returns:
-            Tick duration in seconds when present and parseable, otherwise None.
+        :param item: 记忆 episode 字典。
+        :returns: 存在且可解析时返回以秒计的 tick 时长,否则返回 None。
         """
         for key in ("tick_duration_sec", "tick"):
             raw = item.get(key)
@@ -651,15 +559,12 @@ class AgentMemoryStore:
         step_count: int,
         config: MemoryConsolidationConfig,
     ) -> tuple[bool, str]:
-        """Decide whether MEMORY.md should be refreshed.
+        """判断是否应刷新 MEMORY.md。
 
-        Args:
-            new_episodes: Newly appended episode records.
-            step_count: Current agent step count.
-            config: Consolidation trigger configuration.
-
-        Returns:
-            A pair of ``(should_consolidate, reason)``.
+        :param new_episodes: 新追加的 episode 记录。
+        :param step_count: 当前 agent 步数。
+        :param config: 合并触发配置。
+        :returns: ``(should_consolidate, reason)`` 二元组。
         """
         self.ensure()
         if not self.memory_md_path.exists():
@@ -697,13 +602,10 @@ class AgentMemoryStore:
 
     @staticmethod
     def _episode_importance(episode: dict[str, Any]) -> float:
-        """Return a bounded importance score from an episode.
+        """从 episode 中返回限界后的重要性分数。
 
-        Args:
-            episode: Persisted or candidate memory episode.
-
-        Returns:
-            Importance score between 0.0 and 1.0.
+        :param episode: 已持久化或候选的记忆 episode。
+        :returns: 0.0 到 1.0 之间的重要性分数。
         """
         try:
             importance = float(episode.get("importance") or 0.0)
@@ -713,14 +615,11 @@ class AgentMemoryStore:
 
     @classmethod
     def is_long_term_memory_candidate(cls, episode: dict[str, Any]) -> bool:
-        """Return whether an episode should be offered for MEMORY.md consolidation.
+        """返回某个 episode 是否应纳入 MEMORY.md 合并。
 
-        Args:
-            episode: Persisted or candidate memory episode.
-
-        Returns:
-            True when LLM-provided structure marks the episode as durable enough
-            to include in the consolidation prompt.
+        :param episode: 已持久化或候选的记忆 episode。
+        :returns: 当 LLM 给出的结构将 episode 标记为足够持久、应纳入合并
+            提示时返回 True。
         """
         episode_type = str(episode.get("type") or "").strip().lower()
         importance = cls._episode_importance(episode)
@@ -733,13 +632,9 @@ class AgentMemoryStore:
         return False
 
     def unconsolidated(self) -> list[dict[str, Any]]:
-        """Read episodes written after the last consolidation cursor.
+        """读取上次合并游标之后写入的 episodes。
 
-        Args:
-            None.
-
-        Returns:
-            Episode dictionaries that have not been consolidated into MEMORY.md.
+        :returns: 尚未合并进 MEMORY.md 的 episode 字典。
         """
         state = self.read_state()
         last_id = state.get("last_consolidated_episode_id")
@@ -753,13 +648,10 @@ class AgentMemoryStore:
 
     @staticmethod
     def _parse_dt(value: str | None) -> datetime | None:
-        """Parse an ISO datetime if possible.
+        """尽可能解析 ISO datetime 字符串。
 
-        Args:
-            value: Optional datetime string.
-
-        Returns:
-            Parsed datetime, or None when parsing fails.
+        :param value: 可选的 datetime 字符串。
+        :returns: 解析成功返回 datetime,失败返回 None。
         """
         if not value:
             return None

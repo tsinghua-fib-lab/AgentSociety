@@ -237,11 +237,11 @@ class SocialMediaSpace(EnvBase):
         get_logger().info("SocialMediaSpace initialized (in-memory data only)")
 
     async def to_workspace(self, workspace_path=None) -> None:
-        """写入 ``state/ENV_STATE.json``（原子写）。
+        """写入 ``state/ENV_STATE.json`` （原子写）。
 
         持久化社交图（persons/posts/comments）+ 计数器 + 事件缓冲。
-        ``_rec_engine``（预训练推荐器）不入盘——由 ``__init__`` 据
-        ``recommendation_model_path``/``recommendation_algorithm``（在 env_kwargs）重建。
+        ``_rec_engine`` （预训练推荐器）不入盘——由 ``__init__`` 据
+        ``recommendation_model_path``/``recommendation_algorithm`` （在 env_kwargs）重建。
         ``_allowed_user_ids``/``_agent_names`` 由 agent_id_name_pairs 配置派生，不存。
         """
         if workspace_path is not None:

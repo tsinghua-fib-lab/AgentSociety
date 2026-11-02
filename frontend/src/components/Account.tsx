@@ -3,41 +3,34 @@
 import React, { CSSProperties, useEffect, useState } from "react";
 import { Avatar, Button, Dropdown, MenuProps, Space } from "antd";
 import { DownOutlined } from "@ant-design/icons";
-import { getAccessToken, getCasdoorSdk, DEMO_USER_TOKEN } from "./Auth";
-import { sdkConfig } from "./Auth";
+import { getAccessToken, getCasdoorSdk, DEMO_USER_TOKEN } from "./authState";
+import { sdkConfig } from "./authState";
 import { useTranslation } from 'react-i18next';
 
 const DEFAULT_AVATAR = "https://cdn.casbin.org/img/casbin.svg";
 
 const Account: React.FC = () => {
-    const [userInfo, setUserInfo] = useState<any>(null);
+    const [remoteUserInfo, setUserInfo] = useState<any>(null);
+    const [isDemo, setIsDemo] = useState(() => getAccessToken() === DEMO_USER_TOKEN);
     const sdk = getCasdoorSdk(sdkConfig);
     const { t } = useTranslation();
+    const token = getAccessToken();
+    const userInfo = isDemo ? { name: t('demoUser'), avatar: DEFAULT_AVATAR, isDemo: true } : remoteUserInfo;
 
     useEffect(() => {
-        const token = getAccessToken();
-        if (token !== null) {
-            if (token === DEMO_USER_TOKEN) {
-                // 设置演示用户信息
-                setUserInfo({
-                    name: t('demoUser'),
-                    avatar: DEFAULT_AVATAR,
-                    isDemo: true
-                });
-            } else {
-                sdk.getUserInfo(token).then((res: any) => {
-                    console.log('Got user info:', res);
-                    setUserInfo(res);
-                }).catch((err: any) => {
+        let active = true;
+        if (token && token !== DEMO_USER_TOKEN) {
+            sdk.getUserInfo(token).then((res: any) => {
+                if (active) setUserInfo(res);
+            }).catch((err: unknown) => {
+                if (active) {
                     console.error('Failed to get user info:', err);
                     localStorage.removeItem("access_token");
-                });
-            }
+                }
+            });
         }
-    }, [t]);
-
-    console.log('Account component rendered, userInfo:', userInfo);
-    console.log('Access Token in Account:', localStorage.getItem("access_token"));
+        return () => { active = false; };
+    }, [sdk, token]);
 
     const casdoorLogin = () => {
         const url = sdk.getSigninUrl();
@@ -47,11 +40,7 @@ const Account: React.FC = () => {
 
     const demoLogin = () => {
         localStorage.setItem("access_token", DEMO_USER_TOKEN);
-        setUserInfo({
-            name: t('demoUser'),
-            avatar: DEFAULT_AVATAR,
-            isDemo: true
-        });
+        setIsDemo(true);
     };
 
     const casdoorLogout = () => {

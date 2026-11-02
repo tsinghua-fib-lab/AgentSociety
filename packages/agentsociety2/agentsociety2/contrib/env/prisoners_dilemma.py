@@ -89,7 +89,7 @@ class PrisonersDilemmaEnv(EnvBase):
         self._step_counter: int = 0
 
     async def to_workspace(self, workspace_path=None) -> None:
-        """写入 ``state/ENV_STATE.json``（原子写）。"""
+        """写入 ``state/ENV_STATE.json`` （原子写）。"""
         if workspace_path is not None:
             self._bind_workspace(workspace_path)
         if self._workspace_root is None:
@@ -112,7 +112,7 @@ class PrisonersDilemmaEnv(EnvBase):
     async def restore(self, workspace_path) -> bool:
         """从 ``state/ENV_STATE.json`` 恢复。
 
-        晚于 ``init()``（会重置回合状态）执行，故 checkpoint 覆盖重置；
+        晚于 ``init()`` （会重置回合状态）执行，故 checkpoint 覆盖重置；
         ``_lock`` 由 ``__init__`` 重建，不从盘读取。
         """
         self._bind_workspace(workspace_path)

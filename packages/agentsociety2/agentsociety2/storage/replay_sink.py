@@ -133,9 +133,7 @@ class ReplaySink:
                 path = self._dir / f"{table}.{shard:02x}.jsonl"
                 # Cached descriptor is owned by this sink and released by close().
                 # codeql[py/file-not-closed]
-                fd = os.open(
-                    str(path), os.O_APPEND | os.O_CREAT | os.O_WRONLY, 0o600
-                )
+                fd = os.open(str(path), os.O_APPEND | os.O_CREAT | os.O_WRONLY, 0o600)
                 self._fds[key] = fd
 
     def _ensure_lock_fd(self, table: str, shard: int) -> None:
@@ -147,9 +145,7 @@ class ReplaySink:
                 path = self._dir / f".{table}.{shard:02x}.lock"
                 # Cached descriptor is owned by this sink and released by close().
                 # codeql[py/file-not-closed]
-                fd = os.open(
-                    str(path), os.O_RDWR | os.O_CREAT, 0o600
-                )
+                fd = os.open(str(path), os.O_RDWR | os.O_CREAT, 0o600)
                 self._lock_fds[key] = fd
 
     @contextmanager

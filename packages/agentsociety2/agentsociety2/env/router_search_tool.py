@@ -6,10 +6,10 @@ Search Tool as Tool Router Implementation
 import json
 from typing import Any
 
-import json_repair
 from litellm import AllMessageValues
 from openai.types.chat import ChatCompletionToolParam
 
+from agentsociety2.agent.json_utils import loads_llm_json
 from agentsociety2.env.base import EnvBase
 from agentsociety2.env.router_base import RouterBase
 from agentsociety2.logger import get_logger
@@ -319,7 +319,7 @@ class SearchToolRouter(RouterBase):
                     func_args_str = tool_call.function.arguments
 
                     try:
-                        func_args = json_repair.loads(func_args_str)
+                        func_args = loads_llm_json(func_args_str, expect="object")
                     except Exception as e:
                         tool_results.append(
                             {

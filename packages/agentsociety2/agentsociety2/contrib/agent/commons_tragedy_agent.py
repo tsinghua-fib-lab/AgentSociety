@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from agentsociety2.agent.base import AgentBase
+from agentsociety2.agent.xml_utils import extract_xml_tag_value
 
 
 class CommonsTragedyAgent(AgentBase):
@@ -365,17 +366,13 @@ This agent participates in a 10-round Tragedy of the Commons game where multiple
         )
 
         try:
-            content = await self._completion_text(
-                [{"role": "user", "content": prompt}]
-            )
+            content = await self._completion_text([{"role": "user", "content": prompt}])
             self._logger.debug(f"[{self.name}] [DEBUG] Raw response: {content}")
 
             # Extract extraction using regex
-            extraction_match = re.search(
-                r"<extraction>\s*(10|[1-9])\s*</extraction>", content, re.IGNORECASE
-            )
-            if extraction_match:
-                parsed_extraction = int(extraction_match.group(1))
+            extraction_value = extract_xml_tag_value(content, "extraction", "10|[1-9]")
+            if extraction_value is not None:
+                parsed_extraction = int(extraction_value)
                 if 1 <= parsed_extraction <= self.max_extraction:
                     extraction = parsed_extraction
                 else:
@@ -385,14 +382,8 @@ This agent participates in a 10-round Tragedy of the Commons game where multiple
                     )
 
                 # Extract explanation
-                explanation_match = re.search(
-                    r"<explanation>(.*?)</explanation>",
-                    content,
-                    re.DOTALL | re.IGNORECASE,
-                )
-                if explanation_match:
-                    explanation = explanation_match.group(1).strip()
-                else:
+                explanation = extract_xml_tag_value(content, "explanation", dotall=True)
+                if explanation is None:
                     explanation = (
                         f"Selected '{extraction}' but no explanation provided in XML"
                     )

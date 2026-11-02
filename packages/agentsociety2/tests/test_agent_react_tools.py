@@ -41,3 +41,54 @@ async def test_activate_skill_failure_reports_reason():
     assert result.observation
     assert "does-not-exist" in result.observation
     assert result.data["error"]
+
+
+# ------------------------ text-encoded tool-call parsing ----------------------
+
+def _parse(content: str):
+    agent = _DummyAgent()
+    return agent._parse_text_tool_calls(content)
+
+
+def test_parse_text_kwarg_style_call():
+    """Python-kwarg style — the most common shape from non-native models."""
+    calls = _parse('ask_env(instruction="go home", readonly=false)')
+    assert calls == [("ask_env", {"instruction": "go home", "readonly": False})]
+
+
+def test_parse_text_json_function_call():
+    calls = _parse('finish({"answer": "left"})')
+    assert calls == [("finish", {"answer": "left"})]
+
+
+def test_parse_text_json_with_code_fence_and_prose():
+    """Prose + fenced JSON must still yield the call (json_repair path)."""
+    calls = _parse('I will finish now.\n```json\n{"name": "finish", "arguments": {"answer": "ok"}}\n```')
+    assert calls == [("finish", {"answer": "ok"})]
+
+
+def test_parse_text_bare_json_object():
+    calls = _parse('{"name": "read", "arguments": {"path": "a.txt"}}')
+    assert calls == [("read", {"path": "a.txt"})]
+
+
+def test_parse_text_bare_json_tool_key_variant():
+    calls = _parse('{"tool": "read", "args": {"path": "b.txt"}}')
+    assert calls == [("read", {"path": "b.txt"})]
+
+
+def test_parse_text_xml_invoke():
+    calls = _parse(
+        '<invoke name="move_to">\n<parameters>{"destination": "mall"}</parameters>\n</invoke>'
+    )
+    assert calls == [("move_to", {"destination": "mall"})]
+
+
+def test_parse_text_plain_prose_yields_no_calls():
+    calls = _parse("I think the best plan is to walk to the park and relax.")
+    assert calls == []
+
+
+def test_parse_text_malformed_fragments_are_skipped_not_raised():
+    calls = _parse('ask_env(instruction="unclosed')
+    assert calls == []

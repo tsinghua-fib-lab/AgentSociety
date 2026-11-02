@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Table, Button, Card, Space, Modal, message, Tooltip, Input, Popconfirm, Form, Row, Col, Upload, Alert } from 'antd';
 import {
     PlusOutlined,
@@ -12,7 +12,7 @@ import {
 import { MapConfig, ConfigWrapper } from '../../types/config';
 import { fetchCustom, postDownloadCustom, WITH_AUTH } from '../../components/fetch';
 import dayjs from 'dayjs';
-import { getAccessToken } from '../../components/Auth';
+import { getAccessToken } from '../../components/authState';
 import { useTranslation } from 'react-i18next';
 
 const { Dragger } = Upload;
@@ -28,7 +28,7 @@ const Map: React.FC = () => {
     const [metaForm] = Form.useForm();
 
     // Load map configurations
-    const loadMaps = async () => {
+    const loadMaps = useCallback(async () => {
         setLoading(true);
         try {
             const res = await fetchCustom('/api/map-configs');
@@ -43,15 +43,14 @@ const Map: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    };
-
+    }, [t]);
     // Initialize data
     useEffect(() => {
         const init = async () => {
             await loadMaps();
         };
         init();
-    }, []);
+    }, [loadMaps]);
 
     // Handle search
     const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {

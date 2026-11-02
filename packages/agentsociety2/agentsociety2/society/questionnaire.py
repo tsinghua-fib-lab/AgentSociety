@@ -9,10 +9,10 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
-import json_repair
 from pydantic import BaseModel, Field
 
 from agentsociety2.agent import AgentBase
+from agentsociety2.agent.json_utils import loads_llm_json
 from agentsociety2.society.models import QuestionItem
 
 __all__ = [
@@ -147,8 +147,8 @@ def _parse_question_answer(
     structured_payload: Any = None
 
     try:
-        structured_payload = json_repair.loads(full_response)
-    except Exception:
+        structured_payload = loads_llm_json(full_response, expect="any")
+    except ValueError:
         structured_payload = None
 
     if isinstance(structured_payload, dict) and "answer" in structured_payload:
@@ -217,11 +217,11 @@ def _parse_question_answer(
         elif question.response_type == "json":
             if isinstance(structured_payload, dict) and "answer" in structured_payload:
                 if isinstance(answer_payload, str):
-                    parsed_value = json_repair.loads(answer_payload)
+                    parsed_value = loads_llm_json(answer_payload, expect="any")
                 else:
                     parsed_value = answer_payload
             else:
-                parsed_value = json_repair.loads(answer_text)
+                parsed_value = loads_llm_json(answer_text, expect="any")
         else:
             parsed_value = answer_text
     except Exception as exc:

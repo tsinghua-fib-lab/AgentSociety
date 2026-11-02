@@ -50,7 +50,14 @@ class AgentConfig(BaseModel):
 class CodeGenRouterConfig(BaseModel):
     """CodeGenRouter 配置模型"""
 
-    final_summary_enabled: bool = Field(True, description="是否启用 ask 最终 summary")
+    final_summary_enabled: bool = Field(
+        False,
+        description=(
+            "是否启用 ask 最终 summary。默认关闭:启用时每次 env ask 都会"
+            "额外产生一次 LLM summary 调用(实测占调用总数 ~40%),"
+            "关闭后由确定性拼装生成最终应答。"
+        ),
+    )
 
 
 class InitConfig(BaseModel):

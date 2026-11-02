@@ -50,7 +50,7 @@ def _tool_schema(name: str) -> dict:
 
 
 def test_skill_catalog_exposes_only_skill_name_to_model():
-    runtime = AgentSkillRuntime(agent_id=1, registry=_Registry())
+    runtime = AgentSkillRuntime(registry=_Registry())
     runtime.set_visible_skills(["env:MobilitySpace@mobility"])
 
     catalog = runtime.skill_catalog()
@@ -93,7 +93,7 @@ class _DocRegistry(_Registry):
 
 
 def test_resolve_skill_id_accepts_both_id_and_name():
-    runtime = AgentSkillRuntime(agent_id=1, registry=_Registry())
+    runtime = AgentSkillRuntime(registry=_Registry())
     runtime.set_visible_skills(["env:MobilitySpace@mobility"])
 
     assert (
@@ -105,24 +105,25 @@ def test_resolve_skill_id_accepts_both_id_and_name():
 
 
 def test_set_visible_skills_accepts_mixed_id_and_name():
-    runtime = AgentSkillRuntime(agent_id=1, registry=_Registry())
+    runtime = AgentSkillRuntime(registry=_Registry())
 
     runtime.set_visible_skills(["env:MobilitySpace@mobility", "mobility"])
 
     assert runtime.visible_skill_ids() == {"env:MobilitySpace@mobility"}
 
 
-def test_add_visible_skill_accepts_name_before_visible():
-    runtime = AgentSkillRuntime(agent_id=1, registry=_Registry())
+def test_set_visible_skills_accepts_name_before_visible():
+    """名字在置 visible 前即可解析;未知名字静默跳过,不污染集合。"""
+    runtime = AgentSkillRuntime(registry=_Registry())
 
-    assert runtime.add_visible_skill("mobility") is True
+    runtime.set_visible_skills(["mobility"])
     assert runtime.visible_skill_ids() == {"env:MobilitySpace@mobility"}
-    # Unknown name does not silently add anything.
-    assert runtime.add_visible_skill("ghost") is False
+    runtime.set_visible_skills(["ghost"])
+    assert runtime.visible_skill_ids() == set()
 
 
 def test_activate_skill_accepts_both_id_and_name():
-    runtime = AgentSkillRuntime(agent_id=1, registry=_DocRegistry())
+    runtime = AgentSkillRuntime(registry=_DocRegistry())
     runtime.set_visible_skills(["env:MobilitySpace@mobility"])
 
     activated_by_name, skill_id_name, doc_name = runtime.activate_skill("mobility")
@@ -140,7 +141,7 @@ def test_activate_skill_accepts_both_id_and_name():
 
 
 def test_deactivate_skill_accepts_both_id_and_name():
-    runtime = AgentSkillRuntime(agent_id=1, registry=_DocRegistry())
+    runtime = AgentSkillRuntime(registry=_DocRegistry())
     runtime.set_visible_skills(["env:MobilitySpace@mobility"])
     runtime.activate_skill("env:MobilitySpace@mobility")
     assert runtime.activated_skill_ids() == {"env:MobilitySpace@mobility"}
@@ -154,15 +155,3 @@ def test_deactivate_skill_accepts_both_id_and_name():
     removed_by_id, skill_id_id = runtime.deactivate_skill("env:MobilitySpace@mobility")
     assert (removed_by_id, skill_id_id) == (True, "env:MobilitySpace@mobility")
     assert runtime.activated_skill_ids() == set()
-
-
-def test_by_name_aliases_still_work():
-    """Deprecated *_by_name wrappers delegate to the unified APIs."""
-    runtime = AgentSkillRuntime(agent_id=1, registry=_DocRegistry())
-    runtime.set_visible_skills(["env:MobilitySpace@mobility"])
-
-    assert runtime.resolve_skill_id_by_name("mobility") == "env:MobilitySpace@mobility"
-    activated, _, _ = runtime.activate_skill_by_name("mobility")
-    assert activated is True
-    removed, _ = runtime.deactivate_skill_by_name("mobility")
-    assert removed is True

@@ -293,8 +293,9 @@ async def test_to_workspaces_one_module_failure_does_not_abort_others(
     router.run_dir = tmp_path
     router.bind_env_workspaces(root, ["bad", "good"])
     await router.init(datetime(2025, 1, 1))
-    # bad 会抛错，但 good 的快照仍应写入。
-    await router.to_workspaces()
+    # 整体失败必须上报，但 good 的快照仍应写入。
+    with pytest.raises(RuntimeError, match="_FailingDumpEnv"):
+        await router.to_workspaces()
     assert (root / "good" / _STATE_FILE).is_file()
 
 
