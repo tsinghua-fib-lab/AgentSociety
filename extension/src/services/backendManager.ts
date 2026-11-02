@@ -483,7 +483,7 @@ export class BackendManager {
    */
   async isRunning(): Promise<boolean> {
     if (!this.process || this.process.killed) {
-      return false;
+      return (await this.getStatus()).isRunning;
     }
 
     // 检查进程是否还在运行
@@ -1009,7 +1009,8 @@ export class BackendManager {
         this.externalBackend = true;
       }
       this.currentStatus = 'running';
-      this.updateStatusBar('running', this.allocatedPort ?? port);
+      // Status reads must not notify the config page: its refresh reads this
+      // method again. Lifecycle operations update the status bar separately.
       return {
         isRunning: true,
         pid: this.process?.pid,
