@@ -891,7 +891,7 @@
     "@deck.gl/react": "^9.4.0",
     "@deck.gl/widgets": "^9.4.0",
     "@luma.gl/webgpu": "^9.4.1",
-    "antd": "^6.6.5",
+    "antd": "^6.6.8",
     "dayjs": "^1.11.23",
     "https-proxy-agent": "^9.1.0",
     "i18next": "^26.5.11",
