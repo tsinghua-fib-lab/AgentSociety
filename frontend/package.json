@@ -13,7 +13,7 @@
   "dependencies": {
     "@ant-design/icons": "^6.2.5",
     "@ant-design/pro-components": "^2.8.3",
-    "@ant-design/x": "^2.9.0",
+    "@ant-design/x": "^2.10.0",
     "@monaco-editor/react": "^4.7.0",
     "@types/react-plotly.js": "^2.6.4",
     "antd": "^6.6.5",
