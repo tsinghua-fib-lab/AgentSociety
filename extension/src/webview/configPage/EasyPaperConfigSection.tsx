@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Alert, Button, Form, Input, Select, Switch, Typography } from 'antd';
+import { Alert, Button, Collapse, Form, Input, Select, Switch, Typography } from 'antd';
 import { CopyOutlined, SaveOutlined } from '@ant-design/icons';
 import type { FormInstance } from 'antd';
 import type { TFunction } from 'i18next';
@@ -96,8 +96,7 @@ export function EasyPaperConfigSection({
 
   return (
     <div style={tabBodyStyle}>
-      {showIntro ? <Alert type="info" showIcon style={{ marginBottom: 16 }}
-        message={t('easyPaperConfig.infoTitle')} description={t('easyPaperConfig.infoDescription')} /> : null}
+      {showIntro ? <Collapse size="small" style={{ marginBottom: 16 }} items={[{ key: 'intro', label: t('easyPaperConfig.infoTitle'), children: t('easyPaperConfig.infoDescription') }]} /> : null}
       <Form form={form} layout="vertical" component={false}>
         <Text strong style={{ display: 'block', marginBottom: 8 }}>{t('easyPaperConfig.llmSection')}</Text>
         <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>{t('easyPaperConfig.llmSectionHint')}</Text>

@@ -551,8 +551,6 @@ class PersonMemoryRuntime:
                 model=model_name,
                 messages=messages,
                 stream=False,
-                # 单次摘要重写，推理无收益且拖慢每步收尾。
-                thinking="off",
             )
         # 直接取 LLM 返回的 Markdown 文本作为新 MEMORY.md，不走 tool calling。
         content = ""

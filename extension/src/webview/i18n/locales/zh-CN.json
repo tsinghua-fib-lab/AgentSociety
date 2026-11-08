@@ -303,8 +303,8 @@
       "apiBasePlaceholder": "默认值：https://api.openai.com/v1",
       "modelName": "LLM 模型名称",
       "modelPlaceholder": "选择模型或输入模型 ID",
-      "thinking": "推理（thinking）开关",
-      "thinkingHint": "留空时不发送任何推理相关参数，行为与不启用该功能时完全一致。关闭推理可降低 token 消耗并提升 prompt 缓存命中率。若网关用的是私有开关（如 enable_thinking），需改为在 .env 里手写 AGENTSOCIETY_LLM_EXTRA_BODY。",
+      "thinking": "推理模式",
+      "thinkingHint": "跟随默认保持服务原有行为。开启或关闭时发送所选格式的控制参数。保存后重启后端，新建实验生效。",
       "presetDeepseek": "DeepSeek",
       "presetBailian": "阿里云百炼（北京）",
       "presetZhipu": "智谱 BigModel",
@@ -680,7 +680,7 @@
       "apiBasePlaceholder": "可留空，使用上方默认 LLM API 地址",
       "model": "代码生成 LLM 模型",
       "modelPlaceholder": "留空则沿用上方 LLM 模型（当前：{{model}}）",
-      "thinking": "代码生成 LLM 推理（thinking）开关",
+      "thinking": "推理模式",
       "thinkingHint": "代码生成是 token 消耗的大头，关闭推理通常在这里收益最明显。留空则沿用上方默认 LLM 的取值。"
     },
     "advanced": {
@@ -745,10 +745,18 @@
       "unknownError": "未知错误"
     },
     "thinking": {
-      "inheritDefault": "跟随网关默认（不发送该参数）",
+      "inheritDefault": "跟随默认",
       "inheritCoder": "沿用默认 LLM",
       "on": "开启",
-      "off": "关闭"
+      "off": "关闭",
+      "apiType": "接口协议",
+      "coderApiType": "代码生成接口协议",
+      "apiTypeHint": "选择服务实际支持的协议。同一网关的两种接口可能对推理开关有不同支持；支持 Messages 的路由可选择 Anthropic Messages。",
+      "advanced": "高级推理设置",
+      "standard": "标准参数",
+      "format": "控制格式",
+      "coderFormat": "代码生成控制格式",
+      "formatHint": "按接口文档选择参数格式；Messages 使用原生 thinking。额外请求体中的其他字段会保留。"
     },
     "openWorkspace": "打开文件夹"
   },
@@ -1177,7 +1185,8 @@
         "invalid_claude_config": "Claude 配置文件无法解析，已保留原文件。",
         "unsupported_codex_layout": "Codex 配置布局无法安全更新，请检查 MCP 表格格式。"
       }
-    }
+    },
+    "sectionDetails": "说明"
   },
   "claudeCodeConfig": {
     "gatewayClaudeBlockTitle": "Claude Code",

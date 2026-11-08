@@ -29,6 +29,11 @@ export interface LLMConfig {
   apiKey: string;
   apiBase: string;
   model: string;
+  apiType?: 'openai' | 'anthropic';
+  thinking?: string;
+  thinkingFormat?: string;
+  reasoningEffort?: string;
+  extraBody?: string;
 }
 
 export enum LLMType {
@@ -72,8 +77,9 @@ export class LLMValidator {
 
     // 移除末尾斜杠
     const baseUrl = apiBase.replace(/\/$/, '');
+    const anthropic = type === LLMType.Chat && config.apiType === 'anthropic';
     const endpoint = type === LLMType.Embedding ? '/embeddings' : '/chat/completions';
-    const fullUrl = `${baseUrl}${endpoint}`;
+    const fullUrl = anthropic ? baseUrl.replace(/\/v1(?:\/messages)?$/, '') + '/v1/messages' : `${baseUrl}${endpoint}`;
 
     this.log(`Validating ${type} API: ${fullUrl}`);
     this.log(`Model: ${model}`);
@@ -86,14 +92,58 @@ export class LLMValidator {
         }
         : {
           model: model,
-          messages: [{ role: 'user', content: 'Hello' }],
-          max_tokens: 1,
+          messages: [{ role: 'user', content: config.thinking ? 'Return only OK.' : 'Hello' }],
+          max_tokens: config.thinking === 'on' ? 2048 : config.thinking === 'off' ? 256 : 1,
         };
 
-      const response = await requestJson<{ error?: { message?: string }; message?: string }>(fullUrl, {
+      if (type === LLMType.Chat && config.thinking) {
+        const enabled = config.thinking === 'on';
+        if (config.thinkingFormat && !['reasoning_effort', 'thinking', 'enable_thinking', 'chat_template_kwargs', 'reasoning'].includes(config.thinkingFormat)) {
+          return { success: false, error: '请选择有效的推理控制格式' };
+        }
+        let raw: unknown;
+        try { raw = config.extraBody ? JSON.parse(config.extraBody) : {}; }
+        catch { return { success: false, error: '推理扩展参数须为有效的 JSON 对象' }; }
+        if (!raw || typeof raw !== 'object' || Array.isArray(raw)) { return { success: false, error: '推理扩展参数须为 JSON 对象' }; }
+        const body = { ...raw } as Record<string, unknown>;
+        if (!anthropic) {
+          const controls: Record<string, Record<string, unknown>> = {
+            thinking: { thinking: { type: enabled ? 'enabled' : 'disabled' } },
+            enable_thinking: { enable_thinking: enabled },
+            chat_template_kwargs: { chat_template_kwargs: { enable_thinking: enabled } },
+            reasoning: { reasoning: { enabled } },
+          };
+          for (const [key, value] of Object.entries(controls[config.thinkingFormat ?? ''] ?? {})) {
+            body[key] = value && typeof value === 'object' && body[key] && typeof body[key] === 'object' ? { ...body[key] as object, ...value } : value;
+          }
+        }
+        let native = false;
+        const object = (value: unknown): value is Record<string, unknown> => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+        if (object(body.thinking)) {
+          body.thinking = { ...body.thinking, type: enabled ? (body.thinking.type === 'adaptive' ? 'adaptive' : 'enabled') : 'disabled' };
+          if (!enabled) { delete (body.thinking as Record<string, unknown>).budget_tokens; }
+          native = true;
+        }
+        if ('enable_thinking' in body) { body.enable_thinking = enabled; native = true; }
+        if (object(body.chat_template_kwargs) && 'enable_thinking' in body.chat_template_kwargs) { body.chat_template_kwargs = { ...body.chat_template_kwargs, enable_thinking: enabled }; native = true; }
+        if (object(body.reasoning) && ('enabled' in body.reasoning || 'effort' in body.reasoning)) {
+          body.reasoning = { ...body.reasoning,
+            ...('enabled' in body.reasoning ? { enabled } : {}),
+            ...('effort' in body.reasoning ? { effort: enabled ? config.reasoningEffort || (body.reasoning.effort === 'none' ? 'medium' : body.reasoning.effort) : 'none' } : {}),
+          };
+          native = true;
+        }
+        if (anthropic) {
+          body.thinking = enabled ? { type: 'enabled', budget_tokens: 1024, ...(object(body.thinking) ? body.thinking : {}) } : { type: 'disabled' };
+          if (object(body.thinking) && body.thinking.type === 'adaptive') { delete body.thinking.budget_tokens; }
+        } else if (!native) { body.reasoning_effort = enabled ? config.reasoningEffort || 'medium' : 'none'; }
+        Object.assign(requestBody, body);
+      }
+      const response = await requestJson<Record<string, any>>(fullUrl, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${apiKey}`,
+          ...(anthropic ? { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' } : {}),
         },
         body: requestBody,
         timeoutMs: CONFIG_PAGE_API_VALIDATE_TIMEOUT_MS,
@@ -103,6 +153,18 @@ export class LLMValidator {
       this.log(`Response status: ${response.status}`);
 
       if (response.ok) {
+        if (type === LLMType.Chat && config.thinking === 'off') {
+          const data = response.data;
+          const message = data.choices?.[0]?.message ?? {};
+          const content = data.content ?? [];
+          const reasoning = message.reasoning_content || message.reasoning || message.thinking_blocks?.some((block: Record<string, unknown>) => block.thinking || block.type === 'redacted_thinking')
+            || data.usage?.completion_tokens_details?.reasoning_tokens
+            || (Array.isArray(content) && content.some((block: Record<string, unknown>) => block.thinking || block.type === 'redacted_thinking'))
+            || (typeof message.content === 'string' && /<think>[\s\S]+?<\/think>/.test(message.content));
+          if (reasoning) {
+            return { success: false, error: '服务仍返回推理内容，请检查高级推理设置。' };
+          }
+        }
         this.log('Validation successful');
         return { success: true };
       }
@@ -117,6 +179,9 @@ export class LLMValidator {
       }
 
       this.log(`Validation failed: ${response.status} - ${errorDetail}`);
+      if (response.status === 400 && config.thinking === 'off' && /thinking|reasoning/i.test(errorDetail)) {
+        return { success: false, error: '该模型或路由不支持当前关闭方式，请调整高级设置或选择“跟随默认”。' };
+      }
 
       if (response.status === 401) {
         return { success: false, error: 'API Key 无效或已过期' };

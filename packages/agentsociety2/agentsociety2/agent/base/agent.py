@@ -50,6 +50,7 @@ from agentsociety2.agent.person_prompt import (
 from agentsociety2.agent.person_prompt import (
     xml_block as _xml_block,
 )
+from agentsociety2.config.llm_dispatcher import reasoning_fields
 from agentsociety2.env.router_base import RouterBase
 from agentsociety2.logger import get_logger
 from agentsociety2.trace import (
@@ -2519,6 +2520,7 @@ The constructor ``__init__`` is arg-less.
             return ReactTurn([], "missing response message", None)
 
         content = str(getattr(message, "content", "") or "").strip()
+        reasoning = reasoning_fields(response)
         tool_calls = getattr(message, "tool_calls", None) or []
         if tool_calls:
             calls: list[tuple[str, dict[str, Any]]] = []
@@ -2535,13 +2537,13 @@ The constructor ``__init__`` is arg-less.
                     return ReactTurn(
                         [],
                         f"invalid tool arguments for {name}: {exc}",
-                        _raw_assistant_message(content, tool_calls),
+                        {**_raw_assistant_message(content, tool_calls), **reasoning},
                     )
                 if not isinstance(parsed_args, Mapping):
                     return ReactTurn(
                         [],
                         f"tool arguments for {name} must be an object",
-                        _raw_assistant_message(content, tool_calls),
+                        {**_raw_assistant_message(content, tool_calls), **reasoning},
                     )
                 calls.append((name, dict(parsed_args)))
                 # Providers normally supply an id; synthesize one when they do
@@ -2553,10 +2555,14 @@ The constructor ``__init__`` is arg-less.
             )
             if error:
                 return ReactTurn(
-                    decisions, error, _raw_assistant_message(content, tool_calls)
+                    decisions,
+                    error,
+                    {**_raw_assistant_message(content, tool_calls), **reasoning},
                 )
             return ReactTurn(
-                decisions, "", _decisions_assistant_message(content, decisions)
+                decisions,
+                "",
+                {**_decisions_assistant_message(content, decisions), **reasoning},
             )
 
         # No native tool calls: try parsing tool invocations from the text
@@ -2564,7 +2570,11 @@ The constructor ``__init__`` is arg-less.
         # emit calls only as text.
         if not content:
             return ReactTurn([], "", None)
-        assistant_message: dict[str, Any] = {"role": "assistant", "content": content}
+        assistant_message: dict[str, Any] = {
+            "role": "assistant",
+            "content": content,
+            **reasoning,
+        }
         if readonly:
             # Stash the raw free text so run_react_loop can fall back to it if
             # the model never produces a valid finish(answer=...) tool call.

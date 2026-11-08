@@ -303,8 +303,8 @@
       "apiBasePlaceholder": "Default: https://api.openai.com/v1",
       "modelName": "LLM Model Name",
       "modelPlaceholder": "Select or enter a model ID",
-      "thinking": "Reasoning (thinking) switch",
-      "thinkingHint": "Leave unset to send no reasoning parameters at all — identical to not using this feature. Turning reasoning off cuts token usage and improves the prompt cache hit rate. If your gateway uses a private switch (e.g. enable_thinking), set AGENTSOCIETY_LLM_EXTRA_BODY in .env instead.",
+      "thinking": "Reasoning",
+      "thinkingHint": "Use default keeps the server behavior. Explicit on/off sends the selected control. Restart the backend and start a new experiment after saving.",
       "presetDeepseek": "DeepSeek",
       "presetBailian": "Alibaba Cloud Model Studio (Beijing)",
       "presetZhipu": "Zhipu BigModel",
@@ -680,7 +680,7 @@
       "apiBasePlaceholder": "Leave blank to reuse the default LLM API base URL above",
       "model": "Code Generation LLM Model",
       "modelPlaceholder": "Leave blank to reuse the default LLM model above (current: {{model}})",
-      "thinking": "Code generation LLM reasoning (thinking) switch",
+      "thinking": "Reasoning",
       "thinkingHint": "Code generation is the biggest token consumer, so turning reasoning off pays off most here. Leave blank to reuse the default LLM setting above."
     },
     "advanced": {
@@ -745,10 +745,18 @@
       "unknownError": "Unknown error"
     },
     "thinking": {
-      "inheritDefault": "Gateway default (send no parameter)",
+      "inheritDefault": "Use default",
       "inheritCoder": "Reuse default LLM",
       "on": "On",
-      "off": "Off"
+      "off": "Off",
+      "apiType": "API protocol",
+      "coderApiType": "Code generation API protocol",
+      "apiTypeHint": "Choose the endpoint protocol. A gateway may handle thinking differently across its Chat Completions and Messages routes.",
+      "advanced": "Advanced reasoning settings",
+      "standard": "Standard parameter",
+      "format": "Control format",
+      "coderFormat": "Code generation control format",
+      "formatHint": "Select the documented control field. Messages uses native thinking; other extra body fields are retained."
     },
     "openWorkspace": "Open folder"
   },
@@ -1177,7 +1185,8 @@
         "invalid_claude_config": "Cannot parse Claude configuration. The original file is preserved.",
         "unsupported_codex_layout": "Cannot safely update this Codex configuration layout. Check MCP table formatting."
       }
-    }
+    },
+    "sectionDetails": "Details"
   },
   "claudeCodeConfig": {
     "gatewayClaudeBlockTitle": "Claude Code",

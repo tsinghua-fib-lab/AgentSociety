@@ -29,6 +29,7 @@ from agentsociety2.logger import get_logger, setup_litellm_logging
 __all__ = [
     "Config",
     "extract_json",
+    "get_llm_api_type",
     "get_llm_router",
     "get_llm_router_and_model",
     "get_llm_thinking",
@@ -90,10 +91,20 @@ def _env_json_obj(name: str) -> dict[str, Any] | None:
 _THINKING_ON = {"on", "1", "true", "yes", "enable", "enabled"}
 _THINKING_OFF = {"off", "0", "false", "no", "disable", "disabled"}
 
-# ``off`` 时若没配 extra_body，我们唯一做的假设：OpenAI Chat Completions 的
-# reasoning_effort 取最低档。网关若不认这个值，用
-# AGENTSOCIETY_LLM_EXTRA_BODY 覆盖（配了 extra_body 就只发 extra_body）。
-_DEFAULT_THINKING_OFF_EFFORT = "minimal"
+
+def get_llm_api_type(role: str = "default") -> str:
+    """Select the wire protocol explicitly; model aliases do not identify it."""
+    if role == "embedding":
+        return "openai"
+    value = (
+        (_env_str("AGENTSOCIETY_CODER_LLM_API_TYPE") if role == "coder" else None)
+        or _env_str("AGENTSOCIETY_LLM_API_TYPE")
+        or "openai"
+    )
+    value = value.lower()
+    if value not in {"openai", "anthropic"}:
+        raise ValueError("AGENTSOCIETY_*_LLM_API_TYPE must be openai or anthropic")
+    return value
 
 
 def get_llm_thinking(role: str = "default") -> dict[str, Any]:
@@ -108,9 +119,8 @@ def get_llm_thinking(role: str = "default") -> dict[str, Any]:
     - ``AGENTSOCIETY_LLM_EXTRA_BODY``：JSON 对象，合并进 ``extra_body``，用于
       网关私有开关（如 ``{"enable_thinking": false}``）。
 
-    ``off`` 的确切语义：**配了 extra_body 就只发 extra_body，不发
-    ``reasoning_effort``**（避免网关同时收到两个开关而报错）；没配则发
-    ``reasoning_effort``，取 ``REASONING_EFFORT``，缺省 ``"minimal"``。
+    ``ThinkingSettings`` 按实际接口生成开启或关闭参数；关闭不使用推理强度。
+    ``extra_body`` 可提供网关原生的推理开关，其他字段继续保留。
 
     这里刻意在**调用时**读 ``os.getenv`` （而非只在 import 时读），以便测试用
     monkeypatch 覆盖；``Config`` 上的同名类属性仅作文档用途。
@@ -134,26 +144,41 @@ def get_llm_thinking(role: str = "default") -> dict[str, Any]:
 
         raw_policy = _read("THINKING")
         effort = _read("REASONING_EFFORT")
+        control_format = _read("THINKING_FORMAT")
         extra_body = _read_json("EXTRA_BODY")
     else:
         raw_policy = _env_str("AGENTSOCIETY_LLM_THINKING")
         effort = _env_str("AGENTSOCIETY_LLM_REASONING_EFFORT")
+        control_format = _env_str("AGENTSOCIETY_LLM_THINKING_FORMAT")
         extra_body = _env_json_obj("AGENTSOCIETY_LLM_EXTRA_BODY")
 
     if raw_policy is None:
         return {"policy": "inherit", "reasoning_effort": None, "extra_body": None}
 
+    formats = {
+        "reasoning_effort",
+        "thinking",
+        "enable_thinking",
+        "chat_template_kwargs",
+        "reasoning",
+    }
+    if control_format and control_format not in formats:
+        raise ValueError("Unsupported AGENTSOCIETY_*_LLM_THINKING_FORMAT")
+    format_settings = {"format": control_format} if control_format else {}
     lowered = raw_policy.lower()
     if lowered in _THINKING_ON:
-        return {"policy": "on", "reasoning_effort": effort, "extra_body": extra_body}
+        return {
+            "policy": "on",
+            "reasoning_effort": effort,
+            "extra_body": extra_body,
+            **format_settings,
+        }
     if lowered in _THINKING_OFF:
-        if extra_body is not None:
-            # 网关私有开关优先，且不叠加 reasoning_effort。
-            return {"policy": "off", "reasoning_effort": None, "extra_body": extra_body}
         return {
             "policy": "off",
-            "reasoning_effort": effort or _DEFAULT_THINKING_OFF_EFFORT,
-            "extra_body": None,
+            "reasoning_effort": None,
+            "extra_body": extra_body,
+            **format_settings,
         }
 
     logger.warning(
@@ -520,19 +545,18 @@ class Config:
     Environment variable: AGENTSOCIETY_LLM_THINKING
     Default: unset（**不发送任何新参数**，行为与未启用该功能时完全一致）
 
-    ``off`` 时发送 ``reasoning_effort`` （取 ``AGENTSOCIETY_LLM_REASONING_EFFORT``，
-    缺省 ``"minimal"``）；若同时配置了 ``AGENTSOCIETY_LLM_EXTRA_BODY``，则只发
-    ``extra_body`` 而不发 ``reasoning_effort``，以适配网关私有开关。
-
-    仅适用于 OpenAI 兼容 chat-completions 接口，不做模型族自动探测。
+    OpenAI 接口关闭时发送 ``reasoning_effort="none"``，开启时默认 ``medium``。
+    Anthropic Messages 接口发送显式 ``thinking`` 开关，开启默认预算 1024 tokens。
+    ``AGENTSOCIETY_LLM_EXTRA_BODY`` 可声明其他网关的原生开关。
+    接口协议由 ``AGENTSOCIETY_LLM_API_TYPE`` 选择，默认 ``openai``。
     """
 
     LLM_REASONING_EFFORT: str | None = os.getenv("AGENTSOCIETY_LLM_REASONING_EFFORT")
     """
-    显式的 ``reasoning_effort`` 取值（``minimal`` / ``low`` / ``medium`` / ``high``）。
+    显式的 ``reasoning_effort`` 取值（``minimal`` / ``low`` / ``medium`` / ``high`` / ``xhigh`` / ``max``）。
 
     Environment variable: AGENTSOCIETY_LLM_REASONING_EFFORT
-    Default: unset（``off`` 时回退到 ``"minimal"``；``on`` 时不发送该字段）
+    Default: unset（OpenAI 接口 ``on`` 默认 ``medium``；关闭不使用推理强度）
     """
 
     LLM_EXTRA_BODY: str | None = os.getenv("AGENTSOCIETY_LLM_EXTRA_BODY")
@@ -634,17 +658,21 @@ class Config:
                 {
                     "model_name": coder_model,
                     "litellm_params": {
-                        "model": f"openai/{coder_model}",
+                        "model": f"{get_llm_api_type('coder')}/{coder_model}",
                         "api_key": coder_api_key,
-                        "api_base": coder_api_base,
+                        "api_base": coder_api_base.rstrip("/").removesuffix("/v1")
+                        if get_llm_api_type("coder") == "anthropic"
+                        else coder_api_base,
                     },
                 },
                 {
                     "model_name": default_model,
                     "litellm_params": {
-                        "model": f"openai/{default_model}",
+                        "model": f"{get_llm_api_type()}/{default_model}",
                         "api_key": default_api_key,
-                        "api_base": default_api_base,
+                        "api_base": default_api_base.rstrip("/").removesuffix("/v1")
+                        if get_llm_api_type() == "anthropic"
+                        else default_api_base,
                     },
                 },
             ]
@@ -672,9 +700,11 @@ class Config:
                 {
                     "model_name": default_model,
                     "litellm_params": {
-                        "model": f"openai/{default_model}",
+                        "model": f"{get_llm_api_type()}/{default_model}",
                         "api_key": default_api_key,
-                        "api_base": default_api_base,
+                        "api_base": default_api_base.rstrip("/").removesuffix("/v1")
+                        if get_llm_api_type() == "anthropic"
+                        else default_api_base,
                     },
                 },
             ]

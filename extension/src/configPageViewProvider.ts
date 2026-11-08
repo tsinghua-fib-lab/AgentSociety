@@ -183,7 +183,7 @@ export class ConfigPageViewProvider {
             await this._handleStartBackend((message.config || {}) as Partial<ConfigValues>);
             break;
           case 'validateConfig':
-            await this._handleValidateConfig((message.config || {}) as Partial<ConfigValues>, message.llmType);
+            await this._handleValidateConfig((message.config || {}) as Partial<ConfigValues>, message.llmType, message.requestId);
             break;
           case 'validatePython':
             await this._handleValidatePython((message.config || {}) as Partial<ConfigValues>);
@@ -422,10 +422,14 @@ export class ConfigPageViewProvider {
       llmModel: envConfig.llmModel || DEFAULT_LLM_MODEL,
       backendLogLevel: envConfig.backendLogLevel || 'info',
       llmThinking: envConfig.llmThinking || '',
+      llmThinkingFormat: envConfig.llmThinkingFormat || '',
+      llmApiType: envConfig.llmApiType === 'anthropic' ? 'anthropic' : 'openai',
       coderLlmApiKey: envConfig.coderLlmApiKey || '',
       coderLlmApiBase: envConfig.coderLlmApiBase || '',
       coderLlmModel: envConfig.coderLlmModel || '',
       coderLlmThinking: envConfig.coderLlmThinking || '',
+      coderLlmThinkingFormat: envConfig.coderLlmThinkingFormat || '',
+      coderLlmApiType: envConfig.coderLlmApiType as ConfigValues['coderLlmApiType'] || '',
       embeddingApiKey: envConfig.embeddingApiKey || '',
       embeddingApiBase: envConfig.embeddingApiBase || '',
       embeddingModel: envConfig.embeddingModel || 'text-embedding-3-large',
@@ -1414,10 +1418,14 @@ export class ConfigPageViewProvider {
       llmModel: (config.llmModel ?? '').trim() || DEFAULT_LLM_MODEL,
       backendLogLevel: config.backendLogLevel,
       llmThinking: config.llmThinking,
+      llmThinkingFormat: config.llmThinkingFormat,
+      llmApiType: config.llmApiType,
       coderLlmApiKey: config.coderLlmApiKey,
       coderLlmApiBase: config.coderLlmApiBase,
       coderLlmModel: config.coderLlmModel,
       coderLlmThinking: config.coderLlmThinking,
+      coderLlmThinkingFormat: config.coderLlmThinkingFormat,
+      coderLlmApiType: config.coderLlmApiType,
       embeddingApiKey: config.embeddingApiKey,
       embeddingApiBase: config.embeddingApiBase,
       embeddingModel: config.embeddingModel,
@@ -1441,7 +1449,7 @@ export class ConfigPageViewProvider {
   /**
    * 处理 LLM 配置验证请求
    */
-  private async _handleValidateConfig(config: Partial<ConfigValues>, llmType: string = 'default'): Promise<void> {
+  private async _handleValidateConfig(config: Partial<ConfigValues>, llmType: string = 'default', requestId?: number): Promise<void> {
     const validator = new LLMValidator();
     const defaultModel = (config.llmModel ?? '').trim() || DEFAULT_LLM_MODEL;
 
@@ -1477,7 +1485,13 @@ export class ConfigPageViewProvider {
       apiBase = config.llmApiBase || '';
     }
 
-    const result = await validator.validate({ apiKey, apiBase, model }, validationType);
+    const saved = this._envManager.readEnv();
+    const coder = llmType === 'coder';
+    const apiType = coder ? config.coderLlmApiType || config.llmApiType || 'openai' : config.llmApiType || 'openai';
+    const thinking = coder ? config.coderLlmThinking || config.llmThinking : config.llmThinking;
+    const effort = coder ? saved.coderLlmReasoningEffort || saved.llmReasoningEffort : saved.llmReasoningEffort;
+    const extra = coder ? saved.coderLlmExtraBody || saved.llmExtraBody : saved.llmExtraBody;
+    const result = await validator.validate({ apiKey, apiBase, model, apiType, thinking, thinkingFormat: coder ? config.coderLlmThinkingFormat || config.llmThinkingFormat : config.llmThinkingFormat, reasoningEffort: effort, extraBody: extra }, validationType);
 
     if (llmType === 'default') {
       ConfigPageViewProvider.configHealthStatus?.updateFromValidation(
@@ -1490,6 +1504,7 @@ export class ConfigPageViewProvider {
     this._panel.webview.postMessage({
       command: 'validationResult',
       llmType,
+      requestId,
       success: result.success,
       error: result.error || null,
     });

@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Alert } from 'antd';
+import { Collapse } from 'antd';
 import type { TFunction } from 'i18next';
 import type { VscodeThemePalette } from '../theme';
 import type { ValidationState } from './types';
@@ -30,13 +30,9 @@ export function LiteratureConfigSection({
   return (
     <div ref={sectionRef} style={tabBodyStyle}>
       {showIntro ? (
-        <Alert
-          type="info"
-          showIcon
-          style={{ marginBottom: 14 }}
-          message={t('configPage.pageTabs.literatureIntroTitle')}
-          description={t('configPage.pageTabs.literatureIntroBody')}
-        />
+        <Collapse size="small" style={{ marginBottom: 14 }} items={[{
+          key: 'intro', label: t('configPage.pageTabs.literatureIntroTitle'), children: t('configPage.pageTabs.literatureIntroBody'),
+        }]} />
       ) : null}
       {children}
       <div style={{ marginTop: 12 }}>

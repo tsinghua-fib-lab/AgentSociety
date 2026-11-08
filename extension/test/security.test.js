@@ -552,3 +552,82 @@ test('Web provider import updates only selected clients and preserves permission
   await manager.upsertImportedGatewayProvider(draft, { targets: { claude: false, codex: false } });
   assert.equal(providers.find((p) => p.id === 'owned').apiKey, 'old-key'); assert.equal(writes.length, 0);
 });
+
+test('LLM validation sends thinking controls on the selected protocol and detects ignored disable requests', async () => {
+  const sent = []; let reply = { choices: [{ message: { content: 'OK', reasoning_content: 'fixture reasoning' } }] };
+  const { LLMValidator } = load('services/llmValidator.ts', {
+    './httpClient': { requestJson: async (url, request) => { sent.push({ url, request }); return { ok: true, status: 200, data: reply }; } },
+    './validateTimeouts': { CONFIG_PAGE_API_VALIDATE_TIMEOUT_MS: 15000 },
+    '../shared/outputChannels': { getMainOutputChannel: () => ({ appendLine() {} }) },
+  });
+  const validator = new LLMValidator();
+  const config = { apiBase: 'https://owned.example/custom/v1', apiKey: 'owned-fixture', model: 'new-model-alias', thinking: 'off' };
+  let result = await validator.validate(config);
+  assert.equal(result.success, false); assert.match(result.error, /仍返回推理内容/);
+  assert.equal(sent[0].request.body.reasoning_effort, 'none');
+  reply = { content: [{ type: 'text', text: 'OK' }] };
+  result = await validator.validate({ ...config, apiType: 'anthropic' });
+  assert.equal(result.success, true); assert.equal(sent[1].url, 'https://owned.example/custom/v1/messages');
+  assert.equal(sent[1].request.body.thinking.type, 'disabled'); assert.equal(sent[1].request.headers['x-api-key'], 'owned-fixture');
+  await validator.validate({ ...config, apiType: 'anthropic', thinking: 'on' });
+  assert.equal(sent[2].request.body.thinking.type, 'enabled'); assert.equal(sent[2].request.body.thinking.budget_tokens, 1024);
+  await validator.validate({ ...config, thinking: 'off', extraBody: '{"chat_template_kwargs":{"enable_thinking":true,"custom":7}}' });
+  assert.equal(sent[3].request.body.reasoning_effort, undefined); assert.equal(sent[3].request.body.chat_template_kwargs.enable_thinking, false);
+  assert.equal(sent[3].request.body.chat_template_kwargs.custom, 7);
+  await validator.validate({ ...config, thinking: '' });
+  assert.equal(sent[4].request.body.reasoning_effort, undefined); assert.equal(sent[4].request.body.thinking, undefined);
+});
+
+test('Bedrock thinking optimization preserves explicit disable instructions', () => {
+  const { optimizeBedrockThinking } = require('../out/services/bedrockRequestOptimizer');
+  for (const model of ['claude-sonnet-4-6', 'claude-sonnet-4-5']) {
+    const request = { model, thinking: { type: 'disabled' }, max_tokens: 2048 };
+    assert.equal(optimizeBedrockThinking(request, { enabled: true, thinkingOptimizer: true, cacheInjection: false }), request);
+  }
+});
+
+test('LLM validation translates explicit control formats while default mode leaves the request unchanged', async () => {
+  let body;
+  const { LLMValidator } = load('services/llmValidator.ts', {
+    './httpClient': { requestJson: async (_url, request) => { body = request.body; return { ok: true, status: 200, data: { choices: [{ message: { content: 'OK', thinking_blocks: [{ type: 'thinking', thinking: '' }] } }] } }; } },
+    './validateTimeouts': { CONFIG_PAGE_API_VALIDATE_TIMEOUT_MS: 15000 },
+    '../shared/outputChannels': { getMainOutputChannel: () => ({ appendLine() {} }) },
+  });
+  const validator = new LLMValidator();
+  const config = { apiBase: 'https://owned.example/v1', apiKey: 'fixture', model: 'arbitrary-alias', extraBody: '{"custom":7}' };
+  for (const thinkingFormat of ['thinking', 'enable_thinking', 'chat_template_kwargs', 'reasoning']) {
+    for (const thinking of ['on', 'off']) {
+      const result = await validator.validate({ ...config, thinking, thinkingFormat });
+      assert.equal(result.success, true); assert.equal(body.custom, 7); assert.equal(body.reasoning_effort, undefined);
+      const expected = thinking === 'on';
+      if (thinkingFormat === 'thinking') assert.equal(body.thinking.type, expected ? 'enabled' : 'disabled');
+      if (thinkingFormat === 'enable_thinking') assert.equal(body.enable_thinking, expected);
+      if (thinkingFormat === 'chat_template_kwargs') assert.equal(body.chat_template_kwargs.enable_thinking, expected);
+      if (thinkingFormat === 'reasoning') assert.equal(body.reasoning.enabled, expected);
+    }
+    await validator.validate({ ...config, thinking: '', thinkingFormat });
+    assert.equal(body.reasoning_effort, undefined); assert.equal(body[thinkingFormat], undefined); assert.equal(body.custom, undefined);
+  }
+});
+
+test('quoted JSON reasoning settings reach the runtime while their .env lines remain intact', (t) => {
+  const os = require('node:os');
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'as2-thinking-env-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const { EnvManager } = load('envManager.ts', {
+    vscode: { workspace: { workspaceFolders: [{ uri: { fsPath: directory } }] } },
+    './shared/outputChannels': { getMainOutputChannel: () => ({ appendLine() {} }) },
+  });
+  const filename = path.join(directory, '.env'), json = '{"enable_thinking":false,"custom":7}';
+  for (const text of [json, "'" + json + "'", JSON.stringify(json)]) {
+    const original = 'AGENTSOCIETY_LLM_EXTRA_BODY=' + text + '\nAGENTSOCIETY_CODER_LLM_EXTRA_BODY=' + text + '\n';
+    fs.writeFileSync(filename, original);
+    const manager = new EnvManager();
+    const read = manager.readEnv();
+    assert.equal(JSON.parse(read.llmExtraBody).enable_thinking, false);
+    assert.equal(JSON.parse(read.coderLlmExtraBody).custom, 7);
+    manager.writeEnv({ llmThinking: 'off', llmThinkingFormat: 'enable_thinking' });
+    const saved = fs.readFileSync(filename, 'utf8'); assert.ok(saved.startsWith(original));
+    assert.equal(manager.readEnv().llmThinkingFormat, 'enable_thinking');
+  }
+});

@@ -14,7 +14,7 @@ import {
   Collapse,
   Dropdown,
 } from 'antd';
-import { SaveOutlined, RocketOutlined, ReloadOutlined, SettingOutlined, MoreOutlined } from '@ant-design/icons';
+import { SaveOutlined, RocketOutlined, ReloadOutlined, SettingOutlined, MoreOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import type {
   AiCliGatewayStatus,
@@ -74,11 +74,15 @@ const DEFAULT_VALUES: ConfigValues = {
   llmApiBase: 'https://api.openai.com/v1',
   llmModel: 'gpt-5.5',
   llmThinking: '',
+  llmApiType: 'openai',
+  llmThinkingFormat: '',
   backendLogLevel: 'info',
   coderLlmApiKey: '',
   coderLlmApiBase: 'https://api.openai.com/v1',
   coderLlmModel: '',
   coderLlmThinking: '',
+  coderLlmApiType: '',
+  coderLlmThinkingFormat: '',
   embeddingApiKey: '',
   embeddingApiBase: 'https://api.openai.com/v1',
   embeddingModel: 'text-embedding-3-large',
@@ -121,8 +125,8 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
   const [form] = Form.useForm<ConfigValues>();
   const [claudeForm] = Form.useForm<ClaudeCodeConfigValues>();
   const [easyPaperForm] = Form.useForm<EasyPaperConfigValues>();
-  const watchedValues = Form.useWatch([], form) as Partial<ConfigValues> | undefined;
-  const watchedClaudeValues = Form.useWatch([], claudeForm) as Partial<ClaudeCodeConfigValues> | undefined;
+  const watchedValues = Form.useWatch([], { form, preserve: true }) as Partial<ConfigValues> | undefined;
+  const watchedClaudeValues = Form.useWatch([], { form: claudeForm, preserve: true }) as Partial<ClaudeCodeConfigValues> | undefined;
   const currentValues = watchedValues || {};
   const claudeValues = watchedClaudeValues || {};
   const [savedEnvConfig, setSavedEnvConfig] = React.useState<Partial<ConfigValues>>({});
@@ -300,20 +304,34 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
   const advancedKeyPrevFingerprintRef = React.useRef<Partial<Record<AdvancedValidationKey, string>>>({});
   const advancedKeyValidFingerprintRef = React.useRef<Partial<Record<AdvancedValidationKey, string>>>({});
   const defaultValidFingerprintRef = React.useRef<string | null>(null);
+  const validationSequenceRef = React.useRef(0);
+  const pendingLlmValidationRef = React.useRef<Record<string, { requestId: number; fingerprint: string }>>({});
   const advancedKeyValidateTimersRef = React.useRef<
     Partial<Record<AdvancedValidationKey, ReturnType<typeof setTimeout>>>
   >({});
   const ADVANCED_CHANGE_VALIDATE_DELAY_MS = 1500;
 
   const getDefaultLlmFingerprint = React.useCallback(
-    () =>
+    (values = effectiveConfigValues) =>
       JSON.stringify({
-        llmApiKey: effectiveConfigValues.llmApiKey,
-        llmApiBase: effectiveConfigValues.llmApiBase,
-        llmModel: effectiveConfigValues.llmModel,
+        llmApiKey: values.llmApiKey,
+        llmApiBase: values.llmApiBase,
+        llmModel: values.llmModel,
+        llmApiType: values.llmApiType || 'openai',
+        llmThinking: values.llmThinking || '',
+        llmThinkingFormat: values.llmThinkingFormat || '',
       }),
-    [effectiveConfigValues.llmApiBase, effectiveConfigValues.llmApiKey, effectiveConfigValues.llmModel]
+    [effectiveConfigValues.llmApiBase, effectiveConfigValues.llmApiKey, effectiveConfigValues.llmModel, effectiveConfigValues.llmApiType, effectiveConfigValues.llmThinking, effectiveConfigValues.llmThinkingFormat]
   );
+
+  React.useEffect(() => {
+    const valid = defaultValidFingerprintRef.current === getDefaultLlmFingerprint() ? true : null;
+    setValidationState((previous) => {
+      const current = previous.default;
+      if (current.valid === valid && !current.validating && !current.error) { return previous; }
+      return { ...previous, default: { validating: false, valid, error: null } };
+    });
+  }, [getDefaultLlmFingerprint]);
 
   const markValidFingerprint = React.useCallback(
     (kind: string) => {
@@ -815,7 +833,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
       modelRequestIds.current[providerId] = requestId;
       setModelsByProvider((prev) => ({ ...prev, [providerId]: [] }));
       setModelsErrorByProvider((prev) => ({ ...prev, [providerId]: null }));
-      const canFetch = Boolean(apiKey.trim() && baseUrl.trim());
+      const canFetch = Boolean(apiKey?.trim() && baseUrl?.trim());
       setModelsLoadingByProvider((prev) => ({ ...prev, [providerId]: canFetch }));
       if (canFetch) {
         vscode.postMessage({ command: 'fetchClaudeModels', baseUrl, apiKey, providerId, apiKind, requestId });
@@ -835,9 +853,10 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
     handleFetchEnvModels(
       ENV_LLM_SLOT.default,
       effectiveConfigValues.llmApiBase,
-      effectiveConfigValues.llmApiKey
+      effectiveConfigValues.llmApiKey,
+      effectiveConfigValues.llmApiType || 'openai'
     );
-  }, [effectiveConfigValues.llmApiBase, effectiveConfigValues.llmApiKey, handleFetchEnvModels]);
+  }, [effectiveConfigValues.llmApiBase, effectiveConfigValues.llmApiKey, effectiveConfigValues.llmApiType, handleFetchEnvModels]);
 
   const providerModelsFetchedRef = React.useRef(new Set<string>());
 
@@ -988,6 +1007,12 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
   const submitValidation = React.useCallback(
     (llmType: string, values: ConfigValues, options?: { silent?: boolean }) => {
       const silent = options?.silent ?? false;
+      const sendLlmValidation = () => {
+        const requestId = ++validationSequenceRef.current;
+        const fingerprint = llmType === 'default' ? getDefaultLlmFingerprint(values) : getAdvancedKeyFingerprint(llmType as AdvancedValidationKey, values);
+        pendingLlmValidationRef.current[llmType] = { requestId, fingerprint };
+        vscode.postMessage({ command: 'validateConfig', config: values, llmType, requestId });
+      };
       const failLocal = (error: string) => {
         setValidationState((prev) => ({
           ...prev,
@@ -1026,7 +1051,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
           ...prev,
           [llmType]: { validating: true, valid: null, error: null },
         }));
-        vscode.postMessage({ command: 'validateConfig', config: values, llmType });
+        sendLlmValidation();
         return;
       }
 
@@ -1044,7 +1069,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
           ...prev,
           default: { validating: true, valid: null, error: null },
         }));
-        vscode.postMessage({ command: 'validateConfig', config: values, llmType });
+        sendLlmValidation();
         return;
       }
 
@@ -1060,7 +1085,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
         vscode.postMessage({ command: 'validateLiteratureSearch', config: values });
       }
     },
-    [t, vscode]
+    [t, vscode, getDefaultLlmFingerprint]
   );
 
   const validateAdvancedItem = React.useCallback(
@@ -1195,6 +1220,9 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
           llmApiKey: config.llmApiKey ?? DEFAULT_VALUES.llmApiKey ?? '',
           llmApiBase: config.llmApiBase ?? DEFAULT_VALUES.llmApiBase ?? '',
           llmModel: config.llmModel ?? DEFAULT_VALUES.llmModel ?? '',
+          llmApiType: config.llmApiType || 'openai',
+          llmThinking: config.llmThinking || '',
+          llmThinkingFormat: config.llmThinkingFormat || '',
         });
         if (cache?.fingerprint && cache.fingerprint === fingerprint) {
           defaultValidFingerprintRef.current = fingerprint;
@@ -1615,7 +1643,11 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
           });
         }
       } else if (message.command === 'validationResult') {
-        const msg = message as unknown as { llmType: string; success?: boolean; error?: string };
+        const msg = message as unknown as { llmType: string; requestId?: number; success?: boolean; error?: string };
+        const pending = pendingLlmValidationRef.current[msg.llmType];
+        const fingerprint = msg.llmType === 'default' ? getDefaultLlmFingerprint() : getAdvancedKeyFingerprint(msg.llmType as AdvancedValidationKey, effectiveConfigRef.current);
+        if (!pending || pending.requestId !== msg.requestId || pending.fingerprint !== fingerprint) { return; }
+        delete pendingLlmValidationRef.current[msg.llmType];
         setValidationState(prev => ({
           ...prev,
           [msg.llmType]: { validating: false, valid: msg.success ?? false, error: msg.error || null },
@@ -2043,11 +2075,11 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
                     {
                       key: 'config',
                       label: (
-                        <Space direction="vertical" size={0}>
+                        <Space size={8}>
                           <Text strong>{t('configPage.dashboard.editConfig')}</Text>
-                          <Text type="secondary" style={{ fontSize: 12, fontWeight: 400 }}>
-                            {t('configPage.dashboard.editConfigHint')}
-                          </Text>
+                          <Tooltip title={t('configPage.dashboard.editConfigHint')}>
+                            <QuestionCircleOutlined style={{ color: palette.descriptionForeground }} />
+                          </Tooltip>
                         </Space>
                       ),
                       children: (

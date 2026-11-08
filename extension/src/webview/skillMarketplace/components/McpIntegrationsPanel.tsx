@@ -1,9 +1,9 @@
 import * as React from 'react';
 import {
-  Alert, Button, Checkbox, Collapse, Dropdown, Empty, Input, Modal, Popconfirm, Select, Space, Switch, Tag, Typography, message,
+  Alert, Button, Checkbox, Collapse, Dropdown, Empty, Input, Modal, Popconfirm, Select, Space, Switch, Tag, Tooltip, Typography, message,
 } from 'antd';
 import {
-  CloudServerOutlined, EditOutlined, ImportOutlined, PlusOutlined, ReloadOutlined, SyncOutlined, ThunderboltOutlined,
+  CloudServerOutlined, EditOutlined, ImportOutlined, PlusOutlined, QuestionCircleOutlined, ReloadOutlined, SyncOutlined, ThunderboltOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import type { VSCodeAPI, McpServerRecord, McpProbeResult, McpPresetCatalogItem, McpTransport } from '../types';
@@ -276,10 +276,10 @@ export function McpIntegrationsPanel({
       <TabToolbar
         left={(
           <div>
-            <Text strong style={{ fontSize: 14 }}>{t('skillManagement.mcpIntroTitle')}</Text>
-            <Text type="secondary" style={{ display: 'block', fontSize: 12, marginTop: 4, lineHeight: 1.55 }}>
-              {t('skillManagement.mcpIntroBody')}
-            </Text>
+            <Space size={8}>
+              <Text strong style={{ fontSize: 14 }}>{t('skillManagement.mcpIntroTitle')}</Text>
+              <Tooltip title={t('skillManagement.mcpIntroBody')}><QuestionCircleOutlined tabIndex={0} aria-label={t('skillManagement.sectionDetails')} /></Tooltip>
+            </Space>
           </div>
         )}
         right={(
