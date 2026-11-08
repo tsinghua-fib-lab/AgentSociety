@@ -1582,10 +1582,12 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
               placement: 'top',
             });
           }
-        } else if (msg.error) {
+        } else {
+          // 兜底:silent 启动路径 error 可能为空,零反馈会让用户以为
+          // 按钮失灵(2026-11-06 体验审查 #1)。
           notification.error({
             message: t('configPage.notifications.backendStartFailed', { defaultValue: 'Failed to start backend' }),
-            description: msg.error,
+            description: msg.error || t('configPage.notifications.backendStartFailedSilent', { defaultValue: 'Startup failed (see AgentSociety output for details)' }),
             placement: 'top',
             duration: 6,
           });

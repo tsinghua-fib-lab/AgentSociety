@@ -23,6 +23,7 @@ import {
   type AiCliGatewayUpstream,
 } from './aiCliGatewayUpstream';
 import { applyUpstreamAuthHeaders } from '../aiCli/upstreamAuthHeaders';
+import { isValidGatewayAuthToken } from './aiCliGatewayUpstream';
 import { applyAnthropicModelMapping } from './anthropicModelMapping';
 import { buildAnthropicGatewayModelsResponse } from './anthropicGatewayModels';
 import {
@@ -40,6 +41,7 @@ import {
   buildFailoverUpstreamOrder,
   FAILOVER_MAX_ATTEMPTS,
   isCircuitOpen,
+  isHalfOpen,
   recordUpstreamFailure,
   recordUpstreamSuccess,
   shouldFailoverHttpStatus,
@@ -825,6 +827,19 @@ export class AiCliGateway {
     const urlPath = normalizeGatewayRequestPath(clientReq.url ?? '/');
     const startTime = Date.now();
 
+    // 2026-11-06 二轮审计修复:本地令牌校验(health/OPTIONS 免验)。
+    // CLI 侧以 Authorization: Bearer <token> 或 x-api-key 携带,由
+    // applyCodexGatewayConfig/claude 设置写入真值。
+    if (urlPath !== '/health' && !urlPath.startsWith('/health?') && method !== 'OPTIONS') {
+      const authHeader = String(clientReq.headers.authorization ?? '');
+      const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+      const xApiKey = String(clientReq.headers['x-api-key'] ?? '');
+      if (!isValidGatewayAuthToken(bearer) && !isValidGatewayAuthToken(xApiKey)) {
+        this.writeJson(clientRes, 401, { error: 'unauthorized', hint: 'gateway token required' });
+        return;
+      }
+    }
+
     if (method === 'OPTIONS') {
       clientRes.writeHead(204, {
         'Access-Control-Allow-Origin': '*',
@@ -843,6 +858,15 @@ export class AiCliGateway {
         upstream: this.upstream.baseUrl,
         failover: this.failoverEnabled,
         ...this.statsTracker.snapshot(),
+      });
+      return;
+    }
+
+    // 请求限额(借鉴 CCR):超限直接 429,不再打上游。
+    if (this.statsTracker.limitReached()) {
+      this.writeJson(clientRes, 429, {
+        error: 'gateway_limit_reached',
+        hint: 'AGENTSOCIETY_GATEWAY_MAX_REQUESTS reached for this gateway session',
       });
       return;
     }
@@ -951,8 +975,13 @@ export class AiCliGateway {
           if (!upstream) {
             break;
           }
-          if (isCircuitOpen(this.circuit.get(upstream.baseUrl.trim()))) {
+          const _cbState = this.circuit.get(upstream.baseUrl.trim());
+          if (isCircuitOpen(_cbState)) {
             continue;
+          }
+          if (isHalfOpen(_cbState) && _cbState) {
+            // 半开试探放行(本请求即为探测);标记防同轮多请求涌入。
+            _cbState.halfOpen = true;
           }
           try {
             const result = usesClaudeOpenAiChatBridge
@@ -999,6 +1028,7 @@ export class AiCliGateway {
             }
             if (shouldFailoverHttpStatus(result.status)) {
               recordUpstreamFailure(this.circuit, upstream.baseUrl);
+
             }
             if (clientRes.headersSent) {
               return;
@@ -1029,6 +1059,8 @@ export class AiCliGateway {
             }
             this.writeJson(clientRes, 500, { error: 'gateway_error', message });
             return;
+          } finally {
+            if (_cbState) { _cbState.halfOpen = false; }
           }
         }
         if (!clientRes.headersSent && !clientRes.destroyed) {
@@ -1056,8 +1088,12 @@ export class AiCliGateway {
         if (!upstream) {
           break;
         }
-        if (isCircuitOpen(this.circuit.get(upstream.baseUrl.trim()))) {
+        const _cbState = this.circuit.get(upstream.baseUrl.trim());
+        if (isCircuitOpen(_cbState)) {
           continue;
+        }
+        if (isHalfOpen(_cbState) && _cbState) {
+          _cbState.halfOpen = true;
         }
 
         try {
@@ -1130,6 +1166,8 @@ export class AiCliGateway {
           }
           this.writeJson(clientRes, 500, { error: 'gateway_error', message });
           return;
+        } finally {
+          if (_cbState) { _cbState.halfOpen = false; }
         }
       }
 

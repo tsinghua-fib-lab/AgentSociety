@@ -1,4 +1,4 @@
-export type McpTransport = 'stdio' | 'http';
+export type McpTransport = 'stdio' | 'http' | 'sse';
 
 export type McpServerRecord = {
   id: string;
@@ -82,6 +82,24 @@ export function normalizeMcpHttpEndpoint(mcpUrl: string): string | null {
 }
 
 export async function probeHttpMcpServer(
+  url: string,
+  headers?: Record<string, string>
+): Promise<McpProbeResult> {
+  try {
+    return await probeHttpMcpServerInner(url, headers);
+  } catch (err) {
+    // F8(2026-11-06):网络异常(DNS/拒连)此前变成未处理 rejection,
+    // webview 按钮永久转圈——统一转为失败结果。
+    return {
+      ok: false,
+      status: 0,
+      tools: [],
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
+}
+
+async function probeHttpMcpServerInner(
   url: string,
   headers?: Record<string, string>
 ): Promise<McpProbeResult> {

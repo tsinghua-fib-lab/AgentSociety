@@ -19,7 +19,6 @@ import type {
   SkillPreset,
   SkillVersionRef,
   MarketplaceLoadError,
-  SkillFrontmatter,
 } from './webview/skillMarketplace/types';
 import { ApiClient } from './apiClient';
 import type { ProjectStructureProvider } from './projectStructureProvider';
@@ -38,7 +37,6 @@ import {
   normalizeSkillSources,
   isNetworkOrTimeoutError,
   dedupeMarketplaceSkills,
-  type GitHubContentItem,
 } from './skillMarketplace/utils';
 import {
   isValidGitBranch,
@@ -72,6 +70,33 @@ function hostFromMaybeUrl(value: string | undefined): string | undefined {
 const PANEL_VIEW_TYPE = 'aiSocialScientist.skillMarketplace';
 
 export class SkillMarketplacePanel {
+  private _managedSkillNamesCache: Set<string> | null = null;
+
+  /** F11(2026-11-06):扩展 skills/ 目录实际管理的技能名集合——
+   * 守卫市场安装不得覆盖(此前只保护 agentsociety- 前缀,office
+   * 平铺名 pdf/docx/xlsx/pptx 可被同名影子替换)。 */
+  private getExtensionManagedSkillNames(): Set<string> {
+    if (this._managedSkillNamesCache !== null) {
+      return this._managedSkillNamesCache;
+    }
+    const names = new Set<string>();
+    try {
+      const skillsRoot = path.join(this._extensionUri.fsPath, 'skills');
+      if (fs.existsSync(skillsRoot)) {
+        for (const entry of fs.readdirSync(skillsRoot, { withFileTypes: true })) {
+          if (entry.isDirectory() && !entry.name.startsWith('.')) {
+            names.add(entry.name);
+          }
+        }
+      }
+    } catch {
+      /* 目录不可读时退化为空前缀守卫 */
+    }
+    this._managedSkillNamesCache = names;
+    return names;
+  }
+
+
   public static current: SkillMarketplacePanel | undefined;
 
   private readonly _extensionUri: vscode.Uri;
@@ -855,47 +880,6 @@ export class SkillMarketplacePanel {
     }
   }
 
-  private _isUnderDir(resolvedPath: string, resolvedDir: string): boolean {
-    return resolvedPath === resolvedDir || resolvedPath.startsWith(resolvedDir + path.sep);
-  }
-
-  /**
-   * 安全地解析路径，处理符号链接
-   * 返回路径的真实绝对路径，如果路径不存在或无法访问则返回 null
-   */
-  private _safeResolvePath(inputPath: string): string | null {
-    try {
-      // 首先解析为绝对路径
-      const absolutePath = path.resolve(inputPath);
-
-      // 检查路径是否存在
-      if (!fs.existsSync(absolutePath)) {
-        return absolutePath; // 不存在的路径，返回解析后的路径用于后续检查
-      }
-
-      // 使用 realpath 获取真实路径（解析符号链接）
-      const realPath = fs.realpathSync(absolutePath);
-      return realPath;
-    } catch {
-      return null;
-    }
-  }
-
-  /**
-   * 检查路径是否在允许的目录内（安全版本，处理符号链接）
-   */
-  private _isPathSafe(inputPath: string, allowedDir: string): boolean {
-    const resolvedInput = this._safeResolvePath(inputPath);
-    const resolvedAllowed = this._safeResolvePath(allowedDir);
-
-    if (!resolvedInput || !resolvedAllowed) {
-      return false;
-    }
-
-    return this._isUnderDir(resolvedInput, resolvedAllowed);
-  }
-
-
   private _readLocalSkillMarkdown(skillDir: string): string | null {
     if (!canReadSkillDir(skillDir, this._extensionUri)) {
       return null;
@@ -1282,8 +1266,15 @@ export class SkillMarketplacePanel {
         throw new Error(`Install path escapes skills directory: ${skill.id}`);
       }
 
-      if (skill.id.startsWith('agentsociety-')) {
-        throw new Error(`Built-in skill "${skill.id}" is managed by version presets; do not overwrite from marketplace.`);
+      const managedNames = this.getExtensionManagedSkillNames();
+      const clash = managedNames.has(skill.id)
+        ? skill.id
+        : (skill.id.startsWith('agentsociety-') ? skill.id : null);
+      if (clash) {
+        // F11(2026-11-06):守卫从「agentsociety- 前缀」扩为「扩展 skills/
+        // 目录实际存在的技能名」——office 技能(pdf/docx/xlsx/pptx)平铺
+        // 同步进 .claude/skills,市场同名安装即影子替换扩展管理的副本。
+        throw new Error(`Skill "${skill.id}" clashes with extension-managed skill "${clash}"; do not overwrite from marketplace.`);
       }
 
       const branch = skill.branch || 'main';
@@ -1536,7 +1527,7 @@ export class SkillMarketplacePanel {
     diffText: string,
     localRoot: string,
     remoteRoot: string,
-    skill: MarketplaceSkill
+    _skill: MarketplaceSkill
   ): {
     filesAdded: string[];
     filesDeleted: string[];
@@ -1997,11 +1988,19 @@ export class SkillMarketplacePanel {
     const scriptUri = webview.asWebviewUri(vscode.Uri.file(scriptPath));
     const lang = getCurrentLanguageCode();
 
+    // F15(2026-11-06):补 CSP(configPage/replay 等 5 个 provider 均有,
+    // 本面板是唯一缺口)。React 应用:script-src 限 webview 资源 + nonce,
+    // style-src 加 'unsafe-inline'(内联 style 块)。
+    const nonce = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+
     return `<!DOCTYPE html>
 <html lang="${lang}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} https: data:; style-src ${webview.cspSource} 'unsafe-inline'; script-src ${webview.cspSource} 'nonce-${nonce}'; font-src ${webview.cspSource}; connect-src ${webview.cspSource};">
   <title>${localize('skillMarketplace.title')}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -2011,7 +2010,7 @@ export class SkillMarketplacePanel {
 </head>
 <body>
   <div id="root"></div>
-  <script>window.__AS_LANG__=${JSON.stringify(lang)};</script>
+  <script nonce="${nonce}">window.__AS_LANG__=${JSON.stringify(lang).replace(/</g, '\\u003c')};</script>
   <script src="${scriptUri}"></script>
 </body>
 </html>`;

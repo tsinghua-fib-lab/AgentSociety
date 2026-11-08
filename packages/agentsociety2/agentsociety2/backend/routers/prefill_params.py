@@ -97,7 +97,8 @@ async def get_class_prefill_params(
     :returns: Dict[str, Any]: 类的预填充参数，包含： - success: 是否成功 - class_kind: 类类型 - class_name: 类名 - params: 该类的预填充参数字典（如无配置则为空字典）
     :raises HTTPException: 500 - 读取配置文件失败
 
-    Example:
+    用法示例::
+
         GET /api/v1/prefill-params/env_module/mobility_space?workspace_path=/path/to/workspace
     """
     try:

@@ -1,3 +1,4 @@
+import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -32,7 +33,8 @@ function writeJsonFile(filePath: string, data: Record<string, unknown>): void {
     fs.mkdirSync(dir, { recursive: true });
   }
   const json = `${JSON.stringify(data, null, 2)}\n`;
-  const tmp = `${filePath}.tmp`;
+  // F2(2026-11-06):pid 后缀防多窗口同 tmp 路径交错。
+  const tmp = `${filePath}.${process.pid}.${crypto.randomUUID()}.tmp`;
   fs.writeFileSync(tmp, json, 'utf-8');
   try {
     fs.chmodSync(tmp, 0o600);
@@ -52,9 +54,9 @@ function managedId(name: string): string {
 }
 
 function toClaudeMcpEntry(server: McpServerRecord): Record<string, unknown> {
-  if (server.transport === 'http') {
+  if (server.transport === 'http' || server.transport === 'sse') {
     const entry: Record<string, unknown> = {
-      type: 'http',
+      type: server.transport,
       url: server.url ?? '',
     };
     if (server.httpHeaders && Object.keys(server.httpHeaders).length > 0) {
@@ -75,7 +77,10 @@ function toClaudeMcpEntry(server: McpServerRecord): Record<string, unknown> {
 }
 
 function codexMcpBlockLines(server: McpServerRecord): string[] {
-  const lines: string[] = [`[mcp_servers.${server.id}]`];
+  if (server.transport === 'sse') {
+    throw new Error('Legacy SSE MCP is supported by Claude only; use streamable HTTP for Codex.');
+  }
+  const lines: string[] = [`[mcp_servers.${JSON.stringify(server.id)}]`];
   if (server.transport === 'http') {
     lines.push(`url = ${JSON.stringify(server.url ?? '')}`);
     if (server.bearerTokenEnvVar?.trim()) {
@@ -83,7 +88,7 @@ function codexMcpBlockLines(server: McpServerRecord): string[] {
     }
     if (server.httpHeaders) {
       for (const [key, value] of Object.entries(server.httpHeaders)) {
-        lines.push(`http_headers.${key} = ${JSON.stringify(value)}`);
+        lines.push(`http_headers.${JSON.stringify(key)} = ${JSON.stringify(value)}`);
       }
     }
     return lines;
@@ -94,7 +99,7 @@ function codexMcpBlockLines(server: McpServerRecord): string[] {
   }
   if (server.env) {
     for (const [key, value] of Object.entries(server.env)) {
-      lines.push(`env.${key} = ${JSON.stringify(value)}`);
+      lines.push(`env.${JSON.stringify(key)} = ${JSON.stringify(value)}`);
     }
   }
   return lines;
@@ -103,7 +108,8 @@ function codexMcpBlockLines(server: McpServerRecord): string[] {
 function removeCodexMcpBlocks(text: string, serverIds: string[]): string {
   let updated = text;
   for (const id of serverIds) {
-    const escaped = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const escaped = `(?:${escapeRegex(id)}|${escapeRegex(JSON.stringify(id))})`;
     updated = updated.replace(
       new RegExp(`\\n?\\[mcp_servers\\.${escaped}\\][^\\n]*(?:\\n(?!\\[)[^\\n]*)*`, 'g'),
       ''
@@ -164,6 +170,9 @@ export class McpServerManager {
     if (input.builtin === 'literature') {
       throw new Error('literature_mcp_readonly');
     }
+    if (input.transport === 'sse' && input.enabledCodex) {
+      throw new Error('Legacy SSE MCP is supported by Claude only; use streamable HTTP for Codex.');
+    }
     const servers = this.listServers().filter((s) => s.builtin !== 'literature');
     const id = input.id?.trim() || managedId(input.name);
     const record: McpServerRecord = {
@@ -210,6 +219,9 @@ export class McpServerManager {
     if (target.builtin === 'literature') {
       throw new Error('literature_mcp_use_config_page');
     }
+    if (target.transport === 'sse' && app === 'codex' && enabled) {
+      throw new Error('Legacy SSE MCP is supported by Claude only; use streamable HTTP for Codex.');
+    }
     const custom = servers.filter((s) => s.builtin !== 'literature').map((s) =>
       s.id === id
         ? {
@@ -231,7 +243,12 @@ export class McpServerManager {
     const byId = new Map(custom.map((s) => [s.id, s]));
     for (const [name, entry] of Object.entries(mcpServers)) {
       const id = name.startsWith(MANAGED_PREFIX) ? name : managedId(name);
-      const transport: McpTransport = entry.type === 'http' || typeof entry.url === 'string' ? 'http' : 'stdio';
+      // F6(2026-11-06):Claude 的旧 HTTP+SSE 传输保留 sse 语义——
+      // 此前一律降级成 http,回写改写 type,纯 SSE 服务器会坏。
+      const transport: McpTransport =
+        entry.type === 'http' || entry.type === 'sse' || typeof entry.url === 'string'
+          ? (entry.type === 'sse' ? 'sse' : 'http')
+          : 'stdio';
       byId.set(id, {
         id,
         name,
@@ -262,6 +279,10 @@ export class McpServerManager {
 
   async syncLiveConfigs(): Promise<void> {
     const servers = this.listServers();
+    const originalCodexText = readCodexConfigText();
+    const codexServers = servers.filter((s) => s.id.startsWith(MANAGED_PREFIX) || s.enabledCodex);
+    const codexText = upsertCodexMcpBlocks(originalCodexText, codexServers);
+
     const claudePath = resolveClaudeJsonPath();
     const claudeJson = readJsonFile(claudePath);
     const existing =
@@ -281,10 +302,10 @@ export class McpServerManager {
     claudeJson.mcpServers = next;
     writeJsonFile(claudePath, claudeJson);
 
-    let codexText = readCodexConfigText();
-    const codexServers = servers.filter((s) => s.id.startsWith(MANAGED_PREFIX) || s.enabledCodex);
-    codexText = upsertCodexMcpBlocks(codexText, codexServers);
-    if (codexText.trim()) {
+    // Removing the last managed block must clear the file; a truthiness guard
+    // would leave the stale MCP enabled. Avoid creating an empty config when
+    // nothing needs syncing to Codex.
+    if (codexText !== originalCodexText) {
       writeCodexConfigText(codexText);
     }
   }

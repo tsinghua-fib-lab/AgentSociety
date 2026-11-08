@@ -284,6 +284,17 @@ export class BackendManager {
     if (pythonHasAgentsociety2(this.config.pythonPath)) {
       return true;
     }
+    // 2026-11-06 体验审查 #16:silent 模式(autoStart 激活自启)不得弹
+    // 交互——激活瞬间冒出 QuickPick 会非常突兀;记日志留给用户主动处理。
+    if (this.operationSilent) {
+      this.log(
+        `Python at ${this.config.pythonPath} lacks agentsociety2; skipping interactive selection in silent mode`,
+        'warn'
+      );
+      this.isStarting = false;
+      this.updateStatusBar('error');
+      return false;
+    }
     const selected = await this.promptPythonEnvironmentSelection();
     if (!selected) {
       this.isStarting = false;
@@ -729,7 +740,14 @@ export class BackendManager {
       if (this.externalBackend) {
         this.notifyWarning(localize('backendManager.externalStop'));
       } else {
-        this.log('Backend is not running', 'warn');
+        // 2026-11-06 体验审查 #6:此前只写 output 日志,用户点了
+        // 命令毫无反应。给出可见反馈(backendManager 层,兼容
+        // silent 模式——silent 下仍只记日志)。
+        if (!this.operationSilent) {
+          this.notifyWarning(localize('backendManager.notRunning'));
+        } else {
+          this.log('Backend is not running', 'warn');
+        }
       }
       return false;
     }

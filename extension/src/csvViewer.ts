@@ -193,7 +193,7 @@ export class CsvViewer {
 
   <script>
     const isChinese = ${isZh ? 'true' : 'false'};
-    const rows = ${JSON.stringify(rows)};
+    const rows = ${JSON.stringify(rows).replace(/</g, '\\u003c')};
     let sortCol = -1;
     let sortAsc = true;
 

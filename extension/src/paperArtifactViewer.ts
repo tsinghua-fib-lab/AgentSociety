@@ -68,7 +68,18 @@ export class PaperArtifactViewer {
     panel.webview.html = this.buildHtml(data, error, fileName, parentDir, filePath, isZh);
   }
 
-  private static getTitle(fileName: string, parentDir: string, isZh: boolean): string {
+  /** 全量 HTML 转义(2026-11-06 二轮审计:本 viewer 此前多处只转 & 或
+   * 完全裸插值,LLM 生成的论文产物含 <img onerror> 即注入;统一走此)。 */
+  private static esc(value: unknown): string {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  private static getTitle(fileName: string, _parentDir: string, isZh: boolean): string {
     const titles: Record<string, string> = {
       'paper.json': isZh ? '论文工作区状态' : 'Paper workspace state',
       'research_pack.json': isZh ? '研究包' : 'Research pack',
@@ -89,7 +100,7 @@ export class PaperArtifactViewer {
     data: any,
     error: string | null,
     fileName: string,
-    parentDir: string,
+    _parentDir: string,
     filePath: string,
     isZh: boolean
   ): string {
@@ -125,7 +136,7 @@ export class PaperArtifactViewer {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title}</title>
+  <title>${this.esc(title)}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: var(--vscode-font-family); background: var(--vscode-editor-background); color: var(--vscode-editor-foreground); padding: 20px; }
@@ -165,7 +176,7 @@ export class PaperArtifactViewer {
 </head>
 <body>
   <div class="header">
-    <h1>📄 ${title}</h1>
+    <h1>📄 ${this.esc(title)}</h1>
     <div class="header-actions">
       <button class="btn" id="copyPathBtn">📋 ${labels.copyPath}</button>
       <button class="btn" id="openEditorBtn">${labels.openEditor}</button>
@@ -213,11 +224,11 @@ export class PaperArtifactViewer {
     </div>
     ${gates && Object.keys(gates).length > 0 ? `
     <div class="card"><h2>${isZh ? '人工确认门' : 'Human Gates'}</h2>
-      ${Object.entries(gates).map(([k, v]: [string, any]) => `<div class="kv"><span class="kv-key">${k}</span><span class="kv-value">${v?.note || v?.status || String(v)}</span></div>`).join('')}
+      ${Object.entries(gates).map(([k, v]: [string, any]) => `<div class="kv"><span class="kv-key">${this.esc(k)}</span><span class="kv-value">${this.esc(v?.note || v?.status || String(v))}</span></div>`).join('')}
     </div>` : ''}
     ${Array.isArray(reviews) && reviews.length > 0 ? `
     <div class="card"><h2>${isZh ? '审阅记录' : 'Reviews'} (${reviews.length})</h2>
-      ${reviews.map((r: any) => `<div class="list-item"><span class="tag tag-blue">${r.id || ''}</span> ${r.verdict || ''}</div>`).join('')}
+      ${reviews.map((r: any) => `<div class="list-item"><span class="tag tag-blue">${this.esc(r.id || '')}</span> ${this.esc(r.verdict || '')}</div>`).join('')}
     </div>` : ''}`;
     return this.baseLayout(isZh ? '论文工作区状态' : 'Paper workspace state', filePath, isZh, body);
   }
@@ -248,17 +259,17 @@ export class PaperArtifactViewer {
           <span class="tag ${c.approved !== false ? 'tag-green' : 'tag-red'}">${c.approved !== false ? (isZh ? '已批准' : 'Approved') : (isZh ? '待批准' : 'Pending')}</span>
           ${c.needs_chart ? `<span class="tag tag-orange">${isZh ? '需配图' : 'Needs chart'}</span>` : ''}
         </div>
-        <div style="font-size:13px;margin-bottom:4px">${(c.statement || c.claim || '').replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div>
-        ${c.evidence ? `<div class="text-secondary">${isZh ? '证据' : 'Evidence'}: ${String(c.evidence).replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div>` : ''}
+        <div style="font-size:13px;margin-bottom:4px">${this.esc(c.statement || c.claim || '')}</div>
+        ${c.evidence ? `<div class="text-secondary">${isZh ? '证据' : 'Evidence'}: ${this.esc(c.evidence)}</div>` : ''}
       </div>`).join('')}`;
     return this.baseLayout(isZh ? '分析主张' : 'Claims', filePath, isZh, body);
   }
 
   private static renderSynthesisBrief(data: any, filePath: string, isZh: boolean): string {
     const body = `
-    <div class="card"><h2>${data.question || (isZh ? '综合问题' : 'Synthesis question')}</h2></div>
-    ${data.comparison_mode ? `<div class="card"><h3>${isZh ? '比较模式' : 'Comparison mode'}</h3><p>${String(data.comparison_mode)}</p></div>` : ''}
-    ${data.findings ? `<div class="card"><h3>${isZh ? '发现' : 'Findings'}</h3><p>${String(data.findings).replace(/\n/g,'<br>')}</p></div>` : ''}`;
+    <div class="card"><h2>${this.esc(data.question || (isZh ? '综合问题' : 'Synthesis question'))}</h2></div>
+    ${data.comparison_mode ? `<div class="card"><h3>${isZh ? '比较模式' : 'Comparison mode'}</h3><p>${this.esc(data.comparison_mode)}</p></div>` : ''}
+    ${data.findings ? `<div class="card"><h3>${isZh ? '发现' : 'Findings'}</h3><p>${this.esc(data.findings).replace(/\n/g,'<br>')}</p></div>` : ''}`;
     return this.baseLayout(isZh ? '综合摘要' : 'Synthesis brief', filePath, isZh, body);
   }
 
@@ -272,7 +283,7 @@ export class PaperArtifactViewer {
     </div>
     ${Array.isArray(sources) && sources.length > 0 ? `
     <div class="card"><h2>${isZh ? '证据来源' : 'Evidence sources'}</h2>
-      ${sources.map((s: any) => `<div class="kv"><span class="kv-key">${s.name || s.id || ''}</span><span class="kv-value">${s.type || ''}</span></div>`).join('')}
+      ${sources.map((s: any) => `<div class="kv"><span class="kv-key">${this.esc(s.name || s.id || '')}</span><span class="kv-value">${this.esc(s.type || '')}</span></div>`).join('')}
     </div>` : ''}`;
     return this.baseLayout(isZh ? '证据图谱' : 'Evidence graph', filePath, isZh, body);
   }
@@ -285,22 +296,22 @@ export class PaperArtifactViewer {
     const summary = data.summary ?? data.comment ?? '';
     const body = `
     <div class="grid">
-      <div class="card stat"><div class="stat-value" style="color:${score >= 70 ? '#52c41a' : score >= 50 ? '#fa8c16' : '#ff4d4f'}">${score}</div><div class="stat-label">${isZh ? '评分' : 'Score'}</div></div>
-      ${verdict ? `<div class="card stat"><div class="stat-value" style="color:#1677ff">${typeof verdict === 'string' ? verdict.replace(/&/g,'&amp;') : verdict}</div><div class="stat-label">${isZh ? '审阅结论' : 'Verdict'}</div></div>` : ''}
+      <div class="card stat"><div class="stat-value" style="color:${score >= 70 ? '#52c41a' : score >= 50 ? '#fa8c16' : '#ff4d4f'}">${this.esc(score)}</div><div class="stat-label">${isZh ? '评分' : 'Score'}</div></div>
+      ${verdict ? `<div class="card stat"><div class="stat-value" style="color:#1677ff">${this.esc(verdict)}</div><div class="stat-label">${isZh ? '审阅结论' : 'Verdict'}</div></div>` : ''}
     </div>
     ${Object.keys(dimensions).length > 0 ? `
     <div class="card"><h2>${isZh ? '分项评分' : 'Dimension scores'}</h2>
       ${Object.entries(dimensions).map(([k, v]: [string, any]) => `
         <div style="margin-bottom:8px">
-          <div class="kv"><span class="kv-key">${k}</span><span class="kv-value">${v}</span></div>
+          <div class="kv"><span class="kv-key">${this.esc(k)}</span><span class="kv-value">${this.esc(v)}</span></div>
           <div class="dimension-bar"><div class="dimension-fill" style="width:${Math.min(100, Number(v) || 0)}%;background:${Number(v) >= 70 ? '#52c41a' : Number(v) >= 50 ? '#fa8c16' : '#ff4d4f'}"></div></div>
         </div>`).join('')}
     </div>` : ''}
     ${Array.isArray(blocking) && blocking.length > 0 ? `
     <div class="card"><h2 style="color:#ff4d4f">${isZh ? '阻塞问题' : 'Blocking issues'}</h2>
-      ${blocking.map((b: any) => `<div class="list-item"><span class="tag tag-red">${isZh ? '阻塞' : 'Blocking'}</span> ${String(b).replace(/&/g,'&amp;')}</div>`).join('')}
+      ${blocking.map((b: any) => `<div class="list-item"><span class="tag tag-red">${isZh ? '阻塞' : 'Blocking'}</span> ${this.esc(b)}</div>`).join('')}
     </div>` : ''}
-    ${summary ? `<div class="card"><h2>${isZh ? '总结' : 'Summary'}</h2><p>${String(summary).replace(/&/g,'&amp;').replace(/\n/g,'<br>')}</p></div>` : ''}`;
+    ${summary ? `<div class="card"><h2>${isZh ? '总结' : 'Summary'}</h2><p>${this.esc(summary).replace(/\n/g,'<br>')}</p></div>` : ''}`;
     return this.baseLayout(isZh ? '审阅结果' : 'Review', filePath, isZh, body);
   }
 
@@ -322,9 +333,9 @@ export class PaperArtifactViewer {
     <div class="card"><h2>${isZh ? '图表-主张映射' : 'Figure-claim map'} (${Array.isArray(entries) ? entries.length : Object.keys(data).length})</h2></div>
     ${(Array.isArray(entries) ? entries : Object.entries(data)).map(([k, v]: [string, any]) => `
       <div class="card">
-        <div style="font-size:13px;font-weight:500;margin-bottom:4px">${v?.figure_id || k}</div>
-        ${v?.roles ? `<div class="text-secondary">${Array.isArray(v.roles) ? v.roles.join(', ') : String(v.roles)}</div>` : ''}
-        ${v?.claim_ids ? `<div class="text-secondary">${isZh ? '关联主张' : 'Claims'}: ${Array.isArray(v.claim_ids) ? v.claim_ids.join(', ') : String(v.claim_ids)}</div>` : ''}
+        <div style="font-size:13px;font-weight:500;margin-bottom:4px">${this.esc(v?.figure_id || k)}</div>
+        ${v?.roles ? `<div class="text-secondary">${this.esc(Array.isArray(v.roles) ? v.roles.join(', ') : String(v.roles))}</div>` : ''}
+        ${v?.claim_ids ? `<div class="text-secondary">${isZh ? '关联主张' : 'Claims'}: ${this.esc(Array.isArray(v.claim_ids) ? v.claim_ids.join(', ') : String(v.claim_ids))}</div>` : ''}
       </div>`).join('')}`;
     return this.baseLayout(isZh ? '图表-主张映射' : 'Figure-claim map', filePath, isZh, body);
   }
@@ -335,8 +346,8 @@ export class PaperArtifactViewer {
     <div class="card"><h2>${isZh ? '叙事线' : 'Storyline'} (${Array.isArray(sections) ? sections.length : 0} ${isZh ? '章节' : 'sections'})</h2></div>
     ${(Array.isArray(sections) ? sections : []).map((s: any) => `
       <div class="card">
-        <div style="font-size:13px;font-weight:500;margin-bottom:4px">${s.section || s.id || ''}</div>
-        <div class="text-secondary">${s.logic || s.description || ''}</div>
+        <div style="font-size:13px;font-weight:500;margin-bottom:4px">${this.esc(s.section || s.id || '')}</div>
+        <div class="text-secondary">${this.esc(s.logic || s.description || '')}</div>
       </div>`).join('')}`;
     return this.baseLayout(isZh ? '叙事线' : 'Storyline', filePath, isZh, body);
   }
@@ -348,10 +359,10 @@ export class PaperArtifactViewer {
     ${gates.map((g: any) => `
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-          <span class="tag ${g.status === 'resolved' || g.resolved ? 'tag-green' : 'tag-red'}">${g.status || g.id || ''}</span>
-          ${g.severity ? `<span class="tag tag-orange">${g.severity}</span>` : ''}
+          <span class="tag ${g.status === 'resolved' || g.resolved ? 'tag-green' : 'tag-red'}">${this.esc(g.status || g.id || '')}</span>
+          ${g.severity ? `<span class="tag tag-orange">${this.esc(g.severity)}</span>` : ''}
         </div>
-        ${g.note ? `<div class="text-secondary">${String(g.note)}</div>` : ''}
+        ${g.note ? `<div class="text-secondary">${this.esc(g.note)}</div>` : ''}
       </div>`).join('')}`;
     return this.baseLayout(isZh ? '人工确认门' : 'Human gates', filePath, isZh, body);
   }
@@ -367,7 +378,7 @@ export class PaperArtifactViewer {
       isZh ? '解析错误' : 'Parse Error',
       filePath,
       isZh,
-      `<div class="error-box"><strong>${error}</strong></div>`
+      `<div class="error-box"><strong>${this.esc(error)}</strong></div>`
     );
   }
 }

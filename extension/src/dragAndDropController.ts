@@ -39,16 +39,6 @@ interface FileToProcess {
 type OverwriteStrategy = 'overwriteAll' | 'skipAll' | 'askEach' | 'cancel';
 
 /**
- * 上传结果
- */
-interface UploadResult {
-  successCount: number;
-  failCount: number;
-  skipCount: number;
-  errors: string[];
-}
-
-/**
  * 大文件阈值 (100 MB)
  */
 const LARGE_FILE_THRESHOLD = 100 * 1024 * 1024;
@@ -152,7 +142,7 @@ export class ProjectDragAndDropController implements vscode.TreeDragAndDropContr
    * 获取目标工作区文件夹
    * 如果有多个工作区，使用包含目标节点的那个
    */
-  private getTargetWorkspace(target: ProjectItem): vscode.WorkspaceFolder | undefined {
+  private getTargetWorkspace(_target: ProjectItem): vscode.WorkspaceFolder | undefined {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders || workspaceFolders.length === 0) {
       return undefined;

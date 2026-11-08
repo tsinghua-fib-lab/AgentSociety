@@ -393,7 +393,7 @@ test('gateway aborts the upstream request when the downstream client disconnects
   const request = http.request(`${status.baseUrl}/v1/messages`, {
     method: 'POST',
     agent: false,
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${require('../out/services/aiCliGatewayUpstream').getOrCreateGatewayAuthToken()}` },
   });
   request.on('error', () => {});
   request.end(JSON.stringify({ model: 'claude-sonnet-4-6', messages: [] }));
@@ -424,7 +424,7 @@ test('gateway terminates an idle upstream request with a bounded 504 response', 
     const request = http.request(`${status.baseUrl}/v1/messages`, {
       method: 'POST',
       agent: false,
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${require('../out/services/aiCliGatewayUpstream').getOrCreateGatewayAuthToken()}` },
     }, (response) => {
       response.resume();
       response.once('end', () => resolve({ status: response.statusCode, ms: Date.now() - startedAt }));
@@ -467,7 +467,7 @@ test('gateway records the upstream response-cost header as authoritative USD cos
     const request = http.request(`${status.baseUrl}/v1/messages`, {
       method: 'POST',
       agent: false,
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${require('../out/services/aiCliGatewayUpstream').getOrCreateGatewayAuthToken()}` },
     }, (response) => {
       response.resume();
       response.once('end', resolve);

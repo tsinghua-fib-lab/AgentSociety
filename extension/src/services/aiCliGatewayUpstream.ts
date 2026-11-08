@@ -28,6 +28,30 @@ export type AiCliGatewayUpstream = {
 
 export const AI_CLI_GATEWAY_PLACEHOLDER_TOKEN = 'agentsociety-gateway';
 
+// 2026-11-06 二轮审计修复:网关本地令牌。原静态占位串写在 CLI 配置里,
+// 等于零认证——任意本机进程/网页(经 rebinding)都可白嫖用户 LLM key。
+// 每个扩展宿主进程生成令牌;应用 CLI 配置时刷新,网关逐请求校验。
+import * as crypto from 'crypto';
+
+let _gatewayAuthToken: string | null = null;
+
+export function getOrCreateGatewayAuthToken(): string {
+  if (_gatewayAuthToken === null) {
+    _gatewayAuthToken = crypto.randomBytes(24).toString('hex');
+  }
+  return _gatewayAuthToken;
+}
+
+export function isValidGatewayAuthToken(candidate: unknown): boolean {
+  if (typeof candidate !== 'string' || candidate.length === 0) {
+    return false;
+  }
+  const expected = getOrCreateGatewayAuthToken();
+  const a = Buffer.from(candidate);
+  const b = Buffer.from(expected);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
 export function normalizeUpstreamBaseUrl(baseUrl: string): string {
   return baseUrl.trim().replace(/\/+$/, '');
 }

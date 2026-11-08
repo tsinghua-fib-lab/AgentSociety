@@ -6,7 +6,6 @@
  */
 
 import * as vscode from 'vscode';
-import type { SSEEvent } from '../shared/messages';
 import { getBackendAccessUrl } from '../runtimeConfig';
 import { fetchCompat } from '../shared/fetchCompat';
 import { appendSharedOutputLine, OUTPUT_CHANNEL_BACKEND } from '../shared/outputChannels';

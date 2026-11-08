@@ -1009,7 +1009,7 @@
     "integrationsTab": "MCP",
     "statMcp": "MCP",
     "mcpIntroTitle": "Claude Code / Codex MCP",
-    "mcpIntroBody": "内置「文献检索」来自工作区 .env（配置页可改 URL/Key）。下方可添加自定义 MCP，点「同步」写入 ~/.claude.json 与 ~/.codex/config.toml。",
+    "mcpIntroBody": "内置「文献检索」来自工作区 .env（配置页可改 URL/Key）。下方可添加自定义 MCP，点「同步」写入 ~/.claude.json 与 ~/.codex/config.toml。同步的 MCP 为用户级（全局生效，所有项目可见）。",
     "mcpBuiltinSection": "工作区内置",
     "mcpBuiltinSectionHint": "文献检索 MCP 的 URL/Key 在配置页「文献 MCP」Tab 编辑，此处只读展示与探测。",
     "mcpBuiltinEmpty": "尚未配置文献 MCP（请在配置页填写 URL 与 Key）",

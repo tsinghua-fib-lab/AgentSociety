@@ -32,7 +32,7 @@ export class GiteeAdapter implements PlatformAdapter {
     return this.defaultWebBase;
   }
 
-  private _getToken(source: SkillSource): string | undefined {
+  private _getToken(_source: SkillSource): string | undefined {
     // 优先使用 source 中的 token（如果未来支持）
     // 然后使用全局配置
     return vscode.workspace

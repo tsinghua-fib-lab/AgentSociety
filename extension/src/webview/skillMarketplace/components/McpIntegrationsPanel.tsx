@@ -96,6 +96,9 @@ export function McpIntegrationsPanel({
     if (row.builtin === 'literature') {
       return <Tag color="blue">{t('skillManagement.mcpBuiltinLiterature')}</Tag>;
     }
+    if (row.transport === 'sse') {
+      return <Tag>SSE (Claude)</Tag>;
+    }
     if (row.transport !== 'http') {
       return <Tag>{t('skillManagement.mcpStdioHint')}</Tag>;
     }
@@ -169,7 +172,7 @@ export function McpIntegrationsPanel({
           <Switch
             size="small"
             checked={row.enabledCodex}
-            disabled={row.builtin === 'literature'}
+            disabled={row.builtin === 'literature' || row.transport === 'sse'}
             onChange={(checked) =>
               vscode.postMessage({
                 type: 'toggleMcpServerApp',

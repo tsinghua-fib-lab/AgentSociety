@@ -8,6 +8,20 @@ import { useTranslation } from "react-i18next";
 import { fetchCustom } from "../../components/fetch";
 import { SyncOutlined } from "@ant-design/icons";
 
+// 仅允许 http(s) 打开新窗口:后端返回的 url 若被注入 javascript:/data:
+// 协议,window.open 会执行任意脚本(CodeQL window-open 重定向缓解)。
+function safeOpenUrl(raw: string | undefined | null): void {
+  try {
+    const parsed = new URL(String(raw ?? ''));
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+      return;
+    }
+    window.open(parsed.href, '_blank', 'noopener,noreferrer');
+  } catch {
+    // 无效 URL 不打开
+  }
+}
+
 interface Account {
     id: string;
     balance: number;
@@ -120,7 +134,7 @@ const Page = () => {
                 setRechargeVisible(false);
                 
                 // 打开支付页面
-                window.open(data.data.url, '_blank');
+                safeOpenUrl(data.data.url);
                 
                 // 开始轮询支付状态
                 startPaymentPolling(data.data.id);
@@ -319,7 +333,7 @@ const Page = () => {
                     <p>{t('bill.payment.instruction')}</p>
                     <Button 
                         type="primary" 
-                        onClick={() => window.open(paymentUrl, '_blank')}
+                        onClick={() => safeOpenUrl(paymentUrl)}
                     >
                         {t('bill.payment.openPayment')}
                     </Button>

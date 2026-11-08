@@ -7,6 +7,10 @@ export const FAILOVER_MAX_ATTEMPTS = 6;
 export type CircuitBreakerState = {
   consecutiveFailures: number;
   openUntil: number;
+  /** 半开探测(借鉴 cc-switch/CCR):冷却到期后不直接全量恢复,先放行
+   * 一个试探请求;失败立即重新熔断,成功才清零。防止冷却期一过就
+   * 把全部流量砸向尚未恢复的上游。 */
+  halfOpen?: boolean;
 };
 
 export function shouldFailoverHttpStatus(status: number): boolean {
@@ -17,10 +21,21 @@ export function isCircuitOpen(state: CircuitBreakerState | undefined, now = Date
   if (!state) {
     return false;
   }
-  if (state.openUntil > now) {
+  if (state.halfOpen || state.openUntil > now) {
     return true;
   }
   return false;
+}
+
+/**
+ * 冷却到期后该上游是否处于半开态(应放行试探请求)。
+ * 到期且曾有熔断记录 → 半开;从未熔断 → false(正常放行)。
+ */
+export function isHalfOpen(state: CircuitBreakerState | undefined, now = Date.now()): boolean {
+  if (!state || state.consecutiveFailures < FAILOVER_FAILURE_THRESHOLD) {
+    return false;
+  }
+  return state.openUntil <= now;
 }
 
 export function recordUpstreamFailure(
@@ -30,6 +45,15 @@ export function recordUpstreamFailure(
 ): void {
   const key = baseUrl.trim();
   const prev = map.get(key) ?? { consecutiveFailures: 0, openUntil: 0 };
+  if (prev.halfOpen) {
+    // 半开试探失败:立即重新熔断(无需再数满阈值)。
+    map.set(key, {
+      consecutiveFailures: Math.max(prev.consecutiveFailures, FAILOVER_FAILURE_THRESHOLD),
+      openUntil: now + FAILOVER_COOLDOWN_MS,
+      halfOpen: false,
+    });
+    return;
+  }
   const consecutiveFailures = prev.consecutiveFailures + 1;
   const openUntil =
     consecutiveFailures >= FAILOVER_FAILURE_THRESHOLD

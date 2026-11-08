@@ -37,7 +37,9 @@ if __name__ == "__main__":
     os.environ["LITELLM_LOCAL_MODEL_COST_MAP"] = "True"
 
     # 从环境变量读取配置，命令行参数优先
-    host = os.getenv("BACKEND_HOST", "0.0.0.0")
+    # 默认仅回环(2026-11-06 审计修复):后端零认证,绑全网卡即 LAN/网页
+    # drive-by 可写任意 skill 脚本;需要对外时显式设 BACKEND_HOST=0.0.0.0。
+    host = os.getenv("BACKEND_HOST", "127.0.0.1")
     port = int(os.getenv("BACKEND_PORT", "8001"))
     log_level = args.log_level or os.getenv("BACKEND_LOG_LEVEL", "info")
 

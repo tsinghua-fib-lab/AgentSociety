@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as vscode from 'vscode';
 import type { ClaudeCodeConfigValues } from '../webview/configPage/claudeCodeTypes';
 import {
-  AI_CLI_GATEWAY_PLACEHOLDER_TOKEN,
+  getOrCreateGatewayAuthToken,
   buildLocalGatewayBaseUrl,
   isLocalGatewayBaseUrl,
   type AiCliGatewayUpstream,
@@ -103,6 +103,8 @@ const REMOTE_PRICING_STATE_KEY = 'aiCliGateway.remotePricing';
 const REMOTE_PRICING_FETCHED_AT_STATE_KEY = 'aiCliGateway.remotePricingFetchedAt';
 const FAILOVER_ENABLED_STATE_KEY = 'aiCliGateway.failoverEnabled';
 const ROUTE_CLAUDE_STATE_KEY = 'aiCliGateway.routeClaude';
+// 默认开标记(maybeEnableCodexRouteByDefault 写入,区别用户显式开)。
+const ROUTE_CODEX_AUTO_STATE_KEY = 'aiCliGateway.routeCodex.auto';
 const ROUTE_CODEX_STATE_KEY = 'aiCliGateway.routeCodex';
 /** Pre-takeover ~/.codex/config.toml snapshot (cc-switch live backup). */
 const CODEX_LIVE_BACKUP_SECRET_KEY = 'aiCliGateway.codexLiveBackup.secret';
@@ -471,6 +473,9 @@ export class AiCliGatewayManager {
       target === 'claude' ? ROUTE_CLAUDE_STATE_KEY : ROUTE_CODEX_STATE_KEY,
       enabled
     );
+    if (target === 'codex') {
+      await this.context.globalState.update(ROUTE_CODEX_AUTO_STATE_KEY, false);
+    }
 
     if (!this.isRouteClaudeViaGateway() && !this.isRouteCodexViaGateway()) {
       const activeAnthropic = this.getActiveAnthropicProvider();
@@ -580,13 +585,32 @@ export class AiCliGatewayManager {
     if (!this.codexLoginRefreshed) {
       this.codexLoginRefreshed = true;
       this.codexLoginSnapshot = await detectCodexOfficialLogin();
+      await this.yieldCodexRouteToOfficialLoginIfNeeded();
     }
+  }
+
+  /** 官方登录出现且 codex 路由是「默认开」(非用户显式)时,自动让位:
+   *  关路由、恢复官方订阅配置。用户显式开过(手动 toggle)则绝不动。 */
+  private async yieldCodexRouteToOfficialLoginIfNeeded(): Promise<void> {
+    const autoEnabled = this.context.globalState.get<boolean>(ROUTE_CODEX_AUTO_STATE_KEY, false);
+    if (!autoEnabled || !this.codexLoginSnapshot.present) {
+      return;
+    }
+    await this.context.globalState.update(ROUTE_CODEX_STATE_KEY, undefined);
+    await this.context.globalState.update(ROUTE_CODEX_AUTO_STATE_KEY, false);
+    if (getCodexRoutingSnapshot().routedViaGateway || this.codexLiveBackupCache !== undefined) {
+      await this.releaseCodexProxyTakeover();
+    } else {
+      applyCodexOfficialSubscription();
+    }
+    this.log('Codex official login detected; auto-enabled gateway route yielded back to subscription');
   }
 
   async refreshCodexOfficialLogin(): Promise<AiCliGatewayPublicStatus> {
     await this.secretsReady;
     this.codexLoginSnapshot = await detectCodexOfficialLogin();
     this.codexLoginRefreshed = true;
+    await this.yieldCodexRouteToOfficialLoginIfNeeded();
     return this.getPublicStatus();
   }
 
@@ -775,7 +799,7 @@ export class AiCliGatewayManager {
     return {
       ...config,
       baseUrl: buildLocalGatewayBaseUrl(port),
-      apiKey: AI_CLI_GATEWAY_PLACEHOLDER_TOKEN,
+      apiKey: getOrCreateGatewayAuthToken(),
     };
   }
 
@@ -1225,7 +1249,9 @@ export class AiCliGatewayManager {
    */
   private async maybeEnableCodexRouteByDefault(provider: AiCliProviderConfig): Promise<boolean> {
     const explicitlySet =
-      this.context.globalState.get<boolean>(ROUTE_CODEX_STATE_KEY) !== undefined;
+      this.context.globalState.get<boolean>(ROUTE_CODEX_STATE_KEY) !== undefined
+      // 默认开的(我们写的)不算用户显式选择——官方登录出现时可让位。
+      && !this.context.globalState.get<boolean>(ROUTE_CODEX_AUTO_STATE_KEY, false);
     const fileLogin = getCodexOfficialLoginSnapshot();
     const shouldEnable = shouldEnableCodexRouteByDefault({
       explicitlySet,
@@ -1242,6 +1268,10 @@ export class AiCliGatewayManager {
       return false;
     }
     await this.context.globalState.update(ROUTE_CODEX_STATE_KEY, true);
+    // 标记为默认开(非用户显式):后续检测到 codex 官方登录出现时,
+    // 自动让位并恢复官方订阅配置(2026-11-06:用户反馈场景——先装扩展
+    // 后 codex login,官方登录被 gateway 接管,恢复麻烦)。
+    await this.context.globalState.update(ROUTE_CODEX_AUTO_STATE_KEY, true);
     this.log('Codex proxy enabled by default (no user-owned Codex config found)');
     return true;
   }

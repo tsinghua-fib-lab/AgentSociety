@@ -6,6 +6,9 @@ export type GatewayRuntimeStats = {
   failedRequests: number;
   activeConnections: number;
   successRate: number;
+  /** 可选限额(借鉴 CCR 访问控制):0/未设=不限制。 */
+  maxRequests?: number;
+  limitReached?: boolean;
 };
 
 export class GatewayRuntimeStatsTracker {
@@ -14,6 +17,14 @@ export class GatewayRuntimeStatsTracker {
   private successfulRequests = 0;
   private failedRequests = 0;
   private activeConnections = 0;
+  private maxRequests: number;
+
+  constructor() {
+    // AGENTSOCIETY_GATEWAY_MAX_REQUESTS:本次网关会话的请求上限;
+    // 未设或 ≤0 不限制。防 CLI 失控循环烧钱(借鉴 CCR 限额控制)。
+    const raw = Number(process.env.AGENTSOCIETY_GATEWAY_MAX_REQUESTS ?? '0');
+    this.maxRequests = Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 0;
+  }
 
   reset(): void {
     this.startedAt = Date.now();
@@ -21,6 +32,11 @@ export class GatewayRuntimeStatsTracker {
     this.successfulRequests = 0;
     this.failedRequests = 0;
     this.activeConnections = 0;
+  }
+
+  /** 是否已超请求限额(超限时网关以 429 拒绝新请求)。 */
+  limitReached(): boolean {
+    return this.maxRequests > 0 && this.totalRequests >= this.maxRequests;
   }
 
   onRequestStart(): void {
@@ -48,6 +64,8 @@ export class GatewayRuntimeStatsTracker {
       failedRequests: this.failedRequests,
       activeConnections: this.activeConnections,
       successRate,
+      maxRequests: this.maxRequests > 0 ? this.maxRequests : undefined,
+      limitReached: this.limitReached(),
     };
   }
 }

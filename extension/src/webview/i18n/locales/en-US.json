@@ -1009,7 +1009,7 @@
     "integrationsTab": "MCP",
     "statMcp": "MCP",
     "mcpIntroTitle": "Claude Code / Codex MCP",
-    "mcpIntroBody": "Built-in Literature Search reads URL/Key from workspace .env (config page). Add custom MCP below; click Sync to write ~/.claude.json and ~/.codex/config.toml.",
+    "mcpIntroBody": "Built-in Literature Search reads URL/Key from workspace .env (config page). Add custom MCP below; click Sync to write ~/.claude.json and ~/.codex/config.toml. Synced MCP servers are user-scope (global; visible to all projects).",
     "mcpBuiltinSection": "Workspace built-in",
     "mcpBuiltinSectionHint": "Literature MCP URL/Key are edited on the config page Literature tab; shown here for probe only.",
     "mcpBuiltinEmpty": "Literature MCP not configured yet (set URL and Key on the config page)",

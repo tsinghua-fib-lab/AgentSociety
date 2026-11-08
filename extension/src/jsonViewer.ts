@@ -222,7 +222,7 @@ export class JsonViewer {
   
   ${error ? `
     <div class="error-box">
-      <strong>${labels.error}:</strong> ${error}
+      <strong>${labels.error}:</strong> ${JsonViewer.escapeHtmlText(String(error))}
     </div>
   ` : `
     <div class="json-container">
@@ -231,7 +231,7 @@ export class JsonViewer {
   `}
 
   <script>
-    const jsonData = ${error ? 'null' : JSON.stringify(data)};
+    const jsonData = ${error ? 'null' : JSON.stringify(data).replace(/</g, '\\u003c')};
     const isChinese = ${isChinese ? 'true' : 'false'};
     
     function renderJson(obj, indent = 0) {

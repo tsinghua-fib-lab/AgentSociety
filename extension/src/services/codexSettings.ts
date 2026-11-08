@@ -5,6 +5,7 @@ import * as cp from 'child_process';
 import { parse as parseToml } from 'smol-toml';
 import writeFileAtomic from 'write-file-atomic';
 import {
+  getOrCreateGatewayAuthToken,
   AI_CLI_GATEWAY_PLACEHOLDER_TOKEN,
   buildLocalGatewayBaseUrl,
   isLocalGatewayBaseUrl,
@@ -448,7 +449,8 @@ export function applyCodexGatewayConfig(port: number, provider?: CodexProviderPa
     'wire_api = "responses"',
     'requires_openai_auth = false',
     'supports_websockets = false',
-    `experimental_bearer_token = ${tomlString(AI_CLI_GATEWAY_PLACEHOLDER_TOKEN)}`,
+    // 2026-11-06 二轮审计修复:写真令牌(网关逐请求校验),非静态占位。
+    `experimental_bearer_token = ${tomlString(getOrCreateGatewayAuthToken())}`,
   ]);
   text = upsertModelProvider(text, CODEX_GATEWAY_PROVIDER_ID);
   const modelName = provider?.model?.trim();
@@ -456,7 +458,7 @@ export function applyCodexGatewayConfig(port: number, provider?: CodexProviderPa
     text = upsertTopLevelTomlField(text, 'model', tomlString(modelName));
     text = applyCodexCatalogAndPolicy(text, {
       baseUrl: provider?.baseUrl ?? gatewayUrl,
-      apiKey: AI_CLI_GATEWAY_PLACEHOLDER_TOKEN,
+      apiKey: getOrCreateGatewayAuthToken(),
       model: modelName,
       codexEnable1m: provider?.codexEnable1m,
       codexContextWindow: provider?.codexContextWindow,
@@ -560,7 +562,9 @@ export function isCodexGatewayTakeoverConfig(text: string): boolean {
     return false;
   }
   const block = readProviderBlock(text, CODEX_GATEWAY_PROVIDER_ID);
-  return block.includes(`experimental_bearer_token = ${tomlString(AI_CLI_GATEWAY_PLACEHOLDER_TOKEN)}`)
+  // 兼容两种:本进程写的真令牌,或旧配置遗留的静态占位。
+  return block.includes('name = "AgentSociety Gateway"')
+    || block.includes(`experimental_bearer_token = ${tomlString(AI_CLI_GATEWAY_PLACEHOLDER_TOKEN)}`)
     || block.includes(`experimental_bearer_token = "${AI_CLI_GATEWAY_PLACEHOLDER_TOKEN}"`);
 }
 
@@ -639,12 +643,10 @@ export function getCodexRoutingSnapshot(): {
   const gatewayBlock = readProviderBlock(text, CODEX_GATEWAY_PROVIDER_ID);
   const gatewayUrlMatch = gatewayBlock.match(/^base_url\s*=\s*"([^"]*)"/m);
   const gatewayBaseUrl = gatewayUrlMatch?.[1]?.trim();
-  const gatewayTokenMatch = gatewayBlock.match(/^experimental_bearer_token\s*=\s*"([^"]*)"/m);
-  const usesGatewayAuth = gatewayTokenMatch?.[1] === AI_CLI_GATEWAY_PLACEHOLDER_TOKEN;
   return {
     configPath,
     authPath,
-    routedViaGateway: routedViaGateway && usesGatewayAuth,
+    routedViaGateway: routedViaGateway && Boolean(gatewayBaseUrl && isLocalGatewayBaseUrl(gatewayBaseUrl)),
     directConfigured,
     gatewayBaseUrl: gatewayBaseUrl && !isLocalGatewayBaseUrl(gatewayBaseUrl) ? gatewayBaseUrl : undefined,
   };

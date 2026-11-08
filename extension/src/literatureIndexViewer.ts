@@ -49,7 +49,6 @@ interface LiteratureIndex {
 
 export class LiteratureIndexViewer {
   private static currentPanel: vscode.WebviewPanel | undefined;
-  private static currentIndexPath: string | undefined;
 
   private static safeWorkspacePath(workspaceRoot: string, filePath: string): string | undefined {
     const candidatePath = path.isAbsolute(filePath)
@@ -410,7 +409,6 @@ export class LiteratureIndexViewer {
     // 如果已有面板，复用它
     if (this.currentPanel) {
       this.currentPanel.reveal(vscode.ViewColumn.One);
-      this.currentIndexPath = filePath;
       this.updateWebview(this.currentPanel, data, filePath);
       return;
     }
@@ -427,12 +425,10 @@ export class LiteratureIndexViewer {
     );
 
     this.currentPanel = panel;
-    this.currentIndexPath = filePath;
 
     // 处理面板关闭
     panel.onDidDispose(() => {
       this.currentPanel = undefined;
-      this.currentIndexPath = undefined;
     });
 
     // 处理来自 webview 的消息
@@ -590,7 +586,7 @@ export class LiteratureIndexViewer {
   private static updateWebview(
     panel: vscode.WebviewPanel,
     data: LiteratureIndex,
-    filePath: string
+    _filePath: string
   ): void {
     const rawEntries = data.entries || [];
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
