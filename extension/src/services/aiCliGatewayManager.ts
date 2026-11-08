@@ -1024,7 +1024,7 @@ export class AiCliGatewayManager {
   async addProvider(
     provider: Omit<AiCliProviderConfig, 'id' | 'activeClaude' | 'activeCodex' | 'failoverClaude' | 'failoverCodex'> &
       Partial<Pick<AiCliProviderConfig, 'activeClaude' | 'activeCodex' | 'failoverClaude' | 'failoverCodex'>>,
-    options?: { liveApply?: 'full' | 'inventory' }
+    options?: { liveApply?: 'full' | 'inventory' | 'none' }
   ): Promise<AiCliProviderConfig> {
     await this.initialize();
     const providers = this.getProviders();
@@ -1116,51 +1116,36 @@ export class AiCliGatewayManager {
       codexEnable1m?: boolean;
       permissionMode?: string;
     },
-    options?: { liveApply?: 'full' | 'inventory' }
+    options: { targets: { claude: boolean; codex: boolean } }
   ): Promise<AiCliProviderConfig> {
     await this.initialize();
     const providers = this.getProviders();
+    const targets = options.targets;
     const apiKind = draft.apiKind ?? inferApiKindFromBaseUrl(draft.baseUrl);
-    const normalizedBaseUrl = resolveProviderBaseUrl(draft.baseUrl, apiKind);
-    const existing = providers.find(
-      (provider) =>
-        provider.name === draft.name ||
-        providerUpstream(provider).baseUrl === normalizedBaseUrl
-    );
+    const baseUrl = resolveProviderBaseUrl(draft.baseUrl, apiKind);
+    const settings = Object.fromEntries(Object.entries({ ...draft, baseUrl: draft.baseUrl.trim(), apiKey: draft.apiKey.trim(), apiKind, authMode: 'api' })
+      .filter(([key, value]) => value !== undefined && key !== 'permissionMode')) as Partial<AiCliProviderConfig>;
+    const matches = providers.filter((provider) => providerUpstream(provider).baseUrl === baseUrl && inferProviderAuthMode(provider) === 'api');
+    const protectedRole = (provider: AiCliProviderConfig) => ((provider.activeClaude || provider.failoverClaude) && !targets.claude) || ((provider.activeCodex || provider.failoverCodex) && !targets.codex);
+    const sameSettings = (provider: AiCliProviderConfig) => Object.entries(settings).every(([key, value]) => key === 'name' || (provider as unknown as Record<string, unknown>)[key] === value);
+    const existing = matches.find(sameSettings) ?? matches.find((provider) => !protectedRole(provider));
     const payload = {
-      name: draft.name,
-      baseUrl: draft.baseUrl.trim(),
-      apiKey: draft.apiKey.trim(),
-      apiKind,
-      model: draft.model,
-      codexModel: draft.codexModel,
-      sonnetModel: draft.sonnetModel,
-      opusModel: draft.opusModel,
-      fableModel: draft.fableModel,
-      haikuModel: draft.haikuModel,
-      sonnetDisplayName: draft.sonnetDisplayName,
-      opusDisplayName: draft.opusDisplayName,
-      fableDisplayName: draft.fableDisplayName,
-      haikuDisplayName: draft.haikuDisplayName,
-      declareSonnet1m: draft.declareSonnet1m,
-      declareOpus1m: draft.declareOpus1m,
-      declareFable1m: draft.declareFable1m,
-      codexEnable1m: draft.codexEnable1m,
-      permissionMode: draft.permissionMode?.trim() || 'bypassPermissions',
-      activeClaude: true,
-      activeCodex: true,
-    };
-    if (existing) {
-      const apiKey = draft.apiKey.trim() || existing.apiKey.trim();
-      return this.updateProvider(existing.id, { ...payload, apiKey }, options);
-    }
-    return this.addProvider(payload, options);
+      ...settings, name: existing?.name ?? draft.name,
+      activeClaude: targets.claude || existing?.activeClaude || false,
+      activeCodex: targets.codex || existing?.activeCodex || false,
+      permissionMode: readClaudeConfig().permissionMode,
+    } as Omit<AiCliProviderConfig, 'id' | 'failoverClaude' | 'failoverCodex'>;
+    const provider = existing
+      ? await this.updateProvider(existing.id, payload, { liveApply: 'none' })
+      : await this.addProvider(payload, { liveApply: 'none' });
+    await this.applyProviderInventoryOnly(provider, targets);
+    return provider;
   }
 
   async updateProvider(
     id: string,
     patch: Partial<AiCliProviderConfig>,
-    options?: { liveApply?: 'full' | 'inventory' }
+    options?: { liveApply?: 'full' | 'inventory' | 'none' }
   ): Promise<AiCliProviderConfig> {
     await this.initialize();
     const providers = this.getProviders();
@@ -1191,8 +1176,9 @@ export class AiCliGatewayManager {
    */
   private async applyProviderAfterSave(
     provider: AiCliProviderConfig,
-    liveApply: 'full' | 'inventory'
+    liveApply: 'full' | 'inventory' | 'none'
   ): Promise<void> {
+    if (liveApply === 'none') { return; }
     if (liveApply === 'inventory') {
       await this.applyProviderInventoryOnly(provider);
       return;
@@ -1205,13 +1191,13 @@ export class AiCliGatewayManager {
     }
   }
 
-  private async applyProviderInventoryOnly(provider: AiCliProviderConfig): Promise<void> {
+  private async applyProviderInventoryOnly(provider: AiCliProviderConfig, targets = { claude: provider.activeClaude, codex: provider.activeCodex }): Promise<void> {
     const normalized = this.normalizeProvider(provider);
-    if (provider.activeClaude) {
+    if (targets.claude) {
       writeClaudeConfig(this.providerToClaudeConfig(normalized));
       await this.persistUpstream(this.providerToGatewayUpstream(normalized));
     }
-    if (provider.activeCodex) {
+    if (targets.codex) {
       await this.projectCodexProviderLive(normalized, undefined);
     }
   }

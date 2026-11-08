@@ -26,6 +26,8 @@ export type WebImportGatewayProviderDraft = {
   codexEnable1m?: boolean;
 };
 
+export type WebImportCliTargets = { claude: boolean; codex: boolean };
+
 export type DeviceAuthState = {
   status: 'idle' | 'starting' | 'waiting' | 'polling';
   userCode?: string;
@@ -56,7 +58,7 @@ type Props = {
   applying: boolean;
   onStart: () => void;
   onCancel: () => void;
-  onConfirm: (imported: PendingWebImport, options?: { overwriteCodexClaude?: boolean }) => void;
+  onConfirm: (imported: PendingWebImport, targets: WebImportCliTargets) => void;
   onDismissConfirm: () => void;
   notify: (type: 'success' | 'error', message: string, description?: string) => void;
   prominent?: boolean;
@@ -92,18 +94,13 @@ export function WebConfigImportPanel({
   const userConfiguredCodex = Boolean(pendingImport?.codexConfiguredByUser);
   const userConfiguredClaude = Boolean(pendingImport?.claudeConfiguredByUser);
   const existingConfigDetected = userConfiguredCodex || userConfiguredClaude;
-  // Default to NOT overwriting when the user already has their own Codex/Claude config.
-  const [overwriteExisting, setOverwriteExisting] = React.useState(false);
+  const [targets, setTargets] = React.useState<WebImportCliTargets>({ claude: false, codex: false });
   React.useEffect(() => {
-    // Reset the toggle whenever a new import lands.
-    setOverwriteExisting(false);
+    setTargets({ claude: Boolean(pendingImport?.gatewayProvider) && !pendingImport?.claudeConfiguredByUser,
+      codex: Boolean(pendingImport?.gatewayProvider) && !pendingImport?.codexConfiguredByUser });
   }, [pendingImport]);
 
-  const handleApply = () => {
-    if (pendingImport) {
-      onConfirm(pendingImport, { overwriteCodexClaude: existingConfigDetected ? overwriteExisting : true });
-    }
-  };
+  const handleApply = () => { if (pendingImport) { onConfirm(pendingImport, targets); } };
 
   return (
     <>
@@ -139,16 +136,16 @@ export function WebConfigImportPanel({
                     {' · '}
                     {t('configPage.webImport.overwriteWarningDesc')}
                   </Text>
-                  <Checkbox
-                    checked={overwriteExisting}
-                    onChange={(e) => setOverwriteExisting(e.target.checked)}
-                  >
-                    {t('configPage.webImport.overwriteToggle')}
-                  </Checkbox>
                 </Space>
               }
             />
           ) : null}
+          {gateway ? <Space direction="vertical" size={6}>
+            <Text strong>{t('configPage.webImport.applyTargets')}</Text>
+            <Checkbox disabled={applying} checked={targets.claude} onChange={(event) => setTargets((previous) => ({ ...previous, claude: event.target.checked }))}>{t('configPage.webImport.applyClaude')}</Checkbox>
+            <Checkbox disabled={applying} checked={targets.codex} onChange={(event) => setTargets((previous) => ({ ...previous, codex: event.target.checked }))}>{t('configPage.webImport.applyCodex')}</Checkbox>
+            <Text type="secondary" style={{ fontSize: 12 }}>{t('configPage.webImport.inventoryHint')}</Text>
+          </Space> : null}
           <Text strong style={{ fontSize: 12 }}>
             {t('configPage.webImport.sectionSimulation')}
           </Text>

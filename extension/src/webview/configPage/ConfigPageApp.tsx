@@ -37,6 +37,7 @@ import { OFFICIAL_OPENAI_BASE_URL } from '../../aiCli/officialEndpoints';
 import { AiCliConfigSection } from './AiCliConfigSection';
 import {
   WebConfigImportPanel,
+  type WebImportCliTargets,
   type DeviceAuthState,
   type PendingWebImport,
 } from './WebConfigImportPanel';
@@ -586,10 +587,10 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
   }, []);
 
   const applyImportedWebConfig = React.useCallback(
-    (imported: PendingWebImport, options?: { overwriteCodexClaude?: boolean }) => {
-      const overwrite = options?.overwriteCodexClaude !== false;
+    (imported: PendingWebImport, targets: WebImportCliTargets) => {
       const importedConfig = imported.config ?? {};
-      const importedClaude = imported.claudeConfig ?? {};
+      const importedClaude = { ...imported.claudeConfig };
+      delete importedClaude.permissionMode;
       const importedEasyPaper = imported.easyPaperConfig ?? {};
       const mergedEnvConfig = {
         ...form.getFieldsValue(true),
@@ -601,13 +602,12 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
           ...prev,
           [ENV_LLM_SLOT.default]: toModelOptions(imported.modelOptions!.openaiCompatible),
         }));
-        setClaudeAvailableModels(toModelOptions(imported.modelOptions.claudeCode));
+        if (targets.claude) { setClaudeAvailableModels(toModelOptions(imported.modelOptions.claudeCode)); }
       }
       setEnvDraftOverrides((prev) => ({ ...prev, ...importedConfig }));
       form.setFieldsValue(mergedEnvConfig);
-      // When the user declines to overwrite their Codex/Claude Code live config,
-      // also skip pre-filling the Claude Code form (keep their own values intact).
-      if (overwrite && Object.keys(importedClaude).length > 0) {
+      // Import connection fields only for the selected CLI; retain its permission policy.
+      if (targets.claude && Object.keys(importedClaude).length > 0) {
         setClaudeDraftOverrides((prev) => ({ ...prev, ...importedClaude }));
         claudeForm.setFieldsValue({
           ...claudeForm.getFieldsValue(true),
@@ -618,7 +618,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
         ...easyPaperForm.getFieldsValue(true),
         ...importedEasyPaper,
       });
-      if (overwrite && imported.gatewayProvider) {
+      if (imported.gatewayProvider) {
         setWebImportApplying(true);
         clearWebImportApplyTimer();
         webImportApplyTimerRef.current = setTimeout(() => {
@@ -631,7 +631,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
             duration: 8,
           });
         }, WEB_IMPORT_APPLY_TIMEOUT_MS);
-        vscode.postMessage({ command: 'gatewayUpsertWebImportProvider' });
+        vscode.postMessage({ command: 'gatewayUpsertWebImportProvider', applyClaude: targets.claude, applyCodex: targets.codex });
         return;
       }
       resetWorkspaceValidationState();

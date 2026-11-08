@@ -394,3 +394,161 @@ test('CLI primary selection enforces subscription and API protocol compatibility
   assert.equal(providers[0].activeCodex, true); assert.equal(providers[1].activeCodex, false);
   assert.equal(providers[1].activeClaude, true);
 });
+
+test('MCP registry queries latest versions and follows opaque cursors without running servers', async (t) => {
+  const { registryRequestUrl, parseRegistryPage, fetchRegistryPage } = require('../out/services/mcpRegistry');
+  const seen = [];
+  const server = http.createServer((req, res) => {
+    seen.push(req.url);
+    if (req.url.startsWith('/redirect/')) { res.writeHead(302, { Location: '/registry/servers' }); res.end(); return; }
+    res.setHeader('content-type', 'application/json');
+    res.end(JSON.stringify({ servers: [null, { server: { name: 'old', version: '1' }, _meta: { 'io.modelcontextprotocol.registry/official': { status: 'deleted' } } },
+      { server: { name: 'org.example/search', version: '2', remotes: [null, { type: 'streamable-http', url: 'https://example.invalid/mcp' }] } }], metadata: { nextCursor: 'name:a/b=2+3' } }));
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise((resolve) => server.close(resolve)));
+  const source = `http://127.0.0.1:${server.address().port}/registry`;
+  const url = new URL(registryRequestUrl(source, ' search ', 'name:a/b=2+3'));
+  assert.equal(url.searchParams.get('version'), 'latest'); assert.equal(url.searchParams.get('search'), 'search');
+  assert.equal(url.searchParams.get('cursor'), 'name:a/b=2+3');
+  const page = await fetchRegistryPage({ source, search: 'search', cursor: 'name:a/b=2+3' });
+  assert.deepEqual(page.servers.map((row) => row.name), ['org.example/search']);
+  assert.equal(page.servers[0].remotes.length, 1); assert.equal(page.nextCursor, 'name:a/b=2+3');
+  await assert.rejects(fetchRegistryPage({ source: source.replace('/registry', '/redirect') }), /registry_http_302/);
+  assert.equal(seen.length, 2); assert.throws(() => parseRegistryPage({}), /invalid_registry_response/);
+  assert.throws(() => registryRequestUrl('https://user:secret@example.invalid'), /invalid_registry_source/);
+});
+
+test('MCP registry templates preserve argv boundaries, variables and client opt-in', () => {
+  const { registryVariants, resolveRegistryServer } = require('../out/shared/mcpRegistry');
+  const server = { name: 'org.example/search', version: '2', remotes: [{ type: 'streamable-http', url: '{baseUrl}/mcp', variables: { baseUrl: { isRequired: true } }, headers: [{ name: 'Authorization', value: 'Bearer {token}', variables: { token: { isRequired: true, isSecret: true } } }] }], packages: [
+    { registryType: 'npm', identifier: '@example/mcp', version: '2.1.0', transport: { type: 'stdio' }, packageArguments: [{ type: 'named', name: '--path', isRequired: true }, { type: 'positional', value: '{literal}' }], environmentVariables: [{ name: 'TOKEN', isRequired: true }] },
+    { registryType: 'pypi', identifier: 'example-mcp', version: '2.1.0', registryBaseUrl: 'https://pypi.org', transport: { type: 'stdio' } },
+    { registryType: 'oci', identifier: 'ghcr.io/example/mcp', version: '2.1.0', transport: { type: 'stdio' }, environmentVariables: [{ name: 'TOKEN', value: 'public-default' }] },
+  ] };
+  const variants = registryVariants(server);
+  assert.throws(() => resolveRegistryServer(server, variants[0], {}), /required/);
+  const remote = resolveRegistryServer(server, variants[0], { baseUrl: 'https://example.invalid', 'header:Authorization:variable:token': 'owned-token' });
+  assert.equal(remote.url, 'https://example.invalid/mcp'); assert.equal(remote.httpHeaders.Authorization, 'Bearer owned-token');
+  assert.equal(remote.enabledClaude, false); assert.equal(remote.enabledCodex, false);
+  const scoped = { remote: { type: 'streamable-http', url: 'https://example.invalid/mcp', headers: ['One', 'Two'].map((name) => ({ name, value: '{token}', variables: { token: { isSecret: true } } })) } };
+  assert.deepEqual(resolveRegistryServer(server, scoped, { 'header:One:variable:token': 'first', 'header:Two:variable:token': 'second' }).httpHeaders, { One: 'first', Two: 'second' });
+  const npm = resolveRegistryServer(server, variants[1], { '--path': 'a folder;$(literal)', TOKEN: 'owned-token' });
+  assert.deepEqual(npm.args, ['-y', '@example/mcp@2.1.0', '--path', 'a folder;$(literal)', '{literal}']);
+  assert.equal(npm.env.TOKEN, 'owned-token');
+  assert.deepEqual(resolveRegistryServer(server, variants[2], {}).args, ['--index-url', 'https://pypi.org/simple', '--from', 'example-mcp==2.1.0', 'example-mcp']);
+  assert.deepEqual(resolveRegistryServer(server, variants[3], {}).args, ['run', '--rm', '-i', '-e', 'TOKEN', 'ghcr.io/example/mcp:2.1.0']);
+  assert.throws(() => resolveRegistryServer(server, { package: { ...server.packages[0], fileSha256: 'a'.repeat(64) } }, { '--path': 'a', TOKEN: 'x' }), /registry_integrity_required/);
+  const repeated = { package: { ...server.packages[0], environmentVariables: [], packageArguments: [{ type: 'named', name: '--scope', isRepeated: true }] } };
+  assert.deepEqual(resolveRegistryServer(server, repeated, { '--scope': '["a b", "c"]' }).args.slice(-4), ['--scope', 'a b', '--scope', 'c']);
+});
+
+function mcpImportHarness() {
+  const client = require('../out/services/mcpClient');
+  return load('services/mcpImport.ts', { './mcpClient': client });
+}
+
+test('MCP import previews conflicts, isolates invalid rows and retains tool restrictions', () => {
+  const { parseMcpImport, applyMcpImport, managedMcpId } = mcpImportHarness();
+  const source = '[mcp_servers.research]\nurl="https://example.invalid/mcp"\nbearer_token_env_var="TOKEN"\nenabled_tools=["search"]\ndisabled_tools=["delete"]\ntool_timeout_sec=25\n[mcp_servers.research.http_headers]\nX-Scope="read"';
+  const items = parseMcpImport(source, 'codex', []);
+  assert.equal(items[0].state, 'new'); assert.equal(items[0].server.id, 'research');
+  assert.equal(items[0].server.codexOptions.tool_timeout_sec, 25);
+  assert.equal(items[0].server.codexOptions.enabled_tools[0], 'search');
+  const imported = applyMcpImport([], items, ['research'], { claude: false, codex: false });
+  assert.equal(imported.added, 1); assert.equal(imported.servers[0].enabledCodex, true);
+  assert.equal(parseMcpImport(source, 'codex', imported.servers)[0].state, 'same');
+  const conflict = parseMcpImport(source.replace('25', '26'), 'codex', imported.servers);
+  assert.equal(conflict[0].state, 'conflict');
+  assert.equal(applyMcpImport(imported.servers, conflict, [], { claude: false, codex: false }).servers[0].codexOptions.tool_timeout_sec, 25);
+  const mixed = parseMcpImport(JSON.stringify({ mcpServers: { good: { command: 'python', args: ['two words'], env: { TOKEN: 'owned' } }, bad: { command: 1 }, legacy: { type: 'sse', url: 'https://example.invalid/sse' } } }), 'paste', []);
+  assert.equal(mixed[0].state, 'new'); assert.equal(mixed[1].state, 'invalid');
+  assert.throws(() => applyMcpImport([], mixed, ['legacy'], { codex: true, claude: false }), /sse_claude_only/);
+  assert.notEqual(managedMcpId('文献'), managedMcpId('检索')); assert.notEqual(managedMcpId('a_b'), managedMcpId('a-b'));
+});
+
+function mcpManagerHarness(t) {
+  const os = require('node:os');
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'as2-mcp-import-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const codex = path.join(directory, 'config.toml'), claude = path.join(directory, '.claude.json');
+  const state = new Map();
+  const { McpServerManager } = load('services/mcpServerManager.ts', {
+    os: { homedir: () => directory }, '../envManager': { EnvManager: class { readEnv() { return {}; } } },
+    './mcpImport': mcpImportHarness(), './codexSettings': {
+      readCodexConfigText: () => fs.existsSync(codex) ? fs.readFileSync(codex, 'utf8') : '',
+      writeCodexConfigText: (text) => fs.writeFileSync(codex, text),
+    },
+  });
+  const manager = new McpServerManager({ globalState: { get: (key) => state.get(key), update: async (key, value) => state.set(key, value) } });
+  return { manager, codex, claude, state };
+}
+
+test('MCP import sync preserves unrelated settings and removes adopted IDs from both clients', async (t) => {
+  const { manager, codex, claude } = mcpManagerHarness(t);
+  fs.writeFileSync(codex, '# retain this comment\nmodel="owned-model"\n[mcp_servers.research]\nurl="https://example.invalid/mcp"\nenabled_tools=["search"]\ntool_timeout_sec=25\n[mcp_servers.research.http_headers]\nX-Scope="read"\n[mcp_servers.unselected]\ncommand="owned-command"\n');
+  fs.writeFileSync(claude, JSON.stringify({ theme: 'owned-theme', mcpServers: { unrelated: { command: 'owned' } } }));
+  const preview = manager.previewImport('codex');
+  await manager.applyImport(preview.token, ['research'], { claude: true, codex: false });
+  let saved = parse(fs.readFileSync(codex, 'utf8'));
+  assert.equal(saved.model, 'owned-model'); assert.equal(saved.mcp_servers.unselected.command, 'owned-command');
+  assert.equal(saved.mcp_servers.research.enabled_tools[0], 'search'); assert.equal(saved.mcp_servers.research.tool_timeout_sec, 25);
+  assert.equal(saved.mcp_servers.research.http_headers['X-Scope'], 'read');
+  assert.ok(fs.readFileSync(codex, 'utf8').includes('# retain this comment'));
+  assert.equal(JSON.parse(fs.readFileSync(claude)).mcpServers.research.headers['X-Scope'], 'read');
+  await manager.toggleServerApp('research', 'codex', false);
+  assert.equal(parse(fs.readFileSync(codex, 'utf8')).mcp_servers.research, undefined);
+  await manager.removeServer('research');
+  assert.equal(JSON.parse(fs.readFileSync(claude)).mcpServers.research, undefined);
+  assert.equal(JSON.parse(fs.readFileSync(claude)).theme, 'owned-theme');
+  assert.equal(parse(fs.readFileSync(codex, 'utf8')).mcp_servers.unselected.command, 'owned-command');
+});
+
+test('MCP import refuses stale previews and protects malformed or unsupported client files', async (t) => {
+  const { manager, codex, claude, state } = mcpManagerHarness(t);
+  const text = JSON.stringify({ mcpServers: { new: { command: 'owned-command' } } });
+  fs.writeFileSync(claude, '{"theme":"owned"}\n'); fs.writeFileSync(codex, 'model="owned"\n');
+  const inventory = manager.previewImport('paste', text);
+  await manager.applyImport(inventory.token, ['new'], { claude: false, codex: false });
+  assert.equal(fs.readFileSync(claude, 'utf8'), '{"theme":"owned"}\n'); assert.equal(fs.readFileSync(codex, 'utf8'), 'model="owned"\n');
+  const preview = manager.previewImport('paste', text);
+  state.set('agentsociety.mcpServers.v1', [{ id: 'other', name: 'Other', command: 'owned', transport: 'stdio', enabledClaude: false, enabledCodex: false }]);
+  await assert.rejects(manager.applyImport(preview.token, ['new'], { claude: true, codex: false }), /mcp_import_changed/);
+  assert.equal(fs.readFileSync(claude, 'utf8'), '{"theme":"owned"}\n');
+  fs.writeFileSync(claude, '{"broken":'); fs.writeFileSync(codex, 'model="owned"\n');
+  await assert.rejects(manager.syncLiveConfigs(), /invalid_claude_config/);
+  assert.equal(fs.readFileSync(claude, 'utf8'), '{"broken":'); assert.equal(fs.readFileSync(codex, 'utf8'), 'model="owned"\n');
+  fs.writeFileSync(claude, '{}'); fs.writeFileSync(codex, 'mcp_servers={other={command="owned"}}\n');
+  await assert.rejects(manager.toggleServerApp('other', 'codex', true));
+  assert.equal(fs.readFileSync(codex, 'utf8'), 'mcp_servers={other={command="owned"}}\n');
+});
+
+test('Web provider import updates only selected clients and preserves permission policy', async () => {
+  const writes = [];
+  const { AiCliGatewayManager } = load('services/aiCliGatewayManager.ts', {
+    '../aiCli/officialEndpoints': require('../out/aiCli/officialEndpoints'),
+    '../aiCli/providerAuth': require('../out/aiCli/providerAuth'),
+    './claudeCodeSettings': { readClaudeConfig: () => ({ permissionMode: 'default' }), writeClaudeConfig: (config) => writes.push(['claude', config]) },
+  });
+  const manager = Object.create(AiCliGatewayManager.prototype);
+  let providers = [{ id: 'owned', name: 'Owned', baseUrl: 'https://owned.example/v1', apiKind: 'openai', authMode: 'api', apiKey: 'old-key', model: 'old-model', codexModel: 'old-model', activeClaude: true, activeCodex: true }];
+  manager.initialize = async () => {}; manager.getProviders = () => providers.map((p) => ({ ...p }));
+  manager.normalizeProvider = (provider) => ({ ...provider }); manager.saveProviders = async (next) => { providers = next; };
+  manager.projectCodexProviderLive = async (provider) => writes.push(['codex', provider]);
+  manager.providerToClaudeConfig = (provider) => ({ model: provider.model, permissionMode: provider.permissionMode });
+  manager.providerToGatewayUpstream = () => ({}); manager.persistUpstream = async () => {};
+  const draft = { name: 'Imported', baseUrl: 'https://owned.example/v1', apiKind: 'openai', apiKey: 'new-key', model: 'new-model', codexModel: 'new-model', permissionMode: 'bypassPermissions' };
+  await manager.upsertImportedGatewayProvider(draft, { targets: { claude: false, codex: true } });
+  assert.deepEqual(writes.map(([role]) => role), ['codex']);
+  const original = providers.find((p) => p.id === 'owned'); assert.equal(original.apiKey, 'old-key'); assert.equal(original.activeClaude, true); assert.equal(original.activeCodex, false);
+  assert.equal(providers.find((p) => p.activeCodex).permissionMode, 'default');
+  writes.length = 0;
+  await manager.upsertImportedGatewayProvider({ ...draft, apiKey: 'inventory-key' }, { targets: { claude: false, codex: false } });
+  assert.equal(writes.length, 0); assert.equal(providers.find((p) => p.activeClaude).id, 'owned');
+  await manager.upsertImportedGatewayProvider(draft, { targets: { claude: true, codex: false } });
+  assert.deepEqual(writes.map(([role]) => role), ['claude']); assert.equal(writes[0][1].permissionMode, 'default');
+  providers = [{ ...original, activeClaude: false, activeCodex: false, failoverClaude: true }];
+  writes.length = 0;
+  await manager.upsertImportedGatewayProvider(draft, { targets: { claude: false, codex: false } });
+  assert.equal(providers.find((p) => p.id === 'owned').apiKey, 'old-key'); assert.equal(writes.length, 0);
+});

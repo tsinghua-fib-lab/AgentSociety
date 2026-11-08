@@ -1,3 +1,6 @@
+import { DEFAULT_MCP_REGISTRY } from './shared/mcpRegistry';
+import { fetchRegistryPage, normalizeRegistrySource, registryProxy } from './services/mcpRegistry';
+import type { McpImportSource } from './services/mcpImport';
 /**
  * 技能管理 Webview：Agent（后端 API）与 Claude（.claude/skills）；
  * 市场条目来自用户在设置中配置的 GitHub/GitLab/Gitee 源。
@@ -99,6 +102,8 @@ export class SkillMarketplacePanel {
 
   public static current: SkillMarketplacePanel | undefined;
 
+  private _registryRequest = 0;
+  private readonly _context: vscode.ExtensionContext;
   private readonly _extensionUri: vscode.Uri;
   private readonly _panel: vscode.WebviewPanel;
   private readonly _webview: vscode.Webview;
@@ -113,6 +118,7 @@ export class SkillMarketplacePanel {
     apiClient: ApiClient,
     projectStructureProvider: ProjectStructureProvider
   ) {
+    this._context = context;
     this._extensionUri = extensionUri;
     this._panel = panel;
     this._webview = panel.webview;
@@ -215,9 +221,11 @@ export class SkillMarketplacePanel {
           case 'fetchLocalSkillMarkdown':
             await this._fetchLocalSkillMarkdown(data.payload.skillDir);
             break;
-          case 'openExternal':
-            vscode.env.openExternal(vscode.Uri.parse(data.payload.url));
+          case 'openExternal': {
+            const uri = vscode.Uri.parse(String(data.payload.url ?? ''));
+            if (uri.scheme === 'https' || uri.scheme === 'http') { await vscode.env.openExternal(uri); }
             break;
+          }
           case 'openSkillSourcesSettings':
             await vscode.commands.executeCommand('workbench.action.openSettings', 'agentSkills.skillSources');
             break;
@@ -357,8 +365,17 @@ export class SkillMarketplacePanel {
             }
             break;
           }
-          case 'importMcpFromClaude':
-            await this._importMcpFromClaude();
+          case 'getMcpRegistrySource':
+            await this._postMessage({ type: 'mcpRegistrySource', payload: { source: this._context.globalState.get<string>('agentsociety.mcpRegistrySource', DEFAULT_MCP_REGISTRY) } });
+            break;
+          case 'listMcpRegistry':
+            await this._listMcpRegistry(data.payload);
+            break;
+          case 'previewMcpImport':
+            await this._previewMcpImport(data.payload);
+            break;
+          case 'applyMcpImport':
+            await this._applyMcpImport(data.payload);
             break;
           case 'syncMcpServers':
             await this._syncMcpServers();
@@ -1899,7 +1916,7 @@ export class SkillMarketplacePanel {
       const servers = await this._mcpManager.saveServer(input);
       await this._postMessage({ type: 'mcpServersLoaded', payload: servers });
       await this._postMessage({ type: 'mcpServerSaved', payload: { requestId } });
-      vscode.window.showInformationMessage(`MCP server「${input.name}」已保存并同步`);
+      vscode.window.showInformationMessage(`MCP server「${input.name}」已保存`);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       await this._postMessage({ type: 'mcpError', payload: { error: message, requestId } });
@@ -1926,14 +1943,54 @@ export class SkillMarketplacePanel {
     }
   }
 
-  private async _importMcpFromClaude(): Promise<void> {
+  private async _listMcpRegistry(payload: { source?: string; search?: string; cursor?: string; requestId?: number }): Promise<void> {
+    const request = ++this._registryRequest;
     try {
-      const servers = await this._mcpManager.importFromClaude();
-      await this._postMessage({ type: 'mcpServersLoaded', payload: servers });
-      vscode.window.showInformationMessage('已从 ~/.claude.json 导入 MCP 配置');
+      const source = normalizeRegistrySource(payload.source ?? DEFAULT_MCP_REGISTRY);
+      const page = await fetchRegistryPage({ source, search: payload.search, cursor: payload.cursor,
+        proxy: registryProxy(source, vscode.workspace.getConfiguration('http').get<string>('proxy')) });
+      if (request !== this._registryRequest) { return; }
+      await this._context.globalState.update('agentsociety.mcpRegistrySource', source);
+      await this._postMessage({ type: 'mcpRegistryPage', payload: { ...page, source, requestId: payload.requestId } });
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      await this._postMessage({ type: 'mcpError', payload: { error: message } });
+      if (request !== this._registryRequest) { return; }
+      const code = error instanceof Error && /^(invalid_registry_|registry_)/.test(error.message) ? error.message : 'registry_network_error';
+      await this._postMessage({ type: 'mcpRegistryError', payload: { error: code, requestId: payload.requestId } });
+    }
+  }
+
+  private async _previewMcpImport(payload: { source?: McpImportSource; text?: string; requestId?: number }): Promise<void> {
+    try {
+      const source = payload.source ?? 'paste';
+      if (!['claude', 'codex', 'file', 'paste'].includes(source)) { throw new Error('invalid_mcp_import'); }
+      let text = payload.text;
+      if (source === 'file') {
+        const uris = await vscode.window.showOpenDialog({ canSelectMany: false, filters: { 'MCP configuration': ['json', 'toml'] } });
+        if (!uris?.[0]) { await this._postMessage({ type: 'mcpImportCancelled', payload: { requestId: payload.requestId } }); return; }
+        text = fs.readFileSync(uris[0].fsPath, 'utf-8');
+      }
+      const preview = this._mcpManager.previewImport(source, text);
+      const items = preview.items.map((item) => ({ ...item, server: item.server ? {
+        ...item.server, args: item.server.args?.map(() => '••••'),
+        url: item.server.url ? new URL(item.server.url).origin + new URL(item.server.url).pathname : undefined,
+        env: item.server.env ? Object.fromEntries(Object.keys(item.server.env).map((key) => [key, '••••'])) : undefined,
+        httpHeaders: item.server.httpHeaders ? Object.fromEntries(Object.keys(item.server.httpHeaders).map((key) => [key, '••••'])) : undefined,
+        claudeOptions: undefined, codexOptions: undefined,
+      } : undefined }));
+      await this._postMessage({ type: 'mcpImportPreview', payload: { ...preview, items, requestId: payload.requestId } });
+    } catch {
+      await this._postMessage({ type: 'mcpImportError', payload: { error: 'invalid_mcp_import', requestId: payload.requestId } });
+    }
+  }
+
+  private async _applyMcpImport(payload: { token?: string; selected?: string[]; claude?: boolean; codex?: boolean; requestId?: number }): Promise<void> {
+    try {
+      const result = await this._mcpManager.applyImport(payload.token ?? '', payload.selected ?? [], { claude: payload.claude === true, codex: payload.codex === true });
+      await this._loadMcpServers();
+      await this._postMessage({ type: 'mcpImportApplied', payload: { ...result, requestId: payload.requestId } });
+    } catch (error) {
+      const code = error instanceof Error && ['mcp_import_changed', 'sse_claude_only', 'unsupported_codex_layout', 'invalid_claude_config'].includes(error.message) ? error.message : 'mcp_import_failed';
+      await this._postMessage({ type: 'mcpImportError', payload: { error: code, requestId: payload.requestId } });
     }
   }
 

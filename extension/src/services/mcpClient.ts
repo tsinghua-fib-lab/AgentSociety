@@ -12,6 +12,8 @@ export type McpServerRecord = {
   httpHeaders?: Record<string, string>;
   enabledClaude: boolean;
   enabledCodex: boolean;
+  claudeOptions?: Record<string, unknown>;
+  codexOptions?: Record<string, unknown>;
   builtin?: 'literature' | 'agentsociety';
 };
 

@@ -162,6 +162,8 @@ export class ConfigPageViewProvider {
         settings?: Record<string, boolean>;
         fingerprint?: string;
         force?: boolean;
+        applyClaude?: boolean;
+        applyCodex?: boolean;
       }) => {
         switch (message.command) {
           case 'requestConfig':
@@ -342,7 +344,7 @@ export class ConfigPageViewProvider {
             this._cancelCasdoorDeviceAuth();
             break;
           case 'gatewayUpsertWebImportProvider':
-            await this._handleGatewayUpsertWebImportProvider();
+            await this._handleGatewayUpsertWebImportProvider({ claude: message.applyClaude === true, codex: message.applyCodex === true });
             break;
           case 'dismissWebConfigImport':
             this._clearPendingImportedGateway();
@@ -684,7 +686,7 @@ export class ConfigPageViewProvider {
     }
   }
 
-  private async _postProvidersAndActiveConfig(): Promise<void> {
+  private async _postProvidersAndActiveConfig(includeClaude = true): Promise<void> {
     const manager = ConfigPageViewProvider.gatewayManager;
     if (!manager) {
       return;
@@ -694,7 +696,7 @@ export class ConfigPageViewProvider {
       providers: manager.getProviders(),
     });
     const active = manager.getActiveClaudeProvider();
-    if (active) {
+    if (includeClaude && active) {
       this._panel.webview.postMessage({
         command: 'activeProviderConfig',
         config: manager.providerToClaudeConfig(active),
@@ -1199,7 +1201,7 @@ export class ConfigPageViewProvider {
     this._pendingImportedGateway = undefined;
   }
 
-  private async _handleGatewayUpsertWebImportProvider(): Promise<void> {
+  private async _handleGatewayUpsertWebImportProvider(targets: { claude: boolean; codex: boolean }): Promise<void> {
     const manager = ConfigPageViewProvider.gatewayManager;
     const draft = this._pendingImportedGateway;
     if (
@@ -1207,10 +1209,8 @@ export class ConfigPageViewProvider {
       !draft?.name?.trim() ||
       !draft.baseUrl?.trim() ||
       !draft.apiKey?.trim() ||
-      !draft.model?.trim() ||
-      !draft.sonnetModel?.trim() ||
-      !draft.opusModel?.trim() ||
-      !draft.haikuModel?.trim()
+      (targets.claude && !draft.model?.trim()) ||
+      (targets.codex && !draft.codexModel?.trim())
     ) {
       this._panel.webview.postMessage({
         command: 'webConfigApplyResult',
@@ -1223,11 +1223,10 @@ export class ConfigPageViewProvider {
       // Web import must not start/reconcile the local gateway here — that path can hang
       // Confirm import. Inventory + direct CLI config is enough; wizard CLI step starts it later.
       const provider = await manager.upsertImportedGatewayProvider(draft, {
-        liveApply: 'inventory',
+        targets,
       });
       this._pendingImportedGateway = undefined;
-      await this._applyClaudeCodePermissionSettings('bypassPermissions');
-      await this._postProvidersAndActiveConfig();
+      await this._postProvidersAndActiveConfig(targets.claude);
       await this._postGatewayStatus();
       this._panel.webview.postMessage({
         command: 'webConfigApplyResult',

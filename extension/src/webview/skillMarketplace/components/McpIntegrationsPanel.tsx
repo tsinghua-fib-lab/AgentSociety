@@ -1,6 +1,6 @@
 import * as React from 'react';
 import {
-  Alert, Button, Checkbox, Collapse, Empty, Input, Modal, Popconfirm, Select, Space, Switch, Tag, Typography, message,
+  Alert, Button, Checkbox, Collapse, Dropdown, Empty, Input, Modal, Popconfirm, Select, Space, Switch, Tag, Typography, message,
 } from 'antd';
 import {
   CloudServerOutlined, EditOutlined, ImportOutlined, PlusOutlined, ReloadOutlined, SyncOutlined, ThunderboltOutlined,
@@ -13,6 +13,9 @@ import { ListCard } from './ListCard';
 import { TabToolbar } from './TabToolbar';
 import { parseMcpArgs, parseMcpStringMap } from '../../../shared/mcpServerDraft';
 import { normalizeMcpHttpEndpoint } from '../../../services/mcpClient';
+import { McpRegistryBrowser } from './McpRegistryBrowser';
+import { McpImportDialog } from './McpImportDialog';
+import type { McpImportSource } from '../../../services/mcpImport';
 import { SKILL_UI } from '../uiTokens';
 
 const { Text } = Typography;
@@ -54,6 +57,8 @@ export function McpIntegrationsPanel({
   onProbeStart,
 }: Props) {
   const { t } = useTranslation();
+  const [registryOpen, setRegistryOpen] = React.useState(false);
+  const [importSource, setImportSource] = React.useState<McpImportSource | null>(null);
   const [editorOpen, setEditorOpen] = React.useState(false);
   const [draft, setDraft] = React.useState(EMPTY_DRAFT);
   const [editing, setEditing] = React.useState<McpServerRecord>();
@@ -69,11 +74,11 @@ export function McpIntegrationsPanel({
       const data = event.data;
       if (!saveRequest.current || data?.payload?.requestId !== saveRequest.current) { return; }
       if (data.type === 'mcpServerSaved') { setEditorOpen(false); setSaving(false); saveRequest.current = undefined; }
-      if (data.type === 'mcpError') { setSaveError(data.payload.error); setSaving(false); saveRequest.current = undefined; }
+      if (data.type === 'mcpError') { setSaveError(t(`skillManagement.mcpImport.errors.${data.payload.error}`, { defaultValue: data.payload.error })); setSaving(false); saveRequest.current = undefined; }
     };
     window.addEventListener('message', listener);
     return () => window.removeEventListener('message', listener);
-  }, []);
+  }, [t]);
 
   const filtered = servers.filter((row) => {
     const text = [row.name, row.url, row.command, ...(probeById[row.id]?.tools ?? [])].join(' ').toLowerCase();
@@ -282,16 +287,10 @@ export function McpIntegrationsPanel({
             <Button size="small" type="primary" icon={<PlusOutlined />} onClick={openCreate}>
               {t('skillManagement.mcpAdd')}
             </Button>
-            <Button
-              size="small"
-              icon={<ImportOutlined />}
-              onClick={() => {
-                onRefresh?.();
-                vscode.postMessage({ type: 'importMcpFromClaude' });
-              }}
-            >
-              {t('skillManagement.mcpImportClaude')}
-            </Button>
+            <Button size="small" icon={<CloudServerOutlined />} onClick={() => setRegistryOpen(true)}>{t('skillManagement.registry.browse')}</Button>
+            <Dropdown menu={{ items: (['claude', 'codex', 'file', 'paste'] as const).map((source) => ({ key: source, label: t(`skillManagement.mcpImport.source_${source}`), onClick: () => setImportSource(source) })) }}>
+              <Button size="small" icon={<ImportOutlined />}>{t('skillManagement.mcpImport.title')}</Button>
+            </Dropdown>
             <Button
               size="small"
               icon={<SyncOutlined />}
@@ -397,6 +396,14 @@ export function McpIntegrationsPanel({
         )}
       </PageSection>
 
+      <McpRegistryBrowser open={registryOpen} vscode={vscode} onCancel={() => setRegistryOpen(false)} onSelect={(record) => {
+        setRegistryOpen(false); setEditing(undefined); setSaveError('');
+        setDraft({ ...EMPTY_DRAFT, ...record, url: record.url ?? '', command: record.command ?? '', args: JSON.stringify(record.args ?? [], null, 2),
+          envText: JSON.stringify(record.env ?? {}, null, 2), headersText: JSON.stringify(record.httpHeaders ?? {}, null, 2), bearerTokenEnvVar: record.bearerTokenEnvVar ?? '',
+        });
+        setEditorOpen(true);
+      }} />
+      <McpImportDialog source={importSource} vscode={vscode} onClose={() => setImportSource(null)} />
       <Modal
         title={t(editing ? 'skillManagement.mcpEdit' : 'skillManagement.mcpAdd')}
         open={editorOpen}
