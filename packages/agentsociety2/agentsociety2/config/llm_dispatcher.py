@@ -222,7 +222,11 @@ def is_context_limit_error(error: Exception) -> bool:
 
 
 class _AdjustableSemaphore:
-    """Capacity-adjustable asyncio semaphore (Condition-based)."""
+    """Capacity-adjustable semaphore retaining debt while requests are in flight.
+
+    ``_available`` may be negative after shrinking below the number of holders.
+    Releases repay this debt before waking a new request.
+    """
 
     def __init__(self, capacity: int) -> None:
         self._capacity = capacity
@@ -241,7 +245,7 @@ class _AdjustableSemaphore:
 
     async def release(self) -> None:
         async with self._cond:
-            self._available += 1
+            self._available = min(self._available + 1, self._capacity)
             self._cond.notify(1)
 
     async def set_capacity(self, new_capacity: int) -> int:
@@ -254,7 +258,7 @@ class _AdjustableSemaphore:
                 self._available += delta
                 self._cond.notify(delta)
             elif delta < 0:
-                self._available = max(0, self._available + delta)
+                self._available += delta
             return old
 
 

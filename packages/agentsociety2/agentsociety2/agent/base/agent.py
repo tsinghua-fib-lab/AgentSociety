@@ -433,18 +433,20 @@ class AgentBase(ABC):
             "step_count": 0,
             "current_time": None,
             "tick": None,
-            "visible_skills": [],
-            "activated_skills": [],
-            "disabled_skills": sorted(
-                str(s)
-                for s in (config or {}).get("disabled_skill_ids", [])
-                if str(s).strip()
-            ),
-            "default_activated_skills": sorted(
-                str(s)
-                for s in (config or {}).get("default_activated_skill_ids", [])
-                if str(s).strip()
-            ),
+            "skills": {
+                "visible": [],
+                "activated": [],
+                "disabled": sorted(
+                    str(s)
+                    for s in (config or {}).get("disabled_skill_ids", [])
+                    if str(s).strip()
+                ),
+                "default_activated": sorted(
+                    str(s)
+                    for s in (config or {}).get("default_activated_skill_ids", [])
+                    if str(s).strip()
+                ),
+            },
             "initialized_at": None,
         }
         (workspace_path / AGENT_JSON_PATH).write_text(
@@ -520,8 +522,9 @@ class AgentBase(ABC):
         # overrides it in _apply_person_config.
 
         # Restore visible/activated skill subset from AGENT.json.
-        visible = {str(s) for s in meta.get("visible_skills", []) if str(s).strip()}
-        activated = {str(s) for s in meta.get("activated_skills", []) if str(s).strip()}
+        skills = meta.get("skills", {})
+        visible = {str(s) for s in skills.get("visible", []) if str(s).strip()}
+        activated = {str(s) for s in skills.get("activated", []) if str(s).strip()}
         self.skill_runtime.set_visible_skills(visible)
         self.skill_runtime.set_activated_skills(activated)
 
@@ -574,6 +577,9 @@ class AgentBase(ABC):
         if self._env is not None:
             try:
                 self.discover_skill_sources(self._env)
+                # Environment/custom IDs become resolvable only after discovery
+                # on a cold worker. Restore the saved activation set at that point.
+                self.skill_runtime.add_default_activated_skills(activated)
             except Exception as exc:  # pragma: no cover - defensive
                 logger.warning(
                     "Agent %s: skill re-discovery on restore failed: %s",
@@ -1204,7 +1210,7 @@ The constructor ``__init__`` is arg-less.
         agent 的 workspace 根目录),再扫描由两个来源合并出的额外技能
         目录:
 
-        - 声明式:``config.json`` 中的 ``extra_skill_paths``(在
+        - 声明式:``config.json`` 中的 ``extra_skill_paths`` (在
           :meth:`restore` 中解析);
         - 程序式:此处的 ``extra_skill_paths`` 参数。
 
@@ -1665,7 +1671,11 @@ The constructor ``__init__`` is arg-less.
                 )
             if action == "write":
                 path = str(args.get("path") or "")
-                if self._is_core_owned_workspace_path(path):
+                if self._is_core_owned_workspace_path(
+                    self._workspace.resolve(path)
+                    .relative_to(self._workspace.root)
+                    .as_posix()
+                ):
                     return ReactToolResult(
                         True,
                         (
@@ -1687,10 +1697,18 @@ The constructor ``__init__`` is arg-less.
                 # Workspace-relative, like ``read``/``grep``: an absolute host
                 # path is noise to the model and varies per agent, so it would
                 # break prompt-prefix reuse for no benefit.
-                return ReactToolResult(True, f"written: {path}", {"path": path})
+                return ReactToolResult(
+                    result.ok,
+                    f"written: {path}" if result.ok else result.error,
+                    result.__dict__,
+                )
             if action == "append":
                 path = str(args.get("path") or "")
-                if self._is_core_owned_workspace_path(path):
+                if self._is_core_owned_workspace_path(
+                    self._workspace.resolve(path)
+                    .relative_to(self._workspace.root)
+                    .as_posix()
+                ):
                     return ReactToolResult(
                         True,
                         (
@@ -1919,14 +1937,31 @@ The constructor ``__init__`` is arg-less.
 
         :param path: LLM 工具循环请求的 workspace 相对路径。
         :returns: 通用 workspace 变更工具不得编辑该路径时为 True。
+
+        归一化与 ``WorkspaceFS.resolve`` 对齐(2026-11-06 审计修复):
+        ``posixpath.normpath`` 消掉 ``..`` 段(``subdir/../AGENT.json``
+        此前绕过清单;大小写用 ``casefold`` 兜住大小写不敏感文件系统
+        (macOS APFS 上 ``agent.json`` 此前可命中 AGENT.json)。
         """
-        normalized = str(path or "").replace("\\", "/").strip().lstrip("./")
+        import posixpath
+
+        normalized = str(path or "").replace("\\", "/").strip()
+        normalized = posixpath.normpath(normalized)
+        while normalized.startswith("./"):
+            normalized = normalized[2:]
+        if not normalized or normalized == ".":
+            return False
+        lowered = normalized.casefold()
         return (
-            normalized == "AGENT.json"
-            or normalized == "config.json"
-            or normalized == "MEMORY.md"
-            or normalized.startswith(("memory/", "state/daily_guidance/"))
-            or normalized == "state/todos.json"
+            # 大小写不敏感文件系统(macOS APFS)下 casefold 兜住变体;
+            # TODO 真实路径是根目录 TODO.json 与 state/todos_archive.jsonl
+            # (todo.py:TODO_STATE_PATH/TODO_ARCHIVE_PATH)。
+            lowered == "agent.json"
+            or lowered == "config.json"
+            or lowered == "memory.md"
+            or lowered == "todo.json"
+            or lowered.startswith(("memory/", "state/daily_guidance/"))
+            or lowered == "state/todos_archive.jsonl"
         )
 
     def _normalize_workspace_read_path(self, path: str) -> str:

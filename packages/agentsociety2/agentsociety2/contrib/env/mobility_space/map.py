@@ -38,6 +38,18 @@ def dict2pb(d: dict, pb: T) -> T:
     return json_format.ParseDict(d, pb, ignore_unknown_fields=True)
 
 
+_MAP_CACHE_SECRET_FILE = os.path.join(
+    os.path.expanduser("~"), ".agentsociety_map_cache_secret"
+)
+
+
+def _map_cache_secret() -> bytes:
+    """地图缓存签名密钥(惰性生成,0600;并发竞态时重读赢家文件)。"""
+    from agentsociety2.cache_integrity import cache_secret
+
+    return cache_secret(_MAP_CACHE_SECRET_FILE)
+
+
 class Map:
     """解析 ``map_pb2.Map`` 并提供查询与 GeoJSON 导出。
 
@@ -63,8 +75,28 @@ class Map:
         cache_path = pb_path + ".cache"
         if os.path.exists(cache_path):
             logging.debug("Start load cache file")
+            # 完整性校验(CodeQL S301 缓解):缓存被篡改即任意代码执行——
+            # 与 router_codegen 模板缓存同款 HMAC 帧;坏帧弃缓存重建,
+            # 不 crash(缓存只是加速,源 pb 始终可信)。
+            import hashlib
+            import hmac as _hmac
+
+            secret = _map_cache_secret()
             with open(cache_path, "rb") as f:
-                map_data = pickle.load(f)
+                raw = f.read()
+            payload, sep, mac = raw.rpartition(b"\n@@HMAC@@\n")
+            if not sep or not _hmac.compare_digest(
+                _hmac.new(secret, payload, hashlib.sha256).hexdigest().encode(),
+                mac.strip(),
+            ):
+                logging.warning("Map cache HMAC mismatch; rebuilding from pb")
+                map_data = None
+            else:
+                try:
+                    map_data = pickle.loads(payload)
+                except Exception:
+                    logging.warning("Map cache unpickle failed; rebuilding")
+                    map_data = None
             logging.debug("Finish load cache file")
 
         if map_data is None:
@@ -99,8 +131,13 @@ class Map:
             map_data = self._parse_map(jsons)
             logging.debug("Finish parse pb file")
             logging.debug("Start save cache file")
+            import hashlib
+            import hmac as _hmac
+
+            payload = pickle.dumps(map_data)
+            mac = _hmac.new(_map_cache_secret(), payload, hashlib.sha256).hexdigest()
             with open(cache_path, "wb") as f:
-                pickle.dump(map_data, f)
+                f.write(payload + b"\n@@HMAC@@\n" + mac.encode())
             logging.debug("Finish save cache file")
 
         self.header: dict = map_data["header"]

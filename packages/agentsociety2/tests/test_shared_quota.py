@@ -285,7 +285,9 @@ async def test_cancelled_request_returns_both_capacities(monkeypatch, tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_connection_retry_backs_off_without_holding_capacity(monkeypatch, tmp_path):
+async def test_connection_retry_backs_off_without_holding_capacity(
+    monkeypatch, tmp_path
+):
     """短暂断连不能瞬间耗尽重试次数，等待期间也不能占用并发额度。"""
     from unittest.mock import AsyncMock, Mock
 
