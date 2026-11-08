@@ -1,3 +1,4 @@
+import { mcpJsonRpc, mcpSessionHeaders, normalizeMcpHttpEndpoint } from './services/mcpClient';
 /**
  * 配置页视图提供者 (Config Page View Provider)
  *
@@ -1518,52 +1519,8 @@ export class ConfigPageViewProvider {
     });
   }
 
-  /**
-   * 向 MCP Streamable HTTP 端点发送 JSON-RPC 请求并解析响应。
-   *
-   * litellm 的 /mcp/ 返回 text/event-stream（每行 `data: {...}`），也可能直接返回 JSON，
-   * 这里统一提取出 JSON-RPC payload。叠加检测超时，避免长调用挂起。
-   */
-  private async _mcpJsonRpc(
-    endpoint: string,
-    headerMap: Record<string, string> | undefined,
-    payload: Record<string, unknown>
-  ): Promise<{ ok: boolean; status: number; data: unknown | null }> {
-    const headers = {
-      ...(headerMap ?? {}),
-      'Content-Type': 'application/json',
-      Accept: 'application/json, text/event-stream',
-    };
-    const { signal, cleanup } = createTimeoutSignal(CONFIG_PAGE_API_VALIDATE_TIMEOUT_MS);
-    try {
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(payload),
-        signal,
-      });
-      const text = await res.text();
-      let data: unknown = null;
-      for (const line of text.split(/\r?\n/)) {
-        if (line.startsWith('data: ')) {
-          try {
-            data = JSON.parse(line.slice('data: '.length));
-          } catch {
-            // 忽略无法解析的 data 行
-          }
-        }
-      }
-      if (data === null) {
-        try {
-          data = JSON.parse(text);
-        } catch {
-          data = null;
-        }
-      }
-      return { ok: res.ok, status: res.status, data };
-    } finally {
-      cleanup();
-    }
+  private _mcpJsonRpc(endpoint: string, headers: Record<string, string> | undefined, payload: Record<string, unknown>): ReturnType<typeof mcpJsonRpc> {
+    return mcpJsonRpc(endpoint, headers, payload, CONFIG_PAGE_API_VALIDATE_TIMEOUT_MS);
   }
 
   private _literatureAuthHeaders(apiKey: string): Record<string, string> | undefined {
@@ -1601,21 +1558,6 @@ export class ConfigPageViewProvider {
     );
   }
 
-  /** 规范化 MCP Streamable HTTP 端点：必须以 /mcp/ 结尾，返回完整 URL；非法返回 null。 */
-  private _literatureMcpEndpoint(mcpUrl: string): string | null {
-    try {
-      const trimmed = mcpUrl.trim();
-      const normalized = trimmed.endsWith('/mcp') ? `${trimmed}/` : trimmed;
-      if (!normalized.endsWith('/mcp/')) {
-        return null;
-      }
-      new URL(normalized);
-      return normalized;
-    } catch {
-      return null;
-    }
-  }
-
   private _pickLiteratureMcpTool(
     toolNames: string[],
     suffix: (typeof ConfigPageViewProvider.LITERATURE_MCP_TOOL_SUFFIXES)[number]
@@ -1634,7 +1576,7 @@ export class ConfigPageViewProvider {
   private async _handleValidateLiteratureSearch(config: Partial<ConfigValues>): Promise<void> {
     const mcpUrl = config.literatureSearchMcpUrl || '';
     const apiKey = config.literatureSearchApiKey || '';
-    const authHeaders = this._literatureAuthHeaders(apiKey);
+    let authHeaders = this._literatureAuthHeaders(apiKey);
 
     if (!mcpUrl.trim()) {
       this._panel.webview.postMessage({
@@ -1654,25 +1596,9 @@ export class ConfigPageViewProvider {
       return;
     }
 
-    if (!mcpUrl.includes('/mcp')) {
-      this._panel.webview.postMessage({
-        command: 'literatureValidationResult',
-        success: false,
-        error: 'MCP 地址应为 https://llmapi.fiblab.net/mcp/',
-      });
-      return;
-    }
-
-    // 直接走 MCP Streamable HTTP 端点（与运行时子进程的实际调用方式一致）。
-    // 不再使用 /mcp-rest/*：litellm v1.85 的 /mcp-rest/tools/call 要求 server_id，
-    // 而 /mcp-rest/tools/list 不返回 server_id，导致检测必然 400 失败。
-    const endpoint = this._literatureMcpEndpoint(mcpUrl);
+    const endpoint = normalizeMcpHttpEndpoint(mcpUrl);
     if (!endpoint) {
-      this._panel.webview.postMessage({
-        command: 'literatureValidationResult',
-        success: false,
-        error: '请使用 MCP 网关地址 https://llmapi.fiblab.net/mcp/',
-      });
+      this._panel.webview.postMessage({ command: 'literatureValidationResult', success: false, error: '请输入有效的 HTTP(S) MCP 地址' });
       return;
     }
 
@@ -1688,7 +1614,7 @@ export class ConfigPageViewProvider {
         id: 1,
         method: 'initialize',
         params: {
-          protocolVersion: '2024-11-05',
+          protocolVersion: '2025-11-25',
           capabilities: {},
           clientInfo: { name: 'agentsociety-ext', version: '1' },
         },
@@ -1701,6 +1627,8 @@ export class ConfigPageViewProvider {
         });
         return;
       }
+
+      authHeaders = mcpSessionHeaders(init, authHeaders);
 
       // 2) 发送 initialized 通知（无需响应）
       await this._mcpJsonRpc(endpoint, authHeaders, {

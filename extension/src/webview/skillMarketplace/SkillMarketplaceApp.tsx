@@ -1,7 +1,7 @@
 import * as React from 'react';
 import {
   ConfigProvider, Layout, Input, Button, Typography, Tag, Space, Spin, Empty,
-  message, Modal, Tooltip, Tabs, Switch, Collapse, Alert, Pagination, Dropdown, Segmented,
+  message, Modal, Tooltip, Tabs, Switch, Collapse, Alert, Pagination, Dropdown, Segmented, Select,
 } from 'antd';
 import type { MenuProps } from 'antd';
 import {
@@ -37,6 +37,7 @@ import {
   versionTag,
   SourcesConfigPanel,
 } from './components';
+import { mcpConnectionKey } from '../../services/mcpClient';
 import { SKILL_UI, heroShellStyle, iconBadgeStyle, skillGridStyle } from './uiTokens';
 
 const { Content } = Layout;
@@ -65,6 +66,7 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
   const [bundledPluginsLoading, setBundledPluginsLoading] = React.useState(false);
   const [agentMarketplaceSkills, setAgentMarketplaceSkills] = React.useState<MarketplaceSkill[]>([]);
   const [claudeMarketplaceSkills, setClaudeMarketplaceSkills] = React.useState<MarketplaceSkill[]>([]);
+  const [marketStatus, setMarketStatus] = React.useState('all');
   const [marketplaceLoading, setMarketplaceLoading] = React.useState(false);
   const [agentMarketplaceLoadErrors, setAgentMarketplaceLoadErrors] = React.useState<MarketplaceLoadError[]>([]);
   const [claudeMarketplaceLoadErrors, setClaudeMarketplaceLoadErrors] = React.useState<MarketplaceLoadError[]>([]);
@@ -118,7 +120,8 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
   const [mcpPresets, setMcpPresets] = React.useState<McpPresetCatalogItem[]>([]);
   const [mcpLoading, setMcpLoading] = React.useState(false);
   const [mcpProbeById, setMcpProbeById] = React.useState<Record<string, McpProbeResult | undefined>>({});
-  const [mcpProbingId, setMcpProbingId] = React.useState<string | undefined>();
+  const [mcpProbingIds, setMcpProbingIds] = React.useState<Set<string>>(() => new Set());
+  const mcpConnections = React.useRef(new Map<string, string>());
 
   React.useEffect(() => {
     const handle = setTimeout(() => {
@@ -307,27 +310,27 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
         }
         case 'mcpServersLoaded': {
           const payload = msg.payload as { servers?: McpServerRecord[]; presets?: McpPresetCatalogItem[] } | McpServerRecord[];
-          if (Array.isArray(payload)) {
-            setMcpServers(payload);
-          } else {
-            setMcpServers(payload?.servers ?? []);
-            setMcpPresets(payload?.presets ?? []);
-          }
+          const servers = Array.isArray(payload) ? payload : payload?.servers ?? [];
+          const next = new Map(servers.map((server) => [server.id, mcpConnectionKey(server)]));
+          const previous = mcpConnections.current;
+          setMcpProbeById((results) => Object.fromEntries(Object.entries(results).filter(([id]) => previous.get(id) === next.get(id) && next.has(id))));
+          mcpConnections.current = next;
+          setMcpServers(servers);
+          if (!Array.isArray(payload)) { setMcpPresets(payload?.presets ?? []); }
           setMcpLoading(false);
-          setMcpProbingId(undefined);
+          setMcpProbingIds((ids) => new Set([...ids].filter((id) => next.has(id))));
           break;
         }
         case 'mcpProbeResult': {
           const p = msg.payload as { id?: string; result?: McpProbeResult };
           if (p?.id && p.result) {
             setMcpProbeById((prev) => ({ ...prev, [p.id as string]: p.result }));
-            setMcpProbingId(undefined);
+            setMcpProbingIds((ids) => { const next = new Set(ids); next.delete(p.id!); return next; });
           }
           break;
         }
         case 'mcpError':
           setMcpLoading(false);
-          setMcpProbingId(undefined);
           message.error(msg.payload?.error || t('skillManagement.mcpError'));
           break;
       }
@@ -522,29 +525,26 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
     );
   }, [claudeCodeSkills, searchQuery]);
 
-  const filteredAgentMarketplaceSkills = React.useMemo(() => {
-    if (!searchQuery) return agentMarketplaceSkills;
-    const q = searchQuery.toLowerCase();
-    return agentMarketplaceSkills.filter(
-      s => s.name.toLowerCase().includes(q) || (s.description || '').toLowerCase().includes(q)
-    );
-  }, [agentMarketplaceSkills, searchQuery]);
-
-  const filteredClaudeMarketplaceSkills = React.useMemo(() => {
-    if (!searchQuery) return claudeMarketplaceSkills;
-    const q = searchQuery.toLowerCase();
-    return claudeMarketplaceSkills.filter(
-      s => s.name.toLowerCase().includes(q) || (s.description || '').toLowerCase().includes(q)
-    );
-  }, [claudeMarketplaceSkills, searchQuery]);
+  const marketplaceInstalled = (skill: MarketplaceSkill, target: MarketplaceTarget) => Boolean(skill.installedVersion) ||
+    (target === 'agent' ? agentSkills : claudeCodeSkills).some((row) => row.name === skill.id);
+  const clearMarketFilters = () => { setSearchInput(''); setSearchQuery(''); setMarketStatus('all'); };
+  const matchesMarketplace = (skill: MarketplaceSkill, target: MarketplaceTarget) => {
+    const text = [skill.name, skill.description, skill.descriptionZh, skill.repo, skill.author, ...skill.tags].join(' ').toLowerCase();
+    const installed = marketplaceInstalled(skill, target);
+    return text.includes(searchQuery.trim().toLowerCase()) && (marketStatus === 'all' ||
+      (marketStatus === 'installed' && installed) || (marketStatus === 'available' && !installed) ||
+      (marketStatus === 'updates' && Boolean(skill.updateAvailable && skill.installedVersion)));
+  };
+  const filteredAgentMarketplaceSkills = agentMarketplaceSkills.filter((skill) => matchesMarketplace(skill, 'agent'));
+  const filteredClaudeMarketplaceSkills = claudeMarketplaceSkills.filter((skill) => matchesMarketplace(skill, 'claudeCode'));
 
   React.useEffect(() => {
     setAgentMarketPage(1);
-  }, [searchQuery, filteredAgentMarketplaceSkills.length]);
+  }, [searchQuery, marketStatus, filteredAgentMarketplaceSkills.length]);
 
   React.useEffect(() => {
     setClaudeMarketPage(1);
-  }, [searchQuery, filteredClaudeMarketplaceSkills.length]);
+  }, [searchQuery, marketStatus, filteredClaudeMarketplaceSkills.length]);
 
   const agentMarketPageSlice = React.useMemo(() => {
     const start = (agentMarketPage - 1) * MARKETPLACE_PAGE_SIZE;
@@ -764,9 +764,7 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
     installTarget: 'agent' | 'claudeCode'
   ) => {
     const installing = isInstalling(skill.id);
-    const alreadyInstalled = installTarget === 'agent'
-      ? agentSkills.some(s => s.name === skill.id)
-      : claudeCodeSkills.some(s => s.name === skill.id);
+    const alreadyInstalled = marketplaceInstalled(skill, installTarget);
     const hasUpdate = skill.updateAvailable && skill.installedVersion;
     const cardKey = installTarget === 'agent' ? `agent-mp-${skill.id}` : `claude-mp-${skill.id}`;
     const handleInstall = installTarget === 'agent'
@@ -1033,9 +1031,8 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
     const page = isAgent ? agentMarketPage : claudeMarketPage;
     const setPage = isAgent ? setAgentMarketPage : setClaudeMarketPage;
     const slice = isAgent ? agentMarketPageSlice : claudeMarketPageSlice;
-    const emptyText = isAgent
-      ? t('skillManagement.noMarketplaceSkillsAgent')
-      : t('skillManagement.noMarketplaceSkillsClaude');
+    const hasFilters = Boolean(searchQuery.trim()) || marketStatus !== 'all';
+    const emptyText = hasFilters ? t('skillManagement.noSearchResults') : t(isAgent ? 'skillManagement.noMarketplaceSkillsAgent' : 'skillManagement.noMarketplaceSkillsClaude');
     const renderCard = isAgent ? renderAgentMarketplaceCard : renderClaudeMarketplaceCard;
 
     return (
@@ -1059,9 +1056,8 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
           <div style={{ textAlign: 'center', padding: 40 }}><Spin /></div>
         ) : skills.length === 0 ? (
           <Empty description={emptyText} style={{ padding: 40 }}>
-            <Button type="primary" icon={<SettingOutlined />} onClick={() => openSourcesModal(target)}>
-              {t('skillManagement.openSkillSourcesSettings')}
-            </Button>
+            {hasFilters ? <Button onClick={clearMarketFilters}>{t('skillManagement.clearFilters')}</Button> :
+              <Button type="primary" icon={<SettingOutlined />} onClick={() => openSourcesModal(target)}>{t('skillManagement.openSkillSourcesSettings')}</Button>}
           </Empty>
         ) : (
           <>
@@ -1135,6 +1131,8 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
             : t('skillManagement.marketplaceClaudeShort')
         }
       >
+        <Select aria-label={t('skillManagement.marketStatus')} value={marketStatus} onChange={setMarketStatus} style={{ minWidth: 160, marginBottom: 12 }}
+          options={['all', 'available', 'installed', 'updates'].map((value) => ({ value, label: t(`skillManagement.marketStatus_${value}`) }))} />
         {renderMarketplaceBody(marketplaceTarget)}
       </PageSection>
     </div>
@@ -1208,7 +1206,8 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
                 <ToolOutlined />
               )}
             {filteredAgentSkills.length === 0 && (
-              <Empty description={t('skillManagement.noAgentSkills')} style={{ padding: 40 }}>
+              <Empty description={t(searchQuery ? 'skillManagement.noSearchResults' : 'skillManagement.noAgentSkills')} style={{ padding: 40 }}>
+                {searchQuery ? <Button onClick={clearMarketFilters}>{t('skillManagement.clearFilters')}</Button> : null}
                 <Space>
                   <Button type="primary" icon={<ImportOutlined />} onClick={handleImportAgentSkill}>
                     {t('skillManagement.importSkill')}
@@ -1413,7 +1412,8 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
               </PageSection>
             )}
             {claudeUnifiedRows.length === 0 && (
-              <Empty description={t('skillManagement.noClaudeCodeSkills')} style={{ padding: 40 }}>
+              <Empty description={t(searchQuery ? 'skillManagement.noSearchResults' : 'skillManagement.noClaudeCodeSkills')} style={{ padding: 40 }}>
+                {searchQuery ? <Button onClick={clearMarketFilters}>{t('skillManagement.clearFilters')}</Button> : null}
                 <Space>
                   <Button type="primary" icon={<ImportOutlined />} onClick={handleImportClaudeCodeSkill}>
                     {t('skillManagement.importClaudeSkill')}
@@ -1730,9 +1730,9 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
                       presets={mcpPresets}
                       loading={mcpLoading}
                       probeById={mcpProbeById}
-                      probingId={mcpProbingId}
+                      probingIds={mcpProbingIds}
                       onRefresh={() => setMcpLoading(true)}
-                      onProbeStart={(id) => setMcpProbingId(id)}
+                      onProbeStart={(id) => setMcpProbingIds((ids) => new Set(ids).add(id))}
                     />
                   ),
                 },

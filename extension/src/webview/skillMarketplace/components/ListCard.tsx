@@ -26,6 +26,12 @@ export function ListCard({
     <Card
       hoverable={hoverable}
       onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      className={onClick ? 'as-interactive-card' : undefined}
+      onKeyDown={onClick ? (event) => {
+        if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); onClick(); }
+      } : undefined}
       style={{
         ...surfaceCardStyle(palette, { accent }),
         marginBottom: SKILL_UI.space.md,

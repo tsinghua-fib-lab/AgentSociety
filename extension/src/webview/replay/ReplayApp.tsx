@@ -3,7 +3,7 @@
  */
 
 import * as React from 'react';
-import { ConfigProvider } from 'antd';
+import { Button, ConfigProvider } from 'antd';
 import { useTranslation } from 'react-i18next';
 import type { ExtensionMessage, VSCodeAPI } from './types';
 import { ReplayProvider, useReplay } from './store';
@@ -117,18 +117,29 @@ const ReplayAppInner: React.FC<ReplayAppProps> = ({ vscode }) => {
       return;
     }
     const timer = window.setInterval(() => {
+      if (document.hidden) { return; }
       vscode.postMessage({ command: 'fetchExperimentInfo' });
       vscode.postMessage({ command: 'fetchTimeline' });
     }, 5000);
     return () => window.clearInterval(timer);
   }, [initialized, timeline.length, experimentInfo?.run_status, vscode]);
 
+  const refresh = () => {
+    actions.setError(null);
+    actions.setLoading(true);
+    vscode.postMessage({ command: 'fetchExperimentInfo' });
+    vscode.postMessage({ command: 'fetchTimeline' });
+    vscode.postMessage({ command: 'fetchPanelSchema' });
+    vscode.postMessage({ command: 'fetchAgentProfiles' });
+  };
+
   if (error) {
     return (
       <div className="loading-container">
         <div style={{ fontSize: '48px' }}>⚠️</div>
         <div style={{ color: 'var(--vscode-errorForeground)' }}>{t('replay.errorTitle')}</div>
-        <div style={{ fontSize: '12px', maxWidth: '400px', textAlign: 'center' }}>{error}</div>
+        <div role="alert" style={{ fontSize: '12px', maxWidth: '400px', textAlign: 'center' }}>{error}</div>
+        <Button onClick={refresh}>{t('replay.retry')}</Button>
       </div>
     );
   }
@@ -169,18 +180,7 @@ const ReplayAppInner: React.FC<ReplayAppProps> = ({ vscode }) => {
         <div style={{ fontSize: '12px', opacity: 0.7, maxWidth: '420px', textAlign: 'center' }}>
           {hint}
         </div>
-        <button
-          style={{ marginTop: 12 }}
-          onClick={() => {
-            actions.setError(null);
-            actions.setLoading(true);
-            vscode.postMessage({ command: 'fetchExperimentInfo' });
-            vscode.postMessage({ command: 'fetchTimeline' });
-            vscode.postMessage({ command: 'fetchPanelSchema' });
-          }}
-        >
-          {t('replay.refreshTimeline')}
-        </button>
+        <Button style={{ marginTop: 12 }} onClick={refresh}>{t('replay.refreshTimeline')}</Button>
       </div>
     );
   }

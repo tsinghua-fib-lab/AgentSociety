@@ -50,7 +50,7 @@ import {
 } from './skillMarketplace/security';
 import { ConfigPageViewProvider } from './configPageViewProvider';
 import { McpServerManager, MCP_SERVER_PRESETS, type McpServerInput } from './services/mcpServerManager';
-import { probeHttpMcpServer } from './services/mcpClient';
+import { mcpConnectionKey, probeHttpMcpServer } from './services/mcpClient';
 import { appendSharedOutputLine, OUTPUT_CHANNEL_MAIN } from './shared/outputChannels';
 
 function hostFromMaybeUrl(value: string | undefined): string | undefined {
@@ -133,12 +133,8 @@ export class SkillMarketplacePanel {
         }
         switch (data.type) {
           case 'ready':
-            await this._loadAgentSkills();
-            await this._loadClaudeCodeSkills();
-            await this._loadBuiltinSkills();
-            await this._loadSkillPresets();
-            await this._loadMarketplaceSkills();
-            await this._loadMcpServers();
+            // Installed skills, plugins and MCP servers have independent list requests.
+            await Promise.all([this._loadSkillPresets(), this._loadMarketplaceSkills()]);
             break;
 
           // Agent Skills
@@ -341,7 +337,7 @@ export class SkillMarketplacePanel {
             await this._loadMcpServers();
             break;
           case 'saveMcpServer':
-            await this._saveMcpServer(data.payload as McpServerInput);
+            await this._saveMcpServer(data.payload as McpServerInput, typeof data.requestId === 'string' ? data.requestId : undefined);
             break;
           case 'removeMcpServer': {
             const pl = data.payload as { id?: string } | undefined;
@@ -1898,14 +1894,15 @@ export class SkillMarketplacePanel {
     });
   }
 
-  private async _saveMcpServer(input: McpServerInput): Promise<void> {
+  private async _saveMcpServer(input: McpServerInput, requestId?: string): Promise<void> {
     try {
       const servers = await this._mcpManager.saveServer(input);
       await this._postMessage({ type: 'mcpServersLoaded', payload: servers });
+      await this._postMessage({ type: 'mcpServerSaved', payload: { requestId } });
       vscode.window.showInformationMessage(`MCP server「${input.name}」已保存并同步`);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      await this._postMessage({ type: 'mcpError', payload: { error: message } });
+      await this._postMessage({ type: 'mcpError', payload: { error: message, requestId } });
     }
   }
 
@@ -1957,8 +1954,21 @@ export class SkillMarketplacePanel {
     if (!server || server.transport !== 'http' || !server.url) {
       return;
     }
-    const result = await probeHttpMcpServer(server.url, server.httpHeaders);
-    await this._postMessage({ type: 'mcpProbeResult', payload: { id, result } });
+    const headers = { ...server.httpHeaders };
+    if (server.bearerTokenEnvVar && !Object.keys(headers).some((name) => name.toLowerCase() === 'authorization')) {
+      const token = process.env[server.bearerTokenEnvVar];
+      if (!token) {
+        await this._postMessage({ type: 'mcpProbeResult', payload: { id, result: { ok: false, status: 0, tools: [], error: `Missing environment variable: ${server.bearerTokenEnvVar}` } } });
+        return;
+      }
+      headers.Authorization = `Bearer ${token}`;
+    }
+    const connection = mcpConnectionKey(server);
+    const result = await probeHttpMcpServer(server.url, headers);
+    const current = this._mcpManager.listServers().find((row) => row.id === id);
+    const response = current && mcpConnectionKey(current) === connection ? result
+      : { ok: false, status: 0, tools: [], error: 'mcp_configuration_changed' };
+    await this._postMessage({ type: 'mcpProbeResult', payload: { id, result: response } });
   }
 
   private async _openLiteratureMcpConfig(): Promise<void> {

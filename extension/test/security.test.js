@@ -69,6 +69,93 @@ test('MCP serialization quotes ids, headers and env keys without dropping data',
   assert.throws(() => helpers.serialize({ ...server, transport: 'sse' }), /SSE/);
 });
 
+test('MCP editor preserves argument boundaries and validates environment/header maps', () => {
+  const { parseMcpArgs, parseMcpStringMap } = require('../out/shared/mcpServerDraft');
+  assert.deepEqual(parseMcpArgs('["--name=a,b", "a path with spaces", "line\\nnext"]'), ['--name=a,b', 'a path with spaces', 'line\nnext']);
+  assert.deepEqual(parseMcpStringMap('{"API_KEY":"private","X-Custom":"a,b"}'), { API_KEY: 'private', 'X-Custom': 'a,b' });
+  for (const value of ['{"name":"wrong"}', '[1]', 'not JSON']) assert.throws(() => parseMcpArgs(value));
+  for (const value of ['[]', 'null', '{"key":12}']) assert.throws(() => parseMcpStringMap(value));
+});
+
+test('MCP probe preserves endpoints and sessions, reads open SSE streams and all tool pages', async (t) => {
+  const { probeHttpMcpServer, normalizeMcpHttpEndpoint } = require('../out/services/mcpClient');
+  const calls = [];
+  let released = false, streamClosed = false;
+  const server = http.createServer(async (req, res) => {
+    assert.equal(req.url, '/rpc/research?tenant=fixture');
+    assert.equal(req.headers.authorization, 'Bearer fixture');
+    if (req.method === 'DELETE') { released = true; res.writeHead(204); res.end(); return; }
+    let text = ''; for await (const chunk of req) text += chunk;
+    const body = JSON.parse(text); calls.push(body.method);
+    if (body.method === 'initialize') {
+      res.setHeader('Mcp-Session-Id', 'test-session'); res.setHeader('content-type', 'application/json');
+      res.end(JSON.stringify({ jsonrpc: '2.0', id: body.id, result: { protocolVersion: '2025-11-25', capabilities: { tools: {} } } })); return;
+    }
+    assert.equal(req.headers['mcp-session-id'], 'test-session');
+    assert.equal(req.headers['mcp-protocol-version'], '2025-11-25');
+    if (body.method === 'notifications/initialized') { res.writeHead(202); res.end(); return; }
+    assert.equal(body.method, 'tools/list');
+    if (body.params.cursor) {
+      assert.equal(body.params.cursor, 'page-two'); res.setHeader('content-type', 'application/json');
+      res.end(JSON.stringify({ jsonrpc: '2.0', id: body.id, result: { tools: [{ name: 'paper_get' }, { name: 'paper_search' }] } })); return;
+    }
+    res.setHeader('content-type', 'text/event-stream');
+    res.write('data: {"jsonrpc":"2.0","method":"notifications/progress"}\r\n\r\n');
+    res.write('data: ' + JSON.stringify({ jsonrpc: '2.0', id: body.id, result: { tools: [{ name: 'paper_search' }], nextCursor: 'page-two' } }) + '\r\n\r\n');
+    res.once('close', () => { streamClosed = true; });
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => { server.closeAllConnections(); return new Promise((resolve) => server.close(resolve)); });
+  const endpoint = `http://127.0.0.1:${server.address().port}/rpc/research?tenant=fixture`;
+  assert.equal(normalizeMcpHttpEndpoint(endpoint), endpoint);
+  for (const url of ['file:///tmp/mcp', 'https://user:secret@example.invalid/mcp', 'https://example.invalid/mcp#bad']) assert.equal(normalizeMcpHttpEndpoint(url), null);
+  const result = await probeHttpMcpServer(endpoint, { Authorization: 'Bearer fixture' });
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.tools, ['paper_search', 'paper_get']);
+  assert.deepEqual(calls, ['initialize', 'notifications/initialized', 'tools/list', 'tools/list']);
+  assert.equal(released, true);
+  assert.equal(streamClosed, true);
+});
+
+test('MCP probe handles resources-only servers and rejects JSON-RPC errors and redirects', async (t) => {
+  const { probeHttpMcpServer } = require('../out/services/mcpClient');
+  const server = http.createServer(async (req, res) => {
+    if (req.url === '/redirect') { res.writeHead(307, { location: '/unexpected' }); res.end(); return; }
+    assert.notEqual(req.url, '/unexpected');
+    let text = ''; for await (const chunk of req) text += chunk;
+    const body = JSON.parse(text); res.setHeader('content-type', 'application/json');
+    if (req.url === '/resources') {
+      if (body.method === 'initialize') { res.end(JSON.stringify({ jsonrpc: '2.0', id: body.id, result: { protocolVersion: '2025-11-25', capabilities: { resources: {} } } })); return; }
+      assert.equal(body.method, 'notifications/initialized'); res.writeHead(202); res.end(); return;
+    }
+    res.end(JSON.stringify({ jsonrpc: '2.0', id: body.id, error: { code: -32603, message: 'private server detail' } }));
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => { server.closeAllConnections(); return new Promise((resolve) => server.close(resolve)); });
+  const result = await probeHttpMcpServer(`http://127.0.0.1:${server.address().port}/rpc`);
+  assert.equal(result.ok, false); assert.equal(result.status, 200);
+  assert.ok(!result.error.includes('private server detail'));
+  const resources = await probeHttpMcpServer(`http://127.0.0.1:${server.address().port}/resources`);
+  assert.equal(resources.ok, true); assert.deepEqual(resources.tools, []);
+  const redirect = await probeHttpMcpServer(`http://127.0.0.1:${server.address().port}/redirect`);
+  assert.equal(redirect.ok, false); assert.equal(redirect.status, 307);
+});
+
+test('literature library embeds valid JavaScript and safely encodes index metadata', () => {
+  const { LiteratureIndexViewer } = load('literatureIndexViewer.ts', {
+    vscode: { workspace: { workspaceFolders: [{ uri: { fsPath: '/fixture' } }] } },
+    './i18n': { isExtensionZh: () => true },
+    './atReference': { filePathToAtReference: () => '@paper.md' },
+  });
+  const panel = { webview: { html: '' } };
+  const payload = '</script><img src=x onerror="PWN()">';
+  LiteratureIndexViewer.updateWebview(panel, { entries: [{ title: payload, keywords: [payload] }] }, '/fixture/index.json');
+  assert.ok(!panel.webview.html.includes(payload));
+  const scripts = [...panel.webview.html.matchAll(/<script>([\s\S]*?)<\/script>/g)];
+  assert.equal(scripts.length, 1);
+  assert.doesNotThrow(() => new vm.Script(scripts[0][1]));
+});
+
 test('paper and PID data are escaped in rendered HTML', () => {
   const payload = '<img src=x onerror="PWN()">';
   const { PaperArtifactViewer } = load('paperArtifactViewer.ts');
