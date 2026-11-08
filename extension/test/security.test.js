@@ -212,6 +212,22 @@ test('device sign-in uses official RPC, cancels cleanly and ignores an earlier l
 
 test('device sign-in rejects unofficial URLs and clears codes on failure, cancellation and disposal', (t) => {
   const { login, begin, issued, states } = deviceLoginHarness(t);
+  for (const [message, code, expected, httpStatus] of [
+    ['failed to request device code: device code request failed with status 403 Forbidden', -32603, 'requestRejected', 403],
+    ['status 429 Too Many Requests', -32603, 'rateLimited', 429],
+    ['HTTP 503 Service Unavailable', -32603, 'serviceUnavailable', 503],
+    ['error sending request for url (https://auth.openai.com/api/accounts/deviceauth/usercode)', -32603, 'networkError'],
+    ['certificate verify failed', -32603, 'tlsError'],
+    ['unknown variant chatgptDeviceCode', -32602, 'unsupportedCli'],
+    ['forced_login_method is api', -32603, 'policyBlocked'],
+  ]) {
+    begin().reply({ id: 2, error: { code, message } });
+    assert.equal(login.snapshot().error, expected);
+    assert.equal(login.snapshot().httpStatus, httpStatus);
+    assert.equal(login.snapshot().rpcCode, code);
+    assert.equal(login.snapshot().phase, 'requestingCode');
+    assert.equal(login.snapshot().userCode, undefined);
+  }
   for (const url of ['http://auth.openai.com/codex/device', 'https://auth.openai.com.example/codex/device', 'https://user@auth.openai.com/codex/device', 'https://auth.openai.com/other']) {
     begin().reply({ id: 2, result: { ...issued, verificationUrl: url } });
     assert.equal(login.snapshot().error, 'invalidResponse');
@@ -222,11 +238,38 @@ test('device sign-in rejects unofficial URLs and clears codes on failure, cancel
   assert.equal(JSON.stringify(states).includes('private-server-details'), false);
   const missing = begin(); missing.emit('error', Object.assign(new Error('private-path'), { code: 'ENOENT' }));
   assert.equal(login.snapshot().error, 'missingCli');
+  const expired = begin(); expired.reply({ id: 2, result: issued });
+  expired.reply({ method: 'account/login/completed', params: { loginId: issued.loginId, success: false, error: 'device code expired' } });
+  assert.equal(login.snapshot().error, 'expired');
+  assert.equal(login.snapshot().phase, 'authorizing');
   const cancelled = begin(); login.cancel(); assert.ok(cancelled.killed);
   assert.equal(login.snapshot().status, 'cancelled');
   const closed = begin(); closed.emit('close'); assert.equal(login.snapshot().error, 'processExited');
   const disposed = begin(); disposed.reply({ id: 2, result: issued });
   login.dispose(); assert.ok(disposed.killed); assert.equal(login.snapshot().userCode, undefined);
+});
+
+test('device sign-in opens the browser when clipboard access fails and reports each action separately', async () => {
+  const messages = []; const opened = [];
+  const { ConfigPageViewProvider } = load('configPageViewProvider.ts', {
+    vscode: { env: {
+      clipboard: { writeText: async () => { throw new Error('clipboard unavailable'); } },
+      openExternal: async (url) => { opened.push(url); return true; },
+    }, Uri: { parse: (url) => url } },
+  });
+  const panel = Object.create(ConfigPageViewProvider.prototype);
+  let state = { status: 'waiting', userCode: 'TEST-CODE', verificationUrl: 'https://auth.openai.com/codex/device' };
+  panel._codexDeviceLogin = { snapshot: () => state };
+  panel._panel = { webview: { postMessage: async (message) => { messages.push(message); } } };
+  await panel._handleCodexDeviceLoginAction('copyAndOpen');
+  assert.deepEqual(opened, [state.verificationUrl]);
+  assert.equal(messages[0].command, 'codexDeviceLoginActionError');
+  assert.equal(messages[0].action, 'copy');
+  state = { status: 'error' };
+  await panel._handleCodexDeviceLoginAction('open'); assert.equal(opened.length, 1);
+  await panel._handleCodexDeviceLoginAction('help');
+  assert.equal(opened.at(-1), 'https://developers.openai.com/codex/auth');
+  assert.equal(JSON.stringify(messages).includes('TEST-CODE'), false);
 });
 
 test('CLI primary selection enforces subscription and API protocol compatibility', async () => {

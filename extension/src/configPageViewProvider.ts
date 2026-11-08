@@ -303,28 +303,7 @@ export class ConfigPageViewProvider {
             );
             break;
           case 'codexDeviceLogin':
-            if (message.action === 'start') {
-              this._codexDeviceLogin.start(ConfigPageViewProvider.gatewayManager?.buildOutboundProxyEnv());
-            } else if (message.action === 'cancel') {
-              this._codexDeviceLogin.cancel();
-            } else if (message.action === 'status') {
-              await this._handleCodexDeviceLoginState(this._codexDeviceLogin.snapshot());
-            } else {
-              const state = this._codexDeviceLogin.snapshot();
-              if (state.status !== 'waiting' || !state.userCode || !state.verificationUrl) { break; }
-              try {
-                if (message.action === 'copy' || message.action === 'copyAndOpen') {
-                  await vscode.env.clipboard.writeText(state.userCode);
-                  await this._panel.webview.postMessage({ command: 'codexDeviceLoginCopied' });
-                }
-                if (message.action === 'open' || message.action === 'copyAndOpen') {
-                  const opened = await vscode.env.openExternal(vscode.Uri.parse(state.verificationUrl));
-                  if (!opened) { throw new Error('browser_unavailable'); }
-                }
-              } catch {
-                await this._panel.webview.postMessage({ command: 'codexDeviceLoginActionError' });
-              }
-            }
+            await this._handleCodexDeviceLoginAction(message.action ?? '');
             break;
           case 'refreshCodexOfficialLogin':
             await ConfigPageViewProvider.gatewayManager?.refreshCodexOfficialLogin();
@@ -731,6 +710,33 @@ export class ConfigPageViewProvider {
       command: 'gatewayProvidersList',
       providers: manager.getProviders(),
     });
+  }
+
+  private async _handleCodexDeviceLoginAction(action: string): Promise<void> {
+    if (action === 'start') {
+      this._codexDeviceLogin.start(ConfigPageViewProvider.gatewayManager?.buildOutboundProxyEnv());
+      return;
+    }
+    if (action === 'cancel') { this._codexDeviceLogin.cancel(); return; }
+    if (action === 'status') { await this._handleCodexDeviceLoginState(this._codexDeviceLogin.snapshot()); return; }
+    const state = this._codexDeviceLogin.snapshot();
+    if (action !== 'help' && (state.status !== 'waiting' || !state.userCode || !state.verificationUrl)) { return; }
+    if (action === 'copy' || action === 'copyAndOpen' || action === 'copyUrl') {
+      try {
+        await vscode.env.clipboard.writeText(action === 'copyUrl' ? state.verificationUrl! : state.userCode!);
+        await this._panel.webview.postMessage({ command: 'codexDeviceLoginCopied', target: action === 'copyUrl' ? 'url' : 'code' });
+      } catch {
+        await this._panel.webview.postMessage({ command: 'codexDeviceLoginActionError', action: 'copy' });
+      }
+    }
+    if (action === 'open' || action === 'copyAndOpen' || action === 'help') {
+      try {
+        const url = action === 'help' ? 'https://developers.openai.com/codex/auth' : state.verificationUrl!;
+        if (!await vscode.env.openExternal(vscode.Uri.parse(url))) { throw new Error('browser_unavailable'); }
+      } catch {
+        await this._panel.webview.postMessage({ command: 'codexDeviceLoginActionError', action: 'open' });
+      }
+    }
   }
 
   private async _handleCodexDeviceLoginState(state: CodexDeviceLoginState): Promise<void> {

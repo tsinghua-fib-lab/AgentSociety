@@ -4,7 +4,7 @@ import { CheckCircleOutlined, CloseCircleOutlined, SyncOutlined } from '@ant-des
 import type { FormInstance } from 'antd';
 import type { TFunction } from 'i18next';
 import type { VscodeThemePalette } from '../theme';
-import type { BackendStatus, ConfigValues, ValidationState, EasyPaperConfigValues, VSCodeAPI } from './types';
+import type { BackendStatus, ConfigValues, ValidationState, EasyPaperConfigValues } from './types';
 import type { WizardStepKey } from './ConfigSetupWizard';
 import { DefaultLlmConfigCard } from './DefaultLlmConfigCard';
 import { EasyPaperConfigSection } from './EasyPaperConfigSection';
@@ -239,8 +239,6 @@ export type ConfigWizardStepPanelProps = {
   onSaveOutboundProxy: (url: string) => void;
   onRectifierChange: (settings: Record<string, boolean>) => void;
   onOptimizerChange: (settings: Record<string, boolean>) => void;
-  onRefreshCodexOfficialLogin: () => void;
-  codexDeviceLoginApi: VSCodeAPI;
   easyPaperForm: FormInstance<EasyPaperConfigValues>;
   onSaveEasyPaper: () => void;
 };
@@ -420,8 +418,6 @@ export function ConfigWizardStepPanel(props: ConfigWizardStepPanelProps) {
         onSaveOutboundProxy={props.onSaveOutboundProxy}
         onRectifierChange={props.onRectifierChange}
         onOptimizerChange={props.onOptimizerChange}
-        onRefreshCodexOfficialLogin={props.onRefreshCodexOfficialLogin}
-        codexDeviceLoginApi={props.codexDeviceLoginApi}
       />
     </div>
   );

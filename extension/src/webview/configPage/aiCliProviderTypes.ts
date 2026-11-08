@@ -34,7 +34,9 @@ export type AiCliProviderRecord = {
   permissionMode?: string;
 };
 
-export const EMPTY_PROVIDER_DRAFT: Omit<AiCliProviderRecord, 'id' | 'activeClaude' | 'activeCodex' | 'failoverClaude' | 'failoverCodex'> = {
+export const EMPTY_PROVIDER_DRAFT: Omit<AiCliProviderRecord, 'id' | 'activeClaude' | 'activeCodex'> = {
+  failoverClaude: false,
+  failoverCodex: false,
   name: '',
   baseUrl: '',
   apiKey: '',

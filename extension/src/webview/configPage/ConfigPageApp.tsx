@@ -30,6 +30,10 @@ import { AdvancedConfigSection, type AdvancedTopTab } from './AdvancedConfigSect
 import type { PythonEnvironmentOption } from './PythonEnvironmentPicker';
 import { DefaultLlmConfigCard } from './DefaultLlmConfigCard';
 import { LiteratureConfigSection } from './LiteratureConfigSection';
+import { CodexDeviceLoginProvider } from './CodexDeviceLoginPanel';
+import { inferProviderAuthMode, providerSupportsRole } from './providerAuth';
+import { EMPTY_PROVIDER_DRAFT } from './aiCliProviderTypes';
+import { OFFICIAL_OPENAI_BASE_URL } from '../../aiCli/officialEndpoints';
 import { AiCliConfigSection } from './AiCliConfigSection';
 import {
   WebConfigImportPanel,
@@ -267,6 +271,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
   const [pageTab, setPageTab] = React.useState<ConfigPageTab>('cli');
   const [pythonEnvironmentOptions, setPythonEnvironmentOptions] = React.useState<PythonEnvironmentOption[]>([]);
   const [pythonEnvironmentScanning, setPythonEnvironmentScanning] = React.useState(false);
+  const configEditorOpened = React.useRef(false);
   const [configCollapseKeys, setConfigCollapseKeys] = React.useState<string[]>([]);
   const [wizardMode, setWizardMode] = React.useState(false);
   const [wizardStep, setWizardStep] = React.useState(0);
@@ -351,6 +356,8 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
   };
 
   const jumpToPage = (tab: ConfigPageTab, subTab?: AdvancedTopTab) => {
+    configEditorOpened.current = true;
+    setConfigCollapseKeys(['config']);
     setPageTab(tab);
     if (tab === 'specialized') {
       handleScanPythonEnvironments();
@@ -473,7 +480,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
     }
     if (setupCompleted || wizardFlowCompleted || wizardDismissed) {
       setWizardMode(false);
-      if (setupCompleted || wizardFlowCompleted) {
+      if ((setupCompleted || wizardFlowCompleted) && !configEditorOpened.current) {
         setConfigCollapseKeys([]);
       }
       return;
@@ -1477,8 +1484,10 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
           // Leave wizardMode to the effect so a user-requested re-run is not force-closed.
           if (!wizardRequestedRef.current) {
             setWizardFlowCompleted(true);
-            setPageTab('cli');
-            setConfigCollapseKeys([]);
+            if (!configEditorOpened.current) {
+              setPageTab('cli');
+              setConfigCollapseKeys([]);
+            }
           }
         }
       } else if (message.command === 'backendStatus') {
@@ -1763,6 +1772,17 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
 
   return (
     <ConfigProvider theme={themeConfig}>
+      <CodexDeviceLoginProvider t={t} vscode={vscode}
+        loggedIn={aiCliGatewayStatus.codexOfficialLoginPresent ?? false}
+        usingAccount={claudeProviders.some((provider) => provider.activeCodex && inferProviderAuthMode(provider) === 'subscription') && !aiCliGatewayStatus.routeCodex}
+        applying={claudeProvidersLoading}
+        onRefresh={handleRefreshCodexOfficialLogin}
+        onOpenSettings={() => openConfigEditor('cli')}
+        onUseAccount={() => {
+          const official = claudeProviders.find((provider) => inferProviderAuthMode(provider) === 'subscription' && providerSupportsRole(provider, 'codex'));
+          if (official) { handleActivateClaudeProvider(official.id, 'codex'); }
+          else { handleAddClaudeProvider({ ...EMPTY_PROVIDER_DRAFT, name: 'OpenAI', baseUrl: OFFICIAL_OPENAI_BASE_URL, apiKey: '', apiKind: 'openai', authMode: 'subscription', activeClaude: false, activeCodex: true }); }
+        }}>
       <Layout style={{ minHeight: '100vh', background: palette.editorBackground }}>
         <Content
           style={{
@@ -2015,8 +2035,6 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
                     onSaveOutboundProxy={handleSaveOutboundProxy}
                     onRectifierChange={handleRectifierChange}
                     onOptimizerChange={handleOptimizerChange}
-                    onRefreshCodexOfficialLogin={handleRefreshCodexOfficialLogin}
-                    codexDeviceLoginApi={vscode}
                     easyPaperForm={easyPaperForm}
                     onSaveEasyPaper={saveEasyPaperConfig}
                   />
@@ -2102,8 +2120,6 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
                                     onSaveOutboundProxy={handleSaveOutboundProxy}
                                     onRectifierChange={handleRectifierChange}
                                     onOptimizerChange={handleOptimizerChange}
-                                    onRefreshCodexOfficialLogin={handleRefreshCodexOfficialLogin}
-                                    codexDeviceLoginApi={vscode}
                                   />
                                 </div>
                               ),
@@ -2337,8 +2353,6 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
                             onSaveOutboundProxy={handleSaveOutboundProxy}
                             onRectifierChange={handleRectifierChange}
                             onOptimizerChange={handleOptimizerChange}
-                            onRefreshCodexOfficialLogin={handleRefreshCodexOfficialLogin}
-                            codexDeviceLoginApi={vscode}
                           />
                         </div>
                       ),
@@ -2351,6 +2365,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
           )}
         </Content>
       </Layout>
+      </CodexDeviceLoginProvider>
     </ConfigProvider>
   );
 };

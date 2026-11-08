@@ -1,16 +1,13 @@
 import * as React from 'react';
-import { Divider, Space, Switch, Tooltip, Typography, Button, Tag, Input, Collapse } from 'antd';
+import { Divider, Space, Switch, Tooltip, Typography, Button, Tag, Input, Collapse, Tabs } from 'antd';
 import { CheckCircleOutlined, LinkOutlined, QuestionCircleOutlined, ReloadOutlined, SyncOutlined, CheckOutlined } from '@ant-design/icons';
 import { ClaudeCodeConfigSection, type ProviderSectionCommonProps } from './ClaudeCodeConfigSection';
 import { GatewayUsagePanel } from './GatewayUsagePanel';
 import { tabBodyStyle } from './configPageStyles';
 import type { TokenUsageRecord } from './gatewayUsageTypes';
-import { countApiUpstreamsForRole, providerEligibleForRoleUpstream, inferProviderAuthMode, providerSupportsRole } from './providerAuth';
-import { EMPTY_PROVIDER_DRAFT } from './aiCliProviderTypes';
-import { OFFICIAL_OPENAI_BASE_URL } from '../../aiCli/officialEndpoints';
+import { countApiUpstreamsForRole, providerEligibleForRoleUpstream } from './providerAuth';
 import type { ModelPricingMap } from './modelPricing';
-import type { VSCodeAPI } from './types';
-import { CodexDeviceLoginPanel } from './CodexDeviceLoginPanel';
+import { CodexDeviceLoginPanel, useCodexDeviceLogin } from './CodexDeviceLoginPanel';
 
 const { Text } = Typography;
 
@@ -27,8 +24,6 @@ export interface AiCliConfigSectionProps extends ProviderSectionCommonProps {
   onSaveOutboundProxy?: (url: string, username?: string, password?: string) => void;
   onRectifierChange?: (settings: Record<string, boolean>) => void;
   onOptimizerChange?: (settings: Record<string, boolean>) => void;
-  onRefreshCodexOfficialLogin?: () => void;
-  codexDeviceLoginApi: VSCodeAPI;
   usageRecords: TokenUsageRecord[];
   usageLoading: boolean;
   onRefreshUsage: () => void;
@@ -67,11 +62,10 @@ export function AiCliConfigSection(props: AiCliConfigSectionProps) {
     onSaveOutboundProxy,
     onRectifierChange,
     onOptimizerChange,
-    onRefreshCodexOfficialLogin,
-    codexDeviceLoginApi,
     ...providerSectionCommon
   } = props;
   const { t, palette, providers } = providerSectionCommon;
+  const { toolTab, selectToolTab, networkRequested, completeNetworkRequest } = useCodexDeviceLogin();
 
   const routeClaude = gatewayStatus.routeClaude ?? false;
   const routeCodex = gatewayStatus.routeCodex ?? false;
@@ -79,8 +73,6 @@ export function AiCliConfigSection(props: AiCliConfigSectionProps) {
   const gatewayBaseUrl = gatewayRunning ? gatewayStatus.baseUrl : undefined;
   const claudeProxyAvailable = gatewayStatus.claudeProxyAvailable ?? false;
   const codexProxyAvailable = gatewayStatus.codexProxyAvailable ?? false;
-  const codexOfficialLoginPresent = gatewayStatus.codexOfficialLoginPresent ?? false;
-  const codexAuthPath = gatewayStatus.codexAuthPath ?? '';
   const rectifier = gatewayStatus.rectifier ?? {
     enabled: true,
     thinkingSignature: true,
@@ -93,6 +85,18 @@ export function AiCliConfigSection(props: AiCliConfigSectionProps) {
     thinkingOptimizer: true,
     cacheInjection: true,
   };
+  const [advancedKeys, setAdvancedKeys] = React.useState<string[]>([]);
+  const networkInput = React.useRef<import('antd').InputRef>(null);
+  React.useEffect(() => {
+    if (!networkRequested) { return; }
+    setAdvancedKeys(['advanced']);
+    const timer = window.setTimeout(() => {
+      networkInput.current?.focus();
+      networkInput.current?.input?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      completeNetworkRequest();
+    }, 200);
+    return () => window.clearTimeout(timer);
+  }, [networkRequested, completeNetworkRequest]);
   const [proxyDraft, setProxyDraft] = React.useState(gatewayStatus.outboundProxyUrl ?? '');
   React.useEffect(() => {
     setProxyDraft(gatewayStatus.outboundProxyUrl ?? '');
@@ -109,10 +113,6 @@ export function AiCliConfigSection(props: AiCliConfigSectionProps) {
   ];
   const activeClaudeProvider = providers.find((p) => p.activeClaude);
   const activeCodexProvider = providers.find((p) => p.activeCodex);
-
-  const codexLoginTooltip = codexAuthPath
-    ? `${t('claudeCodeConfig.codexOfficialLoginHint')}\n${t('claudeCodeConfig.codexAuthPathHint', { path: codexAuthPath })}`
-    : t('claudeCodeConfig.codexOfficialLoginHint');
 
   const summaryItems = [
     {
@@ -247,7 +247,7 @@ export function AiCliConfigSection(props: AiCliConfigSectionProps) {
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
           <Space size={6}>
-            <Text strong style={{ fontSize: 13 }}>{t('claudeCodeConfig.gatewayTitle')}</Text>
+            <Text strong style={{ fontSize: 13 }}>{t('claudeCodeConfig.cliSettingsTitle')}</Text>
             <Tooltip title={t('claudeCodeConfig.gatewayHint')}>
               <QuestionCircleOutlined style={{ opacity: 0.65, cursor: 'help' }} />
             </Tooltip>
@@ -257,108 +257,85 @@ export function AiCliConfigSection(props: AiCliConfigSectionProps) {
           </Button>
         </div>
 
-        <div style={routeRowStyle(routeClaude, gatewayRunning)}>
-          <Space size={6} wrap style={{ minWidth: 0 }}>
-            <span style={dotStyle(routeClaude, gatewayRunning, palette.descriptionForeground)} />
-            <Text style={{ fontSize: 12, fontWeight: 500 }}>Claude Code</Text>
-            <Tag color={routeStatusColor(routeClaude, gatewayRunning)} style={{ margin: 0, fontSize: 10 }}>
-              {routeClaude
-                ? gatewayRunning ? t('claudeCodeConfig.gatewayRouteProxy') : t('claudeCodeConfig.gatewayRouteNotDetected')
-                : t('claudeCodeConfig.gatewayRouteDirect')}
-            </Tag>
-            <Tooltip title={t('claudeCodeConfig.modelHotSwitchClaudeHint')}>
-              <QuestionCircleOutlined style={{ opacity: 0.5, cursor: 'help', fontSize: 11 }} />
-            </Tooltip>
-          </Space>
-          <div style={routeActionsStyle}>
-            {onSyncClaudeConfig ? (
-              <Tooltip title={t('claudeCodeConfig.syncClaudeConfigHint')}>
-                <Button type="text" size="small" icon={<SyncOutlined />} onClick={onSyncClaudeConfig} aria-label={t('claudeCodeConfig.syncClaudeConfig')} />
-              </Tooltip>
-            ) : null}
-            {onRestartClaude ? (
-              <Tooltip title={t('claudeCodeConfig.restartClaudeHint')}>
-                <Button type="text" size="small" icon={<ReloadOutlined />} onClick={onRestartClaude} aria-label={t('claudeCodeConfig.restartClaude')} />
-              </Tooltip>
-            ) : null}
-            <Tooltip title={t('claudeCodeConfig.gatewayClaudeProxyEnable')}>
-              <Switch
-                size="small"
-                checked={routeClaude}
-                loading={gatewayToggling}
-                disabled={!claudeProxyAvailable && !routeClaude}
-                onChange={onRouteClaudeToggle}
-              />
-            </Tooltip>
-          </div>
-        </div>
-
-        <div style={{ ...routeRowStyle(routeCodex, gatewayRunning), marginTop: 6 }}>
-          <Space size={6} wrap style={{ minWidth: 0 }}>
-            <span style={dotStyle(routeCodex, gatewayRunning, palette.descriptionForeground)} />
-            <Text style={{ fontSize: 12, fontWeight: 500 }}>Codex</Text>
-            <Tag color={routeStatusColor(routeCodex, gatewayRunning)} style={{ margin: 0, fontSize: 10 }}>
-              {routeCodex
-                ? gatewayRunning ? t('claudeCodeConfig.gatewayRouteProxy') : t('claudeCodeConfig.gatewayRouteNotDetected')
-                : t('claudeCodeConfig.gatewayRouteDirect')}
-            </Tag>
-            <Tooltip title={codexLoginTooltip}>
-              <Tag
-                color={codexOfficialLoginPresent ? 'green' : 'default'}
-                icon={onRefreshCodexOfficialLogin ? <ReloadOutlined /> : undefined}
-                role={onRefreshCodexOfficialLogin ? 'button' : undefined}
-                tabIndex={onRefreshCodexOfficialLogin ? 0 : undefined}
-                style={{ margin: 0, fontSize: 10, cursor: onRefreshCodexOfficialLogin ? 'pointer' : 'help' }}
-                onClick={onRefreshCodexOfficialLogin}
-                onKeyDown={(event) => {
-                  if (onRefreshCodexOfficialLogin && (event.key === 'Enter' || event.key === ' ')) {
-                    event.preventDefault();
-                    onRefreshCodexOfficialLogin();
-                  }
-                }}
-              >
-                {codexOfficialLoginPresent
-                  ? t('claudeCodeConfig.codexOfficialLoginPresent')
-                  : t('claudeCodeConfig.codexOfficialLoginMissing')}
-              </Tag>
-            </Tooltip>
-            <Tooltip title={t('claudeCodeConfig.modelHotSwitchCodexHint')}>
-              <QuestionCircleOutlined style={{ opacity: 0.5, cursor: 'help', fontSize: 11 }} />
-            </Tooltip>
-          </Space>
-          <div style={routeActionsStyle}>
-            {onSyncCodexConfig ? (
-              <Tooltip title={t('claudeCodeConfig.syncCodexConfigHint')}>
-                <Button type="text" size="small" icon={<SyncOutlined />} onClick={onSyncCodexConfig} aria-label={t('claudeCodeConfig.syncCodexConfig')} />
-              </Tooltip>
-            ) : null}
-            {onRestartCodex ? (
-              <Tooltip title={t('claudeCodeConfig.restartCodexHint')}>
-                <Button type="text" size="small" icon={<ReloadOutlined />} onClick={onRestartCodex} aria-label={t('claudeCodeConfig.restartCodex')} />
-              </Tooltip>
-            ) : null}
-            <Tooltip title={t('claudeCodeConfig.gatewayCodexProxyEnable')}>
-              <Switch
-                size="small"
-                checked={routeCodex}
-                loading={gatewayToggling}
-                disabled={!codexProxyAvailable && !routeCodex}
-                onChange={onRouteCodexToggle}
-              />
-            </Tooltip>
-          </div>
-        </div>
-
-        <CodexDeviceLoginPanel t={t} vscode={codexDeviceLoginApi} loggedIn={codexOfficialLoginPresent}
-          applying={props.providersLoading}
-          onUseAccount={() => {
-            const official = providers.find((provider) => inferProviderAuthMode(provider) === 'subscription' && providerSupportsRole(provider, 'codex'));
-            if (official) {
-              props.onActivateProvider(official.id, 'codex');
-            } else {
-              props.onAddProvider({ ...EMPTY_PROVIDER_DRAFT, name: 'OpenAI', baseUrl: OFFICIAL_OPENAI_BASE_URL, apiKey: '', apiKind: 'openai', authMode: 'subscription', activeClaude: false, activeCodex: true });
-            }
-          }} />
+        <Tabs size="small" activeKey={toolTab} onChange={(key) => selectToolTab(key as 'claude' | 'codex')} destroyOnHidden items={[
+          { key: 'claude', label: 'Claude Code', children: (
+            <div style={routeRowStyle(routeClaude, gatewayRunning)}>
+              <Space size={6} wrap style={{ minWidth: 0 }}>
+                <span style={dotStyle(routeClaude, gatewayRunning, palette.descriptionForeground)} />
+                <Text style={{ fontSize: 12, fontWeight: 500 }}>Claude Code</Text>
+                <Tag color={routeStatusColor(routeClaude, gatewayRunning)} style={{ margin: 0, fontSize: 10 }}>
+                  {routeClaude
+                    ? gatewayRunning ? t('claudeCodeConfig.gatewayRouteProxy') : t('claudeCodeConfig.gatewayRouteNotDetected')
+                    : t('claudeCodeConfig.gatewayRouteDirect')}
+                </Tag>
+                <Tooltip title={t('claudeCodeConfig.modelHotSwitchClaudeHint')}>
+                  <QuestionCircleOutlined style={{ opacity: 0.5, cursor: 'help', fontSize: 11 }} />
+                </Tooltip>
+              </Space>
+              <div style={routeActionsStyle}>
+                {onSyncClaudeConfig ? (
+                  <Tooltip title={t('claudeCodeConfig.syncClaudeConfigHint')}>
+                    <Button type="text" size="small" icon={<SyncOutlined />} onClick={onSyncClaudeConfig} aria-label={t('claudeCodeConfig.syncClaudeConfig')} />
+                  </Tooltip>
+                ) : null}
+                {onRestartClaude ? (
+                  <Tooltip title={t('claudeCodeConfig.restartClaudeHint')}>
+                    <Button type="text" size="small" icon={<ReloadOutlined />} onClick={onRestartClaude} aria-label={t('claudeCodeConfig.restartClaude')} />
+                  </Tooltip>
+                ) : null}
+                <Tooltip title={t('claudeCodeConfig.gatewayClaudeProxyEnable')}>
+                  <Switch
+                    size="small"
+                    checked={routeClaude}
+                    loading={gatewayToggling}
+                    disabled={!claudeProxyAvailable && !routeClaude}
+                    onChange={onRouteClaudeToggle}
+                  />
+                </Tooltip>
+              </div>
+            </div>
+          ) },
+          { key: 'codex', label: 'Codex', children: (
+            <section aria-label={t('claudeCodeConfig.codexSettingsTitle')}>
+              <div style={routeRowStyle(routeCodex, gatewayRunning)}>
+                <Space size={6} wrap style={{ minWidth: 0 }}>
+                  <span style={dotStyle(routeCodex, gatewayRunning, palette.descriptionForeground)} />
+                  <Text style={{ fontSize: 12, fontWeight: 500 }}>Codex</Text>
+                  <Tag color={routeStatusColor(routeCodex, gatewayRunning)} style={{ margin: 0, fontSize: 10 }}>
+                    {routeCodex
+                      ? gatewayRunning ? t('claudeCodeConfig.gatewayRouteProxy') : t('claudeCodeConfig.gatewayRouteNotDetected')
+                      : t('claudeCodeConfig.gatewayRouteDirect')}
+                  </Tag>
+                  <Tooltip title={t('claudeCodeConfig.modelHotSwitchCodexHint')}>
+                    <QuestionCircleOutlined style={{ opacity: 0.5, cursor: 'help', fontSize: 11 }} />
+                  </Tooltip>
+                </Space>
+                <div style={routeActionsStyle}>
+                  {onSyncCodexConfig ? (
+                    <Tooltip title={t('claudeCodeConfig.syncCodexConfigHint')}>
+                      <Button type="text" size="small" icon={<SyncOutlined />} onClick={onSyncCodexConfig} aria-label={t('claudeCodeConfig.syncCodexConfig')} />
+                    </Tooltip>
+                  ) : null}
+                  {onRestartCodex ? (
+                    <Tooltip title={t('claudeCodeConfig.restartCodexHint')}>
+                      <Button type="text" size="small" icon={<ReloadOutlined />} onClick={onRestartCodex} aria-label={t('claudeCodeConfig.restartCodex')} />
+                    </Tooltip>
+                  ) : null}
+                  <Tooltip title={t('claudeCodeConfig.gatewayCodexProxyEnable')}>
+                    <Switch
+                      size="small"
+                      checked={routeCodex}
+                      loading={gatewayToggling}
+                      disabled={!codexProxyAvailable && !routeCodex}
+                      onChange={onRouteCodexToggle}
+                    />
+                  </Tooltip>
+                </div>
+              </div>
+              <CodexDeviceLoginPanel t={t} />
+            </section>
+          ) },
+        ]} />
 
         {(routeClaude || routeCodex) ? (
           <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${palette.panelBorder}` }}>
@@ -503,7 +480,8 @@ export function AiCliConfigSection(props: AiCliConfigSectionProps) {
         <Collapse
           ghost
           size="small"
-          defaultActiveKey={[]}
+          activeKey={advancedKeys}
+          onChange={(keys) => setAdvancedKeys(Array.isArray(keys) ? keys : [keys])}
           items={[
             {
               key: 'advanced',
@@ -518,6 +496,8 @@ export function AiCliConfigSection(props: AiCliConfigSectionProps) {
                   />
                   <Space.Compact style={{ width: '100%', marginBottom: 14 }}>
                     <Input
+                      ref={networkInput}
+                      aria-label={t('claudeCodeConfig.outboundProxyLabel')}
                       size="small"
                       placeholder={t('claudeCodeConfig.outboundProxyPlaceholder')}
                       value={proxyDraft}
