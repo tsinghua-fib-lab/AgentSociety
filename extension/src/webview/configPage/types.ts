@@ -90,6 +90,7 @@ export interface EasyPaperConfigValues {
   llmApiKey: string;
   llmBaseUrl: string;
   vlmEnabled: boolean;
+  vlmProvider: string;
   vlmModel: string;
   vlmApiKey: string;
   vlmBaseUrl: string;

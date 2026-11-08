@@ -98,6 +98,7 @@ const DEFAULT_EASYPAPER_VALUES: EasyPaperConfigValues = {
   llmApiKey: '',
   llmBaseUrl: '',
   vlmEnabled: false,
+  vlmProvider: 'openai',
   vlmModel: '',
   vlmApiKey: '',
   vlmBaseUrl: '',
@@ -243,6 +244,8 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
   });
   const [gatewayToggling, setGatewayToggling] = React.useState(false);
   const [claudeProviders, setClaudeProviders] = React.useState<import('./aiCliProviderTypes').AiCliProviderRecord[]>([]);
+  const modelRequestIds = React.useRef<Record<string, number>>({});
+  const nextModelRequestId = React.useRef(0);
   const [modelsByProvider, setModelsByProvider] = React.useState<Record<string, ClaudeModelOption[]>>({});
   const [modelsLoadingByProvider, setModelsLoadingByProvider] = React.useState<Record<string, boolean>>({});
   const [modelsErrorByProvider, setModelsErrorByProvider] = React.useState<Record<string, string | null>>({});
@@ -367,6 +370,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
   };
 
   const jumpToAdvanced = (tab: AdvancedTopTab | 'literature' | 'claude' = 'models') => {
+    setConfigCollapseKeys(['config']);
     if (tab === 'literature') {
       jumpToPage('literature');
       return;
@@ -656,8 +660,8 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
     setSavingEasyPaper(true);
     easyPaperForm
       .validateFields()
-      .then((values) => {
-        vscode.postMessage({ command: 'saveEasyPaperConfig', config: values });
+      .then(() => {
+        vscode.postMessage({ command: 'saveEasyPaperConfig', config: easyPaperForm.getFieldsValue(true) });
       })
       .catch(() => {
         setSavingEasyPaper(false);
@@ -819,19 +823,22 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
 
   const handleFetchProviderModels = React.useCallback(
     (providerId: string, baseUrl: string, apiKey: string, apiKind?: 'anthropic' | 'openai') => {
-      if (!apiKey.trim() || !baseUrl.trim()) {
-        return;
-      }
-      setModelsLoadingByProvider((prev) => ({ ...prev, [providerId]: true }));
+      const requestId = ++nextModelRequestId.current;
+      modelRequestIds.current[providerId] = requestId;
+      setModelsByProvider((prev) => ({ ...prev, [providerId]: [] }));
       setModelsErrorByProvider((prev) => ({ ...prev, [providerId]: null }));
-      vscode.postMessage({ command: 'fetchClaudeModels', baseUrl, apiKey, providerId, apiKind });
+      const canFetch = Boolean(apiKey.trim() && baseUrl.trim());
+      setModelsLoadingByProvider((prev) => ({ ...prev, [providerId]: canFetch }));
+      if (canFetch) {
+        vscode.postMessage({ command: 'fetchClaudeModels', baseUrl, apiKey, providerId, apiKind, requestId });
+      }
     },
     [vscode]
   );
 
   const handleFetchEnvModels = React.useCallback(
-    (slotId: string, baseUrl: string, apiKey: string) => {
-      handleFetchProviderModels(slotId, baseUrl, apiKey, 'openai');
+    (slotId: string, baseUrl: string, apiKey: string, apiKind: 'openai' | 'anthropic' = 'openai') => {
+      handleFetchProviderModels(slotId, baseUrl, apiKey, apiKind);
     },
     [handleFetchProviderModels]
   );
@@ -1401,7 +1408,11 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
           });
         }
       } else if (message.command === 'initialEasyPaperConfig') {
-        const msg = message as { config?: EasyPaperConfigValues };
+        const msg = message as { config?: EasyPaperConfigValues; error?: string };
+        if (msg.error) {
+          notification.error({ message: t('easyPaperConfig.loadFailed'), description: msg.error });
+          return;
+        }
         easyPaperForm.setFieldsValue({
           ...DEFAULT_EASYPAPER_VALUES,
           ...msg.config,
@@ -1488,11 +1499,12 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
           error?: string;
           detail?: string;
           providerId?: string;
+          requestId?: number;
           apiKind?: 'anthropic' | 'openai';
           baseUrl?: string;
         };
         const pid = msg.providerId;
-        if (!pid) {
+        if (!pid || msg.requestId !== modelRequestIds.current[pid]) {
           return;
         }
         setModelsLoadingByProvider((prev) => ({ ...prev, [pid]: false }));
@@ -1507,6 +1519,12 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
             }));
           }
         } else {
+          if (msg.baseUrl) {
+            setProviderAvailabilityResults((prev) => ({
+              ...prev,
+              [normalizeProviderBaseUrl(msg.baseUrl!)]: { ok: false, models: 0, error: msg.error ?? 'unknown', detail: msg.detail },
+            }));
+          }
           const errorText = resolveClaudeModelsFetchError(String(msg.error ?? 'unknown'));
           setModelsErrorByProvider((prev) => ({
             ...prev,

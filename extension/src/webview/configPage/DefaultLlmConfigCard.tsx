@@ -48,14 +48,20 @@ export function DefaultLlmConfigCard({
   const safeBaseUrl = baseUrl ?? '';
   const safeApiKey = apiKey ?? '';
   const presetId = matchSimLlmPreset(safeBaseUrl);
+  const selectedPreset = SIM_LLM_PRESETS.find((preset) => preset.id === presetId);
   const canFetch = Boolean(safeBaseUrl.trim() && safeApiKey.trim());
   const fetchFingerprintRef = React.useRef('');
+  const connectionFingerprint = `${safeBaseUrl.trim()}::${safeApiKey}`;
 
   React.useEffect(() => {
+    const fingerprint = `${safeBaseUrl.trim()}::${safeApiKey}`;
     if (!canFetch) {
+      if (fetchFingerprintRef.current !== fingerprint) {
+        fetchFingerprintRef.current = fingerprint;
+        onFetchModels();
+      }
       return;
     }
-    const fingerprint = `${safeBaseUrl.trim()}::${safeApiKey.length}::${safeApiKey.slice(-4)}`;
     if (fetchFingerprintRef.current === fingerprint) {
       return;
     }
@@ -69,16 +75,18 @@ export function DefaultLlmConfigCard({
   const handlePresetChange = (id: string) => {
     fetchFingerprintRef.current = '';
     if (id === 'custom') {
+      form.setFieldsValue({ llmApiBase: '', llmApiKey: '', llmModel: '' });
       return;
     }
     const preset = SIM_LLM_PRESETS.find((p) => p.id === id);
     if (!preset) {
       return;
     }
-    const patch: Partial<ConfigValues> = { llmApiBase: preset.baseUrl };
-    if (preset.defaultModel && !form.getFieldValue('llmModel')?.trim()) {
-      patch.llmModel = preset.defaultModel;
-    }
+    const patch: Partial<ConfigValues> = {
+      llmApiBase: preset.baseUrl,
+      llmModel: presetId === preset.id ? form.getFieldValue('llmModel') : '',
+    };
+    if (matchSimLlmPreset(safeBaseUrl) !== preset.id) { patch.llmApiKey = ''; }
     form.setFieldsValue(patch);
   };
 
@@ -113,12 +121,12 @@ export function DefaultLlmConfigCard({
           onChange={handlePresetChange}
         />
       </Form.Item>
-      {presetId === 'fiblab' ? (
+      {selectedPreset?.hintKey ? (
         <Alert
           type="warning"
           showIcon
           style={{ marginBottom: 12, fontSize: 12 }}
-          message={t('configPage.llm.presetFiblabHint')}
+          message={t(selectedPreset.hintKey)}
         />
       ) : null}
       <Form.Item name="llmApiBase" label={t('configPage.llm.apiBase')}>
@@ -132,15 +140,16 @@ export function DefaultLlmConfigCard({
       >
         <Input.Password placeholder={t('configPage.llm.apiKeyPlaceholder')} autoComplete="off" />
       </Form.Item>
-      <Form.Item name="llmModel" label={t('configPage.llm.modelName')}>
+      <Form.Item name="llmModel" label={t('configPage.llm.modelName')}
+        rules={[{ required: true, whitespace: true, message: t('configPage.llm.modelRequired') }]}>
         <EnvLlmModelField
           t={t}
-          models={models}
+          models={fetchFingerprintRef.current === connectionFingerprint && canFetch ? models : []}
           loading={modelsLoading}
           error={modelsError}
           canFetch={canFetch}
           onFetch={() => {
-            fetchFingerprintRef.current = '';
+            fetchFingerprintRef.current = connectionFingerprint;
             onFetchModels();
           }}
           placeholder={t('configPage.llm.modelPlaceholder')}

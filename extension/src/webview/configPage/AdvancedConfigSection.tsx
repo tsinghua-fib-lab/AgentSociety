@@ -48,7 +48,7 @@ export interface AdvancedConfigSectionProps {
   modelsBySlot: Record<string, ClaudeModelOption[]>;
   modelsLoadingBySlot: Record<string, boolean>;
   modelsErrorBySlot: Record<string, string | null>;
-  onFetchSlotModels: (slotId: string, baseUrl: string, apiKey: string) => void;
+  onFetchSlotModels: (slotId: string, baseUrl: string, apiKey: string, apiKind?: 'anthropic' | 'openai') => void;
   effectiveValues: ConfigValues;
   pythonEnvironmentOptions: PythonEnvironmentOption[];
   pythonEnvironmentScanning: boolean;
@@ -261,6 +261,10 @@ export const AdvancedConfigSection: React.FC<AdvancedConfigSectionProps> = ({
           t={t}
           palette={palette}
           form={easyPaperForm}
+          modelsBySlot={modelsBySlot}
+          modelsLoadingBySlot={modelsLoadingBySlot}
+          modelsErrorBySlot={modelsErrorBySlot}
+          onFetchModels={onFetchSlotModels}
           defaultLlmApiKey={hasDefaultLlmKey ? (effectiveValues.llmApiKey || '') : ''}
           defaultLlmApiBase={defaultLlmApiBase}
           defaultLlmModel={defaultLlmModel}

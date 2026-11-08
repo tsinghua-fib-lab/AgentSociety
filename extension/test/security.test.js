@@ -13,7 +13,7 @@ function load(relative, dependencies = {}, extra = '') {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true },
   }).outputText;
   const exported = {};
-  vm.runInNewContext(code, { exports: exported, Buffer, process, console,
+  vm.runInNewContext(code, { exports: exported, Buffer, process, console, URL,
     require: (name) => dependencies[name] ?? (name.startsWith('.') || name === 'vscode' ? {} : require(name)),
   });
   return exported;
@@ -87,4 +87,72 @@ test('both shipped env templates require replacing API key placeholders', () => 
     assert.equal(hasConfiguredLlmApiKey({ llmApiKey }), false, llmApiKey);
   }
   assert.equal(hasConfiguredLlmApiKey({ llmApiKey: 'a-real-provider-key' }), true);
+});
+
+test('model discovery returns only provider data and reports unsupported endpoints', async (t) => {
+  const { fetchProviderModels } = require('../out/services/providerModels');
+  const seen = [];
+  let missing = false;
+  const server = http.createServer((req, res) => {
+    seen.push({ path: req.url, key: req.headers.authorization });
+    if (missing || req.url !== '/api/v7/models') { res.writeHead(404); res.end(); return; }
+    res.setHeader('content-type', 'application/json');
+    res.end(JSON.stringify({ data: [{ id: 'account-model-new' }, { id: 'account-model-new' }, null, { id: 42 }] }));
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise((resolve) => server.close(resolve)));
+  const base = `http://127.0.0.1:${server.address().port}/api/v7`;
+  const available = await fetchProviderModels(base, 'owned-test-key', 'openai');
+  assert.equal(available.ok, true);
+  assert.deepEqual(available.models, [{ id: 'account-model-new' }]);
+  assert.deepEqual(seen, [{ path: '/api/v7/models', key: 'Bearer owned-test-key' }]);
+  missing = true;
+  const unavailable = await fetchProviderModels(base, 'owned-test-key', 'openai');
+  assert.equal(unavailable.ok, false);
+  assert.equal(unavailable.error, 'models_not_supported');
+  const urls = [];
+  const official = load('services/providerModels.ts', {
+    '../aiCli/officialEndpoints': require('../out/aiCli/officialEndpoints'),
+    './httpClient': { requestJson: async (url) => {
+      urls.push(url);
+      return { ok: true, status: 200, json: async () => ({ data: [{ id: 'official-account-only' }] }) };
+    } },
+  });
+  const listed = await official.fetchProviderModels('https://api.openai.com/v1', 'owned-key', 'openai');
+  assert.deepEqual(urls, ['https://api.openai.com/v1/models']);
+  assert.equal(JSON.stringify(listed.models), '[{"id":"official-account-only"}]');
+});
+
+test('EasyPaper save preserves advanced settings and persists VLM disablement', (t) => {
+  const os = require('node:os');
+  const yaml = require('js-yaml');
+  const { readEasyPaperConfig, writeEasyPaperConfig } = require('../out/services/easyPaperWorkspaceConfig');
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'as2-paper-config-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const filename = path.join(directory, 'paper.yaml');
+  const template = path.join(__dirname, '../plugins/easypaper/skills/easypaper-setup-environment/config.example.yaml');
+  fs.writeFileSync(filename, yaml.dump({
+    tools: { paper_search: { timeout: 37 } },
+    skills: { venue_profile: 'custom-venue' },
+    agents: [
+      { name: 'writer', model: { model_name: 'before', temperature: 0.2 }, writer_config: { max_review_iterations: 7 } },
+      { name: 'custom', model: { model_name: 'untouched' } },
+      { name: 'vlm_review', vlm_review_config: { render_dpi: 200 } },
+    ],
+  }));
+  const config = { llmModelName: 'account-model-new', llmApiKey: 'test-key', llmBaseUrl: 'https://example.invalid/v1', vlmEnabled: false, vlmProvider: 'openai', vlmModel: 'vision-custom', vlmApiKey: 'vision-key', vlmBaseUrl: 'https://example.invalid/v1' };
+  writeEasyPaperConfig(filename, config, template);
+  const saved = yaml.load(fs.readFileSync(filename, 'utf8'));
+  assert.equal(saved.tools.paper_search.timeout, 37);
+  assert.equal(saved.skills.venue_profile, 'custom-venue');
+  assert.equal(saved.agents.find((a) => a.name === 'writer').writer_config.max_review_iterations, 7);
+  assert.equal(saved.agents.find((a) => a.name === 'writer').model.temperature, 0.2);
+  assert.equal(saved.agents.find((a) => a.name === 'custom').model.model_name, 'untouched');
+  assert.equal(saved.agents.find((a) => a.name === 'vlm_review').vlm_review_config.render_dpi, 200);
+  assert.equal(readEasyPaperConfig(filename).vlmEnabled, false);
+  assert.equal(saved.agents.find((a) => a.name === 'vlm_review').vlm_review_config.enabled, false);
+  assert.equal(fs.statSync(filename).mode & 0o777, 0o600);
+  const before = fs.readFileSync(filename, 'utf8');
+  assert.throws(() => writeEasyPaperConfig(filename, { ...config, llmModelName: '' }, template));
+  assert.equal(fs.readFileSync(filename, 'utf8'), before);
 });

@@ -3,6 +3,7 @@ import { Select } from 'antd';
 import type { ClaudeModelOption } from './claudeCodeTypes';
 
 export interface ClaudeModelSelectProps {
+  id?: string;
   value?: string;
   onChange?: (value: string) => void;
   models: ClaudeModelOption[];
@@ -12,6 +13,7 @@ export interface ClaudeModelSelectProps {
 }
 
 export const ClaudeModelSelect: React.FC<ClaudeModelSelectProps> = ({
+  id,
   value,
   onChange,
   models,
@@ -19,22 +21,34 @@ export const ClaudeModelSelect: React.FC<ClaudeModelSelectProps> = ({
   disabled,
   loading,
 }) => {
+  const [search, setSearch] = React.useState('');
   const options = React.useMemo(
-    () =>
-      models.map((m) => ({
+    () => {
+      const choices = models.map((m) => ({
         value: m.id,
         label: m.label ? `${m.label} (${m.id})` : m.id,
-      })),
-    [models]
+      }));
+      for (const id of [value?.trim(), search.trim()]) {
+        if (id && !choices.some((choice) => choice.value === id)) {
+          choices.push({ value: id, label: id });
+        }
+      }
+      return choices;
+    },
+    [models, value, search]
   );
 
   return (
     <Select
+      id={id}
       showSearch
       allowClear
       placeholder={placeholder}
       value={value?.trim() ? value : undefined}
-      onChange={(next) => onChange?.(next ?? '')}
+      searchValue={search}
+      onSearch={setSearch}
+      onOpenChange={(open) => { if (!open) { setSearch(''); } }}
+      onChange={(next) => { setSearch(''); onChange?.(next ?? ''); }}
       disabled={disabled}
       loading={loading}
       options={options}

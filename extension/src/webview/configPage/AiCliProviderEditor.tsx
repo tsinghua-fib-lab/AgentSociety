@@ -23,7 +23,7 @@ import {
 import type { TFunction } from 'i18next';
 import type { VscodeThemePalette } from '../theme';
 import type { ClaudeModelOption, ProviderAvailabilityResult, ProviderUsageQueryResult } from './claudeCodeTypes';
-import { getProviderPresetsForRole, findPresetByUrl, mergeModelOptions } from './aiCliProviderPresets';
+import { getProviderPresetsForRole, findPresetByUrl } from './aiCliProviderPresets';
 import {
   isOfficialAnthropicBaseUrl,
   isOfficialOpenAiBaseUrl,
@@ -95,7 +95,7 @@ function connectionFingerprint(
   apiKey: string,
   apiKind?: AiCliApiKind
 ): string {
-  return `${baseUrl.trim()}::${apiKey.length}::${apiKey.slice(-4)}::${apiKind ?? ''}`;
+  return `${baseUrl.trim()}::${apiKey}::${apiKind ?? ''}`;
 }
 
 type ProviderEditorProps = {
@@ -168,17 +168,6 @@ export function ProviderEditor({
   const effectiveAvailability =
     availabilityResults?.[normalizeProviderBaseUrl(draft.baseUrl)] ?? availability;
 
-  React.useEffect(() => {
-    if (!effectiveAvailability?.ok || !effectiveAvailability.apiKind) {
-      return;
-    }
-    setDraft((prev) =>
-      prev.apiKind === effectiveAvailability.apiKind
-        ? prev
-        : { ...prev, apiKind: effectiveAvailability.apiKind }
-    );
-  }, [effectiveAvailability?.ok, effectiveAvailability?.apiKind]);
-
   const layoutApiKind = draft.apiKind ?? effectiveAvailability?.apiKind;
   const isOpenAiProvider = layoutApiKind === 'openai';
   // Do not force both Claude/Codex panels open for a blank "new" draft.
@@ -191,22 +180,13 @@ export function ProviderEditor({
   const authMode = inferProviderAuthMode({ ...draft, apiKind: layoutApiKind });
   const isSubscription = authMode === 'subscription';
   const canUseApi = isSubscription || Boolean(draft.apiKey.trim());
-  const canProbe = Boolean(draft.baseUrl.trim()) && Boolean(draft.apiKey.trim()) && !isSubscription;
-  const canSave = isSubscription || (Boolean(draft.baseUrl.trim()) && Boolean(draft.apiKey.trim()));
-  const matchedPreset = findPresetByUrl(draft.baseUrl)?.id ?? CUSTOM_PRESET;
+  const canProbe = Boolean(draft.baseUrl.trim()) && Boolean(draft.apiKey.trim()) && Boolean(layoutApiKind) && !isSubscription;
+  const canSave = isSubscription || (Boolean(draft.baseUrl.trim()) && Boolean(draft.apiKey.trim()) && Boolean(layoutApiKind));
+  const matchedPreset = findPresetByUrl(draft.baseUrl, layoutApiKind)?.id ?? CUSTOM_PRESET;
   const selectedForClaude = draft.activeClaude;
   const selectedForCodex = draft.activeCodex;
 
-  const selectableModels = React.useMemo(() => {
-    if (models.length > 0) {
-      return models;
-    }
-    // Only surface preset hints as dropdown options — never invent official Claude/OpenAI catalogs for blank drafts.
-    if (!draft.baseUrl.trim() || !layoutApiKind) {
-      return [];
-    }
-    return mergeModelOptions([], draft.baseUrl, layoutApiKind);
-  }, [models, draft.baseUrl, layoutApiKind]);
+  const selectableModels = autoFetchFingerprintRef.current === connectionFingerprint(draft.baseUrl, draft.apiKey, layoutApiKind) ? models : [];
 
   const presetOptions = [
     {
@@ -230,10 +210,14 @@ export function ProviderEditor({
   ];
 
   React.useEffect(() => {
+    const fingerprint = connectionFingerprint(draft.baseUrl, draft.apiKey, layoutApiKind);
     if (!canProbe) {
+      if (autoFetchFingerprintRef.current !== fingerprint) {
+        autoFetchFingerprintRef.current = fingerprint;
+        onFetchModels(draft.baseUrl, '', layoutApiKind);
+      }
       return;
     }
-    const fingerprint = connectionFingerprint(draft.baseUrl, draft.apiKey, layoutApiKind);
     if (autoFetchFingerprintRef.current === fingerprint) {
       return;
     }
@@ -359,6 +343,7 @@ export function ProviderEditor({
       patch({
         name: draft.name.trim() ? draft.name : '',
         baseUrl: '',
+        apiKey: '',
         apiKind: undefined,
         authMode: 'api',
       });
@@ -370,10 +355,11 @@ export function ProviderEditor({
     }
     patch({
       baseUrl: preset.url,
+      ...(normalizeProviderBaseUrl(draft.baseUrl) !== normalizeProviderBaseUrl(preset.url) ? { apiKey: '' } : {}),
       apiKind: preset.apiKind,
       authMode: preset.official ? 'subscription' : 'api',
       name: draft.name.trim() ? draft.name : t(`claudeCodeConfig.baseUrlPresets.${preset.id}`),
-      // Preset only fills URL/hints — never auto-activate (create ≠ write live).
+      // Provider selection changes the draft; activation is a separate action.
       activeClaude: draft.activeClaude,
       activeCodex: draft.activeCodex,
     });
@@ -393,7 +379,7 @@ export function ProviderEditor({
   };
 
   const handleManualFetch = () => {
-    autoFetchFingerprintRef.current = '';
+    autoFetchFingerprintRef.current = connectionFingerprint(draft.baseUrl, draft.apiKey, layoutApiKind);
     onFetchModels(draft.baseUrl, draft.apiKey, layoutApiKind);
   };
 
@@ -502,6 +488,14 @@ export function ProviderEditor({
           ) : null}
           {!isSubscription ? (
             <>
+              <Select
+                size="small"
+                aria-label={t('claudeCodeConfig.providerApiProtocol')}
+                placeholder={t('claudeCodeConfig.providerApiProtocol')}
+                value={layoutApiKind}
+                options={[{ value: 'openai', label: 'OpenAI-compatible' }, { value: 'anthropic', label: 'Anthropic' }]}
+                onChange={(apiKind) => patch({ apiKind })}
+              />
               <Input.Password
                 size="small"
                 placeholder={t('claudeCodeConfig.providerKeyPlaceholder')}
@@ -600,10 +594,10 @@ export function ProviderEditor({
           </Button>
           {modelsError ? (
             <Tag color="error" style={{ margin: 0 }}>{modelsError}</Tag>
-          ) : models.length > 0 ? (
-            <Tag color="success" style={{ margin: 0 }}>{t('claudeCodeConfig.modelsCount', { count: models.length })}</Tag>
+          ) : selectableModels.length > 0 ? (
+            <Tag color="success" style={{ margin: 0 }}>{t('claudeCodeConfig.modelsCount', { count: selectableModels.length })}</Tag>
           ) : (
-            <Tag style={{ margin: 0 }}>{t('claudeCodeConfig.modelsUsingFallback')}</Tag>
+            <Tag style={{ margin: 0 }}>{t('claudeCodeConfig.modelsInputHint')}</Tag>
           )}
         </Space>
         <Space direction="vertical" style={{ width: '100%' }} size={8}>

@@ -30,7 +30,7 @@ import {
   writeClaudeConfig,
 } from './services/claudeCodeSettings';
 import { isCodexConfiguredByUser } from './services/codexSettings';
-import { fetchProviderModels } from './services/claudeCodeModels';
+import { fetchProviderModels } from './services/providerModels';
 import { inferApiKindFromBaseUrl } from './aiCli/officialEndpoints';
 import type { AiCliGatewayManager, AiCliProviderConfig } from './services/aiCliGatewayManager';
 import type { ClaudeCodeConfigValues } from './webview/configPage/claudeCodeTypes';
@@ -143,6 +143,7 @@ export class ConfigPageViewProvider {
         enabled?: boolean;
         routeTarget?: 'claude' | 'codex';
         providerId?: string;
+        requestId?: number;
         role?: 'claude' | 'codex';
         provider?: unknown;
         apiKind?: 'anthropic' | 'openai';
@@ -201,7 +202,8 @@ export class ConfigPageViewProvider {
               message.providerId ? String(message.providerId) : undefined,
               message.apiKind === 'openai' || message.apiKind === 'anthropic'
                 ? message.apiKind
-                : undefined
+                : undefined,
+              typeof message.requestId === 'number' ? message.requestId : undefined
             );
             break;
           case 'gatewayUpdateProvider':
@@ -558,25 +560,15 @@ export class ConfigPageViewProvider {
     baseUrl: string,
     apiKey: string,
     providerId?: string,
-    apiKind?: 'anthropic' | 'openai'
+    apiKind?: 'anthropic' | 'openai',
+    requestId?: number
   ): Promise<void> {
     const result = await fetchProviderModels(baseUrl, apiKey, apiKind);
     if (result.ok) {
       const normalizedBaseUrl = baseUrl.trim().replace(/\/+$/, '');
-      if (providerId && providerId !== '__new__' && ConfigPageViewProvider.gatewayManager) {
-        const provider = ConfigPageViewProvider.gatewayManager
-          .getProviders()
-          .find((p) => p.id === providerId);
-        if (provider && provider.apiKind !== result.apiKind) {
-          await ConfigPageViewProvider.gatewayManager.updateProvider(providerId, {
-            ...provider,
-            apiKind: result.apiKind,
-          });
-          await this._postProvidersAndActiveConfig();
-        }
-      }
       this._panel.webview.postMessage({
         command: 'claudeModelsResult',
+        requestId,
         success: true,
         models: result.models,
         providerId,
@@ -587,7 +579,9 @@ export class ConfigPageViewProvider {
     }
     this._panel.webview.postMessage({
       command: 'claudeModelsResult',
+      requestId,
       success: false,
+      baseUrl: baseUrl.trim().replace(/\/+$/, ''),
       error: result.error,
       detail: result.detail,
       status: result.status,
@@ -1210,9 +1204,12 @@ export class ConfigPageViewProvider {
       this._panel.webview.postMessage({ command: 'initialEasyPaperConfig', config: undefined });
       return;
     }
-    const configPath = path.join(workspaceFolder.uri.fsPath, 'easypaper_config.yaml');
-    const config = readEasyPaperConfig(configPath);
-    this._panel.webview.postMessage({ command: 'initialEasyPaperConfig', config });
+    try {
+      const config = readEasyPaperConfig(path.join(workspaceFolder.uri.fsPath, 'easypaper_config.yaml'));
+      this._panel.webview.postMessage({ command: 'initialEasyPaperConfig', config });
+    } catch (error) {
+      this._panel.webview.postMessage({ command: 'initialEasyPaperConfig', error: String(error) });
+    }
   }
 
   private async _handleSaveEasyPaperConfig(config: EasyPaperConfigValues | undefined): Promise<void> {
@@ -1235,7 +1232,8 @@ export class ConfigPageViewProvider {
     }
     try {
       const configPath = path.join(workspaceFolder.uri.fsPath, 'easypaper_config.yaml');
-      writeEasyPaperConfig(configPath, config);
+      const templatePath = path.join(this._context.extensionPath, 'plugins', 'easypaper', 'skills', 'easypaper-setup-environment', 'config.example.yaml');
+      writeEasyPaperConfig(configPath, config, templatePath);
       this._panel.webview.postMessage({ command: 'easyPaperSaveResult', success: true });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

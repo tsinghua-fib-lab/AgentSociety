@@ -333,6 +333,10 @@ export function ConfigWizardStepPanel(props: ConfigWizardStepPanelProps) {
           t={t}
           palette={palette}
           form={props.easyPaperForm}
+          modelsBySlot={modelsByProvider}
+          modelsLoadingBySlot={modelsLoadingByProvider}
+          modelsErrorBySlot={modelsErrorByProvider}
+          onFetchModels={props.onFetchProviderModels}
           defaultLlmApiKey={hasDefaultLlmKey ? (effectiveConfigValues.llmApiKey || '') : ''}
           defaultLlmApiBase={effectiveConfigValues.llmApiBase ?? ''}
           defaultLlmModel={effectiveConfigValues.llmModel ?? ''}

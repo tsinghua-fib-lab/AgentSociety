@@ -17,7 +17,7 @@ import {
 } from './claudeCodeSettings';
 import {
   fetchProviderModels,
-} from './claudeCodeModels';
+} from './providerModels';
 import {
   claudeSettingsBaseUrl,
   inferApiKindFromBaseUrl,
