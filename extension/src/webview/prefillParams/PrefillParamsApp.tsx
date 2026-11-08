@@ -478,6 +478,7 @@ export const PrefillParamsApp: React.FC<PrefillParamsAppProps> = ({ vscode }) =>
           }}
         >
           <div
+            className="as-page-content"
             style={{
               flex: 1,
               minHeight: 0,

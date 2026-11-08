@@ -1,6 +1,12 @@
 import * as React from 'react';
 import { theme } from 'antd';
 import type { ThemeConfig } from 'antd';
+import './webview.css';
+
+export const UI = {
+  radius: { control: 8, card: 12, panel: 16 },
+  space: { xs: 4, sm: 8, md: 12, lg: 16, xl: 24 },
+} as const;
 
 export interface VscodeThemePalette {
   editorBackground: string;
@@ -32,6 +38,7 @@ export interface VscodeThemePalette {
 interface VscodeThemeState {
   isDark: boolean;
   isHighContrast: boolean;
+  reduceMotion: boolean;
   palette: VscodeThemePalette;
 }
 
@@ -122,11 +129,14 @@ const readThemeState = (): VscodeThemeState => {
   return {
     isDark,
     isHighContrast,
+    reduceMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
     palette: {
       editorBackground: readCssVar(styles, '--vscode-editor-background', fallbacks.editorBackground),
       editorForeground: readCssVar(styles, '--vscode-editor-foreground', fallbacks.editorForeground),
       descriptionForeground: readCssVar(styles, '--vscode-descriptionForeground', fallbacks.descriptionForeground),
-      panelBorder: readCssVar(styles, '--vscode-panel-border', fallbacks.panelBorder),
+      panelBorder: isHighContrast
+        ? readCssVar(styles, '--vscode-contrastBorder', fallbacks.editorForeground)
+        : readCssVar(styles, '--vscode-panel-border', fallbacks.panelBorder),
       inputBackground: readCssVar(styles, '--vscode-input-background', fallbacks.inputBackground),
       inputForeground: readCssVar(styles, '--vscode-input-foreground', fallbacks.inputForeground),
       inputBorder: readCssVar(styles, '--vscode-input-border', fallbacks.inputBorder),
@@ -188,21 +198,13 @@ export const useVscodeTheme = (): VscodeThemeState & { themeConfig: ThemeConfig 
     if (document.body) {
       observer.observe(document.body, {
         attributes: true,
-        attributeFilter: ['class'],
+        attributeFilter: ['class', 'style'],
       });
     }
 
-    const mediaQuery = typeof window.matchMedia === 'function'
-      ? window.matchMedia('(prefers-color-scheme: dark)')
-      : null;
-
-    if (mediaQuery) {
-      if (typeof mediaQuery.addEventListener === 'function') {
-        mediaQuery.addEventListener('change', scheduleUpdate);
-      } else if (typeof mediaQuery.addListener === 'function') {
-        mediaQuery.addListener(scheduleUpdate);
-      }
-    }
+    const mediaQueries = ['(prefers-color-scheme: dark)', '(prefers-reduced-motion: reduce)']
+      .map((query) => window.matchMedia(query));
+    mediaQueries.forEach((query) => query.addEventListener('change', scheduleUpdate));
 
     window.addEventListener('focus', scheduleUpdate);
 
@@ -211,18 +213,12 @@ export const useVscodeTheme = (): VscodeThemeState & { themeConfig: ThemeConfig 
       if (frameId) {
         cancelAnimationFrame(frameId);
       }
-      if (mediaQuery) {
-        if (typeof mediaQuery.removeEventListener === 'function') {
-          mediaQuery.removeEventListener('change', scheduleUpdate);
-        } else if (typeof mediaQuery.removeListener === 'function') {
-          mediaQuery.removeListener(scheduleUpdate);
-        }
-      }
+      mediaQueries.forEach((query) => query.removeEventListener('change', scheduleUpdate));
       window.removeEventListener('focus', scheduleUpdate);
     };
   }, []);
 
-  const { isDark, palette } = themeState;
+  const { isDark, isHighContrast, reduceMotion, palette } = themeState;
 
   const themeConfig = React.useMemo<ThemeConfig>(
     () => ({
@@ -234,23 +230,45 @@ export const useVscodeTheme = (): VscodeThemeState & { themeConfig: ThemeConfig 
         colorWarning: palette.warningForeground,
         colorError: palette.errorForeground,
         colorTextBase: palette.editorForeground,
+        colorText: palette.editorForeground,
+        colorTextHeading: palette.editorForeground,
         colorTextSecondary: palette.descriptionForeground,
+        colorTextDescription: palette.descriptionForeground,
+        colorTextTertiary: palette.descriptionForeground,
         colorBgBase: palette.editorBackground,
-        colorBgContainer: palette.surfaceMuted,
-        colorBgElevated: palette.surfaceBackground,
-        colorBorder: palette.panelBorder,
+        colorBgContainer: isHighContrast ? palette.editorBackground : palette.inputBackground,
+        colorBgElevated: isHighContrast ? palette.editorBackground : palette.surfaceMuted,
+        colorBorder: isHighContrast ? palette.focusBorder : palette.panelBorder,
+        colorBorderSecondary: isHighContrast ? palette.focusBorder : palette.panelBorder,
         colorFillSecondary: palette.listHoverBackground,
         colorFillTertiary: palette.inactiveSelectionBackground,
         controlItemBgHover: palette.listHoverBackground,
         controlItemBgActive: palette.activeSelectionBackground,
         controlItemBgActiveHover: palette.activeSelectionBackground,
-        controlOutline: palette.focusBorder,
-        controlTmpOutline: palette.focusBorder,
-        borderRadius: 8,
+        borderRadius: UI.radius.control,
+        borderRadiusSM: UI.radius.control,
+        borderRadiusLG: UI.radius.panel,
+        controlHeight: 34,
+        controlHeightSM: 28,
+        controlHeightLG: 40,
+        fontSize: 13,
+        fontSizeSM: 12,
+        lineHeight: 1.6,
         fontFamily: FONT_FAMILY,
+        motion: !reduceMotion,
+        ...(isHighContrast ? { boxShadow: 'none', boxShadowSecondary: 'none' } : {}),
+      },
+      components: {
+        Button: { primaryColor: palette.buttonForeground, defaultShadow: 'none', primaryShadow: 'none', dangerShadow: 'none', paddingInline: 14, paddingInlineSM: 10 },
+        Card: { borderRadiusLG: UI.radius.panel, headerFontSize: 14, paddingLG: 20 },
+        Modal: { borderRadiusLG: UI.radius.panel },
+        Alert: { borderRadiusLG: UI.radius.card },
+        Collapse: { borderRadiusLG: UI.radius.card, headerPadding: '12px 16px' },
+        Tabs: { horizontalItemGutter: 24, titleFontSize: 13 },
+        Table: { borderRadiusLG: UI.radius.card, headerBg: palette.surfaceBackground },
       },
     }),
-    [isDark, palette]
+    [isDark, isHighContrast, reduceMotion, palette]
   );
 
   return {

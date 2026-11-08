@@ -5,7 +5,7 @@ import { ClaudeCodeConfigSection, type ProviderSectionCommonProps } from './Clau
 import { GatewayUsagePanel } from './GatewayUsagePanel';
 import { tabBodyStyle } from './configPageStyles';
 import type { TokenUsageRecord } from './gatewayUsageTypes';
-import { countApiUpstreamsForRole, providerEligibleForRoleUpstream } from './providerAuth';
+import { countApiUpstreamsForRole, providerEligibleForRoleUpstream } from '../../aiCli/providerAuth';
 import type { ModelPricingMap } from './modelPricing';
 import { CodexDeviceLoginPanel, useCodexDeviceLogin } from './CodexDeviceLoginPanel';
 
@@ -124,9 +124,9 @@ export function AiCliConfigSection(props: AiCliConfigSectionProps) {
           ? t('claudeCodeConfig.gatewaySummaryStopped')
           : t('claudeCodeConfig.gatewaySummaryDirect'),
       tone: gatewayRunning
-        ? '#52c41a'
+        ? palette.successForeground
         : anyRouteEnabled
-          ? '#faad14'
+          ? palette.warningForeground
           : palette.descriptionForeground,
       detail: gatewayBaseUrl ?? t('claudeCodeConfig.gatewaySummaryNoLocal'),
     },
@@ -134,14 +134,14 @@ export function AiCliConfigSection(props: AiCliConfigSectionProps) {
       key: 'claude',
       label: t('claudeCodeConfig.gatewayClaudeBlockTitle'),
       value: routeClaude ? t('claudeCodeConfig.gatewayRouteProxy') : t('claudeCodeConfig.gatewayRouteDirect'),
-      tone: routeClaude ? '#1677ff' : palette.descriptionForeground,
+      tone: routeClaude ? palette.linkForeground : palette.descriptionForeground,
       detail: activeClaudeProvider?.name || activeClaudeProvider?.baseUrl || t('claudeCodeConfig.providerNoneActive'),
     },
     {
       key: 'codex',
       label: t('claudeCodeConfig.gatewayCodexBlockTitle'),
       value: routeCodex ? t('claudeCodeConfig.gatewayRouteProxy') : t('claudeCodeConfig.gatewayRouteDirect'),
-      tone: routeCodex ? '#1677ff' : palette.descriptionForeground,
+      tone: routeCodex ? palette.linkForeground : palette.descriptionForeground,
       detail: activeCodexProvider?.name || activeCodexProvider?.baseUrl || t('claudeCodeConfig.providerNoneActive'),
     },
   ];
@@ -176,12 +176,12 @@ export function AiCliConfigSection(props: AiCliConfigSectionProps) {
             >
               <Space size={6} style={{ marginBottom: 4 }}>
                 <CheckCircleOutlined style={{ color: item.tone }} />
-                <Text type="secondary" style={{ fontSize: 11 }}>{item.label}</Text>
+                <Text type="secondary" style={{ fontSize: 12 }}>{item.label}</Text>
               </Space>
               <Text strong style={{ display: 'block', fontSize: 13, color: item.tone }}>
                 {item.value}
               </Text>
-              <Text type="secondary" ellipsis={{ tooltip: item.detail }} style={{ display: 'block', fontSize: 11 }}>
+              <Text type="secondary" ellipsis={{ tooltip: item.detail }} style={{ display: 'block', fontSize: 12 }}>
                 {item.detail}
               </Text>
             </div>
@@ -229,7 +229,7 @@ export function AiCliConfigSection(props: AiCliConfigSectionProps) {
                 background: palette.codeBlockBackground,
               }}
             >
-              <Text type="secondary" style={{ fontSize: 10, display: 'block' }}>{item.label}</Text>
+              <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>{item.label}</Text>
               <Text strong style={{ fontSize: 14 }}>{item.value}</Text>
             </div>
           ))}
@@ -259,17 +259,17 @@ export function AiCliConfigSection(props: AiCliConfigSectionProps) {
 
         <Tabs size="small" activeKey={toolTab} onChange={(key) => selectToolTab(key as 'claude' | 'codex')} destroyOnHidden items={[
           { key: 'claude', label: 'Claude Code', children: (
-            <div style={routeRowStyle(routeClaude, gatewayRunning)}>
+            <div style={routeRowStyle(routeClaude, palette)}>
               <Space size={6} wrap style={{ minWidth: 0 }}>
-                <span style={dotStyle(routeClaude, gatewayRunning, palette.descriptionForeground)} />
+                <span style={dotStyle(routeClaude, gatewayRunning, palette)} />
                 <Text style={{ fontSize: 12, fontWeight: 500 }}>Claude Code</Text>
-                <Tag color={routeStatusColor(routeClaude, gatewayRunning)} style={{ margin: 0, fontSize: 10 }}>
+                <Tag color={routeStatusColor(routeClaude, gatewayRunning)} style={{ margin: 0, fontSize: 11 }}>
                   {routeClaude
                     ? gatewayRunning ? t('claudeCodeConfig.gatewayRouteProxy') : t('claudeCodeConfig.gatewayRouteNotDetected')
                     : t('claudeCodeConfig.gatewayRouteDirect')}
                 </Tag>
                 <Tooltip title={t('claudeCodeConfig.modelHotSwitchClaudeHint')}>
-                  <QuestionCircleOutlined style={{ opacity: 0.5, cursor: 'help', fontSize: 11 }} />
+                  <QuestionCircleOutlined style={{ opacity: 0.5, cursor: 'help', fontSize: 12 }} />
                 </Tooltip>
               </Space>
               <div style={routeActionsStyle}>
@@ -297,17 +297,17 @@ export function AiCliConfigSection(props: AiCliConfigSectionProps) {
           ) },
           { key: 'codex', label: 'Codex', children: (
             <section aria-label={t('claudeCodeConfig.codexSettingsTitle')}>
-              <div style={routeRowStyle(routeCodex, gatewayRunning)}>
+              <div style={routeRowStyle(routeCodex, palette)}>
                 <Space size={6} wrap style={{ minWidth: 0 }}>
-                  <span style={dotStyle(routeCodex, gatewayRunning, palette.descriptionForeground)} />
+                  <span style={dotStyle(routeCodex, gatewayRunning, palette)} />
                   <Text style={{ fontSize: 12, fontWeight: 500 }}>Codex</Text>
-                  <Tag color={routeStatusColor(routeCodex, gatewayRunning)} style={{ margin: 0, fontSize: 10 }}>
+                  <Tag color={routeStatusColor(routeCodex, gatewayRunning)} style={{ margin: 0, fontSize: 11 }}>
                     {routeCodex
                       ? gatewayRunning ? t('claudeCodeConfig.gatewayRouteProxy') : t('claudeCodeConfig.gatewayRouteNotDetected')
                       : t('claudeCodeConfig.gatewayRouteDirect')}
                   </Tag>
                   <Tooltip title={t('claudeCodeConfig.modelHotSwitchCodexHint')}>
-                    <QuestionCircleOutlined style={{ opacity: 0.5, cursor: 'help', fontSize: 11 }} />
+                    <QuestionCircleOutlined style={{ opacity: 0.5, cursor: 'help', fontSize: 12 }} />
                   </Tooltip>
                 </Space>
                 <div style={routeActionsStyle}>
@@ -348,14 +348,14 @@ export function AiCliConfigSection(props: AiCliConfigSectionProps) {
                   onChange={onFailoverToggle}
                 />
                 <Text style={{ fontSize: 12 }}>{t('claudeCodeConfig.failoverEnable')}</Text>
-                <Tag color={failoverEnabled && showFailoverToggle ? 'blue' : 'default'} style={{ margin: 0, fontSize: 10 }}>
+                <Tag color={failoverEnabled && showFailoverToggle ? 'blue' : 'default'} style={{ margin: 0, fontSize: 11 }}>
                   {t(showFailoverToggle ? (failoverEnabled ? 'claudeCodeConfig.failoverReady' : 'claudeCodeConfig.failoverNeedBackup') : 'claudeCodeConfig.failoverNeedBackup')}
                 </Tag>
                 {Object.entries(failoverHealth).map(([baseUrl, health]) => (
                   <Tag
                     key={baseUrl}
                     color={health === 'healthy' ? 'green' : health === 'degraded' ? 'gold' : 'red'}
-                    style={{ margin: 0, fontSize: 10 }}
+                    style={{ margin: 0, fontSize: 11 }}
                   >
                     {t(`claudeCodeConfig.failoverHealth.${health}`)}
                   </Tag>
@@ -367,12 +367,12 @@ export function AiCliConfigSection(props: AiCliConfigSectionProps) {
             </div>
             {failoverEnabled && showFailoverToggle ? (
               <div style={{ marginTop: 10, padding: '10px 12px', border: `1px solid ${palette.panelBorder}`, borderRadius: 8, background: palette.codeBlockBackground }}>
-                <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 8 }}>
+                <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>
                   {t('claudeCodeConfig.failoverSelectBackups')}
                 </Text>
                 {routeClaude ? (
                   <div style={{ marginBottom: 8 }}>
-                    <Text strong style={{ fontSize: 11, display: 'block', marginBottom: 4 }}>
+                    <Text strong style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
                       {t('claudeCodeConfig.failoverBackupsFor', { role: 'Claude' })}
                     </Text>
                     {providers.filter((p) => !p.activeClaude && providerEligibleForRoleUpstream(p, 'claude')).map((p) => (
@@ -389,22 +389,22 @@ export function AiCliConfigSection(props: AiCliConfigSectionProps) {
                           cursor: 'pointer',
                           border: `1px solid ${p.failoverClaude ? '#fa8c16' : palette.panelBorder}`,
                           background: p.failoverClaude ? 'rgba(250, 140, 22, 0.08)' : 'transparent',
-                          fontSize: 11,
+                          fontSize: 12,
                           color: p.failoverClaude ? '#fa8c16' : palette.descriptionForeground,
                         }}
                       >
-                        {p.failoverClaude ? <CheckOutlined style={{ fontSize: 10 }} /> : null}
+                        {p.failoverClaude ? <CheckOutlined style={{ fontSize: 11 }} /> : null}
                         {p.name || p.baseUrl || t('claudeCodeConfig.providerUnnamed')}
                       </div>
                     ))}
                     {providers.filter((p) => !p.activeClaude && providerEligibleForRoleUpstream(p, 'claude')).length === 0 ? (
-                      <Text type="secondary" style={{ fontSize: 10 }}>{t('claudeCodeConfig.failoverNoBackups')}</Text>
+                      <Text type="secondary" style={{ fontSize: 11 }}>{t('claudeCodeConfig.failoverNoBackups')}</Text>
                     ) : null}
                   </div>
                 ) : null}
                 {routeCodex ? (
                   <div>
-                    <Text strong style={{ fontSize: 11, display: 'block', marginBottom: 4 }}>
+                    <Text strong style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
                       {t('claudeCodeConfig.failoverBackupsFor', { role: 'Codex' })}
                     </Text>
                     {providers.filter((p) => !p.activeCodex && providerEligibleForRoleUpstream(p, 'codex')).map((p) => (
@@ -421,16 +421,16 @@ export function AiCliConfigSection(props: AiCliConfigSectionProps) {
                           cursor: 'pointer',
                           border: `1px solid ${p.failoverCodex ? '#fa8c16' : palette.panelBorder}`,
                           background: p.failoverCodex ? 'rgba(250, 140, 22, 0.08)' : 'transparent',
-                          fontSize: 11,
+                          fontSize: 12,
                           color: p.failoverCodex ? '#fa8c16' : palette.descriptionForeground,
                         }}
                       >
-                        {p.failoverCodex ? <CheckOutlined style={{ fontSize: 10 }} /> : null}
+                        {p.failoverCodex ? <CheckOutlined style={{ fontSize: 11 }} /> : null}
                         {p.name || p.baseUrl || t('claudeCodeConfig.providerUnnamed')}
                       </div>
                     ))}
                     {providers.filter((p) => !p.activeCodex && providerEligibleForRoleUpstream(p, 'codex')).length === 0 ? (
-                      <Text type="secondary" style={{ fontSize: 10 }}>{t('claudeCodeConfig.failoverNoBackups')}</Text>
+                      <Text type="secondary" style={{ fontSize: 11 }}>{t('claudeCodeConfig.failoverNoBackups')}</Text>
                     ) : null}
                   </div>
                 ) : null}
@@ -440,10 +440,10 @@ export function AiCliConfigSection(props: AiCliConfigSectionProps) {
         ) : null}
       </div>
 
-      <ClaudeCodeConfigSection {...providerSectionCommon} mode="unified" onReset={onResetClaude} />
+      <ClaudeCodeConfigSection {...providerSectionCommon} mode="unified" onReset={onResetClaude} gatewayStatus={gatewayStatus} gatewayToggling={gatewayToggling} onRouteClaudeToggle={onRouteClaudeToggle} onRouteCodexToggle={onRouteCodexToggle} />
       {anyRouteEnabled ? (
         <>
-          <Divider orientation="left" plain style={{ margin: '20px 0 12px', fontSize: 12 }}>
+          <Divider titlePlacement="start" plain style={{ margin: '20px 0 12px', fontSize: 12 }}>
             {t('claudeCodeConfig.usageDivider')}
           </Divider>
           <GatewayUsagePanel
@@ -571,16 +571,16 @@ export function AiCliConfigSection(props: AiCliConfigSectionProps) {
   );
 }
 
-function routeRowStyle(active: boolean, running: boolean): React.CSSProperties {
+function routeRowStyle(active: boolean, palette: ProviderSectionCommonProps['palette']): React.CSSProperties {
   return {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 12,
     padding: '8px 10px',
-    borderRadius: 6,
-    background: active ? 'rgba(22, 119, 255, 0.04)' : 'transparent',
-    border: active ? '1px solid rgba(22, 119, 255, 0.15)' : '1px solid transparent',
+    borderRadius: 8,
+    background: active ? `color-mix(in srgb, ${palette.linkForeground} 6%, transparent)` : 'transparent',
+    border: active ? `1px solid color-mix(in srgb, ${palette.linkForeground} 25%, transparent)` : '1px solid transparent',
   };
 }
 
@@ -647,9 +647,9 @@ function SettingRow(props: {
       }}
     >
       <Space size={4}>
-        <Text style={{ fontSize: 11 }}>{props.label}</Text>
+        <Text style={{ fontSize: 12 }}>{props.label}</Text>
         <Tooltip title={props.hint}>
-          <QuestionCircleOutlined style={{ opacity: 0.55, cursor: 'help', fontSize: 10 }} />
+          <QuestionCircleOutlined style={{ opacity: 0.55, cursor: 'help', fontSize: 11 }} />
         </Tooltip>
       </Space>
       <Switch size="small" checked={props.checked} disabled={props.disabled} onChange={props.onChange} />
@@ -657,12 +657,12 @@ function SettingRow(props: {
   );
 }
 
-function dotStyle(active: boolean, running: boolean, fallback: string): React.CSSProperties {
+function dotStyle(active: boolean, running: boolean, palette: ProviderSectionCommonProps['palette']): React.CSSProperties {
   return {
     width: 8,
     height: 8,
     borderRadius: '50%',
-    background: active ? (running ? '#52c41a' : '#1677ff') : fallback,
+    background: active ? (running ? palette.successForeground : palette.linkForeground) : palette.descriptionForeground,
     flexShrink: 0,
   };
 }

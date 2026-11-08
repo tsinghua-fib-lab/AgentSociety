@@ -21,7 +21,7 @@ export function TabToolbar({ left, right }: TabToolbarProps) {
     >
       <div style={{ flex: '1 1 220px', minWidth: 0 }}>{left}</div>
       {right ? (
-        <Space wrap size="small" style={{ flex: '0 0 auto', justifyContent: 'flex-end' }}>
+        <Space wrap size="small" style={{ flex: '0 1 auto', maxWidth: '100%', justifyContent: 'flex-end' }}>
           {right}
         </Space>
       ) : null}

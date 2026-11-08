@@ -23,7 +23,7 @@ import {
 import type { TFunction } from 'i18next';
 import type { VscodeThemePalette } from '../theme';
 import type { ClaudeModelOption, ProviderAvailabilityResult, ProviderUsageQueryResult } from './claudeCodeTypes';
-import { getProviderPresetsForRole, findPresetByUrl } from './aiCliProviderPresets';
+import { getProviderPresetsForRole, findPresetByUrl } from '../../aiCli/providerPresets';
 import {
   isOfficialAnthropicBaseUrl,
   isOfficialOpenAiBaseUrl,
@@ -32,7 +32,7 @@ import {
 import { ClaudeModelSelect } from './ClaudeModelSelect';
 import type { AiCliProviderRecord } from './aiCliProviderTypes';
 import { autoMapClaudeRoleModels } from './aiCliProviderTypes';
-import { inferProviderAuthMode, providerSupportsRole, clampProviderRoleFlags } from './providerAuth';
+import { inferProviderAuthMode, providerSupportsRole, clampProviderRoleFlags } from '../../aiCli/providerAuth';
 import { supportsProviderUsageQuery } from './providerUsageSupport';
 import { normalizeProviderBaseUrl } from './providerBaseUrl';
 import { shouldShowProviderModelConfiguration } from '../../services/manualConfigSync';

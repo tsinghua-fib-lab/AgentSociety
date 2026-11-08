@@ -266,7 +266,7 @@ export function ConfigWizardStepPanel(props: ConfigWizardStepPanelProps) {
 
   if (stepKey === 'import') {
     return (
-      <div style={advancedPanelInnerStyle(isDark, palette)}>
+      <div style={advancedPanelInnerStyle(palette)}>
         {webImportPanel}
       </div>
     );
@@ -327,7 +327,7 @@ export function ConfigWizardStepPanel(props: ConfigWizardStepPanelProps) {
 
   if (stepKey === 'easypaper') {
     return (
-      <div style={advancedPanelInnerStyle(isDark, palette)}>
+      <div style={advancedPanelInnerStyle(palette)}>
         <EasyPaperConfigSection
           t={t}
           palette={palette}
@@ -349,7 +349,7 @@ export function ConfigWizardStepPanel(props: ConfigWizardStepPanelProps) {
 
   if (stepKey === 'literature') {
     return (
-      <div style={advancedPanelInnerStyle(isDark, palette)}>
+      <div style={advancedPanelInnerStyle(palette)}>
         <LiteratureConfigSection
           t={t}
           palette={palette}
@@ -371,7 +371,7 @@ export function ConfigWizardStepPanel(props: ConfigWizardStepPanelProps) {
   }
 
   return (
-    <div ref={props.claudeSectionRef} style={advancedPanelInnerStyle(isDark, palette)}>
+    <div ref={props.claudeSectionRef} style={advancedPanelInnerStyle(palette)}>
       <AiCliConfigSection
         t={t}
         palette={palette}

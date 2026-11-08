@@ -1,5 +1,5 @@
 import { isOfficialOpenAiBaseUrl } from '../../aiCli/officialEndpoints';
-import type { AiCliAuthMode } from './providerAuth';
+import type { AiCliAuthMode } from '../../aiCli/providerAuth';
 
 const KNOWN_PROVIDER_HOSTS = [
   'bigmodel.cn',

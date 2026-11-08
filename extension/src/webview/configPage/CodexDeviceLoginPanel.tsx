@@ -105,10 +105,10 @@ export function CodexDeviceLoginProvider({ t, vscode, loggedIn, usingAccount, on
           <Space orientation="vertical" size={16} style={{ width: '100%', marginTop: 12 }}>
             <div style={{ width: '100%' }}>
               <Typography.Paragraph strong>{t('claudeCodeConfig.deviceLoginStepCode')}</Typography.Paragraph>
-              <Space.Compact style={{ width: '100%' }}>
+              <div className="as-device-code">
                 <Input aria-label={t('claudeCodeConfig.deviceLoginCode')} readOnly value={state.userCode} style={{ fontFamily: 'monospace', fontSize: 22, letterSpacing: 3 }} onFocus={(event) => event.target.select()} />
                 <Button icon={<CopyOutlined />} onClick={() => send('copy')} style={{ height: 'auto' }}>{t(copied === 'code' ? 'claudeCodeConfig.deviceLoginCopied' : 'claudeCodeConfig.deviceLoginCopy')}</Button>
-              </Space.Compact>
+              </div>
             </div>
             <div>
               <Typography.Paragraph strong>{t('claudeCodeConfig.deviceLoginStepBrowser')}</Typography.Paragraph>

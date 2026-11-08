@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Card } from 'antd';
-import type { VscodeThemePalette } from '../theme';
+import type { VscodeThemePalette } from '../../theme';
 import { SKILL_UI, surfaceCardStyle } from '../uiTokens';
 
 export type ListCardProps = {

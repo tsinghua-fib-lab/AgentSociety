@@ -6,7 +6,7 @@ import {
   CloudServerOutlined, ImportOutlined, PlusOutlined, ReloadOutlined, SyncOutlined, ThunderboltOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
-import type { VSCodeAPI, McpServerRecord, McpProbeResult, McpPresetCatalogItem } from '../types';
+import type { VSCodeAPI, McpServerRecord, McpProbeResult, McpPresetCatalogItem, McpTransport } from '../types';
 import type { VscodeThemePalette } from '../../theme';
 import { PageSection } from './PageSection';
 import { ListCard } from './ListCard';
@@ -29,7 +29,7 @@ type Props = {
 
 const EMPTY_DRAFT = {
   name: '',
-  transport: 'http' as const,
+  transport: 'http' as McpTransport,
   url: '',
   command: '',
   args: '',
@@ -97,11 +97,9 @@ export function McpIntegrationsPanel({
       return <Tag color="blue">{t('skillManagement.mcpBuiltinLiterature')}</Tag>;
     }
     if (row.transport === 'sse') {
-      return <Tag>SSE (Claude)</Tag>;
+      return <Tag>{t('skillManagement.mcpSseClaudeOnly')}</Tag>;
     }
-    if (row.transport !== 'http') {
-      return <Tag>{t('skillManagement.mcpStdioHint')}</Tag>;
-    }
+    if (row.transport !== 'http') { return null; }
     const probe = probeById[row.id];
     if (probingId === row.id) {
       return <Tag color="processing">{t('skillManagement.mcpProbing')}</Tag>;

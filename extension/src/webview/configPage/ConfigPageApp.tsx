@@ -31,7 +31,7 @@ import type { PythonEnvironmentOption } from './PythonEnvironmentPicker';
 import { DefaultLlmConfigCard } from './DefaultLlmConfigCard';
 import { LiteratureConfigSection } from './LiteratureConfigSection';
 import { CodexDeviceLoginProvider } from './CodexDeviceLoginPanel';
-import { inferProviderAuthMode, providerSupportsRole } from './providerAuth';
+import { inferProviderAuthMode, providerSupportsRole } from '../../aiCli/providerAuth';
 import { EMPTY_PROVIDER_DRAFT } from './aiCliProviderTypes';
 import { OFFICIAL_OPENAI_BASE_URL } from '../../aiCli/officialEndpoints';
 import { AiCliConfigSection } from './AiCliConfigSection';
@@ -239,7 +239,6 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
   const [claudeCliStatus, setClaudeCliStatus] = React.useState<ClaudeCodeCliStatus>({ installed: false });
   const [claudeSettingsPath, setClaudeSettingsPath] = React.useState('~/.claude/settings.json');
   const [claudeAvailableModels, setClaudeAvailableModels] = React.useState<ClaudeModelOption[]>([]);
-  const claudeModelsFetchFingerprintRef = React.useRef<string | null>(null);
   const [aiCliGatewayStatus, setAiCliGatewayStatus] = React.useState<AiCliGatewayStatus>({
     enabled: false,
     running: false,
@@ -566,7 +565,6 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
     setClaudeDraftOverrides({});
     claudeForm.setFieldsValue(DEFAULT_CLAUDE_VALUES);
     setClaudeAvailableModels([]);
-    claudeModelsFetchFingerprintRef.current = null;
     notification.info({
       message: t('configPage.resetClaudeDefaults'),
       placement: 'top',
@@ -741,30 +739,6 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
       return translated === key ? t('claudeCodeConfig.modelsFetchErrors.unknown') : translated;
     },
     [t]
-  );
-
-  const _fetchClaudeModels = React.useCallback(
-    (options?: { force?: boolean }) => {
-      const claude = getClaudeValuesForValidation();
-      const baseUrl = (claude.baseUrl ?? '').trim();
-      const apiKey = (claude.apiKey ?? '').trim();
-      if (!baseUrl || !apiKey) {
-        setClaudeModelsError(t('claudeCodeConfig.modelsFetchErrors.missing_credentials'));
-        return;
-      }
-      const fingerprint = `${baseUrl}::${apiKey.length}::${apiKey.slice(-4)}`;
-      if (!options?.force && claudeModelsFetchFingerprintRef.current === fingerprint) {
-        return;
-      }
-      if (options?.force) {
-        claudeModelsFetchFingerprintRef.current = null;
-      }
-      claudeModelsFetchFingerprintRef.current = fingerprint;
-      setClaudeModelsLoading(true);
-      setClaudeModelsError(null);
-      vscode.postMessage({ command: 'fetchClaudeModels', baseUrl, apiKey });
-    },
-    [getClaudeValuesForValidation, t, vscode]
   );
 
   const handleGatewayRouteToggle = React.useCallback(
@@ -1280,7 +1254,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
         message.command === 'gatewayCheckProviderResult' ||
         message.command === 'gatewaySpeedtestResult'
       ) {
-        const stMsg = message as { baseUrl: string; result: ProviderAvailabilityResult };
+        const stMsg = message as unknown as { baseUrl: string; result: ProviderAvailabilityResult };
         const key = normalizeProviderBaseUrl(stMsg.baseUrl);
         setProviderCheckingUrls((prev) => {
           const next = new Set(prev);
@@ -1785,6 +1759,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
         }}>
       <Layout style={{ minHeight: '100vh', background: palette.editorBackground }}>
         <Content
+          className="as-page-content"
           style={{
             padding: '20px 24px',
             maxWidth: 1000,
@@ -1793,21 +1768,14 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
             color: palette.editorForeground,
           }}
         >
-          {/* 头部区域 - 玻璃态 */}
           <div
+            className="as-page-hero"
             style={{
               marginBottom: 20,
               padding: '20px 24px',
               borderRadius: 16,
               border: `1px solid ${palette.panelBorder}`,
-              background: isDark
-                ? 'rgba(37, 37, 38, 0.7)'
-                : 'rgba(255, 255, 255, 0.65)',
-              backdropFilter: 'blur(24px)',
-              WebkitBackdropFilter: 'blur(24px)',
-              boxShadow: isDark
-                ? '0 4px 16px rgba(0,0,0,0.2)'
-                : '0 4px 16px rgba(0,0,0,0.08)',
+              background: palette.surfaceMuted,
             }}
           >
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 16 }}>
@@ -1820,7 +1788,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
                     width: 40,
                     height: 40,
                     borderRadius: 12,
-                    background: `linear-gradient(135deg, ${palette.linkForeground}20 0%, ${palette.linkForeground}10 100%)`,
+                    background: `color-mix(in srgb, ${palette.linkForeground} 12%, transparent)`,
                     color: palette.linkForeground,
                   }}
                 >
@@ -1840,7 +1808,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
                 </div>
               </div>
               {!wizardMode ? (
-                <Space wrap={false} align="center" size={8}>
+                <Space wrap align="center" size={8}>
                   {webImportPanel('header')}
                   <Tooltip title={saveDisabledReason || ''}>
                     <Button
@@ -2073,7 +2041,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
                               key: 'cli',
                               label: t('configPage.pageTabs.cli'),
                               children: (
-                                <div ref={claudeSectionRef} style={advancedPanelInnerStyle(isDark, palette)}>
+                                <div ref={claudeSectionRef} style={advancedPanelInnerStyle(palette)}>
                                   <AiCliConfigSection
                                     t={t}
                                     palette={palette}
@@ -2150,7 +2118,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
                               key: 'specialized',
                               label: t('configPage.pageTabs.specialized'),
                               children: (
-                                <div style={advancedPanelInnerStyle(isDark, palette)}>
+                                <div style={advancedPanelInnerStyle(palette)}>
                                   <AdvancedConfigSection
                                     t={t}
                                     palette={palette}
@@ -2186,7 +2154,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
                               key: 'literature',
                               label: t('configPage.pageTabs.literature'),
                               children: (
-                                <div style={advancedPanelInnerStyle(isDark, palette)}>
+                                <div style={advancedPanelInnerStyle(palette)}>
                                   <LiteratureConfigSection
                                     t={t}
                                     palette={palette}
@@ -2246,7 +2214,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
                       key: 'specialized',
                       label: t('configPage.pageTabs.specialized'),
                       children: (
-                        <div style={advancedPanelInnerStyle(isDark, palette)}>
+                        <div style={advancedPanelInnerStyle(palette)}>
                           <AdvancedConfigSection
                             t={t}
                             palette={palette}
@@ -2282,7 +2250,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
                       key: 'literature',
                       label: t('configPage.pageTabs.literature'),
                       children: (
-                        <div style={advancedPanelInnerStyle(isDark, palette)}>
+                        <div style={advancedPanelInnerStyle(palette)}>
                           <LiteratureConfigSection
                             t={t}
                             palette={palette}
@@ -2306,7 +2274,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
                       key: 'cli',
                       label: t('configPage.pageTabs.cli'),
                       children: (
-                        <div ref={claudeSectionRef} style={advancedPanelInnerStyle(isDark, palette)}>
+                        <div ref={claudeSectionRef} style={advancedPanelInnerStyle(palette)}>
                           <AiCliConfigSection
                             t={t}
                             palette={palette}

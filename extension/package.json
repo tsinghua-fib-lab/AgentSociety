@@ -842,7 +842,7 @@
     "vscode:prepublish": "npm run build",
     "build": "npm run check-types && npm run build-extension && npm run build-webview",
     "rebuild": "npm run clean && npm run build",
-    "check-types": "tsc -p ./",
+    "check-types": "tsc -p ./ && tsc -p src/webview/tsconfig.json --noEmit",
     "compile": "npm run check-types && npm run build-extension",
     "build-extension": "WEBPACK_TARGET=extension NODE_ENV=production NODE_OPTIONS=--max-old-space-size=4096 webpack --mode production",
     "watch": "concurrently -k -n types,extension \"tsc -watch -p ./\" \"WEBPACK_TARGET=extension NODE_ENV=development webpack --mode development --watch\"",

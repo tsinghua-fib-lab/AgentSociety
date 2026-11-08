@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Space, Tooltip, Typography } from 'antd';
 import { QuestionCircleOutlined } from '@ant-design/icons';
-import type { VscodeThemePalette } from '../theme';
+import type { VscodeThemePalette } from '../../theme';
 import { SKILL_UI, sectionShellStyle } from '../uiTokens';
 
 const { Text } = Typography;

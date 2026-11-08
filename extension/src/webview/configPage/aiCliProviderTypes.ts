@@ -1,5 +1,5 @@
 import type { AiCliApiKind } from '../../aiCli/officialEndpoints';
-import type { AiCliAuthMode } from './providerAuth';
+import type { AiCliAuthMode } from '../../aiCli/providerAuth';
 import type { AiCliAuthHeaderMode } from '../../aiCli/upstreamAuthHeaders';
 import type { ClaudeModelOption } from './claudeCodeTypes';
 

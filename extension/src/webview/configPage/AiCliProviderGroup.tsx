@@ -8,7 +8,7 @@ import type { AiCliApiKind } from '../../aiCli/officialEndpoints';
 import type { AiCliProviderRecord } from './aiCliProviderTypes';
 import { EMPTY_PROVIDER_DRAFT } from './aiCliProviderTypes';
 import { ProviderEditor } from './AiCliProviderEditor';
-import { inferProviderAuthMode, providerSupportsRole } from './providerAuth';
+import { inferProviderAuthMode, providerSupportsRole } from '../../aiCli/providerAuth';
 import { supportsProviderUsageQuery } from './providerUsageSupport';
 import { normalizeProviderBaseUrl } from './providerBaseUrl';
 
@@ -105,7 +105,7 @@ export function AiCliProviderGroup({
         <Space size={4}>
           <BarChartOutlined style={{ color: palette.linkForeground }} />
           <Tooltip title={usage.plans?.map((plan) => `${plan.name}: ${plan.remaining}`).join('\n')}>
-            <Text style={{ fontSize: 11 }}>{usage.summary}</Text>
+            <Text style={{ fontSize: 12 }}>{usage.summary}</Text>
           </Tooltip>
           {refresh}
         </Space>
@@ -117,7 +117,7 @@ export function AiCliProviderGroup({
       return (
         <Space size={4}>
           <Tooltip title={errorText}>
-            <Tag color="error" style={{ margin: 0, fontSize: 10 }}>{errorText}</Tag>
+            <Tag color="error" style={{ margin: 0, fontSize: 11 }}>{errorText}</Tag>
           </Tooltip>
           {refresh}
         </Space>
@@ -125,7 +125,7 @@ export function AiCliProviderGroup({
     }
     return (
       <Space size={4}>
-        <Text type="secondary" style={{ fontSize: 11 }}>
+        <Text type="secondary" style={{ fontSize: 12 }}>
           {usage?.loading
             ? t('claudeCodeConfig.providerQuotaLoading')
             : t('claudeCodeConfig.providerQueryQuota')}
@@ -143,7 +143,7 @@ export function AiCliProviderGroup({
     const roleChoice = (label: 'Claude' | 'Codex', active: boolean, isApplicable: boolean) => {
       if (!isApplicable) {
         return (
-          <Text type="secondary" style={{ fontSize: 10, width: 130 }}>
+          <Text type="secondary" style={{ fontSize: 11, width: 130 }}>
             {t('claudeCodeConfig.providerRoleNotSupported', { tool: label })}
           </Text>
         );
@@ -158,12 +158,12 @@ export function AiCliProviderGroup({
               disabled={!canActivate || loading}
               onChange={() => onActivate(provider.id, label === 'Claude' ? 'claude' : 'codex')}
             >
-              <Text style={{ fontSize: 11, color: active ? palette.linkForeground : palette.descriptionForeground, minWidth: 40 }}>
+              <Text style={{ fontSize: 12, color: active ? palette.linkForeground : palette.descriptionForeground, minWidth: 40 }}>
                 {label}
               </Text>
             </Radio>
             {active ? (
-              <Tag color="blue" style={{ margin: 0, fontSize: 10, lineHeight: '16px' }}>
+              <Tag color="blue" style={{ margin: 0, fontSize: 11, lineHeight: '16px' }}>
                 {t('claudeCodeConfig.providerRolePrimary')}
               </Tag>
             ) : null}
@@ -194,13 +194,13 @@ export function AiCliProviderGroup({
   const renderProtocolTag = (provider: AiCliProviderRecord) => {
     if (!provider.apiKind) {
       return (
-        <Tag style={{ margin: 0, fontSize: 10 }}>
+        <Tag style={{ margin: 0, fontSize: 11 }}>
           {t('claudeCodeConfig.providerProtocolAuto')}
         </Tag>
       );
     }
     return (
-      <Tag color={provider.apiKind === 'openai' ? 'blue' : 'purple'} style={{ margin: 0, fontSize: 10 }}>
+      <Tag color={provider.apiKind === 'openai' ? 'blue' : 'purple'} style={{ margin: 0, fontSize: 11 }}>
         {provider.apiKind === 'openai'
           ? t('claudeCodeConfig.providerProtocolOpenAiDetected')
           : t('claudeCodeConfig.providerProtocolAnthropicDetected')}
@@ -218,7 +218,7 @@ export function AiCliProviderGroup({
           <QuestionCircleOutlined style={{ opacity: 0.65, cursor: 'help' }} />
         </Tooltip>
       </Space>
-      <Text type="secondary" style={{ display: 'block', fontSize: 11, marginBottom: 8 }}>
+      <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 8 }}>
         {t('claudeCodeConfig.providerSelectionHint')}
       </Text>
       <Space direction="vertical" style={{ width: '100%' }} size={10}>
@@ -242,7 +242,7 @@ export function AiCliProviderGroup({
               key={p.id}
               size="small"
               style={{
-                borderRadius: 8,
+                borderRadius: 12,
                 borderColor: hasAnyActive ? palette.focusBorder : undefined,
                 background: hasAnyActive ? palette.codeBlockBackground : undefined,
               }}
@@ -251,7 +251,7 @@ export function AiCliProviderGroup({
                   <Text strong style={{ fontSize: 13 }}>{p.name || p.baseUrl || t('claudeCodeConfig.providerUnnamed')}</Text>
                   {renderProtocolTag(p)}
                   {hasAnyActive ? (
-                    <Tag color="green" style={{ margin: 0, fontSize: 10 }}>
+                    <Tag color="green" style={{ margin: 0, fontSize: 11 }}>
                       {t('claudeCodeConfig.providerSelected')}
                     </Tag>
                   ) : null}
@@ -269,7 +269,7 @@ export function AiCliProviderGroup({
                     <Text
                       type="secondary"
                       ellipsis={{ tooltip: p.baseUrl || t('claudeCodeConfig.providerSubscriptionDirect') }}
-                      style={{ display: 'block', minWidth: 0, fontSize: 11 }}
+                      style={{ display: 'block', minWidth: 0, fontSize: 12 }}
                     >
                       {p.baseUrl || t('claudeCodeConfig.providerSubscriptionDirect')}
                     </Text>
@@ -305,7 +305,7 @@ export function AiCliProviderGroup({
           );
         })}
         {providers.length === 0 && !showNew ? (
-          <Text type="secondary" style={{ fontSize: 11 }}>{t('claudeCodeConfig.providerEmpty')}</Text>
+          <Text type="secondary" style={{ fontSize: 12 }}>{t('claudeCodeConfig.providerEmpty')}</Text>
         ) : null}
         {showNew ? (
           <Card
@@ -318,7 +318,7 @@ export function AiCliProviderGroup({
                 </Tooltip>
               </Space>
             }
-            style={{ borderRadius: 8 }}
+            style={{ borderRadius: 12 }}
           >
             <ProviderEditor
               t={t}

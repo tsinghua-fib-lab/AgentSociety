@@ -268,7 +268,7 @@ export function ConfigSetupWizard({
       size="small"
       style={{
         marginBottom: 16,
-        borderRadius: 12,
+        borderRadius: 16,
         border: `1px solid ${palette.panelBorder}`,
         background: palette.surfaceMuted,
       }}
@@ -302,7 +302,7 @@ export function ConfigSetupWizard({
       <Alert
         type="info"
         showIcon
-        style={{ marginBottom: 14, borderRadius: 8 }}
+        style={{ marginBottom: 14, borderRadius: 12 }}
         message={introTitle}
         description={<span style={{ fontSize: 12 }}>{introBody}</span>}
       />

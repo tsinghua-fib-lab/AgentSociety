@@ -1048,6 +1048,7 @@
     "mcpProbeFailed": "探测失败",
     "mcpTools": "{{count}} 个工具",
     "mcpStdioHint": "stdio",
+    "mcpSseClaudeOnly": "仅支持 Claude Code",
     "mcpRemove": "移除",
     "mcpEditInConfig": "在配置页编辑",
     "mcpEmpty": "暂无 MCP 服务器",

@@ -6,7 +6,7 @@ import type { FormInstance } from 'antd';
 import type { VscodeThemePalette } from '../theme';
 import type { ClaudeModelOption } from './claudeCodeTypes';
 import type { ConfigValues, ValidationState } from './types';
-import { glassCardStyle } from './configPageStyles';
+import { panelCardStyle } from './configPageStyles';
 import { ValidationAction } from './ValidationAction';
 import { EnvLlmModelField } from './EnvLlmModelField';
 import { ThinkingSelect } from './ThinkingSelect';
@@ -99,7 +99,7 @@ export function DefaultLlmConfigCard({
           <Tag color="red" style={{ marginLeft: 4 }}>{t('configPage.llm.requiredTag')}</Tag>
         </Space>
       )}
-      style={glassCardStyle(isDark, palette)}
+      style={panelCardStyle(palette)}
       styles={{ body: { padding: '16px 20px' } }}
     >
       {showIntro ? (

@@ -238,14 +238,7 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
         case 'skillSourcesLoaded': {
           const payload = msg.payload as {
             target: 'agent' | 'claudeCode';
-            sources: Array<{
-              owner: string;
-              repo: string;
-              branch?: string;
-              skillsPath?: string;
-              platform?: string;
-              baseUrl?: string;
-            }>;
+            sources: SkillSourceConfig[];
           };
           if (payload.target === 'agent') {
             setAgentSkillSources(payload.sources);
@@ -258,14 +251,7 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
         case 'skillSourcesSaved': {
           const payload = msg.payload as {
             target: 'agent' | 'claudeCode';
-            sources: Array<{
-              owner: string;
-              repo: string;
-              branch?: string;
-              skillsPath?: string;
-              platform?: string;
-              baseUrl?: string;
-            }>;
+            sources: SkillSourceConfig[];
           };
           if (payload.target === 'agent') {
             setAgentSkillSources(payload.sources);
@@ -1470,7 +1456,7 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
   return (
     <ConfigProvider theme={themeConfig}>
       <Layout style={{ minHeight: '100vh', background: 'transparent' }}>
-        <Content style={{ padding: '20px 22px 28px' }}>
+        <Content className="as-page-content" style={{ padding: '20px 22px 28px' }}>
           <Modal
             open={updateDiffModal.open}
             title={t('skillManagement.updateDiffTitle', {
@@ -1596,7 +1582,7 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
             {renderSourcesModalContent()}
           </Modal>
           <div style={{ maxWidth: SKILL_UI.maxWidth, margin: '0 auto' }}>
-            <div style={heroShellStyle(palette)}>
+            <div className="as-page-hero" style={heroShellStyle(palette)}>
               <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: SKILL_UI.space.lg }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <span style={iconBadgeStyle(palette.linkForeground)}>
