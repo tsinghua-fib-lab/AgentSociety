@@ -26,6 +26,7 @@ from agentsociety2.agent.person_prompt import (
 
 # ------------------------------ 加载器 ------------------------------
 
+
 def test_loader_absent_file_returns_empty(tmp_path):
     assert load_prompt_overrides(tmp_path) == {}
 
@@ -57,6 +58,7 @@ def test_loader_mutation_visible_next_read(tmp_path):
 
 
 # -------------------------- 消息装配 --------------------------
+
 
 def _react_messages(**over):
     kwargs = {
@@ -92,6 +94,7 @@ def test_override_is_shared_across_agent_views():
 
 # --------------------- 合并 prompt override ---------------------
 
+
 def _runtime_with_prompt(prompt, tmp_path):
     calls = {}
 
@@ -99,7 +102,13 @@ def _runtime_with_prompt(prompt, tmp_path):
         calls["messages"] = kwargs.get("messages")
         content = "# Memory\n\n## Identity And Profile\n- x"
         resp = type(
-            "R", (), {"choices": [type("C", (), {"message": type("M", (), {"content": content})()})]}
+            "R",
+            (),
+            {
+                "choices": [
+                    type("C", (), {"message": type("M", (), {"content": content})()})
+                ]
+            },
         )()
         return resp
 

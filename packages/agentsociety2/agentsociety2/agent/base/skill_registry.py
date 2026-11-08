@@ -7,6 +7,7 @@ English: Scans, parses, and queries Agent skill metadata.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from hashlib import sha256
 from pathlib import Path
 from typing import Any
 
@@ -72,6 +73,13 @@ class SkillDescriptor:
             resources.append(relative.as_posix())
         _RESOURCE_FILES_CACHE[cache_key] = resources
         return list(resources)
+
+
+# Parsed frontmatter is immutable to callers and shared across fresh registries.
+# Equal-size rapid edits can retain identical filesystem timestamps. Hash the
+# same content that is parsed; metadata alone cannot establish cache freshness.
+_FRONTMATTER_CACHE: dict[tuple[str, bytes], dict[str, Any]] = {}
+_FRONTMATTER_CACHE_MAX = 1024
 
 
 class SkillRegistry:
@@ -223,9 +231,19 @@ class SkillRegistry:
             if not child.is_dir() or child.name.startswith((".", "_")):
                 continue
             skill_md = child / "SKILL.md"
-            if not skill_md.is_file():
+            try:
+                if not skill_md.is_file():
+                    continue
+                raw = skill_md.read_text(encoding="utf-8")
+            except OSError:
                 continue
-            meta = _parse_frontmatter(skill_md)
+            cache_key = (str(skill_md), sha256(raw.encode("utf-8")).digest())
+            meta = _FRONTMATTER_CACHE.get(cache_key)
+            if meta is None:
+                meta = _parse_frontmatter(raw)
+                if len(_FRONTMATTER_CACHE) >= _FRONTMATTER_CACHE_MAX:
+                    _FRONTMATTER_CACHE.clear()
+                _FRONTMATTER_CACHE[cache_key] = meta
             name = str(meta.get("name") or child.name).strip()
             if not name:
                 continue
@@ -263,13 +281,12 @@ class SkillRegistry:
         return None
 
 
-def _parse_frontmatter(path: Path) -> dict[str, Any]:
+def _parse_frontmatter(raw: str) -> dict[str, Any]:
     """从 SKILL.md 文件解析 YAML frontmatter。
 
-    :param path: SKILL.md 路径。
+    :param raw: 已读取的 SKILL.md 文本,与内容指纹共享同一份快照。
     :returns: 解析出的 frontmatter 映射。
     """
-    raw = path.read_text(encoding="utf-8")
     if not raw.startswith("---"):
         return {}
     parts = raw.split("---", 2)

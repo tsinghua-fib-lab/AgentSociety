@@ -22,18 +22,18 @@ from pathlib import Path
 
 import yaml
 
-
 SCRIPT_DIR = Path(__file__).resolve().parent
 EXP_DIR = SCRIPT_DIR.parent
 REPO_ROOT = EXP_DIR.parents[2]
 TMP_DIR = EXP_DIR / "tmp"
-TMP_INIT_DIR = TMP_DIR / "init"
+# Isolate generated configs when multiple experiments run concurrently.
+TMP_INIT_DIR = Path(os.environ.get("DAILY_MOBILITY_INIT_DIR", str(TMP_DIR / "init")))
 TMP_RUN_DIR = TMP_DIR / "run"
 
 if str(EXP_DIR) not in sys.path:
     sys.path.insert(0, str(EXP_DIR))
 
-from daily_mobility_intentions import (  # noqa: E402
+from daily_mobility_intentions import (
     INTENTION_CHOICES,
     build_primary_intention_prompt,
 )
@@ -186,7 +186,13 @@ def main() -> None:
     mobility_home.mkdir(parents=True, exist_ok=True)
 
     persons = [
-        {"id": p["id"], "position": {"kind": "aoi", "aoi_id": p["home"]}} for p in use
+        {
+            "id": p["id"],
+            "position": {"kind": "aoi", "aoi_id": p["home"]},
+            "home_aoi": p["home"],
+            "work_aoi": p.get("work"),
+        }
+        for p in use
     ]
 
     agents = []
@@ -196,7 +202,10 @@ def main() -> None:
             "id": aid,
             "profile": _profile_block(p, slot_minutes),
             "max_react_turns": 6 if len(use) > 20 else 8,
-            "default_activated_skill_ids": ["built-in@daily-guidance"],
+            "default_activated_skill_ids": [
+                "built-in@daily-guidance",
+                "env:MobilitySpace@mobility",
+            ],
         }
         agents.append(
             {

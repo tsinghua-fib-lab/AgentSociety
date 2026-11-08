@@ -729,22 +729,23 @@ class Map:
         """
         if not isinstance(center, Point):
             center = Point(center)
-        if radius is None:
-            poi_iter = self._poi_list
-        else:
-            indices = self._poi_tree.query(center.buffer(radius))
-            poi_iter = (self._poi_list[index] for index in indices)
-
-        pois = []
-        for poi in poi_iter:
-            if category is None or category in poi["category"]:
-                distance = center.distance(poi["shapely_xy"])
-                pois.append((poi, distance))
-        # 按照距离排序
-        pois = sorted(pois, key=lambda x: x[1])
+        indices = (
+            np.arange(len(self._poi_list), dtype=np.intp)
+            if radius is None
+            else self._poi_tree.query(center.buffer(radius))
+        )
+        if category is not None:
+            indices = np.asarray(
+                [i for i in indices if category in self._poi_list[i]["category"]],
+                dtype=np.intp,
+            )
+        # GEOS computes the candidate distances in one vectorized operation.
+        # Stable sorting retains the index query's tie order, as Python sorted did.
+        distances = shapely.distance(center, self._poi_tree.geometries.take(indices))
+        order = np.argsort(distances, kind="stable")
         if limit is not None:
-            pois = pois[:limit]
-        return pois
+            order = order[:limit]
+        return [(self._poi_list[indices[i]], float(distances[i])) for i in order]
 
     def query_aois(
         self,

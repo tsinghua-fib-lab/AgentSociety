@@ -106,19 +106,15 @@ async def test_exec_print_capture_isolated_between_concurrent_asks() -> None:
     让出事件循环，另一个 ask 会换走全局 stdout，本执行恢复后的 print 写进
     别人的 buffer。现改为向 exec globals 注入每执行独立的 print。
     """
-    from types import SimpleNamespace
-
     from agentsociety2.env.router_codegen import CodeGenRouter, CodeStage
 
     class _Snoozer:
         async def snooze(self):
             await asyncio.sleep(0.02)
 
-    router = SimpleNamespace(
-        ALLOWED_MODULES=CodeGenRouter.ALLOWED_MODULES,
-        ALLOWED_BUILTINS=CodeGenRouter.ALLOWED_BUILTINS,
-        _modules={"env": _Snoozer()},
-    )
+    router = CodeGenRouter(env_modules=[], final_summary_enabled=False)
+    _Snoozer.snooze._tool_info = {"readonly": True}
+    router._modules = {"env": _Snoozer()}
 
     async def run(tag: str) -> dict:
         code = (
@@ -138,7 +134,7 @@ async def test_exec_print_capture_isolated_between_concurrent_asks() -> None:
     assert "A-" not in res_b["output"]
 
 
-def test_codegen_validation_requires_final_status_assignment() -> None:
+def test_codegen_validation_requires_classified_completion() -> None:
     from agentsociety2.env.router_codegen import CodeGenRouter, CodeStage
 
     valid = "print('done')\nresults['status'] = 'success'"
@@ -146,7 +142,9 @@ def test_codegen_validation_requires_final_status_assignment() -> None:
 
     ok, reason = CodeStage._validate_code_safety(CodeGenRouter, "print('done')")
     assert not ok
-    assert "Final statement must assign results['status']" in reason
+    assert (
+        "Code must classify every normal completion path in results['status']" in reason
+    )
 
     unknown = "result = 'unknown'\nresults['status'] = result"
     ok, reason = CodeStage._validate_code_safety(CodeGenRouter, unknown)

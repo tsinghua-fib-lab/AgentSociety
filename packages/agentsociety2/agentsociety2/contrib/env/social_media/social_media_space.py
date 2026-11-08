@@ -436,8 +436,9 @@ class SocialMediaSpace(EnvBase):
         """将 pending 事件批量写入 social_media_event 表，然后清空缓冲。"""
         if self._replay_writer is None or not self._pending_events:
             return
-        for event in self._pending_events:
-            await self._replay_writer.write("social_media_event", event)
+        await self._replay_writer.write_batch(
+            "social_media_event", self._pending_events
+        )
         self._pending_events.clear()
 
     async def _register_event_table(self) -> None:

@@ -71,15 +71,11 @@ def _reason(
 ) -> dict[str, str]:
     """Build one Maslow reason block.
 
-    Args:
-        need: Need label served by the segment.
-        reason: Short explanation for the segment.
-        risk: What becomes implausible without this segment.
-        required: Requirement strength.
-
-    Returns:
-        Maslow reason dictionary.
-    """
+    :param need: Need label served by the segment.
+    :param reason: Short explanation for the segment.
+    :param risk: What becomes implausible without this segment.
+    :param required: Requirement strength.
+    :returns: Maslow reason dictionary."""
     return {
         "need": need,
         "reason": reason,
@@ -91,13 +87,9 @@ def _reason(
 def _tpb(proof: str, choice: str = "commit") -> dict[str, Any]:
     """Build one TPB reason block.
 
-    Args:
-        proof: Short proof string.
-        choice: Behavioral choice label.
-
-    Returns:
-        TPB reason dictionary.
-    """
+    :param proof: Short proof string.
+    :param choice: Behavioral choice label.
+    :returns: TPB reason dictionary."""
     return {
         "want": {"reason": "This keeps the day coherent.", "status": "supported"},
         "norm": {"reason": "This fits ordinary daily routines.", "status": "supported"},
@@ -113,13 +105,9 @@ def _tpb(proof: str, choice: str = "commit") -> dict[str, Any]:
 def default_story_for_date(date: str, agent_id: int = 0) -> dict[str, Any]:
     """Create a valid fallback daily story.
 
-    Args:
-        date: Story date in YYYY-MM-DD form.
-        agent_id: Numeric agent id used in the story id.
-
-    Returns:
-        Schema-valid story dictionary.
-    """
+    :param date: Story date in YYYY-MM-DD form.
+    :param agent_id: Numeric agent id used in the story id.
+    :returns: Schema-valid story dictionary."""
     segments = [
         {
             "id": "sleep_night",
@@ -355,13 +343,9 @@ def read_sim_time(root: Path | None = None) -> datetime | None:
 def require_sim_time(root: Path, mode: str) -> datetime | None:
     """Return the deterministic simulation clock or emit an error.
 
-    Args:
-        root: Agent workspace root.
-        mode: CLI mode name used in the emitted error payload.
-
-    Returns:
-        Parsed simulation time, or None when unavailable.
-    """
+    :param root: Agent workspace root.
+    :param mode: CLI mode name used in the emitted error payload.
+    :returns: Parsed simulation time, or None when unavailable."""
     sim_time = read_sim_time(root)
     if sim_time is None:
         emit(
@@ -379,14 +363,10 @@ def validate_command_date(
 ) -> datetime | None:
     """Normalize ``--date`` to the deterministic simulation clock date.
 
-    Args:
-        args: Parsed command namespace with a ``date`` attribute.
-        root: Agent workspace root.
-        mode: CLI mode name used in the emitted error payload.
-
-    Returns:
-        Parsed simulation time when available, otherwise None.
-    """
+    :param args: Parsed command namespace with a ``date`` attribute.
+    :param root: Agent workspace root.
+    :param mode: CLI mode name used in the emitted error payload.
+    :returns: Parsed simulation time when available, otherwise None."""
     sim_time = require_sim_time(root, mode)
     if sim_time is None:
         return None
@@ -403,13 +383,9 @@ def validate_command_date(
 def normalize_plan_to_sim_date(plan: dict[str, Any], sim_date: str) -> dict[str, Any]:
     """Return a plan copy whose date-owned fields follow the simulation date.
 
-    Args:
-        plan: Validated plan payload.
-        sim_date: Date derived from the deterministic simulation clock.
-
-    Returns:
-        Plan copy with ``date`` set to sim_date and simple story_id dates updated.
-    """
+    :param plan: Validated plan payload.
+    :param sim_date: Date derived from the deterministic simulation clock.
+    :returns: Plan copy with ``date`` set to sim_date and simple story_id dates updated."""
     normalized = dict(plan)
     original_date = str(normalized.get("date", ""))
     normalized["date"] = sim_date
@@ -453,13 +429,9 @@ def infer_from_segment_id(
 ) -> str | None:
     """Infer a revision start segment from the replacement tail start time.
 
-    Args:
-        existing_segments: Current story segments.
-        replacement_tail: Proposed replacement segment list.
-
-    Returns:
-        Existing segment id that covers the first replacement start time, or None.
-    """
+    :param existing_segments: Current story segments.
+    :param replacement_tail: Proposed replacement segment list.
+    :returns: Existing segment id that covers the first replacement start time, or None."""
     if not replacement_tail or not isinstance(replacement_tail[0], dict):
         return None
     start = hhmm_to_minutes(str(replacement_tail[0].get("start", "")))
@@ -1429,13 +1401,9 @@ def _build_hook_result(root: Path, payload: dict[str, Any]) -> dict[str, Any] | 
     Shared by the CLI ``command_hook_init`` and the native ``pre_step`` function
     hook. Returns None when no simulation time is available.
 
-    Args:
-        root: Agent workspace root.
-        payload: Lifecycle payload (``time``, ``agent_id``, ...).
-
-    Returns:
-        The result dict, or None when sim time is missing.
-    """
+    :param root: Agent workspace root.
+    :param payload: Lifecycle payload (``time``, ``agent_id``, ...).
+    :returns: The result dict, or None when sim time is missing."""
     raw_time = payload.get("time")
     if isinstance(raw_time, str) and raw_time.strip():
         current_time = parse_hook_time(raw_time)
@@ -1525,12 +1493,7 @@ async def pre_step() -> str:
     :func:`get_hook_context` and returns the same YAML the CLI ``hook_init``
     would print.
 
-    Args:
-        None.
-
-    Returns:
-        The YAML result string.
-    """
+    :returns: The YAML result string."""
     from agentsociety2.agent.base.skill_hook_context import get_hook_context
 
     ctx = get_hook_context()
@@ -1673,12 +1636,8 @@ def is_lifecycle_hook_argv(argv: list[str]) -> bool:
 def normalize_argv(argv: list[str]) -> list[str]:
     """Normalize common abbreviated CLI arguments emitted by agents.
 
-    Args:
-        argv: Raw command-line arguments after the script path.
-
-    Returns:
-        Arguments suitable for argparse.
-    """
+    :param argv: Raw command-line arguments after the script path.
+    :returns: Arguments suitable for argparse."""
     if not argv:
         return argv
     if is_lifecycle_hook_argv(argv):
@@ -1722,13 +1681,9 @@ def normalize_argv(argv: list[str]) -> list[str]:
 def coalesce_option_value_argv(argv: list[str], option: str) -> list[str]:
     """Merge split free-text values after one option.
 
-    Args:
-        argv: Command-line arguments after alias normalization.
-        option: Option name whose value may contain spaces.
-
-    Returns:
-        Arguments with that option's value coalesced until the next option.
-    """
+    :param argv: Command-line arguments after alias normalization.
+    :param option: Option name whose value may contain spaces.
+    :returns: Arguments with that option's value coalesced until the next option."""
     if option not in argv:
         return argv
     index = argv.index(option)
@@ -1750,12 +1705,8 @@ def coalesce_option_value_argv(argv: list[str], option: str) -> list[str]:
 def coalesce_json_argv(argv: list[str]) -> list[str]:
     """Merge a JSON value split across multiple argv tokens.
 
-    Args:
-        argv: Command-line arguments after alias normalization.
-
-    Returns:
-        Arguments with the value after ``--json`` merged when needed.
-    """
+    :param argv: Command-line arguments after alias normalization.
+    :returns: Arguments with the value after ``--json`` merged when needed."""
     if "--json" not in argv:
         return argv
     json_index = argv.index("--json")
@@ -1776,12 +1727,8 @@ def coalesce_json_argv(argv: list[str]) -> list[str]:
 def drop_redundant_positional_date(argv: list[str]) -> list[str]:
     """Drop a trailing date when ``--date`` is already present.
 
-    Args:
-        argv: Command-line arguments after alias normalization.
-
-    Returns:
-        Arguments without a redundant trailing date.
-    """
+    :param argv: Command-line arguments after alias normalization.
+    :returns: Arguments without a redundant trailing date."""
     date_index = argv.index("--date") if "--date" in argv else -1
     if (
         date_index >= 0
@@ -1796,12 +1743,8 @@ def drop_redundant_positional_date(argv: list[str]) -> list[str]:
 def dispatch(args: argparse.Namespace) -> int:
     """Run the command selected by argparse.
 
-    Args:
-        args: Parsed CLI namespace.
-
-    Returns:
-        Process exit code.
-    """
+    :param args: Parsed CLI namespace.
+    :returns: Process exit code."""
     if args.cmd == "init":
         return command_init(args)
     if args.cmd == "plan":
@@ -1830,13 +1773,9 @@ def entrypoint(argv: list[str], ctx: Any) -> str:
     ``agent_work_dir()`` / ``emit()`` call inside dispatch resolves correctly
     and concurrently-safely.
 
-    Args:
-        argv: Command-line arguments after the script path.
-        ctx: Skill runtime context exposing ``workspace_root``.
-
-    Returns:
-        The YAML text the subprocess would have printed to stdout.
-    """
+    :param argv: Command-line arguments after the script path.
+    :param ctx: Skill runtime context exposing ``workspace_root``.
+    :returns: The YAML text the subprocess would have printed to stdout."""
     workspace_root = Path(str(ctx.workspace_root)).resolve()
     ws_token = _WORKSPACE_ROOT.set(workspace_root)
     buf_token = _EMIT_BUFFER.set([])

@@ -10,6 +10,10 @@ from typing import Any, ClassVar, Literal
 
 import aiohttp
 import shapely
+from pycityproto.city.routing.v2.routing_pb2 import (
+    ROUTE_TYPE_DRIVING,
+    ROUTE_TYPE_WALKING,
+)
 from pycityproto.city.trip.v2.trip_pb2 import TripMode
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 from shapely.geometry import LineString
@@ -41,6 +45,7 @@ __all__ = [
 
 POI_START_ID = 7_0000_0000
 BENCHMARK_SLOT_TICK_SEC = 1800
+_ARRIVAL_TOLERANCE_METERS = 1e-6
 
 
 class PositionInit(BaseModel):
@@ -249,6 +254,7 @@ class MobilitySpace(EnvBase):
         self._map = Map(file_path)
         # type annotation
         self._routing_proc: Popen | None = None
+        self._routing_session: aiohttp.ClientSession | None = None
 
         self.poi_id_2_aoi_id: dict[int, int] = {
             poi["id"]: poi["aoi_id"] for poi in self._map._poi_list
@@ -593,30 +599,7 @@ class MobilitySpace(EnvBase):
         nearby_summary = None
         if person.status == "idle" and self._map is not None:
             try:
-                from agentsociety2.contrib.env.mobility_space.utils.const import (
-                    POI_CATG_DICT,
-                )
-
-                pos = person.position
-                center = (pos.xy[0], pos.xy[1])
-                nearby_summary = []
-                for cat_name in POI_CATG_DICT:
-                    pois_raw = self._get_around_pois(
-                        center=center,
-                        radius=3000,
-                        poi_type=[cat_name],
-                        limit=50,
-                    )
-                    if pois_raw:
-                        nearest = min(pois_raw, key=lambda p: p["distance"])
-                        nearby_summary.append(
-                            NearbyPoiSummary(
-                                category=cat_name,
-                                count=len(pois_raw),
-                                nearest_name=nearest["poi"].get("name", "unknown"),
-                                nearest_distance=round(nearest["distance"], 1),
-                            )
-                        )
+                nearby_summary = self._nearby_poi_summary(person.position.xy)
             except Exception:
                 nearby_summary = None
 
@@ -629,6 +612,39 @@ class MobilitySpace(EnvBase):
             work_aoi=person.work_aoi,
             home_aoi=person.home_aoi,
         )
+
+    def _nearby_poi_summary(
+        self, center: tuple[float, float]
+    ) -> list[NearbyPoiSummary]:
+        """Group one distance-ordered spatial query into the public POI categories."""
+        from agentsociety2.contrib.env.mobility_space.utils.const import POI_CATG_DICT
+
+        groups: dict[str, list[str]] = {}
+        for category in POI_CATG_DICT:
+            for tag in self._map.poi_cate.get(category, [category]):
+                groups.setdefault(tag, []).append(category)
+        counts: dict[str, int] = {}
+        nearest: dict[str, tuple[dict, float]] = {}
+        for poi, distance in self._map.query_pois(center=center, radius=3000):
+            matched = {
+                category for tag in poi["category"] for category in groups.get(tag, ())
+            }
+            for category in matched:
+                count = counts.get(category, 0)
+                if count < 50:
+                    counts[category] = count + 1
+                    if count == 0:
+                        nearest[category] = (poi, distance)
+        return [
+            NearbyPoiSummary(
+                category=category,
+                count=counts[category],
+                nearest_name=nearest[category][0].get("name", "unknown"),
+                nearest_distance=round(nearest[category][1], 1),
+            )
+            for category in POI_CATG_DICT
+            if category in counts
+        ]
 
     def mobility_person(self, person_id: int) -> MobilityPerson:
         if person_id not in self._persons:
@@ -760,7 +776,8 @@ class MobilitySpace(EnvBase):
         :param aoi_id_or_poi_id: The target location ID (AOI ID or POI ID starting from 700000000)
         :param mode: The travel mode (walking or driving)
 
-        :returns: Dict with status and details
+        :returns: Dict with status and trip details. ``eta`` is the travel time
+            in simulation seconds, using the assigned movement speed.
         """
         if person_id not in self._persons:
             raise ValueError(f"Person {person_id} not found")
@@ -769,6 +786,9 @@ class MobilitySpace(EnvBase):
 
         if person.status == "moving":
             return {"status": "fail", "reason": f"Person {person_id} is already moving"}
+
+        if mode not in {"walking", "driving"}:
+            raise ValueError(f"Unsupported movement mode: {mode}")
 
         # 1. choose mode
 
@@ -832,23 +852,20 @@ class MobilitySpace(EnvBase):
         # Call routing service to get route
         url = f"http://{self._server_addr}/city.routing.v2.RoutingService/GetRoute"
         request_data = {
-            "type": (
-                TripMode.TRIP_MODE_DRIVE_ONLY
-                if mode == "driving"
-                else TripMode.TRIP_MODE_WALK_ONLY
-            ),
+            "type": (ROUTE_TYPE_DRIVING if mode == "driving" else ROUTE_TYPE_WALKING),
             "start": start_position,
             "end": destination_position,
         }
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(url, json=request_data) as response:
-                    if response.status != 200:
-                        return {
-                            "status": "fail",
-                            "reason": f"Routing service returned status {response.status}",
-                        }
-                    response_data = await response.json()
+            if self._routing_session is None:
+                self._routing_session = aiohttp.ClientSession()
+            async with self._routing_session.post(url, json=request_data) as response:
+                if response.status != 200:
+                    return {
+                        "status": "fail",
+                        "reason": f"Routing service returned status {response.status}",
+                    }
+                response_data = await response.json()
         except Exception as e:
             return {
                 "status": "fail",
@@ -929,7 +946,7 @@ class MobilitySpace(EnvBase):
             "person_id": person_id,
             "destination_id": aoi_id_or_poi_id,
             "mode": mode,
-            "eta": eta,
+            "eta": path.length / path_v,
         }
 
     @tool(readonly=True)
@@ -1083,13 +1100,18 @@ class MobilitySpace(EnvBase):
 
     async def close(self):
         """Terminate the simulation process and export trajectory data."""
-        self._export_trajectory_data()
-        if self._routing_proc is not None and self._routing_proc.poll() is None:
-            get_logger().info(
-                f"Terminating routing at {self._server_addr}, PID={self._routing_proc.pid}, please ignore the PANIC message"
-            )
-            self._routing_proc.kill()
-            self._routing_proc.wait()
+        try:
+            self._export_trajectory_data()
+        finally:
+            if self._routing_session is not None:
+                await self._routing_session.close()
+                self._routing_session = None
+            if self._routing_proc is not None and self._routing_proc.poll() is None:
+                get_logger().info(
+                    f"Terminating routing at {self._server_addr}, PID={self._routing_proc.pid}, please ignore the PANIC message"
+                )
+                self._routing_proc.kill()
+                self._routing_proc.wait()
         self._routing_proc = None
 
     def _export_trajectory_data(self) -> None:
@@ -1130,7 +1152,11 @@ class MobilitySpace(EnvBase):
                     continue
                 distance_to_move = person.target.path_v * tick
                 person.target.path_s += distance_to_move
-                if person.target.path_s >= person.target.path.length:
+                # Accumulated distance can undershoot the endpoint by roundoff.
+                if (
+                    person.target.path_s + _ARRIVAL_TOLERANCE_METERS
+                    >= person.target.path.length
+                ):
                     self._snap_person_to_target_position(person)
                 else:
                     # update position

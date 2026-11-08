@@ -12,7 +12,9 @@ def test_clean_object() -> None:
 
 
 def test_markdown_fence_and_prose() -> None:
-    text = '好的：\n```json\n{"name":"ask_env","arguments":{"question":"气温"}}\n```\n完成'
+    text = (
+        '好的：\n```json\n{"name":"ask_env","arguments":{"question":"气温"}}\n```\n完成'
+    )
     assert loads_llm_json(text) == {
         "name": "ask_env",
         "arguments": {"question": "气温"},

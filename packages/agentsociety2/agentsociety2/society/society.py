@@ -916,7 +916,9 @@ class AgentSociety:
 
         # Chunk ids and submit one Ray Task per chunk.
         refs = []
+        batch_agent_ids: list[list[int]] = []
         for ids in _chunked(self._agent_ids, self._batch_size):
+            batch_agent_ids.append(ids)
             refs.append(
                 step_agent_batch.remote(
                     ids,
@@ -933,10 +935,29 @@ class AgentSociety:
         if refs:
             from agentsociety2.config.llm_dispatcher import merge_token_stats
 
-            batch_returns = await asyncio.gather(*[self._await_ref(r) for r in refs])
+            # D11(2026-11-06 工程审查):return_exceptions 隔离——单个
+            # Ray task 崩溃(worker OOM 等)此前会立即传播,兄弟批既不被
+            # await 也不取消,失败记录/env 推进/checkpoint 全部跳过。
+            batch_returns = await asyncio.gather(
+                *[self._await_ref(r) for r in refs], return_exceptions=True
+            )
             failures: list[str] = []
             failure_items: list[dict[str, Any]] = []
-            for br in batch_returns:
+            for ids, br in zip(batch_agent_ids, batch_returns, strict=True):
+                if isinstance(br, asyncio.CancelledError):
+                    raise br
+                if isinstance(br, BaseException):
+                    failures.append(f"batch task crashed: {br!r}")
+                    failure_items.extend(
+                        {
+                            "id": aid,
+                            "ok": False,
+                            "error": f"batch task crashed: {br!r}",
+                            "state_persisted": False,
+                        }
+                        for aid in ids
+                    )
+                    continue
                 if not isinstance(br, dict):
                     continue
                 if br.get("token_stats"):

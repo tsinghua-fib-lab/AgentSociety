@@ -64,9 +64,13 @@ async def test_completion_text_retries_empty_responses_without_default_action():
     responses = iter(
         [
             SimpleNamespace(choices=[]),
-            SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=""))]),
             SimpleNamespace(
-                choices=[SimpleNamespace(message=SimpleNamespace(content="valid decision"))]
+                choices=[SimpleNamespace(message=SimpleNamespace(content=""))]
+            ),
+            SimpleNamespace(
+                choices=[
+                    SimpleNamespace(message=SimpleNamespace(content="valid decision"))
+                ]
             ),
         ]
     )
