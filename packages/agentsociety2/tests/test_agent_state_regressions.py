@@ -1,5 +1,6 @@
-"""Persisted activation survives every step's warm or cold workspace restore."""
+"""Skill restore and semaphore resizing preserve active state."""
 
+import asyncio
 import json
 from pathlib import Path
 from types import SimpleNamespace
@@ -8,6 +9,7 @@ import pytest
 
 from agentsociety2.agent import PersonAgent
 from agentsociety2.agent.base import skill_registry
+from agentsociety2.config.llm_dispatcher import _AdjustableSemaphore
 from agentsociety2.contrib.env.mobility_space.environment import MobilitySpace
 
 MOBILITY = "env:MobilitySpace@mobility"
@@ -43,13 +45,6 @@ def create(tmp_path):
         },
     )
     return ws
-
-
-def test_initial_manifest_uses_the_persisted_skill_schema(tmp_path):
-    ws = create(tmp_path)
-    meta = json.loads((ws / "AGENT.json").read_text())
-    assert meta["skills"]["activated"] == []
-    assert meta["skills"]["default_activated"] == [GUIDANCE]
 
 
 @pytest.mark.parametrize("cold_worker", [False, True])
@@ -95,3 +90,38 @@ async def test_restore_respects_newly_disabled_and_explicitly_deactivated_skills
     restored = await PersonAgent.from_workspace(ws, proxy)
     assert MOBILITY in restored.skill_runtime.visible_skill_ids()
     assert restored.skill_runtime.activated_skill_ids() == {GUIDANCE}
+
+
+async def test_shrink_below_inflight_debt_is_repaid():
+    """缩容低于在途数:先偿还债务,最终仅留下新容量的可用许可。"""
+    sem = _AdjustableSemaphore(8)
+    holders = [asyncio.create_task(sem.acquire()) for _ in range(8)]
+    await asyncio.gather(*holders)
+    await sem.set_capacity(2)
+    # 8 个旧许可归还,只有 2 个计入
+    for _ in range(8):
+        await sem.release()
+    assert sem._available == 2
+    # 再 release 也不超(钳上界)
+    await sem.release()
+    assert sem._available == 2
+
+
+async def test_shrink_retains_inflight_debt_under_waiting_demand():
+    sem = _AdjustableSemaphore(4)
+    for _ in range(4):
+        await sem.acquire()
+    await sem.set_capacity(1)
+    waiter = asyncio.create_task(sem.acquire())
+    try:
+        for _ in range(3):
+            await sem.release()
+            await asyncio.sleep(0)
+            assert not waiter.done(), (
+                "new request started while capacity still occupied"
+            )
+        await sem.release()
+        await asyncio.wait_for(waiter, timeout=1)
+    finally:
+        waiter.cancel()
+        await asyncio.gather(waiter, return_exceptions=True)

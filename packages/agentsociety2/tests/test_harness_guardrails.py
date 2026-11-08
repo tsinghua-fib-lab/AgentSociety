@@ -82,9 +82,7 @@ def test_is_context_limit_error_rejects_rate_limit_and_generic():
     class RateLimitish(Exception):
         pass
 
-    assert not is_context_limit_error(
-        RateLimitish("Rate limit reached, try again in 5 seconds")
-    )
+    assert not is_context_limit_error(RateLimitish("Rate limit reached, try again in 5 seconds"))
     assert not is_context_limit_error(RuntimeError("connection reset by peer"))
 
 
@@ -187,11 +185,7 @@ def _fuse_runtime(tmp_path, merge_content):
             (),
             {
                 "choices": [
-                    type(
-                        "C",
-                        (),
-                        {"message": type("M", (), {"content": merge_content})()},
-                    )
+                    type("C", (), {"message": type("M", (), {"content": merge_content})()})
                 ]
             },
         )()
@@ -231,18 +225,14 @@ async def test_empty_merges_engage_fuse_and_skip_consolidation(tmp_path):
     store: AgentMemoryStore = rt.store
 
     # Step 1: first empty merge → streak 1, consolidation attempted.
-    await rt.after_step(
-        tick=1, t=datetime(2026, 1, 2, 9, 0), step_count=1, finish_memories=_episodes()
-    )
+    await rt.after_step(tick=1, t=datetime(2026, 1, 2, 9, 0), step_count=1, finish_memories=_episodes())
     state = store.read_state()
     assert state["consolidation_empty_streak"] == 1
     assert state["consolidation_cooldown_until_step"] == 0
     assert calls["n"] == 1
 
     # Step 2: second empty merge → streak resets, cooldown engaged.
-    await rt.after_step(
-        tick=2, t=datetime(2026, 1, 2, 9, 15), step_count=2, finish_memories=_episodes()
-    )
+    await rt.after_step(tick=2, t=datetime(2026, 1, 2, 9, 15), step_count=2, finish_memories=_episodes())
     state = store.read_state()
     assert state["consolidation_empty_streak"] == 0
     assert state["consolidation_cooldown_until_step"] == 2 + 16
@@ -250,9 +240,7 @@ async def test_empty_merges_engage_fuse_and_skip_consolidation(tmp_path):
 
     # Step 3 (inside cooldown): trigger fires but consolidation is skipped —
     # no LLM call. This is the fuse's whole job: previously step 3 burned one.
-    await rt.after_step(
-        tick=3, t=datetime(2026, 1, 2, 9, 30), step_count=3, finish_memories=_episodes()
-    )
+    await rt.after_step(tick=3, t=datetime(2026, 1, 2, 9, 30), step_count=3, finish_memories=_episodes())
     assert calls["n"] == 2
     # Cursor untouched by empty merges.
     assert store.read_state()["last_consolidated_step"] == 0
@@ -265,16 +253,12 @@ async def test_successful_merge_clears_streak_and_advances_cursor(tmp_path):
 
     # Prime the fuse with one empty merge.
     rt2, _calls2 = _fuse_runtime(tmp_path, " ")
-    await rt2.after_step(
-        tick=1, t=datetime(2026, 1, 2, 9, 0), step_count=1, finish_memories=_episodes()
-    )
+    await rt2.after_step(tick=1, t=datetime(2026, 1, 2, 9, 0), step_count=1, finish_memories=_episodes())
     assert store.read_state()["consolidation_empty_streak"] == 1
 
     # A successful merge (step 2, within interval) clears the streak and
     # advances the consolidation cursor.
-    await rt.after_step(
-        tick=2, t=datetime(2026, 1, 2, 9, 15), step_count=2, finish_memories=_episodes()
-    )
+    await rt.after_step(tick=2, t=datetime(2026, 1, 2, 9, 15), step_count=2, finish_memories=_episodes())
     state = store.read_state()
     assert state["consolidation_empty_streak"] == 0
     assert state["last_consolidated_step"] == 2

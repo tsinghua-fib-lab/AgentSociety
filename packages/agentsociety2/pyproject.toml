@@ -115,7 +115,6 @@ dev = [
     "httpx2>=2.0.0",
     "ruff>=0.11.13",
     "mypy>=1.14.0",
-    "types-PyYAML>=6.0.12",
     "types-shapely>=2.0.0",
     "pre-commit>=3.8.0",
 ]
@@ -230,11 +229,6 @@ filterwarnings = [
 
 [tool.mypy]
 python_version = "3.11"
-# Match the standalone evaluator paths used by the parity tests.
-mypy_path = [
-    "$MYPY_CONFIG_FILE_DIR/../../examples/v2/daily_mobility/tools",
-    "$MYPY_CONFIG_FILE_DIR/../agentsociety-benchmark/agentsociety_benchmark/benchmarks/DailyMobility",
-]
 
 [[tool.mypy.overrides]]
 # Generated protobuf modules ship without stubs or a py.typed marker.

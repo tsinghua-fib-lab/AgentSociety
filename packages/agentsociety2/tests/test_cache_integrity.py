@@ -1,7 +1,8 @@
-"""Cache keys publish atomically and signed payloads are verified."""
+"""Cached data and routing binaries are verified before reuse."""
 
 import hashlib
 import hmac
+from types import SimpleNamespace
 
 import pytest
 
@@ -74,3 +75,39 @@ def test_map_rejects_unsigned_pickle_and_reuses_signed_cache(tmp_path, monkeypat
     )
     second = maps.Map(str(source))
     assert second.header == first.header
+
+
+@pytest.mark.parametrize("existing", [False, True])
+def test_routing_checks_download_and_existing_binary(tmp_path, monkeypatch, existing):
+    from agentsociety2.contrib.env.mobility_space import download_sim
+
+    monkeypatch.setattr(download_sim.platform, "system", lambda: "Linux")
+    monkeypatch.setattr(download_sim.platform, "machine", lambda: "x86_64")
+    trusted = b"verified fixture bytes"
+    monkeypatch.setenv(
+        "AGENTSOCIETY_ROUTING_SHA256_LINUX_X86_64", hashlib.sha256(trusted).hexdigest()
+    )
+    destination = tmp_path / "routing"
+    if existing:
+        destination.write_bytes(b"tampered")
+    get = lambda *a, **k: SimpleNamespace(status_code=200, content=b"tampered download")
+    monkeypatch.setattr(download_sim.requests, "get", get)
+    with pytest.raises(ValueError):
+        download_sim.download_binary(str(tmp_path))
+    assert destination.exists() is existing
+    if existing:
+        assert destination.read_bytes() == b"tampered"
+    monkeypatch.setattr(
+        download_sim.requests,
+        "get",
+        lambda *a, **k: SimpleNamespace(status_code=200, content=trusted),
+    )
+    assert download_sim.download_binary(str(tmp_path)) == str(destination)
+    assert destination.read_bytes() == trusted
+    monkeypatch.setattr(
+        download_sim.requests,
+        "get",
+        lambda *a, **k: pytest.fail("verified file should be reused"),
+    )
+    assert download_sim.download_binary(str(tmp_path)) == str(destination)
+    assert destination.stat().st_mode & 0o777 == 0o700

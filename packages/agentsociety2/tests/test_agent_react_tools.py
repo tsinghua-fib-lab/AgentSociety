@@ -45,7 +45,6 @@ async def test_activate_skill_failure_reports_reason():
 
 # ------------------------ text-encoded tool-call parsing ----------------------
 
-
 def _parse(content: str):
     agent = _DummyAgent()
     return agent._parse_text_tool_calls(content)
@@ -64,9 +63,7 @@ def test_parse_text_json_function_call():
 
 def test_parse_text_json_with_code_fence_and_prose():
     """Prose + fenced JSON must still yield the call (json_repair path)."""
-    calls = _parse(
-        'I will finish now.\n```json\n{"name": "finish", "arguments": {"answer": "ok"}}\n```'
-    )
+    calls = _parse('I will finish now.\n```json\n{"name": "finish", "arguments": {"answer": "ok"}}\n```')
     assert calls == [("finish", {"answer": "ok"})]
 
 
