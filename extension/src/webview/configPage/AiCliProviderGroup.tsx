@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Button, Card, Space, Switch, Tag, Tooltip, Typography } from 'antd';
+import { Button, Card, Space, Radio, Tag, Tooltip, Typography } from 'antd';
 import { BarChartOutlined, EditOutlined, PlusOutlined, QuestionCircleOutlined, ReloadOutlined } from '@ant-design/icons';
 import type { TFunction } from 'i18next';
 import type { VscodeThemePalette } from '../theme';
@@ -8,7 +8,7 @@ import type { AiCliApiKind } from '../../aiCli/officialEndpoints';
 import type { AiCliProviderRecord } from './aiCliProviderTypes';
 import { EMPTY_PROVIDER_DRAFT } from './aiCliProviderTypes';
 import { ProviderEditor } from './AiCliProviderEditor';
-import { inferProviderAuthMode } from './providerAuth';
+import { inferProviderAuthMode, providerSupportsRole } from './providerAuth';
 import { supportsProviderUsageQuery } from './providerUsageSupport';
 import { normalizeProviderBaseUrl } from './providerBaseUrl';
 
@@ -22,7 +22,6 @@ export type AiCliProviderGroupProps = {
   role: ProviderRole;
   providers: AiCliProviderRecord[];
   loading: boolean;
-  proxyEnabled: boolean;
   onSave: (provider: AiCliProviderRecord) => void;
   onAdd: (draft: Omit<AiCliProviderRecord, 'id'>) => void;
   onActivate: (id: string, role: 'claude' | 'codex') => void;
@@ -43,7 +42,6 @@ export function AiCliProviderGroup({
   palette,
   providers,
   loading,
-  proxyEnabled,
   onSave,
   onAdd,
   onActivate,
@@ -137,31 +135,33 @@ export function AiCliProviderGroup({
     );
   };
 
-  // Compact role toggle row: Claude/Codex primary switch only
-  const renderRoleToggles = (provider: AiCliProviderRecord) => {
+  // A primary provider is an exclusive choice per CLI, rather than an on/off setting.
+  const renderRoleChoices = (provider: AiCliProviderRecord) => {
     const authMode = inferProviderAuthMode(provider);
     const canActivate = authMode === 'subscription' || Boolean(provider.apiKey.trim());
 
-    const roleSwitch = (label: string, active: boolean, isApplicable: boolean) => {
+    const roleChoice = (label: 'Claude' | 'Codex', active: boolean, isApplicable: boolean) => {
       if (!isApplicable) {
         return (
           <Text type="secondary" style={{ fontSize: 10, width: 130 }}>
-            {t('claudeCodeConfig.providerCodexNotSupported')}
+            {t('claudeCodeConfig.providerRoleNotSupported', { tool: label })}
           </Text>
         );
       }
       return (
         <Tooltip title={!canActivate ? t('claudeCodeConfig.providerNeedCredentialsHint') : undefined}>
           <Space size={4}>
-            <Switch
-              size="small"
+            <Radio
+              name={`provider-primary-${label.toLowerCase()}`}
+              aria-label={t(label === 'Claude' ? 'claudeCodeConfig.providerUseForClaude' : 'claudeCodeConfig.providerUseForCodex')}
               checked={active}
-              disabled={!canActivate}
+              disabled={!canActivate || loading}
               onChange={() => onActivate(provider.id, label === 'Claude' ? 'claude' : 'codex')}
-            />
-            <Text style={{ fontSize: 11, color: active ? palette.linkForeground : palette.descriptionForeground, minWidth: 40 }}>
-              {label}
-            </Text>
+            >
+              <Text style={{ fontSize: 11, color: active ? palette.linkForeground : palette.descriptionForeground, minWidth: 40 }}>
+                {label}
+              </Text>
+            </Radio>
             {active ? (
               <Tag color="blue" style={{ margin: 0, fontSize: 10, lineHeight: '16px' }}>
                 {t('claudeCodeConfig.providerRolePrimary')}
@@ -174,8 +174,8 @@ export function AiCliProviderGroup({
 
     return (
       <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
-        {roleSwitch('Claude', provider.activeClaude, true)}
-        {roleSwitch('Codex', provider.activeCodex, true)}
+        {roleChoice('Claude', provider.activeClaude, providerSupportsRole(provider, 'claude'))}
+        {roleChoice('Codex', provider.activeCodex, providerSupportsRole(provider, 'codex'))}
       </div>
     );
   };
@@ -218,6 +218,9 @@ export function AiCliProviderGroup({
           <QuestionCircleOutlined style={{ opacity: 0.65, cursor: 'help' }} />
         </Tooltip>
       </Space>
+      <Text type="secondary" style={{ display: 'block', fontSize: 11, marginBottom: 8 }}>
+        {t('claudeCodeConfig.providerSelectionHint')}
+      </Text>
       <Space direction="vertical" style={{ width: '100%' }} size={10}>
         {providers.map((p) => {
           const editing = editingIds.has(p.id);
@@ -247,9 +250,9 @@ export function AiCliProviderGroup({
                 <Space size={6} wrap>
                   <Text strong style={{ fontSize: 13 }}>{p.name || p.baseUrl || t('claudeCodeConfig.providerUnnamed')}</Text>
                   {renderProtocolTag(p)}
-                  {hasAnyActive && proxyEnabled ? (
+                  {hasAnyActive ? (
                     <Tag color="green" style={{ margin: 0, fontSize: 10 }}>
-                      {t('claudeCodeConfig.providerGatewayActive')}
+                      {t('claudeCodeConfig.providerSelected')}
                     </Tag>
                   ) : null}
                 </Space>
@@ -272,7 +275,7 @@ export function AiCliProviderGroup({
                     </Text>
                     {renderUsage(p)}
                   </div>
-                  {renderRoleToggles(p)}
+                  {renderRoleChoices(p)}
                 </div>
               ) : (
                 <ProviderEditor

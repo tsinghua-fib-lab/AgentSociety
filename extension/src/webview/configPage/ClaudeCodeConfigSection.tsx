@@ -96,7 +96,6 @@ export function ClaudeCodeConfigSection({
       <AiCliProviderGroup
         {...providerGroupProps}
         role="unified"
-        proxyEnabled={true}
       />
       {onReset ? (
         <Button icon={<ReloadOutlined />} onClick={onReset} style={{ marginTop: 12 }}>

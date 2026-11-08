@@ -5,8 +5,12 @@ import { ClaudeCodeConfigSection, type ProviderSectionCommonProps } from './Clau
 import { GatewayUsagePanel } from './GatewayUsagePanel';
 import { tabBodyStyle } from './configPageStyles';
 import type { TokenUsageRecord } from './gatewayUsageTypes';
-import { countApiUpstreamsForRole, providerEligibleForRoleUpstream } from './providerAuth';
+import { countApiUpstreamsForRole, providerEligibleForRoleUpstream, inferProviderAuthMode, providerSupportsRole } from './providerAuth';
+import { EMPTY_PROVIDER_DRAFT } from './aiCliProviderTypes';
+import { OFFICIAL_OPENAI_BASE_URL } from '../../aiCli/officialEndpoints';
 import type { ModelPricingMap } from './modelPricing';
+import type { VSCodeAPI } from './types';
+import { CodexDeviceLoginPanel } from './CodexDeviceLoginPanel';
 
 const { Text } = Typography;
 
@@ -24,6 +28,7 @@ export interface AiCliConfigSectionProps extends ProviderSectionCommonProps {
   onRectifierChange?: (settings: Record<string, boolean>) => void;
   onOptimizerChange?: (settings: Record<string, boolean>) => void;
   onRefreshCodexOfficialLogin?: () => void;
+  codexDeviceLoginApi: VSCodeAPI;
   usageRecords: TokenUsageRecord[];
   usageLoading: boolean;
   onRefreshUsage: () => void;
@@ -63,6 +68,7 @@ export function AiCliConfigSection(props: AiCliConfigSectionProps) {
     onRectifierChange,
     onOptimizerChange,
     onRefreshCodexOfficialLogin,
+    codexDeviceLoginApi,
     ...providerSectionCommon
   } = props;
   const { t, palette, providers } = providerSectionCommon;
@@ -342,6 +348,17 @@ export function AiCliConfigSection(props: AiCliConfigSectionProps) {
             </Tooltip>
           </div>
         </div>
+
+        <CodexDeviceLoginPanel t={t} vscode={codexDeviceLoginApi} loggedIn={codexOfficialLoginPresent}
+          applying={props.providersLoading}
+          onUseAccount={() => {
+            const official = providers.find((provider) => inferProviderAuthMode(provider) === 'subscription' && providerSupportsRole(provider, 'codex'));
+            if (official) {
+              props.onActivateProvider(official.id, 'codex');
+            } else {
+              props.onAddProvider({ ...EMPTY_PROVIDER_DRAFT, name: 'OpenAI', baseUrl: OFFICIAL_OPENAI_BASE_URL, apiKey: '', apiKind: 'openai', authMode: 'subscription', activeClaude: false, activeCodex: true });
+            }
+          }} />
 
         {(routeClaude || routeCodex) ? (
           <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${palette.panelBorder}` }}>

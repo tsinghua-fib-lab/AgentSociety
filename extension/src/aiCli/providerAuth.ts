@@ -46,6 +46,17 @@ export function providerHasApiUpstream(provider: AiCliProviderAuthFields): boole
   return inferProviderAuthMode(provider) === 'api' && Boolean(provider.apiKey.trim());
 }
 
+/** Protocol and subscription compatibility, independent of whether secrets have hydrated. */
+export function providerSupportsRole(provider: AiCliProviderAuthFields, role: 'claude' | 'codex'): boolean {
+  const kind = provider.apiKind ?? inferApiKindFromBaseUrl(provider.baseUrl);
+  if (inferProviderAuthMode(provider) === 'subscription') {
+    return role === 'codex'
+      ? kind === 'openai' && isOfficialOpenAiBaseUrl(provider.baseUrl)
+      : kind === 'anthropic' && isOfficialAnthropicBaseUrl(provider.baseUrl);
+  }
+  return role === 'claude' || kind === 'openai';
+}
+
 /**
  * Whether a provider can serve as an API upstream for a CLI role.
  *
@@ -74,13 +85,15 @@ export function countApiUpstreamsForRole(
 }
 
 export type AiCliProviderRoleFlags = {
+  activeClaude?: boolean;
+  activeCodex?: boolean;
   failoverClaude?: boolean;
   failoverCodex?: boolean;
 };
 
 /**
- * Drop role flags that cannot apply for the provider's apiKind.
- * Uses apiKind only (not apiKey) so metadata hydrate before secrets stays stable.
+ * Drop role flags incompatible with the protocol or subscription.
+ * Does not inspect apiKey so metadata remains stable before secrets hydrate.
  */
 export function clampProviderRoleFlags<T extends AiCliProviderAuthFields & AiCliProviderRoleFlags>(
   provider: T
@@ -89,6 +102,9 @@ export function clampProviderRoleFlags<T extends AiCliProviderAuthFields & AiCli
   return {
     ...provider,
     apiKind,
-    failoverCodex: Boolean(provider.failoverCodex) && apiKind === 'openai',
+    activeClaude: Boolean(provider.activeClaude) && providerSupportsRole(provider, 'claude'),
+    activeCodex: Boolean(provider.activeCodex) && providerSupportsRole(provider, 'codex'),
+    failoverClaude: Boolean(provider.failoverClaude) && inferProviderAuthMode(provider) === 'api',
+    failoverCodex: Boolean(provider.failoverCodex) && inferProviderAuthMode(provider) === 'api' && apiKind === 'openai',
   };
 }

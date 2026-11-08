@@ -2016,6 +2016,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
                     onRectifierChange={handleRectifierChange}
                     onOptimizerChange={handleOptimizerChange}
                     onRefreshCodexOfficialLogin={handleRefreshCodexOfficialLogin}
+                    codexDeviceLoginApi={vscode}
                     easyPaperForm={easyPaperForm}
                     onSaveEasyPaper={saveEasyPaperConfig}
                   />
@@ -2102,6 +2103,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
                                     onRectifierChange={handleRectifierChange}
                                     onOptimizerChange={handleOptimizerChange}
                                     onRefreshCodexOfficialLogin={handleRefreshCodexOfficialLogin}
+                                    codexDeviceLoginApi={vscode}
                                   />
                                 </div>
                               ),
@@ -2336,6 +2338,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
                             onRectifierChange={handleRectifierChange}
                             onOptimizerChange={handleOptimizerChange}
                             onRefreshCodexOfficialLogin={handleRefreshCodexOfficialLogin}
+                            codexDeviceLoginApi={vscode}
                           />
                         </div>
                       ),

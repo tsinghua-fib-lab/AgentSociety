@@ -77,6 +77,7 @@ import {
   inferProviderAuthMode,
   isOfficialSubscriptionProvider,
   providerEligibleForRoleUpstream,
+  providerSupportsRole,
   providerHasApiUpstream as providerHasApiKeyUpstream,
   providerHasConfiguredCredentials,
   type AiCliAuthMode,
@@ -606,11 +607,11 @@ export class AiCliGatewayManager {
     this.log('Codex official login detected; auto-enabled gateway route yielded back to subscription');
   }
 
-  async refreshCodexOfficialLogin(): Promise<AiCliGatewayPublicStatus> {
+  async refreshCodexOfficialLogin(options?: { preserveRoute?: boolean }): Promise<AiCliGatewayPublicStatus> {
     await this.secretsReady;
     this.codexLoginSnapshot = await detectCodexOfficialLogin();
     this.codexLoginRefreshed = true;
-    await this.yieldCodexRouteToOfficialLoginIfNeeded();
+    if (!options?.preserveRoute) { await this.yieldCodexRouteToOfficialLoginIfNeeded(); }
     return this.getPublicStatus();
   }
 
@@ -1365,17 +1366,8 @@ export class AiCliGatewayManager {
       throw new Error('provider_not_found');
     }
     const normalized = this.normalizeProvider(target);
-    if (role === 'codex') {
-      const subscriptionOk =
-        isOfficialSubscriptionProvider(normalized) && normalized.apiKind === 'openai';
-      if (!subscriptionOk && !providerEligibleForRoleUpstream(normalized, 'codex')) {
-        throw new Error('provider_not_eligible_for_codex');
-      }
-    } else if (
-      !isOfficialSubscriptionProvider(normalized) &&
-      !providerEligibleForRoleUpstream(normalized, 'claude')
-    ) {
-      throw new Error('provider_not_eligible_for_claude');
+    if (!providerSupportsRole(normalized, role) || !providerHasConfiguredCredentials(normalized)) {
+      throw new Error(`provider_not_eligible_for_${role}`);
     }
     for (const p of providers) {
       if (role === 'claude') {

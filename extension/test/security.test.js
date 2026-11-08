@@ -13,7 +13,7 @@ function load(relative, dependencies = {}, extra = '') {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true },
   }).outputText;
   const exported = {};
-  vm.runInNewContext(code, { exports: exported, Buffer, process, console, URL,
+  vm.runInNewContext(code, { exports: exported, Buffer, process, console, URL, setTimeout, clearTimeout,
     require: (name) => dependencies[name] ?? (name.startsWith('.') || name === 'vscode' ? {} : require(name)),
   });
   return exported;
@@ -155,4 +155,112 @@ test('EasyPaper save preserves advanced settings and persists VLM disablement', 
   const before = fs.readFileSync(filename, 'utf8');
   assert.throws(() => writeEasyPaperConfig(filename, { ...config, llmModelName: '' }, template));
   assert.equal(fs.readFileSync(filename, 'utf8'), before);
+});
+
+function deviceLoginHarness(t) {
+  const { EventEmitter } = require('node:events');
+  const { PassThrough } = require('node:stream');
+  const children = []; const states = [];
+  const { CodexDeviceLogin } = load('services/codexDeviceLogin.ts', {
+    child_process: { spawn(command, args, options) {
+      assert.equal(command, 'codex');
+      assert.deepEqual(Array.from(args), ['app-server', '--listen', 'stdio://']);
+      const child = Object.assign(new EventEmitter(), {
+        stdin: new PassThrough(), stdout: new PassThrough(), stderr: new PassThrough(), options, sent: [],
+        kill() { this.killed = true; this.exitCode = 0; this.emit('close'); },
+        reply(message) { this.stdout.write(`${JSON.stringify(message)}\n`); },
+      });
+      child.stdin.on('data', (line) => child.sent.push(JSON.parse(String(line))));
+      children.push(child); return child;
+    } },
+  });
+  const login = new CodexDeviceLogin((state) => states.push(state), 'test');
+  t.after(() => login.dispose());
+  const begin = () => {
+    login.start({ HTTPS_PROXY: 'http://localhost:1234' });
+    const child = children.at(-1); child.emit('spawn'); child.reply({ id: 1, result: { userAgent: 'test' } });
+    return child;
+  };
+  const issued = { type: 'chatgptDeviceCode', loginId: 'private-login-id', userCode: 'TEST-CODE', verificationUrl: 'https://auth.openai.com/codex/device' };
+  return { login, children, states, begin, issued };
+}
+
+test('device sign-in uses official RPC, cancels cleanly and ignores an earlier login completion', (t) => {
+  const { login, children, begin, issued } = deviceLoginHarness(t);
+  const first = begin(); login.start(); assert.equal(children.length, 1);
+  assert.deepEqual(first.sent.map((m) => m.method), ['initialize', 'initialized', 'account/login/start']);
+  assert.equal(first.sent[2].params.type, 'chatgptDeviceCode');
+  assert.equal(first.options.env.HTTPS_PROXY, 'http://localhost:1234');
+  assert.equal(first.options.env.PATH, process.env.PATH);
+  first.reply({ id: 2, result: issued });
+  assert.equal(login.snapshot().userCode, 'TEST-CODE');
+  assert.equal(login.snapshot().loginId, undefined);
+  login.cancel();
+  assert.equal(first.sent.at(-1).method, 'account/login/cancel');
+  assert.equal(login.snapshot().status, 'cancelled');
+  assert.equal(login.snapshot().userCode, undefined);
+  const second = begin(); assert.ok(first.killed);
+  first.reply({ method: 'account/login/completed', params: { loginId: issued.loginId, success: true } });
+  assert.equal(login.snapshot().status, 'starting');
+  second.reply({ id: 2, result: issued });
+  second.reply({ method: 'account/login/completed', params: { loginId: 'different', success: true } });
+  assert.equal(login.snapshot().status, 'waiting');
+  second.reply({ method: 'account/login/completed', params: { loginId: issued.loginId, success: true } });
+  assert.equal(login.snapshot().status, 'success');
+  assert.equal(login.snapshot().userCode, undefined); assert.ok(second.killed);
+});
+
+test('device sign-in rejects unofficial URLs and clears codes on failure, cancellation and disposal', (t) => {
+  const { login, begin, issued, states } = deviceLoginHarness(t);
+  for (const url of ['http://auth.openai.com/codex/device', 'https://auth.openai.com.example/codex/device', 'https://user@auth.openai.com/codex/device', 'https://auth.openai.com/other']) {
+    begin().reply({ id: 2, result: { ...issued, verificationUrl: url } });
+    assert.equal(login.snapshot().error, 'invalidResponse');
+  }
+  const failed = begin(); failed.reply({ id: 2, result: issued });
+  failed.reply({ method: 'account/login/completed', params: { loginId: issued.loginId, success: false, error: 'private-server-details' } });
+  assert.equal(login.snapshot().error, 'loginFailed');
+  assert.equal(JSON.stringify(states).includes('private-server-details'), false);
+  const missing = begin(); missing.emit('error', Object.assign(new Error('private-path'), { code: 'ENOENT' }));
+  assert.equal(login.snapshot().error, 'missingCli');
+  const cancelled = begin(); login.cancel(); assert.ok(cancelled.killed);
+  assert.equal(login.snapshot().status, 'cancelled');
+  const closed = begin(); closed.emit('close'); assert.equal(login.snapshot().error, 'processExited');
+  const disposed = begin(); disposed.reply({ id: 2, result: issued });
+  login.dispose(); assert.ok(disposed.killed); assert.equal(login.snapshot().userCode, undefined);
+});
+
+test('CLI primary selection enforces subscription and API protocol compatibility', async () => {
+  const auth = require('../out/aiCli/providerAuth');
+  const { providerSupportsRole, clampProviderRoleFlags } = auth;
+  for (const [baseUrl, apiKind, authMode, claude, codex] of [
+    ['https://api.openai.com/v1', 'openai', 'subscription', false, true],
+    ['https://api.anthropic.com', 'anthropic', 'subscription', true, false],
+    ['https://custom.example/v1', 'openai', 'subscription', false, false],
+    ['https://custom.example/v1', 'openai', 'api', true, true],
+    ['https://custom.example', 'anthropic', 'api', true, false],
+  ]) {
+    const provider = { baseUrl, apiKind, authMode, apiKey: 'test', activeClaude: true, activeCodex: true };
+    assert.equal(providerSupportsRole(provider, 'claude'), claude);
+    assert.equal(providerSupportsRole(provider, 'codex'), codex);
+    const normalized = clampProviderRoleFlags(provider);
+    assert.equal(normalized.activeClaude, claude); assert.equal(normalized.activeCodex, codex);
+  }
+  const { AiCliGatewayManager } = load('services/aiCliGatewayManager.ts', {
+    '../aiCli/providerAuth': auth,
+    './codexSettings': { detectCodexOfficialLogin: async () => ({ present: true }) },
+  });
+  const manager = Object.create(AiCliGatewayManager.prototype);
+  let providers = [
+    { id: 'subscription', baseUrl: 'https://api.openai.com/v1', apiKind: 'openai', authMode: 'subscription', apiKey: '', activeClaude: false, activeCodex: false },
+    { id: 'api', baseUrl: 'https://owned.example/v1', apiKind: 'openai', authMode: 'api', apiKey: 'test', activeClaude: true, activeCodex: true },
+  ];
+  manager.initialize = async () => {}; manager.getProviders = () => providers.map((p) => ({ ...p }));
+  manager.normalizeProvider = clampProviderRoleFlags; manager.saveProviders = async (next) => { providers = next; };
+  manager.applyActiveCodexProvider = async () => ({}); manager.getPublicStatus = () => ({});
+  manager.yieldCodexRouteToOfficialLoginIfNeeded = async () => { throw new Error('Unexpected route change'); };
+  await manager.refreshCodexOfficialLogin({ preserveRoute: true });
+  await assert.rejects(() => manager.activateProvider('subscription', 'claude'), /not_eligible_for_claude/);
+  await manager.activateProvider('subscription', 'codex');
+  assert.equal(providers[0].activeCodex, true); assert.equal(providers[1].activeCodex, false);
+  assert.equal(providers[1].activeClaude, true);
 });

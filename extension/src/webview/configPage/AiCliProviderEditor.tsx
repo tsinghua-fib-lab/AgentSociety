@@ -32,7 +32,7 @@ import {
 import { ClaudeModelSelect } from './ClaudeModelSelect';
 import type { AiCliProviderRecord } from './aiCliProviderTypes';
 import { autoMapClaudeRoleModels } from './aiCliProviderTypes';
-import { inferProviderAuthMode } from './providerAuth';
+import { inferProviderAuthMode, providerSupportsRole, clampProviderRoleFlags } from './providerAuth';
 import { supportsProviderUsageQuery } from './providerUsageSupport';
 import { normalizeProviderBaseUrl } from './providerBaseUrl';
 import { shouldShowProviderModelConfiguration } from '../../services/manualConfigSync';
@@ -156,8 +156,12 @@ export function ProviderEditor({
     });
   }, [provider]);
 
+  React.useEffect(() => {
+    setDraft((prev) => ({ ...prev, activeClaude: provider.activeClaude, activeCodex: provider.activeCodex }));
+  }, [provider.activeClaude, provider.activeCodex]);
+
   const patch = (partial: Partial<AiCliProviderRecord>) => {
-    setDraft((prev) => ({ ...prev, ...partial }));
+    setDraft((prev) => clampProviderRoleFlags({ ...prev, ...partial }));
   };
 
   const isOfficialUrl = (baseUrl: string) => {
@@ -181,7 +185,10 @@ export function ProviderEditor({
   const isSubscription = authMode === 'subscription';
   const canUseApi = isSubscription || Boolean(draft.apiKey.trim());
   const canProbe = Boolean(draft.baseUrl.trim()) && Boolean(draft.apiKey.trim()) && Boolean(layoutApiKind) && !isSubscription;
-  const canSave = isSubscription || (Boolean(draft.baseUrl.trim()) && Boolean(draft.apiKey.trim()) && Boolean(layoutApiKind));
+  const activeProtocolChanged =
+    (provider.activeClaude && !providerSupportsRole(draft, 'claude')) ||
+    (provider.activeCodex && !providerSupportsRole(draft, 'codex'));
+  const canSave = !activeProtocolChanged && (isSubscription || (Boolean(draft.baseUrl.trim()) && Boolean(draft.apiKey.trim()) && Boolean(layoutApiKind)));
   const matchedPreset = findPresetByUrl(draft.baseUrl, layoutApiKind)?.id ?? CUSTOM_PRESET;
   const selectedForClaude = draft.activeClaude;
   const selectedForCodex = draft.activeCodex;
@@ -567,19 +574,22 @@ export function ProviderEditor({
         <Space direction="vertical" style={{ width: '100%' }} size={6}>
           <Checkbox
             checked={selectedForClaude}
-            disabled={!canUseApi}
+            disabled={!canUseApi || !providerSupportsRole(draft, 'claude') || provider.activeClaude}
             onChange={(e) => patch({ activeClaude: e.target.checked })}
           >
             <Text style={{ fontSize: 12 }}>{t('claudeCodeConfig.providerUseForClaude')}</Text>
           </Checkbox>
           <Checkbox
             checked={selectedForCodex}
-            disabled={!canUseApi}
+            disabled={!canUseApi || !providerSupportsRole(draft, 'codex') || provider.activeCodex}
             onChange={(e) => patch({ activeCodex: e.target.checked })}
           >
             <Text style={{ fontSize: 12 }}>{t('claudeCodeConfig.providerUseForCodex')}</Text>
           </Checkbox>
         </Space>
+        <Text type="secondary" style={{ display: 'block', fontSize: 11, marginTop: 6 }}>
+          {t(activeProtocolChanged ? 'claudeCodeConfig.providerActiveProtocolHint' : 'claudeCodeConfig.providerSelectionHint')}
+        </Text>
       </div>
 
       {shouldShowProviderModelConfiguration(Boolean(isNew)) ? (
@@ -739,12 +749,12 @@ export function ProviderEditor({
         >
           {isNew ? t('claudeCodeConfig.providerAdd') : t('claudeCodeConfig.providerSave')}
         </Button>
-        {!isNew && onActivate && !provider.activeClaude ? (
+        {!isNew && onActivate && !provider.activeClaude && providerSupportsRole(provider, 'claude') ? (
           <Button size="small" onClick={() => onActivate('claude')}>
             {t('claudeCodeConfig.providerSwitchClaude')}
           </Button>
         ) : null}
-        {!isNew && onActivate && !provider.activeCodex ? (
+        {!isNew && onActivate && !provider.activeCodex && providerSupportsRole(provider, 'codex') ? (
           <Button size="small" onClick={() => onActivate('codex')}>
             {t('claudeCodeConfig.providerSwitchCodex')}
           </Button>

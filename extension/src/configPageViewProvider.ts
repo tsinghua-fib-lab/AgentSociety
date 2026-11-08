@@ -31,6 +31,7 @@ import {
 } from './services/claudeCodeSettings';
 import { isCodexConfiguredByUser } from './services/codexSettings';
 import { fetchProviderModels } from './services/providerModels';
+import { CodexDeviceLogin, type CodexDeviceLoginState } from './services/codexDeviceLogin';
 import { inferApiKindFromBaseUrl } from './aiCli/officialEndpoints';
 import type { AiCliGatewayManager, AiCliProviderConfig } from './services/aiCliGatewayManager';
 import type { ClaudeCodeConfigValues } from './webview/configPage/claudeCodeTypes';
@@ -80,6 +81,7 @@ export class ConfigPageViewProvider {
   private readonly _extensionPath: string;
   private readonly _context: vscode.ExtensionContext;
   private readonly _envManager: EnvManager;
+  private readonly _codexDeviceLogin: CodexDeviceLogin;
   private _webConfigImport: AgentsocietyWebConfigService | undefined;
   private _pendingImportedGateway: WebImportGatewayProviderDraft | undefined;
   private _disposables: vscode.Disposable[] = [];
@@ -117,6 +119,10 @@ export class ConfigPageViewProvider {
     this._context = context;
     this._extensionPath = context.extensionPath;
     this._envManager = new EnvManager();
+    this._codexDeviceLogin = new CodexDeviceLogin(
+      (state) => { void this._handleCodexDeviceLoginState(state); },
+      String(context.extension.packageJSON.version)
+    );
 
     this._panel.webview.html = this._getHtmlForWebview(this._panel.webview);
 
@@ -135,6 +141,7 @@ export class ConfigPageViewProvider {
     this._panel.webview.onDidReceiveMessage(
       async (message: {
         command: string;
+        action?: string;
         config?: Partial<ConfigValues> | ClaudeCodeConfigValues;
         llmType?: string;
         url?: string;
@@ -294,6 +301,30 @@ export class ConfigPageViewProvider {
                 ? (message.settings as Record<string, boolean>)
                 : {}
             );
+            break;
+          case 'codexDeviceLogin':
+            if (message.action === 'start') {
+              this._codexDeviceLogin.start(ConfigPageViewProvider.gatewayManager?.buildOutboundProxyEnv());
+            } else if (message.action === 'cancel') {
+              this._codexDeviceLogin.cancel();
+            } else if (message.action === 'status') {
+              await this._handleCodexDeviceLoginState(this._codexDeviceLogin.snapshot());
+            } else {
+              const state = this._codexDeviceLogin.snapshot();
+              if (state.status !== 'waiting' || !state.userCode || !state.verificationUrl) { break; }
+              try {
+                if (message.action === 'copy' || message.action === 'copyAndOpen') {
+                  await vscode.env.clipboard.writeText(state.userCode);
+                  await this._panel.webview.postMessage({ command: 'codexDeviceLoginCopied' });
+                }
+                if (message.action === 'open' || message.action === 'copyAndOpen') {
+                  const opened = await vscode.env.openExternal(vscode.Uri.parse(state.verificationUrl));
+                  if (!opened) { throw new Error('browser_unavailable'); }
+                }
+              } catch {
+                await this._panel.webview.postMessage({ command: 'codexDeviceLoginActionError' });
+              }
+            }
             break;
           case 'refreshCodexOfficialLogin':
             await ConfigPageViewProvider.gatewayManager?.refreshCodexOfficialLogin();
@@ -702,6 +733,19 @@ export class ConfigPageViewProvider {
     });
   }
 
+  private async _handleCodexDeviceLoginState(state: CodexDeviceLoginState): Promise<void> {
+    await this._panel.webview.postMessage({ command: 'codexDeviceLoginState', state });
+    if (state.status === 'success') {
+      // Refresh detection only; an explicit provider or gateway selection remains the user's choice.
+      try {
+        await ConfigPageViewProvider.gatewayManager?.refreshCodexOfficialLogin({ preserveRoute: true });
+        await this._postGatewayStatus();
+      } catch {
+        vscode.window.showWarningMessage(localize('aiCliGateway.codexLoginRefreshFailed'));
+      }
+    }
+  }
+
   private async _handleGatewayActivateProvider(
     id: string,
     role: 'claude' | 'codex'
@@ -723,6 +767,7 @@ export class ConfigPageViewProvider {
       const message = err instanceof Error ? err.message : String(err);
       vscode.window.showErrorMessage(localize('aiCliGateway.toggleFailed', message));
       await this._postGatewayStatus();
+      await this._postProvidersAndActiveConfig();
     }
   }
 
@@ -1781,6 +1826,7 @@ export class ConfigPageViewProvider {
 
   public dispose(): void {
     ConfigPageViewProvider.currentPanel = undefined;
+    this._codexDeviceLogin.dispose();
     this._cancelCasdoorDeviceAuth();
     this._envManager.dispose();
     while (this._disposables.length) {
