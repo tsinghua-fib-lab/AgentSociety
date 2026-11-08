@@ -1034,12 +1034,12 @@
     "integrationsTab": "MCP",
     "statMcp": "MCP",
     "mcpIntroTitle": "Claude Code / Codex MCP",
-    "mcpIntroBody": "Built-in Literature Search reads URL/Key from workspace .env (config page). Add custom MCP below; click Sync to write ~/.claude.json and ~/.codex/config.toml. Synced MCP servers are user-scope (global; visible to all projects).",
+    "mcpIntroBody": "Client selections sync automatically to ~/.claude.json or ~/.codex/config.toml for all projects. Each client stores and refreshes its own OAuth credentials. Edit literature search URLs and keys in settings.",
     "mcpBuiltinSection": "Workspace built-in",
-    "mcpBuiltinSectionHint": "Literature MCP URL/Key are edited on the config page Literature tab; shown here for probe only.",
+    "mcpBuiltinSectionHint": "Edit the literature search URL and key in Literature settings.",
     "mcpBuiltinEmpty": "Literature MCP not configured yet (set URL and Key on the config page)",
     "mcpCustomSection": "Custom MCP",
-    "mcpCustomSectionHint": "stdio or HTTP servers; click Sync after adding to update Claude/Codex configs.",
+    "mcpCustomSectionHint": "Saving or selecting a client syncs automatically. Supports local stdio and remote HTTP services.",
     "mcpBuiltinLiteratureDesc": "Academic literature search (HTTP); URL/Key on config page",
     "mcpRecommended": "Recommended presets",
     "mcpAddPresetAction": "Click to add",
@@ -1053,10 +1053,10 @@
     "mcpTransport": "Transport",
     "mcpStatus": "Status",
     "mcpActions": "Actions",
-    "mcpProbe": "Probe",
-    "mcpProbing": "Probing",
-    "mcpNotProbed": "Not probed",
-    "mcpProbeFailed": "Probe failed",
+    "mcpProbe": "Check endpoint",
+    "mcpProbing": "Checking",
+    "mcpNotProbed": "Not checked",
+    "mcpProbeFailed": "Check failed",
     "mcpTools": "{{count}} tools",
     "mcpStdioHint": "stdio",
     "mcpSseClaudeOnly": "Claude Code only",
@@ -1125,7 +1125,7 @@
       "title": "Browse MCP registries",
       "browse": "Browse registries",
       "source": "Registry API URL",
-      "sourceHint": "Uses the official MCP Registry by default. Compatible registry API URLs are supported (e.g. https://registry.example/v0.1).",
+      "sourceHint": "Supports the MCP Registry v0.1 API. Search, pagination and installation metadata come from the selected source.",
       "search": "Search server names",
       "inspect": "Inspect and configure",
       "variant": "Connection or package",
@@ -1148,7 +1148,11 @@
         "registry_integrity_required": "This package requires download integrity verification. Follow the publisher’s installation instructions.",
         "unsupported_registry_runtime": "Follow the publisher’s instructions for this runtime.",
         "invalid": "Check the configuration values or the publisher’s installation instructions."
-      }
+      },
+      "marketSource": "Registry source",
+      "source_official": "Official MCP Registry",
+      "source_github": "GitHub MCP Registry",
+      "source_custom": "Custom registry"
     },
     "mcpImport": {
       "title": "Import MCP configuration",
@@ -1186,7 +1190,31 @@
         "unsupported_codex_layout": "Cannot safely update this Codex configuration layout. Check MCP table formatting."
       }
     },
-    "sectionDetails": "Details"
+    "sectionDetails": "Details",
+    "mcpProbeHint": "Checks the endpoint using configured headers or environment variables. Claude / Codex OAuth credentials remain in their clients.",
+    "mcpProbeAuthHint": "Authentication is required. For OAuth services, sign in and verify the connection in the enabled client. For API key services, check the configured headers.",
+    "mcpAuthRequired": "Authentication required",
+    "mcpAuthenticate": "Authorize",
+    "mcpAuthClaude": "Authorize in Claude Code",
+    "mcpAuthCodex": "Authorize in Codex",
+    "mcpAuthHint": "Enable a client before authorizing an HTTP service that uses OAuth. Each client stores its own credentials; use the service in the client you authorized.",
+    "mcpAuthOpened": "Authorization terminal opened. Follow its prompts to sign in.",
+    "mcpAuthErrors": {
+      "mcp_auth_http_required": "OAuth authorization is available for remote HTTP services.",
+      "mcp_auth_client_disabled": "Enable this service for the selected client first.",
+      "mcp_auth_invalid_id": "This server identifier cannot be used for CLI authorization. Rename and add the server again.",
+      "mcp_auth_cli_missing": "Client not found. Install Codex or Claude Code in the current environment first.",
+      "mcp_auth_cli_unsupported": "This client does not support MCP login. Update the CLI. In Claude Code, you can also use /mcp within a session.",
+      "mcp_auth_invalid_server": "Server settings changed. Refresh and try again.",
+      "mcp_auth_start_failed": "Could not open the authorization terminal. Check that the client is installed and runs correctly."
+    },
+    "mcpErrors": {
+      "mcp_timeout": "Endpoint timed out. Check its address and network.",
+      "mcp_connection_or_protocol_error": "Connection failed or the endpoint uses an incompatible protocol.",
+      "mcp_invalid_tools_response": "The endpoint returned an invalid tool list.",
+      "mcp_configuration_changed": "Server settings changed. Check the endpoint again."
+    },
+    "mcpCommand": "Command"
   },
   "claudeCodeConfig": {
     "gatewayClaudeBlockTitle": "Claude Code",

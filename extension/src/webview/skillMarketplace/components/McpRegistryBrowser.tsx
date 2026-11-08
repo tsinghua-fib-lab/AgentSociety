@@ -3,7 +3,7 @@ import { Alert, Button, Collapse, Empty, Input, Modal, Select, Space, Spin, Tag,
 import { useTranslation } from 'react-i18next';
 import type { VSCodeAPI } from '../types';
 import type { McpServerRecord } from '../../../services/mcpClient';
-import { DEFAULT_MCP_REGISTRY, registryFields, registryVariants, resolveRegistryServer, type RegistryServer, type RegistryPage } from '../../../shared/mcpRegistry';
+import { DEFAULT_MCP_REGISTRY, MCP_REGISTRY_SOURCES, registryFields, registryVariants, resolveRegistryServer, type RegistryServer, type RegistryPage } from '../../../shared/mcpRegistry';
 
 export function McpRegistryBrowser({ open, vscode, onCancel, onSelect }: {
   open: boolean; vscode: VSCodeAPI; onCancel: () => void;
@@ -11,6 +11,8 @@ export function McpRegistryBrowser({ open, vscode, onCancel, onSelect }: {
 }) {
   const { t } = useTranslation();
   const [source, setSource] = React.useState(DEFAULT_MCP_REGISTRY);
+  const [customSource, setCustomSource] = React.useState(false);
+  const [sourceExpanded, setSourceExpanded] = React.useState<string[]>([]);
   const [search, setSearch] = React.useState('');
   const [page, setPage] = React.useState<RegistryPage>({ servers: [] });
   const [history, setHistory] = React.useState<string[]>(['']);
@@ -32,7 +34,7 @@ export function McpRegistryBrowser({ open, vscode, onCancel, onSelect }: {
     const listener = (event: MessageEvent) => {
       const data = event.data;
       if (data?.type === 'mcpRegistrySource') {
-        const url = data.payload.source as string; setSource(url); setSearch(''); setHistory(['']); setSelected(undefined); load(url, '');
+        const url = data.payload.source as string; setSource(url); setCustomSource(!MCP_REGISTRY_SOURCES.some((entry) => entry.url === url)); setSourceExpanded([]); setSearch(''); setHistory(['']); setSelected(undefined); load(url, '');
       }
       if (data?.payload?.requestId !== request.current) { return; }
       if (data.type === 'mcpRegistryPage') { setPage(data.payload); setLoading(false); }
@@ -82,8 +84,21 @@ export function McpRegistryBrowser({ open, vscode, onCancel, onSelect }: {
       {resolved ? <Collapse items={[{ key: 'preview', label: t('skillManagement.registry.preview'), children: <pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontSize: 12 }}>{preview}</pre> }]} /> : null}
       <Typography.Text type="secondary">{t('skillManagement.registry.configureHint')}</Typography.Text>
     </Space> : <Space direction="vertical" size={12} style={{ width: '100%' }}>
-      <Typography.Text type="secondary">{t('skillManagement.registry.sourceHint')}</Typography.Text>
-      <Input aria-label={t('skillManagement.registry.source')} value={source} onChange={(event) => { setSource(event.target.value); changeFilters(); }} />
+      <Select aria-label={t('skillManagement.registry.marketSource')} value={customSource ? 'custom' : MCP_REGISTRY_SOURCES.find((entry) => entry.url === source)?.id ?? 'custom'} style={{ width: '100%' }}
+        options={[...MCP_REGISTRY_SOURCES.map((entry) => ({ value: entry.id, label: t(`skillManagement.registry.source_${entry.id}`) })), { value: 'custom', label: t('skillManagement.registry.source_custom') }]}
+        onChange={(id) => {
+          changeFilters(); setSelected(undefined);
+          const preset = MCP_REGISTRY_SOURCES.find((entry) => entry.id === id);
+          setCustomSource(!preset);
+          if (preset) { setSource(preset.url); setSourceExpanded([]); load(preset.url, search); }
+          else { setSourceExpanded(['source']); }
+        }} />
+      <Collapse size="small" activeKey={sourceExpanded} onChange={(keys) => setSourceExpanded(Array.isArray(keys) ? keys : [keys])} style={{ width: '100%' }} items={[{
+        key: 'source', label: t('skillManagement.registry.source'), children: <Space direction="vertical" style={{ width: '100%' }}>
+          <Typography.Text type="secondary">{t('skillManagement.registry.sourceHint')}</Typography.Text>
+          <Input aria-label={t('skillManagement.registry.source')} value={source} onChange={(event) => { setSource(event.target.value); setCustomSource(true); changeFilters(); }} />
+        </Space>,
+      }]} />
       <Input.Search aria-label={t('skillManagement.registry.search')} placeholder={t('skillManagement.registry.search')} value={search} onChange={(event) => { setSearch(event.target.value); changeFilters(); }} loading={loading} enterButton onSearch={() => { setHistory(['']); load(source, search); }} />
       {error ? <Alert type="error" title={error} action={<Button onClick={() => load(source, search, history[history.length - 1])}>{t('skillManagement.refresh')}</Button>} /> : null}
       {loading ? <div style={{ padding: 32, textAlign: 'center' }}><Spin /></div> : !page.servers.length ? <Empty description={t('skillManagement.registry.empty')} /> : page.servers.map((server) => <div key={`${server.name}@${server.version}`} style={{ padding: 12, border: '1px solid var(--vscode-panel-border)', borderRadius: 12 }}>

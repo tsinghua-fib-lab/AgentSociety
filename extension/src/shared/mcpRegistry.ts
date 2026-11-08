@@ -1,6 +1,10 @@
 import type { McpServerRecord } from '../services/mcpClient';
 
 export const DEFAULT_MCP_REGISTRY = 'https://registry.modelcontextprotocol.io/v0.1';
+export const MCP_REGISTRY_SOURCES = [
+  { id: 'official', url: DEFAULT_MCP_REGISTRY },
+  { id: 'github', url: 'https://api.mcp.github.com/v0.1' },
+] as const;
 
 export type RegistryInput = {
   name?: string;

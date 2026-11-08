@@ -26,6 +26,7 @@ export type McpProbeResult = {
   status: number;
   tools: string[];
   error?: string;
+  authRequired?: boolean;
 };
 
 export type McpRpcResponse = {
@@ -116,15 +117,21 @@ export async function probeHttpMcpServer(url: string, headers?: Record<string, s
     return mcpJsonRpc(endpoint, auth, payload, remaining);
   };
   let sessionHeaders: Record<string, string> | undefined;
+  const failure = (response: McpRpcResponse, phase: string): McpProbeResult => {
+    const challenge = response.headers.get('www-authenticate') ?? '';
+    const authRequired = response.status === 401 || (response.status === 403 && /\binsufficient_scope\b/i.test(challenge));
+    return { ok: false, status: response.status, tools: [], ...(authRequired ? { authRequired: true } : {}),
+      error: authRequired ? 'mcp_auth_required' : `${phase}: HTTP ${response.status}${response.data?.error ? ' / JSON-RPC error' : ''}` };
+  };
   try {
     const init = await request({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {
       protocolVersion: '2025-11-25', capabilities: {}, clientInfo: { name: 'agentsociety-extension', version: '1.8.1' },
     } });
-    if (!init.ok) { return { ok: false, status: init.status, tools: [], error: `initialize: HTTP ${init.status}${init.data?.error ? ' / JSON-RPC error' : ''}` }; }
+    if (!init.ok) { return failure(init, 'initialize'); }
     const auth = mcpSessionHeaders(init, headers);
     sessionHeaders = auth;
     const ready = await request({ jsonrpc: '2.0', method: 'notifications/initialized' }, auth);
-    if (!ready.ok) { return { ok: false, status: ready.status, tools: [], error: `initialized: HTTP ${ready.status}` }; }
+    if (!ready.ok) { return failure(ready, 'initialized'); }
     const capabilities = (init.data?.result as { capabilities?: { tools?: unknown } } | undefined)?.capabilities;
     if (!capabilities?.tools) { return { ok: true, status: 200, tools: [] }; }
     const tools = new Set<string>(), cursors = new Set<string>();
@@ -132,7 +139,8 @@ export async function probeHttpMcpServer(url: string, headers?: Record<string, s
     do {
       const list = await request({ jsonrpc: '2.0', id: 2 + cursors.size, method: 'tools/list', params: cursor ? { cursor } : {} }, auth);
       const result = list.data?.result as { tools?: Array<{ name?: unknown }>; nextCursor?: unknown } | undefined;
-      if (!list.ok || !Array.isArray(result?.tools)) { return { ok: false, status: list.status, tools: [], error: `tools/list: HTTP ${list.status} / invalid JSON-RPC result` }; }
+      if (!list.ok) { return failure(list, 'tools/list'); }
+      if (!Array.isArray(result?.tools)) { return { ok: false, status: list.status, tools: [], error: 'mcp_invalid_tools_response' }; }
       for (const tool of result.tools) { if (typeof tool.name === 'string') { tools.add(tool.name); } }
       cursor = typeof result.nextCursor === 'string' && result.nextCursor ? result.nextCursor : undefined;
       if (cursor && cursors.has(cursor)) { throw new Error('mcp_repeated_cursor'); }

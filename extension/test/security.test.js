@@ -631,3 +631,58 @@ test('quoted JSON reasoning settings reach the runtime while their .env lines re
     assert.equal(manager.readEnv().llmThinkingFormat, 'enable_thinking');
   }
 });
+
+test('MCP endpoint checks distinguish authentication challenges from access failures without exposing metadata', async (t) => {
+  const { probeHttpMcpServer } = require('../out/services/mcpClient');
+  const server = http.createServer(async (req, res) => {
+    let text = ''; for await (const chunk of req) text += chunk;
+    if (req.method === 'DELETE') { res.writeHead(204); res.end(); return; }
+    const body = JSON.parse(text);
+    if (req.url === '/needs-login') {
+      res.writeHead(401, { 'www-authenticate': 'Bearer resource_metadata="https://auth.example/private-metadata"' }); res.end('private diagnostic'); return;
+    }
+    if (req.url === '/denied') { res.writeHead(403); res.end(); return; }
+    if (body.method === 'initialize') { res.setHeader('content-type', 'application/json'); res.end(JSON.stringify({ jsonrpc: '2.0', id: body.id, result: { protocolVersion: '2025-11-25', capabilities: { tools: {} } } })); return; }
+    if (body.method === 'notifications/initialized') { res.writeHead(202); res.end(); return; }
+    res.writeHead(403, { 'www-authenticate': 'Bearer error="insufficient_scope", scope="private-scope"' }); res.end();
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => { server.closeAllConnections(); return new Promise((resolve) => server.close(resolve)); });
+  const base = `http://127.0.0.1:${server.address().port}`;
+  for (const endpoint of ['/needs-login', '/needs-scope']) {
+    const result = await probeHttpMcpServer(base + endpoint);
+    assert.equal(result.authRequired, true); assert.equal(result.error, 'mcp_auth_required');
+    assert.ok(!JSON.stringify(result).includes('private'));
+  }
+  const denied = await probeHttpMcpServer(base + '/denied');
+  assert.equal(denied.ok, false); assert.equal(denied.status, 403); assert.equal(denied.authRequired, undefined);
+});
+
+test('MCP OAuth starts the selected official CLI, reuses running login and rejects disabled clients or unsafe IDs', async () => {
+  const terminals = [], calls = [], created = [];
+  const proxy = { HTTPS_PROXY: 'http://127.0.0.1:12345' };
+  const vscode = { env: { remoteName: 'ssh-remote' }, workspace: { workspaceFolders: [{ uri: { fsPath: '/owned' } }] }, window: {
+    terminals, createTerminal: (options) => { created.push(options); const terminal = { name: options.name, show: () => {}, exitStatus: undefined }; terminals.push(terminal); return terminal; },
+  } };
+  let failure;
+  const { openMcpAuthentication } = load('services/mcpAuthentication.ts', {
+    vscode, './mcpClient': require('../out/services/mcpClient'),
+    child_process: { execFile: (app, args, options, callback) => { calls.push({ app, args, options }); callback(failure, 'Usage: mcp login --no-browser'); } },
+  });
+  const server = { id: 'agentsociety-notes', transport: 'http', url: 'https://example.invalid/mcp', enabledCodex: true, enabledClaude: true };
+  await openMcpAuthentication(server, 'codex', proxy);
+  assert.equal(calls.length, 1); assert.equal(calls[0].app, 'codex'); assert.deepEqual(Array.from(calls[0].args), ['mcp', 'login', '--help']);
+  assert.deepEqual(Array.from(created[0].shellArgs), ['mcp', 'login', server.id, '--no-browser']); assert.equal(created[0].env, proxy);
+  await openMcpAuthentication(server, 'codex', proxy); assert.equal(calls.length, 1); assert.equal(created.length, 1);
+  terminals[0].exitStatus = { code: 0 };
+  await openMcpAuthentication(server, 'claude', proxy); assert.equal(calls.at(-1).app, 'claude'); assert.equal(created.length, 2);
+  for (const id of ['-flag', 'server with spaces', 'server;command', 'server\ncommand']) await assert.rejects(openMcpAuthentication({ ...server, id }, 'codex'), /mcp_auth_invalid_id/);
+  await assert.rejects(openMcpAuthentication({ ...server, enabledCodex: false }, 'codex'), /mcp_auth_client_disabled/);
+  await assert.rejects(openMcpAuthentication({ ...server, transport: 'stdio' }, 'codex'), /mcp_auth_http_required/);
+  assert.equal(calls.length, 2);
+  failure = Object.assign(new Error('unavailable'), { code: 'ENOENT' });
+  await assert.rejects(openMcpAuthentication({ ...server, id: 'missing' }, 'codex'), /mcp_auth_cli_missing/);
+  failure = new Error('private CLI diagnostics');
+  await assert.rejects(openMcpAuthentication({ ...server, id: 'unsupported' }, 'claude'), /mcp_auth_cli_unsupported/);
+  assert.equal(created.length, 2);
+});

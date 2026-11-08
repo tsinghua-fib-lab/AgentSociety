@@ -78,6 +78,10 @@ export class ConfigPageViewProvider {
     ConfigPageViewProvider.configHealthStatus = status;
   }
 
+  public static getOutboundProxyEnv(): Record<string, string> | undefined {
+    return ConfigPageViewProvider.gatewayManager?.buildOutboundProxyEnv();
+  }
+
   private readonly _panel: vscode.WebviewPanel;
   private readonly _extensionPath: string;
   private readonly _context: vscode.ExtensionContext;

@@ -1034,12 +1034,12 @@
     "integrationsTab": "MCP",
     "statMcp": "MCP",
     "mcpIntroTitle": "Claude Code / Codex MCP",
-    "mcpIntroBody": "内置「文献检索」来自工作区 .env（配置页可改 URL/Key）。下方可添加自定义 MCP，点「同步」写入 ~/.claude.json 与 ~/.codex/config.toml。同步的 MCP 为用户级（全局生效，所有项目可见）。",
+    "mcpIntroBody": "选择使用的客户端后，配置会自动写入 ~/.claude.json 或 ~/.codex/config.toml，供所有项目使用。OAuth 授权由对应客户端保存和刷新。文献检索的 URL 与密钥在配置页修改。",
     "mcpBuiltinSection": "工作区内置",
-    "mcpBuiltinSectionHint": "文献检索 MCP 的 URL/Key 在配置页「文献 MCP」Tab 编辑，此处只读展示与探测。",
+    "mcpBuiltinSectionHint": "文献检索的 URL 与密钥在配置页「文献检索」修改。",
     "mcpBuiltinEmpty": "尚未配置文献 MCP（请在配置页填写 URL 与 Key）",
     "mcpCustomSection": "自定义 MCP",
-    "mcpCustomSectionHint": "stdio 或 HTTP 服务；添加后需点「同步」才会写入 Claude/Codex 配置。",
+    "mcpCustomSectionHint": "保存配置或切换客户端时自动同步；本地 stdio、远程 HTTP 均可使用。",
     "mcpBuiltinLiteratureDesc": "学术文献检索（HTTP），URL/Key 在配置页 · 文献检索",
     "mcpRecommended": "推荐一键添加",
     "mcpAddPresetAction": "点击添加",
@@ -1053,10 +1053,10 @@
     "mcpTransport": "传输",
     "mcpStatus": "状态",
     "mcpActions": "操作",
-    "mcpProbe": "探测",
-    "mcpProbing": "探测中",
-    "mcpNotProbed": "未探测",
-    "mcpProbeFailed": "探测失败",
+    "mcpProbe": "检查接口",
+    "mcpProbing": "检查中",
+    "mcpNotProbed": "未检查",
+    "mcpProbeFailed": "检查失败",
     "mcpTools": "{{count}} 个工具",
     "mcpStdioHint": "stdio",
     "mcpSseClaudeOnly": "仅支持 Claude Code",
@@ -1125,7 +1125,7 @@
       "title": "浏览 MCP 注册源",
       "browse": "浏览外部源",
       "source": "注册源 API 地址",
-      "sourceHint": "默认使用 MCP 官方注册源，也可填写兼容的注册源 API 地址（例如 https://registry.example/v0.1）。",
+      "sourceHint": "支持 MCP Registry v0.1 接口。搜索、分页和安装信息由所选来源提供。",
       "search": "按服务名称搜索",
       "inspect": "查看与配置",
       "variant": "连接或安装方式",
@@ -1148,7 +1148,11 @@
         "registry_integrity_required": "此包要求校验下载文件，请按发布者说明安装并配置。",
         "unsupported_registry_runtime": "此包使用的启动方式请按发布者说明配置。",
         "invalid": "请检查配置值，或查看发布者的安装说明。"
-      }
+      },
+      "marketSource": "市场来源",
+      "source_official": "MCP 官方市场",
+      "source_github": "GitHub MCP 市场",
+      "source_custom": "自定义注册源"
     },
     "mcpImport": {
       "title": "导入 MCP 配置",
@@ -1186,7 +1190,31 @@
         "unsupported_codex_layout": "Codex 配置布局无法安全更新，请检查 MCP 表格格式。"
       }
     },
-    "sectionDetails": "说明"
+    "sectionDetails": "说明",
+    "mcpProbeHint": "使用已配置的请求头或环境变量检查接口，不读取 Claude / Codex 的 OAuth 凭据。",
+    "mcpProbeAuthHint": "接口需要认证。OAuth 服务请在已启用的客户端中授权，并在该客户端确认连接状态；API Key 服务请检查请求头。",
+    "mcpAuthRequired": "需要认证",
+    "mcpAuthenticate": "授权",
+    "mcpAuthClaude": "在 Claude Code 中授权",
+    "mcpAuthCodex": "在 Codex 中授权",
+    "mcpAuthHint": "先启用客户端，再为需要 OAuth 的 HTTP 服务授权。两个客户端各自保存凭据，授权完成后在对应客户端使用。",
+    "mcpAuthOpened": "已打开授权终端，请按终端提示完成登录。",
+    "mcpAuthErrors": {
+      "mcp_auth_http_required": "OAuth 授权适用于远程 HTTP 服务。",
+      "mcp_auth_client_disabled": "请先为这个服务启用对应客户端。",
+      "mcp_auth_invalid_id": "服务标识不适合命令行授权，请修改名称后重新添加。",
+      "mcp_auth_cli_missing": "未找到客户端，请先在当前环境安装 Codex 或 Claude Code。",
+      "mcp_auth_cli_unsupported": "当前客户端不支持 MCP 登录命令，请更新 CLI。Claude Code 也可在会话中运行 /mcp 进行授权。",
+      "mcp_auth_invalid_server": "服务配置已变化，请刷新后重试。",
+      "mcp_auth_start_failed": "未能打开授权终端，请确认客户端已安装并可运行。"
+    },
+    "mcpErrors": {
+      "mcp_timeout": "接口响应超时，请检查地址和网络。",
+      "mcp_connection_or_protocol_error": "无法连接或接口协议不兼容。",
+      "mcp_invalid_tools_response": "接口返回的工具列表无效。",
+      "mcp_configuration_changed": "服务配置已变化，请重新检查。"
+    },
+    "mcpCommand": "启动命令"
   },
   "claudeCodeConfig": {
     "gatewayClaudeBlockTitle": "Claude Code",

@@ -54,6 +54,7 @@ import {
 import { ConfigPageViewProvider } from './configPageViewProvider';
 import { McpServerManager, MCP_SERVER_PRESETS, type McpServerInput } from './services/mcpServerManager';
 import { mcpConnectionKey, probeHttpMcpServer } from './services/mcpClient';
+import { openMcpAuthentication } from './services/mcpAuthentication';
 import { appendSharedOutputLine, OUTPUT_CHANNEL_MAIN } from './shared/outputChannels';
 
 function hostFromMaybeUrl(value: string | undefined): string | undefined {
@@ -385,6 +386,19 @@ export class SkillMarketplacePanel {
             const id = typeof pl?.id === 'string' ? pl.id : '';
             if (id) {
               await this._probeMcpServer(id);
+            }
+            break;
+          }
+          case 'authenticateMcpServer': {
+            const { id, app, requestId } = data.payload ?? {};
+            try {
+              const server = this._mcpManager.listServers().find((entry) => entry.id === id);
+              if (!server || !['codex', 'claude'].includes(app)) { throw new Error('mcp_auth_invalid_server'); }
+              await openMcpAuthentication(server, app, ConfigPageViewProvider.getOutboundProxyEnv());
+              await this._postMessage({ type: 'mcpAuthenticationResult', payload: { id, app, requestId, success: true } });
+            } catch (error) {
+              const code = error instanceof Error && /^mcp_auth_/.test(error.message) ? error.message : 'mcp_auth_start_failed';
+              await this._postMessage({ type: 'mcpAuthenticationResult', payload: { id, app, requestId, success: false, error: code } });
             }
             break;
           }

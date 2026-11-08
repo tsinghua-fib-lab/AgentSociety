@@ -34,6 +34,7 @@ export function ListCard({
       } : undefined}
       style={{
         ...surfaceCardStyle(palette, { accent }),
+        minWidth: 0,
         marginBottom: SKILL_UI.space.md,
         ...style,
       }}

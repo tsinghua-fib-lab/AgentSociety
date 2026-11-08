@@ -3,7 +3,7 @@ import {
   Alert, Button, Checkbox, Collapse, Dropdown, Empty, Input, Modal, Popconfirm, Select, Space, Switch, Tag, Tooltip, Typography, message,
 } from 'antd';
 import {
-  CloudServerOutlined, EditOutlined, ImportOutlined, PlusOutlined, QuestionCircleOutlined, ReloadOutlined, SyncOutlined, ThunderboltOutlined,
+  CloudServerOutlined, EditOutlined, ImportOutlined, LoginOutlined, PlusOutlined, QuestionCircleOutlined, ReloadOutlined, SyncOutlined, ThunderboltOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import type { VSCodeAPI, McpServerRecord, McpProbeResult, McpPresetCatalogItem, McpTransport } from '../types';
@@ -68,6 +68,31 @@ export function McpIntegrationsPanel({
   const saveCounter = React.useRef(0);
   const [query, setQuery] = React.useState('');
   const [target, setTarget] = React.useState('all');
+  const [authPending, setAuthPending] = React.useState<Record<string, string>>({});
+  const [authErrors, setAuthErrors] = React.useState<Record<string, string>>({});
+  const authRequests = React.useRef<Record<string, string>>({});
+  const authSequence = React.useRef(0);
+
+  React.useEffect(() => {
+    const listener = (event: MessageEvent) => {
+      const { type, payload } = event.data ?? {};
+      if (type !== 'mcpAuthenticationResult' || !payload || authRequests.current[payload.id] !== payload.requestId) { return; }
+      delete authRequests.current[payload.id];
+      setAuthPending((previous) => { const next = { ...previous }; delete next[payload.id]; return next; });
+      if (payload.success) { message.info(t('skillManagement.mcpAuthOpened')); }
+      else { setAuthErrors((previous) => ({ ...previous, [payload.id]: t(`skillManagement.mcpAuthErrors.${payload.error}`, { defaultValue: t('skillManagement.mcpAuthErrors.mcp_auth_start_failed') }) })); }
+    };
+    window.addEventListener('message', listener);
+    return () => window.removeEventListener('message', listener);
+  }, [t]);
+
+  const authenticate = (row: McpServerRecord, app: 'claude' | 'codex') => {
+    const requestId = `mcp-auth-${Date.now()}-${++authSequence.current}`;
+    authRequests.current[row.id] = requestId;
+    setAuthPending((previous) => ({ ...previous, [row.id]: requestId }));
+    setAuthErrors((previous) => { const next = { ...previous }; delete next[row.id]; return next; });
+    vscode.postMessage({ type: 'authenticateMcpServer', payload: { id: row.id, app, requestId } });
+  };
 
   React.useEffect(() => {
     const listener = (event: MessageEvent) => {
@@ -145,10 +170,13 @@ export function McpIntegrationsPanel({
     if (!probe) {
       return <Tag>{t('skillManagement.mcpNotProbed')}</Tag>;
     }
+    if (probe.authRequired) {
+      return <Tooltip title={t('skillManagement.mcpProbeAuthHint')}><Tag color="warning">{t('skillManagement.mcpAuthRequired')}</Tag></Tooltip>;
+    }
     return probe.ok ? (
       <Tag color="success">{t('skillManagement.mcpTools', { count: probe.tools.length })}</Tag>
     ) : (
-      <Tag color="error">{probe.error || t('skillManagement.mcpProbeFailed')}</Tag>
+      <Tooltip title={t(`skillManagement.mcpErrors.${probe.error}`, { defaultValue: probe.error || t('skillManagement.mcpProbeFailed') })}><Tag color="error">{t('skillManagement.mcpProbeFailed')}{probe.status ? ` · HTTP ${probe.status}` : ''}</Tag></Tooltip>
     );
   };
 
@@ -160,7 +188,7 @@ export function McpIntegrationsPanel({
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
         <div style={{ minWidth: 0, flex: 1 }}>
-          <Text strong style={{ fontSize: 13 }}>{row.name}</Text>
+          <Text strong title={row.name} style={{ fontSize: 13, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.name}</Text>
           {row.builtin === 'literature' ? (
             <Text type="secondary" style={{ display: 'block', fontSize: 11, lineHeight: 1.45, marginTop: 4 }}>
               {t('skillManagement.mcpBuiltinLiteratureDesc')}
@@ -194,6 +222,7 @@ export function McpIntegrationsPanel({
             Claude Code
           </Text>
           <Switch
+            aria-label={`${row.name} · Claude Code`}
             size="small"
             checked={row.enabledClaude}
             disabled={loading || row.builtin === 'literature'}
@@ -211,6 +240,7 @@ export function McpIntegrationsPanel({
             Codex
           </Text>
           <Switch
+            aria-label={`${row.name} · Codex`}
             size="small"
             checked={row.enabledCodex}
             disabled={loading || row.builtin === 'literature' || row.transport === 'sse'}
@@ -227,7 +257,7 @@ export function McpIntegrationsPanel({
 
       <Space size={6} wrap>
         {row.transport === 'http' ? (
-          <Button
+          <Tooltip title={t('skillManagement.mcpProbeHint')}><Button
             size="small"
             icon={<ThunderboltOutlined />}
             loading={probingIds.has(row.id)}
@@ -237,8 +267,16 @@ export function McpIntegrationsPanel({
             }}
           >
             {t('skillManagement.mcpProbe')}
-          </Button>
+          </Button></Tooltip>
         ) : null}
+        {row.transport === 'http' && !row.builtin ? <Tooltip title={t('skillManagement.mcpAuthHint')}>
+          <Dropdown menu={{ items: [
+            { key: 'claude', label: t('skillManagement.mcpAuthClaude'), disabled: !row.enabledClaude, onClick: () => authenticate(row, 'claude') },
+            { key: 'codex', label: t('skillManagement.mcpAuthCodex'), disabled: !row.enabledCodex, onClick: () => authenticate(row, 'codex') },
+          ] }} trigger={['click']}>
+            <Button size="small" icon={<LoginOutlined />} loading={Boolean(authPending[row.id])} disabled={loading || Boolean(authPending[row.id]) || (!row.enabledClaude && !row.enabledCodex)}>{t('skillManagement.mcpAuthenticate')}</Button>
+          </Dropdown>
+        </Tooltip> : null}
         {row.builtin === 'literature' ? (
           <Button
             size="small"
@@ -264,9 +302,10 @@ export function McpIntegrationsPanel({
           </Space>
         )}
       </Space>
+      {authErrors[row.id] ? <Alert type="error" showIcon title={authErrors[row.id]} style={{ marginTop: 10 }} closable onClose={() => setAuthErrors((previous) => { const next = { ...previous }; delete next[row.id]; return next; })} /> : null}
       {probeById[row.id]?.ok ? <Collapse size="small" style={{ marginTop: 10 }} items={[{
         key: 'tools', label: t('skillManagement.mcpTools', { count: probeById[row.id]!.tools.length }),
-        children: <Space wrap>{probeById[row.id]!.tools.map((name) => <Tag key={name}>{name}</Tag>)}</Space>,
+        children: <Space wrap>{probeById[row.id]!.tools.map((name) => <Tag key={name} style={{ maxWidth: '100%', whiteSpace: 'normal', overflowWrap: 'anywhere' }}>{name}</Tag>)}</Space>,
       }]} /> : null}
     </ListCard>
   );
@@ -424,6 +463,7 @@ export function McpIntegrationsPanel({
           <div>
             <Text style={{ fontSize: 12 }}>{t('skillManagement.mcpTransport')}</Text>
             <Select
+              aria-label={t('skillManagement.mcpTransport')}
               style={{ width: '100%' }}
               value={draft.transport}
               onChange={(v) => setDraft((d) => ({ ...d, transport: v, enabledCodex: v === 'sse' ? false : d.enabledCodex }))}
@@ -446,8 +486,9 @@ export function McpIntegrationsPanel({
           ) : (
             <>
               <div>
-                <Text style={{ fontSize: 12 }}>{t('skillManagement.mcpTransportStdio')}</Text>
+                <Text style={{ fontSize: 12 }}>{t('skillManagement.mcpCommand')}</Text>
                 <Input
+                  aria-label={t('skillManagement.mcpCommand')}
                   value={draft.command}
                   placeholder={t('skillManagement.mcpCommandPlaceholder')}
                   onChange={(e) => setDraft((d) => ({ ...d, command: e.target.value }))}

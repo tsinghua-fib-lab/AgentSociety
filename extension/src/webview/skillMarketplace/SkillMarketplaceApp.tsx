@@ -603,33 +603,6 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
     </span>
   );
 
-  const statPill = (label: string, value: string | number, accent?: string) => (
-    <div
-      style={{
-        flex: '1 1 110px',
-        minWidth: 96,
-        padding: '12px 14px',
-        borderRadius: SKILL_UI.radius.md,
-        border: `1px solid ${palette.panelBorder}`,
-        background: `linear-gradient(160deg, ${palette.surfaceBackground} 0%, ${palette.editorBackground} 72%)`,
-        boxShadow: accent ? `inset 0 0 0 1px ${accent}18` : undefined,
-      }}
-    >
-      <div style={{ fontSize: 11, color: palette.descriptionForeground, marginBottom: 8, fontWeight: 500, letterSpacing: 0.3 }}>{label}</div>
-      <div
-        style={{
-          fontSize: 22,
-          fontWeight: 700,
-          fontVariantNumeric: 'tabular-nums',
-          color: accent ?? palette.editorForeground,
-          lineHeight: 1,
-        }}
-      >
-        {value}
-      </div>
-    </div>
-  );
-
   const detailLabelStyle: React.CSSProperties = {
     fontSize: 11,
     marginBottom: 2,
@@ -1094,10 +1067,10 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
       <TabToolbar
         left={(
           <div>
-            <Text strong style={{ fontSize: 14 }}>{t('skillManagement.marketplaceTabTitle')}</Text>
-            <Text type="secondary" style={{ display: 'block', fontSize: 12, marginTop: 4, lineHeight: 1.55 }}>
-              {t('skillManagement.marketplaceTabIntro')}
-            </Text>
+            <Space size={8}>
+              <Text strong style={{ fontSize: 14 }}>{t('skillManagement.marketplaceTabTitle')}</Text>
+              <Tooltip title={t('skillManagement.marketplaceTabIntro')}><QuestionCircleOutlined tabIndex={0} aria-label={t('skillManagement.sectionDetails')} /></Tooltip>
+            </Space>
           </div>
         )}
         right={(
@@ -1629,45 +1602,6 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
                     </Button>
                   </Tooltip>
                 </Space>
-              </div>
-
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: SKILL_UI.space.md, marginBottom: SKILL_UI.space.lg }}>
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setActiveTab('agent')}
-                  onKeyDown={(e) => { if (e.key === 'Enter') setActiveTab('agent'); }}
-                  style={{ cursor: 'pointer', flex: '1 1 110px', minWidth: 96 }}
-                >
-                  {statPill(t('skillManagement.statEnabledAgent'), agentSkills.length, palette.successForeground)}
-                </div>
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setActiveTab('claudeCode')}
-                  onKeyDown={(e) => { if (e.key === 'Enter') setActiveTab('claudeCode'); }}
-                  style={{ cursor: 'pointer', flex: '1 1 110px', minWidth: 96 }}
-                >
-                  {statPill(t('skillManagement.statClaude'), claudeUnifiedRows.length)}
-                </div>
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setActiveTab('marketplace')}
-                  onKeyDown={(e) => { if (e.key === 'Enter') setActiveTab('marketplace'); }}
-                  style={{ cursor: 'pointer', flex: '1 1 110px', minWidth: 96 }}
-                >
-                  {statPill(t('skillManagement.statMarketplace'), marketplaceTotalCount, palette.linkForeground)}
-                </div>
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setActiveTab('integrations')}
-                  onKeyDown={(e) => { if (e.key === 'Enter') setActiveTab('integrations'); }}
-                  style={{ cursor: 'pointer', flex: '1 1 110px', minWidth: 96 }}
-                >
-                  {statPill(t('skillManagement.statMcp'), mcpServers.length, palette.linkForeground)}
-                </div>
               </div>
 
               {activeTab !== 'integrations' ? (
