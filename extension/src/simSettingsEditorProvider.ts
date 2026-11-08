@@ -283,7 +283,7 @@ export class SimSettingsEditorProvider implements vscode.CustomTextEditorProvide
    * @returns HTML字符串
    */
   private _getHtmlForWebview(
-    webview: vscode.Webview,
+    _webview: vscode.Webview,
     scriptUri: vscode.Uri,
     initialSettings: any
   ): string {
@@ -318,7 +318,7 @@ export class SimSettingsEditorProvider implements vscode.CustomTextEditorProvide
   <script>
     // 通过全局变量传递初始设置到React应用
     // React应用会在index.tsx中读取这个变量
-    window.initialSettings = ${JSON.stringify(initialSettings)};
+    window.initialSettings = ${JSON.stringify(initialSettings).replace(/</g, '\\u003c')};
   </script>
   <script src="${scriptUri}"></script>
 </body>

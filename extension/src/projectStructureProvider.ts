@@ -20,6 +20,7 @@
  */
 
 import * as vscode from 'vscode';
+import { hasConfiguredLlmApiKey } from './runtimeConfig';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as yaml from 'js-yaml';
@@ -1764,7 +1765,7 @@ export class ProjectStructureProvider implements vscode.TreeDataProvider<Project
       const { EnvManager } = await import('./envManager');
       const envManager = new EnvManager();
       const envConfig = envManager.readEnv();
-      const hasApiKey = !!(envConfig.llmApiKey?.trim());
+      const hasApiKey = hasConfiguredLlmApiKey(envConfig);
 
       const workspaceHealth = this.checkWorkspaceHealth(workspacePath);
       const needsFix = !workspaceHealth.isHealthy;

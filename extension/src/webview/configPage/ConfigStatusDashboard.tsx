@@ -4,7 +4,7 @@ import {
   ApiOutlined,
   CheckCircleOutlined,
   KeyOutlined,
-  LinkOutlined,
+  RightOutlined,
   LoadingOutlined,
   StopOutlined,
 } from '@ant-design/icons';
@@ -71,7 +71,7 @@ export function ConfigStatusDashboard({
   onOpenCli,
   backendStarting = false,
 }: Props) {
-  const panelBg = isDark ? 'rgba(37, 37, 38, 0.55)' : 'rgba(255, 255, 255, 0.6)';
+  const panelBg = palette.surfaceMuted;
 
   const llmLine = React.useMemo(() => {
     if (!hasWorkspace) {
@@ -140,7 +140,7 @@ export function ConfigStatusDashboard({
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))',
           gap: 14,
         }}
       >
@@ -166,7 +166,7 @@ export function ConfigStatusDashboard({
           subtitle={
             backendStatus.isRunning
               ? backendStatus.url
-              : t('configPage.overview.backendStoppedHint')
+              : backendStarting ? t('configPage.starting') : t('configPage.overview.backendStoppedHint')
           }
           accent={backendStatus.isRunning ? palette.successForeground : palette.descriptionForeground}
           icon={
@@ -184,18 +184,6 @@ export function ConfigStatusDashboard({
               : !backendStatus.isRunning && onStartBackend && !backendStarting
                 ? onStartBackend
                 : undefined
-          }
-          footer={
-            backendStatus.isRunning && backendStatus.url ? (
-              <Text style={{ fontSize: 11, color: palette.linkForeground }}>
-                <LinkOutlined style={{ marginRight: 4 }} />
-                {backendStatus.url}
-              </Text>
-            ) : !backendStatus.isRunning && onStartBackend ? (
-              <Text style={{ fontSize: 11, color: palette.linkForeground }}>
-                {backendStarting ? t('configPage.starting') : t('configPage.overview.backendStoppedHint')}
-              </Text>
-            ) : null
           }
         />
         <StatusTile
@@ -256,11 +244,18 @@ function StatusTile({
 }) {
   return (
     <div
+      className={onClick ? 'as-interactive-card' : undefined}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
       onClick={onClick}
+      onKeyDown={(event) => {
+        if (onClick && event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
+          event.preventDefault();
+          onClick();
+        }
+      }}
       style={{
-        borderRadius: 14,
+        borderRadius: 16,
         border: `1px solid ${palette.panelBorder}`,
         background,
         padding: '18px 20px',
@@ -273,6 +268,7 @@ function StatusTile({
         <Text type="secondary" style={{ fontSize: 12, fontWeight: 500 }}>
           {label}
         </Text>
+        {onClick ? <RightOutlined aria-hidden style={{ marginLeft: 'auto', color: palette.descriptionForeground, fontSize: 12 }} /> : null}
       </div>
       <Title level={4} style={{ margin: 0, color: accent, fontSize: 20, lineHeight: 1.25, wordBreak: 'break-all' }}>
         {title}

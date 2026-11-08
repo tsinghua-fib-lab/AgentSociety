@@ -8,6 +8,7 @@ import { ClaudeModelSelect } from './ClaudeModelSelect';
 const { Text } = Typography;
 
 type Props = {
+  id?: string;
   t: TFunction;
   value?: string;
   onChange?: (value: string) => void;
@@ -20,6 +21,7 @@ type Props = {
 };
 
 export function EnvLlmModelField({
+  id,
   t,
   value,
   onChange,
@@ -35,6 +37,7 @@ export function EnvLlmModelField({
       <Space.Compact style={{ width: '100%' }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <ClaudeModelSelect
+            id={id}
             value={value}
             onChange={onChange}
             models={models}

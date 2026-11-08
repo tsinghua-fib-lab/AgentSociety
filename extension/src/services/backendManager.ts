@@ -284,6 +284,17 @@ export class BackendManager {
     if (pythonHasAgentsociety2(this.config.pythonPath)) {
       return true;
     }
+    // 2026-11-06 体验审查 #16:silent 模式(autoStart 激活自启)不得弹
+    // 交互——激活瞬间冒出 QuickPick 会非常突兀;记日志留给用户主动处理。
+    if (this.operationSilent) {
+      this.log(
+        `Python at ${this.config.pythonPath} lacks agentsociety2; skipping interactive selection in silent mode`,
+        'warn'
+      );
+      this.isStarting = false;
+      this.updateStatusBar('error');
+      return false;
+    }
     const selected = await this.promptPythonEnvironmentSelection();
     if (!selected) {
       this.isStarting = false;
@@ -365,18 +376,22 @@ export class BackendManager {
     if (envConfig.llmApiBase) { env.AGENTSOCIETY_LLM_API_BASE = envConfig.llmApiBase; }
     if (envConfig.llmModel) { env.AGENTSOCIETY_LLM_MODEL = envConfig.llmModel; }
 
-    // 推理（thinking）开关 - 空值即「未设置」，不注入，保持后端默认行为
-    if (envConfig.llmThinking) { env.AGENTSOCIETY_LLM_THINKING = envConfig.llmThinking; }
-    if (envConfig.llmReasoningEffort) { env.AGENTSOCIETY_LLM_REASONING_EFFORT = envConfig.llmReasoningEffort; }
-    if (envConfig.llmExtraBody) { env.AGENTSOCIETY_LLM_EXTRA_BODY = envConfig.llmExtraBody; }
+    // 显式空值覆盖父进程同名变量，避免清空设置后仍沿用旧的推理开关。
+    if (envConfig.llmApiType !== undefined) { env.AGENTSOCIETY_LLM_API_TYPE = envConfig.llmApiType; }
+    if (envConfig.llmThinkingFormat !== undefined) { env.AGENTSOCIETY_LLM_THINKING_FORMAT = envConfig.llmThinkingFormat; }
+    if (envConfig.llmThinking !== undefined) { env.AGENTSOCIETY_LLM_THINKING = envConfig.llmThinking; }
+    if (envConfig.llmReasoningEffort !== undefined) { env.AGENTSOCIETY_LLM_REASONING_EFFORT = envConfig.llmReasoningEffort; }
+    if (envConfig.llmExtraBody !== undefined) { env.AGENTSOCIETY_LLM_EXTRA_BODY = envConfig.llmExtraBody; }
 
     // Coder LLM 配置
     if (envConfig.coderLlmApiKey) { env.AGENTSOCIETY_CODER_LLM_API_KEY = envConfig.coderLlmApiKey; }
     if (envConfig.coderLlmApiBase) { env.AGENTSOCIETY_CODER_LLM_API_BASE = envConfig.coderLlmApiBase; }
     if (envConfig.coderLlmModel) { env.AGENTSOCIETY_CODER_LLM_MODEL = envConfig.coderLlmModel; }
-    if (envConfig.coderLlmThinking) { env.AGENTSOCIETY_CODER_LLM_THINKING = envConfig.coderLlmThinking; }
-    if (envConfig.coderLlmReasoningEffort) { env.AGENTSOCIETY_CODER_LLM_REASONING_EFFORT = envConfig.coderLlmReasoningEffort; }
-    if (envConfig.coderLlmExtraBody) { env.AGENTSOCIETY_CODER_LLM_EXTRA_BODY = envConfig.coderLlmExtraBody; }
+    if (envConfig.coderLlmApiType !== undefined) { env.AGENTSOCIETY_CODER_LLM_API_TYPE = envConfig.coderLlmApiType; }
+    if (envConfig.coderLlmThinkingFormat !== undefined) { env.AGENTSOCIETY_CODER_LLM_THINKING_FORMAT = envConfig.coderLlmThinkingFormat; }
+    if (envConfig.coderLlmThinking !== undefined) { env.AGENTSOCIETY_CODER_LLM_THINKING = envConfig.coderLlmThinking; }
+    if (envConfig.coderLlmReasoningEffort !== undefined) { env.AGENTSOCIETY_CODER_LLM_REASONING_EFFORT = envConfig.coderLlmReasoningEffort; }
+    if (envConfig.coderLlmExtraBody !== undefined) { env.AGENTSOCIETY_CODER_LLM_EXTRA_BODY = envConfig.coderLlmExtraBody; }
 
     // Embedding 配置
     if (envConfig.embeddingApiKey) { env.AGENTSOCIETY_EMBEDDING_API_KEY = envConfig.embeddingApiKey; }
@@ -729,7 +744,14 @@ export class BackendManager {
       if (this.externalBackend) {
         this.notifyWarning(localize('backendManager.externalStop'));
       } else {
-        this.log('Backend is not running', 'warn');
+        // 2026-11-06 体验审查 #6:此前只写 output 日志,用户点了
+        // 命令毫无反应。给出可见反馈(backendManager 层,兼容
+        // silent 模式——silent 下仍只记日志)。
+        if (!this.operationSilent) {
+          this.notifyWarning(localize('backendManager.notRunning'));
+        } else {
+          this.log('Backend is not running', 'warn');
+        }
       }
       return false;
     }

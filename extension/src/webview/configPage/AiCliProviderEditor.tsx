@@ -12,7 +12,6 @@ import {
   Typography,
 } from 'antd';
 import {
-  BarChartOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
   DeleteOutlined,
@@ -23,7 +22,7 @@ import {
 import type { TFunction } from 'i18next';
 import type { VscodeThemePalette } from '../theme';
 import type { ClaudeModelOption, ProviderAvailabilityResult, ProviderUsageQueryResult } from './claudeCodeTypes';
-import { getProviderPresetsForRole, findPresetByUrl, mergeModelOptions } from './aiCliProviderPresets';
+import { getProviderPresetsForRole, findPresetByUrl } from '../../aiCli/providerPresets';
 import {
   isOfficialAnthropicBaseUrl,
   isOfficialOpenAiBaseUrl,
@@ -32,8 +31,11 @@ import {
 import { ClaudeModelSelect } from './ClaudeModelSelect';
 import type { AiCliProviderRecord } from './aiCliProviderTypes';
 import { autoMapClaudeRoleModels } from './aiCliProviderTypes';
-import { inferProviderAuthMode } from './providerAuth';
-import { supportsProviderUsageQuery } from './providerUsageSupport';
+import { inferProviderAuthMode, providerSupportsRole, clampProviderRoleFlags } from '../../aiCli/providerAuth';
+import { ProviderUsageCard } from './ProviderUsageCard';
+import { ProviderUsageSettings } from './ProviderUsageSettings';
+import { customUsageUrl } from '../../shared/providerUsage';
+import { supportsProviderUsageQuery } from '../../shared/providerUsage';
 import { normalizeProviderBaseUrl } from './providerBaseUrl';
 import { shouldShowProviderModelConfiguration } from '../../services/manualConfigSync';
 
@@ -95,7 +97,7 @@ function connectionFingerprint(
   apiKey: string,
   apiKind?: AiCliApiKind
 ): string {
-  return `${baseUrl.trim()}::${apiKey.length}::${apiKey.slice(-4)}::${apiKind ?? ''}`;
+  return `${baseUrl.trim()}::${apiKey}::${apiKind ?? ''}`;
 }
 
 type ProviderEditorProps = {
@@ -156,8 +158,12 @@ export function ProviderEditor({
     });
   }, [provider]);
 
+  React.useEffect(() => {
+    setDraft((prev) => ({ ...prev, activeClaude: provider.activeClaude, activeCodex: provider.activeCodex }));
+  }, [provider.activeClaude, provider.activeCodex]);
+
   const patch = (partial: Partial<AiCliProviderRecord>) => {
-    setDraft((prev) => ({ ...prev, ...partial }));
+    setDraft((prev) => clampProviderRoleFlags({ ...prev, ...partial }));
   };
 
   const isOfficialUrl = (baseUrl: string) => {
@@ -167,17 +173,6 @@ export function ProviderEditor({
   const officialUrl = isOfficialUrl(draft.baseUrl);
   const effectiveAvailability =
     availabilityResults?.[normalizeProviderBaseUrl(draft.baseUrl)] ?? availability;
-
-  React.useEffect(() => {
-    if (!effectiveAvailability?.ok || !effectiveAvailability.apiKind) {
-      return;
-    }
-    setDraft((prev) =>
-      prev.apiKind === effectiveAvailability.apiKind
-        ? prev
-        : { ...prev, apiKind: effectiveAvailability.apiKind }
-    );
-  }, [effectiveAvailability?.ok, effectiveAvailability?.apiKind]);
 
   const layoutApiKind = draft.apiKind ?? effectiveAvailability?.apiKind;
   const isOpenAiProvider = layoutApiKind === 'openai';
@@ -191,22 +186,26 @@ export function ProviderEditor({
   const authMode = inferProviderAuthMode({ ...draft, apiKind: layoutApiKind });
   const isSubscription = authMode === 'subscription';
   const canUseApi = isSubscription || Boolean(draft.apiKey.trim());
-  const canProbe = Boolean(draft.baseUrl.trim()) && Boolean(draft.apiKey.trim()) && !isSubscription;
-  const canSave = isSubscription || (Boolean(draft.baseUrl.trim()) && Boolean(draft.apiKey.trim()));
-  const matchedPreset = findPresetByUrl(draft.baseUrl)?.id ?? CUSTOM_PRESET;
+  const canProbe = Boolean(draft.baseUrl.trim()) && Boolean(draft.apiKey.trim()) && Boolean(layoutApiKind) && !isSubscription;
+  const activeProtocolChanged =
+    (provider.activeClaude && !providerSupportsRole(draft, 'claude')) ||
+    (provider.activeCodex && !providerSupportsRole(draft, 'codex'));
+  let usageConfigValid = true;
+  if (draft.usageQuery?.mode === 'custom') {
+    try { customUsageUrl(draft.baseUrl, draft.usageQuery); }
+    catch { usageConfigValid = false; }
+    usageConfigValid = usageConfigValid && Boolean(draft.usageQuery.remainingPath?.trim()) &&
+      Number.isFinite(draft.usageQuery.divisor ?? 1) && (draft.usageQuery.divisor ?? 1) > 0;
+  }
+  const canSave = usageConfigValid && !activeProtocolChanged && (isSubscription || (Boolean(draft.baseUrl.trim()) && Boolean(draft.apiKey.trim()) && Boolean(layoutApiKind)));
+  const usageMatchesSaved = connectionFingerprint(draft.baseUrl, draft.apiKey, draft.apiKind) === connectionFingerprint(provider.baseUrl, provider.apiKey, provider.apiKind) &&
+    draft.authMode === provider.authMode && draft.authHeaderMode === provider.authHeaderMode &&
+    JSON.stringify(draft.usageQuery) === JSON.stringify(provider.usageQuery);
+  const matchedPreset = findPresetByUrl(draft.baseUrl, layoutApiKind)?.id ?? CUSTOM_PRESET;
   const selectedForClaude = draft.activeClaude;
   const selectedForCodex = draft.activeCodex;
 
-  const selectableModels = React.useMemo(() => {
-    if (models.length > 0) {
-      return models;
-    }
-    // Only surface preset hints as dropdown options — never invent official Claude/OpenAI catalogs for blank drafts.
-    if (!draft.baseUrl.trim() || !layoutApiKind) {
-      return [];
-    }
-    return mergeModelOptions([], draft.baseUrl, layoutApiKind);
-  }, [models, draft.baseUrl, layoutApiKind]);
+  const selectableModels = autoFetchFingerprintRef.current === connectionFingerprint(draft.baseUrl, draft.apiKey, layoutApiKind) ? models : [];
 
   const presetOptions = [
     {
@@ -230,10 +229,14 @@ export function ProviderEditor({
   ];
 
   React.useEffect(() => {
+    const fingerprint = connectionFingerprint(draft.baseUrl, draft.apiKey, layoutApiKind);
     if (!canProbe) {
+      if (autoFetchFingerprintRef.current !== fingerprint) {
+        autoFetchFingerprintRef.current = fingerprint;
+        onFetchModels(draft.baseUrl, '', layoutApiKind);
+      }
       return;
     }
-    const fingerprint = connectionFingerprint(draft.baseUrl, draft.apiKey, layoutApiKind);
     if (autoFetchFingerprintRef.current === fingerprint) {
       return;
     }
@@ -294,64 +297,7 @@ export function ProviderEditor({
     );
   };
 
-  const renderUsage = () => {
-    if (isNew) {
-      return (
-        <Text type="secondary" style={{ fontSize: 11 }}>
-          {t('claudeCodeConfig.providerQuotaAfterSave')}
-        </Text>
-      );
-    }
-    const supported = supportsProviderUsageQuery(draft.baseUrl, {
-      apiKind: layoutApiKind,
-      authMode: inferProviderAuthMode({ ...draft, apiKind: layoutApiKind }),
-    });
-    if (!supported) {
-      return null;
-    }
-    const usage = providerUsage;
-    const refresh = onQueryProviderUsage ? (
-      <Button
-        type="text"
-        size="small"
-        loading={usage?.loading}
-        icon={<ReloadOutlined />}
-        aria-label={t('claudeCodeConfig.providerQueryQuota')}
-        onClick={onQueryProviderUsage}
-      />
-    ) : null;
-    if (usage?.ok && usage.summary) {
-      return (
-        <Space size={4}>
-          <BarChartOutlined style={{ color: palette.linkForeground }} />
-          <Tooltip title={usage.plans?.map((plan) => `${plan.name}: ${plan.remaining}`).join('\n')}>
-            <Text style={{ fontSize: 11 }}>{usage.summary}</Text>
-          </Tooltip>
-          {refresh}
-        </Space>
-      );
-    }
-    if (usage && !usage.ok && usage.error && !usage.loading) {
-      const errorKey = `claudeCodeConfig.providerUsageErrors.${usage.error}`;
-      const errorText = t(errorKey) !== errorKey ? t(errorKey) : usage.error;
-      return (
-        <Space size={4}>
-          <Tag color="error" style={{ margin: 0, fontSize: 10 }}>{errorText}</Tag>
-          {refresh}
-        </Space>
-      );
-    }
-    return (
-      <Space size={4}>
-        <Text type="secondary" style={{ fontSize: 11 }}>
-          {usage?.loading
-            ? t('claudeCodeConfig.providerQuotaLoading')
-            : t('claudeCodeConfig.providerQueryQuota')}
-        </Text>
-        {refresh}
-      </Space>
-    );
-  };
+
 
   const handlePresetChange = (id: string) => {
     autoFetchFingerprintRef.current = '';
@@ -359,6 +305,7 @@ export function ProviderEditor({
       patch({
         name: draft.name.trim() ? draft.name : '',
         baseUrl: '',
+        apiKey: '',
         apiKind: undefined,
         authMode: 'api',
       });
@@ -370,10 +317,11 @@ export function ProviderEditor({
     }
     patch({
       baseUrl: preset.url,
+      ...(normalizeProviderBaseUrl(draft.baseUrl) !== normalizeProviderBaseUrl(preset.url) ? { apiKey: '' } : {}),
       apiKind: preset.apiKind,
       authMode: preset.official ? 'subscription' : 'api',
       name: draft.name.trim() ? draft.name : t(`claudeCodeConfig.baseUrlPresets.${preset.id}`),
-      // Preset only fills URL/hints — never auto-activate (create ≠ write live).
+      // Provider selection changes the draft; activation is a separate action.
       activeClaude: draft.activeClaude,
       activeCodex: draft.activeCodex,
     });
@@ -393,7 +341,7 @@ export function ProviderEditor({
   };
 
   const handleManualFetch = () => {
-    autoFetchFingerprintRef.current = '';
+    autoFetchFingerprintRef.current = connectionFingerprint(draft.baseUrl, draft.apiKey, layoutApiKind);
     onFetchModels(draft.baseUrl, draft.apiKey, layoutApiKind);
   };
 
@@ -440,7 +388,6 @@ export function ProviderEditor({
           {protocolTag()}
           {availabilityTag()}
         </Space>
-        {renderUsage()}
       </div>
 
       <div>
@@ -497,11 +444,19 @@ export function ProviderEditor({
                 },
                 { value: 'api', label: t('claudeCodeConfig.providerAuthApiKey') },
               ]}
-              onChange={(value) => patch({ authMode: value })}
+              onChange={(value) => patch({ authMode: value, usageQuery: value === 'subscription' && draft.usageQuery?.mode === 'custom' ? { mode: 'auto' } : draft.usageQuery })}
             />
           ) : null}
           {!isSubscription ? (
             <>
+              <Select
+                size="small"
+                aria-label={t('claudeCodeConfig.providerApiProtocol')}
+                placeholder={t('claudeCodeConfig.providerApiProtocol')}
+                value={layoutApiKind}
+                options={[{ value: 'openai', label: 'OpenAI-compatible' }, { value: 'anthropic', label: 'Anthropic' }]}
+                onChange={(apiKind) => patch({ apiKind })}
+              />
               <Input.Password
                 size="small"
                 placeholder={t('claudeCodeConfig.providerKeyPlaceholder')}
@@ -563,6 +518,12 @@ export function ProviderEditor({
         </Space>
       </div>
 
+      <ProviderUsageSettings allowCustom={!isSubscription} value={draft.usageQuery} onChange={(usageQuery) => patch({ usageQuery })} />
+      {!usageConfigValid ? <Text type="warning">{t('claudeCodeConfig.providerUsageErrors.invalid_usage_config')}</Text> : null}
+      {!isNew && supportsProviderUsageQuery(provider.baseUrl, { apiKind: provider.apiKind, authMode: inferProviderAuthMode(provider), usageQuery: provider.usageQuery }) ? (
+        usageMatchesSaved ? <ProviderUsageCard usage={providerUsage} palette={palette} onRefresh={onQueryProviderUsage} />
+          : <Text type="secondary">{t('claudeCodeConfig.providerQuotaAfterSave')}</Text>
+      ) : null}
       <div style={sectionStyle(palette)}>
         <Space size={6} style={{ marginBottom: 8 }}>
           <Text strong style={{ fontSize: 12 }}>{t('claudeCodeConfig.providerUsageSection')}</Text>
@@ -573,19 +534,22 @@ export function ProviderEditor({
         <Space direction="vertical" style={{ width: '100%' }} size={6}>
           <Checkbox
             checked={selectedForClaude}
-            disabled={!canUseApi}
+            disabled={!canUseApi || !providerSupportsRole(draft, 'claude') || provider.activeClaude}
             onChange={(e) => patch({ activeClaude: e.target.checked })}
           >
             <Text style={{ fontSize: 12 }}>{t('claudeCodeConfig.providerUseForClaude')}</Text>
           </Checkbox>
           <Checkbox
             checked={selectedForCodex}
-            disabled={!canUseApi}
+            disabled={!canUseApi || !providerSupportsRole(draft, 'codex') || provider.activeCodex}
             onChange={(e) => patch({ activeCodex: e.target.checked })}
           >
             <Text style={{ fontSize: 12 }}>{t('claudeCodeConfig.providerUseForCodex')}</Text>
           </Checkbox>
         </Space>
+        <Text type="secondary" style={{ display: 'block', fontSize: 11, marginTop: 6 }}>
+          {t(activeProtocolChanged ? 'claudeCodeConfig.providerActiveProtocolHint' : 'claudeCodeConfig.providerSelectionHint')}
+        </Text>
       </div>
 
       {shouldShowProviderModelConfiguration(Boolean(isNew)) ? (
@@ -600,10 +564,10 @@ export function ProviderEditor({
           </Button>
           {modelsError ? (
             <Tag color="error" style={{ margin: 0 }}>{modelsError}</Tag>
-          ) : models.length > 0 ? (
-            <Tag color="success" style={{ margin: 0 }}>{t('claudeCodeConfig.modelsCount', { count: models.length })}</Tag>
+          ) : selectableModels.length > 0 ? (
+            <Tag color="success" style={{ margin: 0 }}>{t('claudeCodeConfig.modelsCount', { count: selectableModels.length })}</Tag>
           ) : (
-            <Tag style={{ margin: 0 }}>{t('claudeCodeConfig.modelsUsingFallback')}</Tag>
+            <Tag style={{ margin: 0 }}>{t('claudeCodeConfig.modelsInputHint')}</Tag>
           )}
         </Space>
         <Space direction="vertical" style={{ width: '100%' }} size={8}>
@@ -745,12 +709,12 @@ export function ProviderEditor({
         >
           {isNew ? t('claudeCodeConfig.providerAdd') : t('claudeCodeConfig.providerSave')}
         </Button>
-        {!isNew && onActivate && !provider.activeClaude ? (
+        {!isNew && onActivate && !provider.activeClaude && providerSupportsRole(provider, 'claude') ? (
           <Button size="small" onClick={() => onActivate('claude')}>
             {t('claudeCodeConfig.providerSwitchClaude')}
           </Button>
         ) : null}
-        {!isNew && onActivate && !provider.activeCodex ? (
+        {!isNew && onActivate && !provider.activeCodex && providerSupportsRole(provider, 'codex') ? (
           <Button size="small" onClick={() => onActivate('codex')}>
             {t('claudeCodeConfig.providerSwitchCodex')}
           </Button>

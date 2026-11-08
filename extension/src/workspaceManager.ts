@@ -11,6 +11,7 @@
  */
 
 import * as vscode from 'vscode';
+import { hasConfiguredLlmApiKey } from './runtimeConfig';
 import * as path from 'path';
 import * as fs from 'fs';
 import { execFileSync } from 'child_process';
@@ -122,7 +123,7 @@ export class WorkspaceManager {
       const { EnvManager } = await import('./envManager');
       const envManager = new EnvManager();
       const envConfig = envManager.readEnv();
-      const hasApiKey = !!(envConfig.llmApiKey?.trim());
+      const hasApiKey = hasConfiguredLlmApiKey(envConfig);
 
       if (!hasApiKey) {
         this.log('Warning: .env file exists but LLM API key is not configured');

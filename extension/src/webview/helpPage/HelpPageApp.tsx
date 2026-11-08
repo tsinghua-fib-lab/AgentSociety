@@ -315,17 +315,10 @@ export const HelpPageApp: React.FC<HelpPageAppProps> = ({ vscode }) => {
     ),
   };
 
-  const glassCardStyle: React.CSSProperties = {
+  const panelCardStyle: React.CSSProperties = {
     borderRadius: 16,
     border: `1px solid ${palette.panelBorder}`,
-    background: isDark
-      ? 'rgba(37, 37, 38, 0.7)'
-      : 'rgba(255, 255, 255, 0.65)',
-    backdropFilter: 'blur(24px)',
-    WebkitBackdropFilter: 'blur(24px)',
-    boxShadow: isDark
-      ? '0 4px 16px rgba(0,0,0,0.2)'
-      : '0 4px 16px rgba(0,0,0,0.08)',
+    background: palette.surfaceMuted,
   };
 
   const switchToFallback = () => {
@@ -343,11 +336,11 @@ export const HelpPageApp: React.FC<HelpPageAppProps> = ({ vscode }) => {
   return (
     <ConfigProvider theme={themeConfig}>
       <Layout style={{ minHeight: '100vh', background: palette.editorBackground }}>
-        <Content style={{ padding: '24px', maxWidth: 1000, margin: '0 auto', width: '100%' }}>
+        <Content className="as-page-content" style={{ padding: '24px', maxWidth: 1000, margin: '0 auto', width: '100%' }}>
           {/* Header Card */}
           <Card
             style={{
-              ...glassCardStyle,
+              ...panelCardStyle,
               marginBottom: 16,
             }}
             styles={{ body: { padding: '16px 24px' } }}
@@ -362,7 +355,7 @@ export const HelpPageApp: React.FC<HelpPageAppProps> = ({ vscode }) => {
                     width: 44,
                     height: 44,
                     borderRadius: 12,
-                    background: `linear-gradient(135deg, ${palette.linkForeground}25 0%, ${palette.linkForeground}15 100%)`,
+                    background: `color-mix(in srgb, ${palette.linkForeground} 12%, transparent)`,
                     color: palette.linkForeground,
                   }}
                 >
@@ -483,7 +476,7 @@ export const HelpPageApp: React.FC<HelpPageAppProps> = ({ vscode }) => {
           {/* Fallback Markdown content */}
           {viewMode === 'fallback' && (
             <Card
-              style={glassCardStyle}
+              style={panelCardStyle}
               styles={{ body: { padding: '24px 32px' } }}
             >
               <XMarkdown

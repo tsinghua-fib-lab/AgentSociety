@@ -33,7 +33,7 @@ export class GitLabAdapter implements PlatformAdapter {
     return this.defaultWebBase;
   }
 
-  private _headers(source: SkillSource): Record<string, string> {
+  private _headers(_source: SkillSource): Record<string, string> {
     const headers: Record<string, string> = {
       'User-Agent': 'AI-Social-Scientist-VSCode',
     };

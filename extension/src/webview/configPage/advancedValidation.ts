@@ -42,6 +42,9 @@ export function getAdvancedKeyFingerprint(
         coderLlmApiKey: env.coderLlmApiKey,
         coderLlmApiBase: env.coderLlmApiBase,
         coderLlmModel: env.coderLlmModel,
+        apiType: env.coderLlmApiType || env.llmApiType || 'openai',
+        thinking: env.coderLlmThinking || env.llmThinking || '',
+        thinkingFormat: env.coderLlmThinkingFormat || env.llmThinkingFormat || '',
       });
     case 'embedding':
       return JSON.stringify({

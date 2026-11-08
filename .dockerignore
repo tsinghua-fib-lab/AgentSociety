@@ -20,6 +20,17 @@
 **/.ruff_cache/
 *.egg-info/
 
+# Credentials and local experiment material
+**/.env
+**/.env.*
+!**/.env.example
+benchmark_results/
+optimization/
+packages/agentsociety2/benchmarks/
+packages/agentsociety2/run_*/
+packages/agentsociety2/docs/_build/
+packages/agentsociety2/dist/
+
 # Generic build / log output at repo root
 build/
 cache/

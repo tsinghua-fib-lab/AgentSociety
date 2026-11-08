@@ -1,7 +1,8 @@
 import * as React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Space, Tooltip, Typography } from 'antd';
 import { QuestionCircleOutlined } from '@ant-design/icons';
-import type { VscodeThemePalette } from '../theme';
+import type { VscodeThemePalette } from '../../theme';
 import { SKILL_UI, sectionShellStyle } from '../uiTokens';
 
 const { Text } = Typography;
@@ -27,6 +28,7 @@ export function PageSection({
   children,
   style,
 }: PageSectionProps) {
+  const { t } = useTranslation();
   return (
     <section style={{ ...sectionShellStyle(palette), ...style }}>
       <div
@@ -52,12 +54,10 @@ export function PageSection({
             ) : null}
           </div>
           {subtitle ? (
-            <Text
-              type="secondary"
-              style={{ display: 'block', fontSize: 12, marginTop: 4, lineHeight: 1.55 }}
-            >
-              {subtitle}
-            </Text>
+            <details style={{ marginTop: 4, fontSize: 12, color: palette.descriptionForeground }}>
+              <summary style={{ cursor: 'pointer' }}>{t('skillManagement.sectionDetails')}</summary>
+              <Text type="secondary" style={{ display: 'block', marginTop: 4, fontSize: 12, lineHeight: 1.55 }}>{subtitle}</Text>
+            </details>
           ) : null}
         </div>
         {extra ? <Space wrap size={SKILL_UI.space.sm}>{extra}</Space> : null}

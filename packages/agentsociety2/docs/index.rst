@@ -83,6 +83,7 @@ AgentSociety 2
    agents
    agent_skills
    env_modules
+   codegen_execution
    storage
    custom_modules
    skills

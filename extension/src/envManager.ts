@@ -26,6 +26,8 @@ export interface EnvConfig {
   llmApiKey?: string;
   llmApiBase?: string;
   llmModel?: string;
+  llmApiType?: string;
+  llmThinkingFormat?: string;
 
   // LLM Reasoning (thinking) switch — 见 get_llm_thinking()（agentsociety2/config/config.py）
   // 空串与「未设置」等价：不发送任何推理相关参数。
@@ -37,6 +39,8 @@ export interface EnvConfig {
   coderLlmApiKey?: string;
   coderLlmApiBase?: string;
   coderLlmModel?: string;
+  coderLlmApiType?: string;
+  coderLlmThinkingFormat?: string;
   coderLlmThinking?: string;
   coderLlmReasoningEffort?: string;
   coderLlmExtraBody?: string;
@@ -66,12 +70,16 @@ const ENV_KEY_MAP: Record<keyof EnvConfig, string> = {
   llmApiKey: 'AGENTSOCIETY_LLM_API_KEY',
   llmApiBase: 'AGENTSOCIETY_LLM_API_BASE',
   llmModel: 'AGENTSOCIETY_LLM_MODEL',
+  llmApiType: 'AGENTSOCIETY_LLM_API_TYPE',
+  llmThinkingFormat: 'AGENTSOCIETY_LLM_THINKING_FORMAT',
   llmThinking: 'AGENTSOCIETY_LLM_THINKING',
   llmReasoningEffort: 'AGENTSOCIETY_LLM_REASONING_EFFORT',
   llmExtraBody: 'AGENTSOCIETY_LLM_EXTRA_BODY',
   coderLlmApiKey: 'AGENTSOCIETY_CODER_LLM_API_KEY',
   coderLlmApiBase: 'AGENTSOCIETY_CODER_LLM_API_BASE',
   coderLlmModel: 'AGENTSOCIETY_CODER_LLM_MODEL',
+  coderLlmApiType: 'AGENTSOCIETY_CODER_LLM_API_TYPE',
+  coderLlmThinkingFormat: 'AGENTSOCIETY_CODER_LLM_THINKING_FORMAT',
   coderLlmThinking: 'AGENTSOCIETY_CODER_LLM_THINKING',
   coderLlmReasoningEffort: 'AGENTSOCIETY_CODER_LLM_REASONING_EFFORT',
   coderLlmExtraBody: 'AGENTSOCIETY_CODER_LLM_EXTRA_BODY',
@@ -98,12 +106,8 @@ const OBSOLETE_ENV_KEYS = new Set([
 ]);
 
 /**
- * 只读变量：readEnv 会读取（供后端透传），但 writeEnv 永不重写，原样保留。
- *
- * EXTRA_BODY 的值是 JSON 对象，可能自带引号（如 `'{"enable_thinking": false}'`）。
- * readEnv 不做去引号，writeEnv 的 formatValue 又会给含空白的值补引号并转义，
- * 两者叠加会把 JSON 转义坏 —— 而 Python 侧 `_env_json_obj` 只会 warning 后忽略，
- * 属于静默失效。因此这两个变量交给用户手写、插件只读不改。
+ * Read JSON request bodies for runtime use; preserve their original file lines.
+ * Reformatting manually quoted JSON during a settings save can double-escape it.
  */
 const WRITE_SKIP_ENV_KEYS = new Set([
   'AGENTSOCIETY_LLM_EXTRA_BODY',
@@ -123,6 +127,18 @@ export const DEFAULT_ENV_CONFIG: Partial<EnvConfig> = {
   embeddingDims: 1024,
   literatureSearchMcpUrl: 'https://llmapi.fiblab.net/mcp/',
 };
+
+/** Decode the JSON value without changing its original .env representation. */
+export function readJsonEnvValue(raw: string): string {
+  let value = raw.trim();
+  if (value.startsWith("'") && value.endsWith("'")) { value = value.slice(1, -1); }
+  try {
+    let parsed: unknown = JSON.parse(value);
+    if (typeof parsed === 'string') { parsed = JSON.parse(parsed); }
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) { return JSON.stringify(parsed); }
+  } catch { /* Leave invalid values available for the normal configuration error. */ }
+  return raw;
+}
 
 export class EnvManager {
   private outputChannel: vscode.OutputChannel;
@@ -198,7 +214,7 @@ export class EnvManager {
           if (numericKeys.includes(configKey as keyof EnvConfig) && value.trim() !== '') {
             (config as any)[configKey] = parseInt(value, 10);
           } else {
-            (config as any)[configKey] = value;
+            (config as any)[configKey] = WRITE_SKIP_ENV_KEYS.has(envVar) ? readJsonEnvValue(value) : value;
           }
           break;
         }
@@ -346,20 +362,24 @@ AGENTSOCIETY_CODER_LLM_API_BASE=
 AGENTSOCIETY_CODER_LLM_MODEL=
 
 # ========== Reasoning / Thinking Switch / 推理（thinking）开关 ==========
-# Optional. Only applies to OpenAI-compatible chat-completions endpoints.
-# 可选。仅对 OpenAI 兼容的 chat-completions 接口生效。
+# API protocol: openai (Chat Completions) or anthropic (Messages).
+# 接口协议：openai / anthropic。
+AGENTSOCIETY_LLM_API_TYPE=openai
+AGENTSOCIETY_CODER_LLM_API_TYPE=
+AGENTSOCIETY_LLM_THINKING_FORMAT=
+AGENTSOCIETY_CODER_LLM_THINKING_FORMAT=
+# Optional explicit reasoning controls / 可选的显式推理控制。
 # Leave empty = send no extra parameters at all (unchanged behavior).
 # 留空 = 不发送任何新参数，行为与不启用该功能时完全一致。
 # Values / 取值: on | off
 AGENTSOCIETY_LLM_THINKING=
 
-# reasoning_effort sent when thinking is off (default: minimal).
-# thinking=off 时发送的 reasoning_effort，缺省 minimal。
+# OpenAI: on sends medium by default; off sends none.
+# OpenAI：on 默认 medium；off 发送 none。
 AGENTSOCIETY_LLM_REASONING_EFFORT=
 
-# Gateway-private switches, as a JSON object string. When set, "off" sends only
-# this and skips reasoning_effort.
-# 网关私有的兼容开关，JSON 对象字符串；配了它时 off 只发它、不发 reasoning_effort。
+# Native gateway switches and extra request fields (JSON object).
+# 网关原生开关及扩展请求字段（JSON 对象）；原生开关跟随 on/off。
 # Hand-edit only — the config page never rewrites this line.
 # 仅手改生效，配置页不会重写这一行。
 # Example / 示例: {"enable_thinking": false}

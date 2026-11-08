@@ -88,3 +88,27 @@ uv run python examples/v2/daily_mobility/tools/eval_metrics.py
 输出：
 
 - `examples/v2/daily_mobility/tmp/run/scores.json`
+
+## 性能剖析与运行取舍
+
+MobilitySpace 的观察接口共用一次附近 POI 查询，再汇总各类别；候选距离
+使用 Shapely 批量计算。路由 HTTP 连接在环境生命周期内复用。
+
+默认在环境进程内执行计算，适用于自有独立容器里的仿真。需要为计算设置
+独立进程、硬执行期限和内存限制时，可为一次实验开启：
+
+```bash
+AGENTSOCIETY_CODE_EXEC_BACKEND=process \
+uv run python examples/v2/daily_mobility/run_all.py \
+  --stage all --preset smoke --num-agents 2
+```
+
+设为 `inprocess` 或省略该配置即可使用默认的进程内执行。两种模式均保留
+代码许可、工具只读约束、Python 循环检查及写后停止重试。进程内模式使用
+容器的 CPU/内存限制和作业总期限管理原生计算，工具参数与响应沿用 Python 对象。
+
+评估时分别记录模型等待、代码执行、POI 查询、路径请求、环境推进和检查点
+耗时；同时核对移动结果与模型调用、Token、重试和响应复用。
+
+关键实测指标和测量条件记录在对应提交中。逐次数据、资源采样和完整实验
+材料保存在本地 `benchmark_results/`，由 Git 忽略。

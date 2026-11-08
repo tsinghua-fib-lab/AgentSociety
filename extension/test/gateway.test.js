@@ -41,6 +41,108 @@ const {
   upstreamTargetsLocalGateway,
 } = require('../out/services/aiCliGatewayUpstream');
 const { claudeSettingsBaseUrl } = require('../out/aiCli/officialEndpoints');
+const { detectUsageTemplate, customUsageUrl, parseCustomUsage } = require('../out/shared/providerUsage');
+const { queryProviderUsage, ProviderUsageCache } = require('../out/services/gatewayProviderUsage');
+
+test('balance query detection respects disable and custom modes and exact official hosts', () => {
+  assert.equal(detectUsageTemplate('https://api.deepseek.com/v1'), 'deepseek');
+  assert.equal(detectUsageTemplate('https://api.deepseek.com/v1', { usageQuery: { mode: 'off' } }), null);
+  assert.equal(detectUsageTemplate('https://relay.example/v1', { usageQuery: { mode: 'custom' } }), 'custom');
+  for (const url of ['http://api.deepseek.com', 'https://api.deepseek.com:8443', 'https://relay.deepseek.com', 'https://evil.example/deepseek.com']) {
+    assert.equal(detectUsageTemplate(url), null);
+  }
+});
+
+test('custom balances preserve zero, convert units and reject missing or invalid amounts', () => {
+  const config = { mode: 'custom', remainingPath: 'data.0.balance', usedPath: 'data.0.used', unit: 'USD', divisor: 100 };
+  const result = parseCustomUsage({ data: [{ balance: '0', used: 200 }] }, config);
+  assert.equal(result.plans[0].remaining, '0');
+  assert.equal(result.plans[0].used, '2');
+  assert.equal(result.plans[0].total, '2');
+  assert.equal(result.plans[0].remainingPercent, 0);
+  for (const balance of [null, true, '', 'unknown', Infinity]) {
+    assert.throws(() => parseCustomUsage({ data: [{ balance, used: 1 }] }, config), /invalid_usage_response/);
+  }
+  assert.throws(() => parseCustomUsage({}, config), /invalid_usage_response/);
+  assert.throws(() => parseCustomUsage({}, { ...config, divisor: 0 }), /invalid_usage_config/);
+  assert.equal(customUsageUrl('https://relay.example/v1', { path: '/account/balance' }), 'https://relay.example/account/balance');
+  for (const path of ['https://other.example/balance', '//other.example/balance', '/\\other.example/balance']) {
+    assert.throws(() => customUsageUrl('https://relay.example/v1', { path }), /invalid_usage_config/);
+  }
+});
+
+test('custom balance requests reuse provider auth, reject redirects and hide response error bodies', async (t) => {
+  const paths = [];
+  const upstream = http.createServer((req, res) => {
+    paths.push(req.url);
+    assert.equal(req.headers['x-api-key'], 'test-secret');
+    if (req.url === '/redirect') { res.writeHead(302, { location: '/balance' }); res.end(); return; }
+    if (req.url === '/error') { res.writeHead(403); res.end('test-secret private account details'); return; }
+    res.setHeader('content-type', 'application/json'); res.end(JSON.stringify({ account: { balance: 12.5 } }));
+  });
+  await new Promise((resolve) => upstream.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise((resolve) => upstream.close(resolve)));
+  const base = `http://127.0.0.1:${upstream.address().port}/v1`;
+  const options = { authHeaderMode: 'x-api-key', usageQuery: { mode: 'custom', path: '/balance', remainingPath: 'account.balance', unit: 'USD' } };
+  const result = await queryProviderUsage(base, 'test-secret', options);
+  assert.equal(result.ok, true);
+  assert.equal(result.plans[0].remaining, '12.5');
+  assert.ok(result.fetchedAt);
+  for (const [path, error] of [['/redirect', 'http_302'], ['/error', 'http_403']]) {
+    const failure = await queryProviderUsage(base, 'test-secret', { ...options, usageQuery: { ...options.usageQuery, path } });
+    assert.equal(failure.error, error);
+    assert.equal(failure.fetchedAt, undefined);
+    assert.ok(!JSON.stringify(failure).includes('test-secret'));
+  }
+  assert.deepEqual(paths, ['/balance', '/redirect', '/error']);
+});
+
+test('provider balance refreshes merge in-flight requests and honor cache expiry and manual refresh', async (t) => {
+  let now = 1000;
+  t.mock.method(Date, 'now', () => now);
+  const cache = new ProviderUsageCache();
+  let resolve, calls = 0;
+  const load = () => { calls++; return new Promise((done) => { resolve = done; }); };
+  const first = cache.query('provider-and-credentials', load);
+  const second = cache.query('provider-and-credentials', load, true);
+  assert.equal(calls, 1);
+  resolve({ ok: true, plans: [{ name: 'Account', remaining: '5' }] });
+  assert.deepEqual(await first, await second);
+  await cache.query('provider-and-credentials', load);
+  assert.equal(calls, 1);
+  const manual = cache.query('provider-and-credentials', load, true);
+  assert.equal(calls, 2); resolve({ ok: true }); await manual;
+  now += 60_001;
+  const expired = cache.query('provider-and-credentials', load);
+  assert.equal(calls, 3); resolve({ ok: false, error: 'http_429' }); await expired;
+  const changed = cache.query('changed-credentials', load);
+  assert.equal(calls, 4); resolve({ ok: true }); await changed;
+});
+
+test('DeepSeek balance queries use official API and retain currency and balance components', async (t) => {
+  const https = require('node:https');
+  const { EventEmitter } = require('node:events');
+  const { Readable } = require('node:stream');
+  t.mock.method(https, 'request', (url, options, callback) => {
+    assert.equal(url.href, 'https://api.deepseek.com/user/balance');
+    assert.equal(options.headers.Authorization, 'Bearer test-key');
+    const request = new EventEmitter();
+    request.end = () => queueMicrotask(() => {
+      const response = Readable.from([Buffer.from(JSON.stringify({ is_available: false, balance_infos: [{ currency: 'CNY', total_balance: '0.00', granted_balance: '0.00', topped_up_balance: '0.00' }] }))]);
+      response.statusCode = 200;
+      response.once('end', () => request.emit('close'));
+      callback(response);
+    });
+    request.destroy = (error) => { request.emit('error', error); request.emit('close'); };
+    return request;
+  });
+  const result = await queryProviderUsage('https://api.deepseek.com/v1', 'test-key');
+  assert.equal(result.available, false);
+  assert.equal(result.scope, 'balance');
+  assert.equal(result.plans[0].unit, 'CNY');
+  assert.equal(result.plans[0].remaining, '0.00');
+  assert.deepEqual(result.plans[0].details, [{ label: 'toppedUp', value: '0.00' }, { label: 'granted', value: '0.00' }]);
+});
 
 test('URL classification only inspects parsed host and path components', () => {
   assert.equal(
@@ -393,7 +495,7 @@ test('gateway aborts the upstream request when the downstream client disconnects
   const request = http.request(`${status.baseUrl}/v1/messages`, {
     method: 'POST',
     agent: false,
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${require('../out/services/aiCliGatewayUpstream').getOrCreateGatewayAuthToken()}` },
   });
   request.on('error', () => {});
   request.end(JSON.stringify({ model: 'claude-sonnet-4-6', messages: [] }));
@@ -424,7 +526,7 @@ test('gateway terminates an idle upstream request with a bounded 504 response', 
     const request = http.request(`${status.baseUrl}/v1/messages`, {
       method: 'POST',
       agent: false,
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${require('../out/services/aiCliGatewayUpstream').getOrCreateGatewayAuthToken()}` },
     }, (response) => {
       response.resume();
       response.once('end', () => resolve({ status: response.statusCode, ms: Date.now() - startedAt }));
@@ -467,7 +569,7 @@ test('gateway records the upstream response-cost header as authoritative USD cos
     const request = http.request(`${status.baseUrl}/v1/messages`, {
       method: 'POST',
       agent: false,
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${require('../out/services/aiCliGatewayUpstream').getOrCreateGatewayAuthToken()}` },
     }, (response) => {
       response.resume();
       response.once('end', resolve);

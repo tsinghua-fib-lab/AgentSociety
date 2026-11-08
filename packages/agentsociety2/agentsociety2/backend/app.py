@@ -19,12 +19,14 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 
 from agentsociety2 import __version__
@@ -100,14 +102,64 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# 配置CORS（允许VSCode插件跨域访问）
+# CORS controls response visibility, not whether a simple cross-origin request
+# reaches a mutation endpoint. Reject untrusted browser origins before routing.
+_LOCAL_ORIGIN = re.compile(
+    r"https?://(?:127\.0\.0\.1|localhost|\[::1\])(?::[0-9]+)?|vscode-webview://[A-Za-z0-9-]+"
+)
+_ALLOWED_ORIGINS = {
+    origin.strip()
+    for origin in os.getenv("BACKEND_ALLOWED_ORIGINS", "").split(",")
+    if origin.strip()
+}
+
+
+class BrowserOriginMiddleware:
+    """Block untrusted browser requests, including form/simple POST requests."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] in {"http", "websocket"}:
+            origins = [
+                value.decode("latin-1")
+                for name, value in scope.get("headers", [])
+                if name.lower() == b"origin"
+            ]
+            if origins and (
+                len(origins) != 1
+                or not (
+                    _LOCAL_ORIGIN.fullmatch(origins[0])
+                    or origins[0] in _ALLOWED_ORIGINS
+                )
+            ):
+                if scope["type"] == "websocket":
+                    await send({"type": "websocket.close", "code": 1008})
+                else:
+                    await JSONResponse(
+                        {"error": "Untrusted browser origin"}, status_code=403
+                    )(scope, receive, send)
+                return
+        await self.app(scope, receive, send)
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 生产环境应该限制为特定域名
-    allow_credentials=True,
+    allow_origins=sorted(_ALLOWED_ORIGINS),
+    allow_origin_regex=_LOCAL_ORIGIN.pattern,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(BrowserOriginMiddleware)
+_allowed_hosts = ["127.0.0.1", "localhost", "[::1]"]
+_allowed_hosts += [
+    host.strip()
+    for host in os.getenv("BACKEND_TRUSTED_HOSTS", "").split(",")
+    if host.strip()
+]
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=_allowed_hosts)
 
 # 注册路由（仅保留必要的API）
 app.include_router(prefill_params.router)
@@ -179,7 +231,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # 从环境变量读取配置，命令行参数优先
-    host = os.getenv("BACKEND_HOST", "0.0.0.0")
+    # 默认仅回环(2026-11-06 审计修复):后端零认证,绑全网卡即 LAN/网页
+    # drive-by 可写任意 skill 脚本;需要对外时显式设 BACKEND_HOST=0.0.0.0。
+    host = os.getenv("BACKEND_HOST", "127.0.0.1")
     port = int(os.getenv("BACKEND_PORT", "8001"))
     log_level = args.log_level or os.getenv("BACKEND_LOG_LEVEL", "info")
 

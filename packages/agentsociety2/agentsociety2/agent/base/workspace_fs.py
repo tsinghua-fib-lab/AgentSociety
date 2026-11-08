@@ -121,6 +121,14 @@ class WorkspaceFS:
             return ""
         return target.read_text(encoding="utf-8")
 
+    def _is_runtime_owned(self, relative_path: str) -> bool:
+        """该路径是否落在运行时目录(``.runtime/``,核心持有,LLM 不可写)。"""
+        target = self.resolve(relative_path)
+        return any(
+            part.casefold() == RUNTIME_DIR
+            for part in target.relative_to(self.root).parts
+        )
+
     def write_text(self, path: str, content: str) -> FileOpResult:
         """写入 UTF-8 文本文件。
 
@@ -128,6 +136,8 @@ class WorkspaceFS:
         :param content: 要写入的文本内容。
         :returns: 文件操作结果。
         """
+        if self._is_runtime_owned(path):
+            return FileOpResult(ok=False, path=path, error="runtime-owned path")
         target = self.resolve(path)
         target.parent.mkdir(parents=True, exist_ok=True)
         text = str(content)
@@ -145,6 +155,8 @@ class WorkspaceFS:
         :param content: 要追加的文本内容。
         :returns: 文件操作结果。
         """
+        if self._is_runtime_owned(path):
+            return FileOpResult(ok=False, path=path, error="runtime-owned path")
         target = self.resolve(path)
         target.parent.mkdir(parents=True, exist_ok=True)
         text = str(content)
@@ -162,6 +174,8 @@ class WorkspaceFS:
         :param path: 相对工作区根的路径。
         :returns: 文件操作结果。
         """
+        if self._is_runtime_owned(path):
+            return FileOpResult(ok=False, path=path, error="runtime-owned path")
         target = self.resolve(path)
         if not target.exists() or target.is_dir():
             return FileOpResult(ok=False, path=path, error="file not found")
@@ -240,7 +254,12 @@ class WorkspaceFS:
                 f"!{RUNTIME_DIR}/**",
                 "--glob",
                 "!__pycache__/**",
+                # 二轮审计修复:pattern 裸拼裸位置参数可被注入成
+                # rg 选项(--pre=<命令> 即 RCE,绕过 run_command 的
+                # 解释器白名单)。-e 之后必为 pattern 本体。
+                "-e",
                 pattern,
+                "--",
                 str(target),
             ]
         else:
@@ -249,11 +268,14 @@ class WorkspaceFS:
                 return self._grep_python(target, pattern, limit=limit)
             argv = [
                 grep,
-                "-R",
+                "-r",
                 "-n",
                 "--exclude-dir",
                 RUNTIME_DIR,
+                # 同 rg:-e 守护选项注入(如 -f/--include 被注入)。
+                "-e",
                 pattern,
+                "--",
                 str(target),
             ]
 
@@ -262,10 +284,31 @@ class WorkspaceFS:
             cwd=str(self.root),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
+            start_new_session=True,
         )
-        stdout_b, _ = await proc.communicate()
+        # 审计修复(2026-11-04):grep -R 遇 FIFO/特殊文件会阻塞读取且
+        # 永不返回(rg 会跳过;workspace 恰是 skill 脚本可写区域,可 mkfifo);
+        # grep 又在并行安全名单里,挂死会放大为整个 react 轮停摆。加超时
+        # 并杀进程组;returncode==2(坏 pattern)不再与"无匹配"混淆。
+        try:
+            stdout_b, stderr_b = await asyncio.wait_for(proc.communicate(), timeout=30)
+        except (TimeoutError, asyncio.CancelledError) as exc:
+            try:
+                os.killpg(proc.pid, signal.SIGKILL)
+            except (ProcessLookupError, PermissionError, OSError):
+                proc.kill()
+            await proc.communicate()
+            if isinstance(exc, asyncio.CancelledError):
+                raise
+            raise RuntimeError(
+                f"grep timed out after 30s (pathological pattern or "
+                f"special files in workspace): {pattern!r}"
+            )
         if proc.returncode not in {0, 1}:
-            return []
+            detail = (stderr_b or b"").decode("utf-8", "replace")[:200]
+            raise RuntimeError(
+                f"grep failed with returncode={proc.returncode}: {detail}"
+            )
         return self._parse_grep_output(stdout_b, limit=limit)
 
     async def run_command(

@@ -272,7 +272,7 @@ export const InitConfigApp: React.FC<InitConfigAppProps> = ({ vscode, initialCon
     return (
       <ConfigProvider theme={themeConfig}>
         <Layout style={{ minHeight: '100vh', background: 'transparent' }}>
-          <Content style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh', gap: 16 }}>
+          <Content className="as-page-content" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh', gap: 16 }}>
             <Spin size="large" />
             <Text>加载配置中...</Text>
           </Content>
@@ -288,17 +288,18 @@ export const InitConfigApp: React.FC<InitConfigAppProps> = ({ vscode, initialCon
   return (
     <ConfigProvider theme={themeConfig}>
       <Layout style={{ minHeight: '100vh', background: 'transparent' }}>
-        <Content style={{ padding: '20px 22px 28px' }}>
+        <Content className="as-page-content" style={{ padding: '20px 22px 28px' }}>
           <div style={{ maxWidth: 1180, margin: '0 auto' }}>
             {/* 头部区域 */}
             <div
+              className="as-page-hero"
               style={{
                 marginBottom: 20,
                 padding: '24px 28px',
                 borderRadius: 16,
                 border: `1px solid ${palette.panelBorder}`,
-                background: `linear-gradient(180deg, ${palette.surfaceBackground} 0%, ${palette.editorBackground} 100%)`,
-                boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                background: palette.surfaceMuted,
+
               }}
             >
               <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 20 }}>
@@ -311,7 +312,7 @@ export const InitConfigApp: React.FC<InitConfigAppProps> = ({ vscode, initialCon
                       width: 42,
                       height: 42,
                       borderRadius: 12,
-                      background: `linear-gradient(135deg, ${palette.linkForeground}20 0%, ${palette.linkForeground}10 100%)`,
+                      background: `color-mix(in srgb, ${palette.linkForeground} 12%, transparent)`,
                       color: palette.linkForeground,
                     }}
                   >

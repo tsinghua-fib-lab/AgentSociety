@@ -1,0 +1,68 @@
+body.vscode-dark,
+body.vscode-high-contrast {
+  color-scheme: dark;
+}
+
+body.vscode-light,
+body.vscode-high-contrast-light {
+  color-scheme: light;
+}
+
+body :is(button, a, [role='button'], [role='tab']):focus-visible {
+  outline: 2px solid var(--vscode-focusBorder, Highlight);
+  outline-offset: 3px;
+}
+
+.as-interactive-card {
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.as-interactive-card:hover {
+  border-color: var(--vscode-focusBorder, Highlight) !important;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--vscode-foreground, CanvasText) 7%, transparent);
+}
+
+.as-device-code {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  width: 100%;
+}
+
+.as-page-content .ant-typography {
+  overflow-wrap: anywhere;
+}
+
+body.vscode-high-contrast .as-interactive-card,
+body.vscode-high-contrast-light .as-interactive-card {
+  box-shadow: none;
+}
+
+@media (max-width: 640px) {
+  .as-page-content {
+    padding: 16px 12px !important;
+  }
+
+  .as-page-hero {
+    padding: 18px 16px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .as-device-code {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .as-interactive-card {
+    transition: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .as-interactive-card {
+    box-shadow: none;
+    border-color: CanvasText !important;
+  }
+}

@@ -440,7 +440,7 @@
         },
         {
           "command": "aiSocialScientist.viewLiteratureIndex",
-          "when": "false"
+          "when": "workspaceFolderCount > 0"
         },
         {
           "command": "aiSocialScientist.viewStepsYaml",
@@ -842,7 +842,7 @@
     "vscode:prepublish": "npm run build",
     "build": "npm run check-types && npm run build-extension && npm run build-webview",
     "rebuild": "npm run clean && npm run build",
-    "check-types": "tsc -p ./",
+    "check-types": "tsc -p ./ && tsc -p src/webview/tsconfig.json --noEmit",
     "compile": "npm run check-types && npm run build-extension",
     "build-extension": "WEBPACK_TARGET=extension NODE_ENV=production NODE_OPTIONS=--max-old-space-size=4096 webpack --mode production",
     "watch": "concurrently -k -n types,extension \"tsc -watch -p ./\" \"WEBPACK_TARGET=extension NODE_ENV=development webpack --mode development --watch\"",
@@ -878,7 +878,7 @@
     "ts-loader": "^9.6.2",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.72.1",
-    "webpack": "^5.111.0",
+    "webpack": "^5.112.2",
     "webpack-cli": "^7.2.3",
     "ajv": "^8.17.1"
   },
@@ -891,10 +891,10 @@
     "@deck.gl/react": "^9.4.0",
     "@deck.gl/widgets": "^9.4.0",
     "@luma.gl/webgpu": "^9.4.1",
-    "antd": "^6.6.5",
+    "antd": "~6.6.8",
     "dayjs": "^1.11.23",
     "https-proxy-agent": "^9.1.0",
-    "i18next": "^26.5.11",
+    "i18next": "~26.5.12",
     "js-yaml": "^5.4.2",
     "mapbox-gl": "^3.30.0",
     "react": "^19.3.1",

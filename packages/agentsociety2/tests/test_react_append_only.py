@@ -18,6 +18,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from agentsociety2.agent.base.agent import AgentBase
 from agentsociety2.agent.base.react import ReactToolResult
 from agentsociety2.trace import JsonlTraceWriter
@@ -484,3 +486,32 @@ async def test_ask_mode_free_text_error_is_fed_back_as_user_message():
     assert result == "ok"
     assert requests[1][-1]["role"] == "user"
     assert "<schema_error>" in requests[1][-1]["content"]
+
+
+@pytest.mark.parametrize("preserve", [True, False])
+async def test_react_keeps_requested_thinking_and_preserves_default_chat_history(
+    preserve,
+):
+    first = _native(("call_keep", "read", '{"path":"a.txt"}'))
+    first._hidden_params = {"agentsociety_preserve_reasoning": preserve}  # type: ignore[attr-defined]
+    first.choices[0].message.thinking_blocks = [  # type: ignore[attr-defined]
+        {
+            "type": "thinking",
+            "thinking": "fixture reasoning",
+            "signature": "fixture-signature",
+        }
+    ]
+    first.choices[0].message.reasoning_content = "fixture reasoning"  # type: ignore[attr-defined]
+    agent = _ScriptedAgent(
+        [first, _native(("finish", "finish", '{"memories":[{"text":"done"}]}'))]
+    )
+    _, requests = await _run(agent)
+    assistant = requests[1][2]
+    if preserve:
+        assert assistant["thinking_blocks"][0]["signature"] == "fixture-signature"
+        assert assistant["reasoning_content"] == "fixture reasoning"
+    else:
+        assert "thinking_blocks" not in assistant
+        assert "reasoning_content" not in assistant
+    assert requests[1][: len(requests[0])] == requests[0]
+    assert_no_orphan_tool_calls(requests[1])

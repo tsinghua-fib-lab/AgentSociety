@@ -260,6 +260,7 @@ export function GatewayUsagePanel({
   );
 
   const usageToolbar = (
+    <>
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
       <Space>
         <BarChartOutlined />
@@ -288,6 +289,8 @@ export function GatewayUsagePanel({
         </Button>
       </Space>
     </div>
+    <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 12 }}>{t('claudeCodeConfig.usageLocalScope')}</Text>
+    </>
   );
 
   if (!hasAnyRecords && !loading) {
@@ -462,7 +465,7 @@ export function GatewayUsagePanel({
 
   const updatePricingEntry = (
     key: string,
-    field: 'inputPerMillion' | 'outputPerMillion' | 'cacheReadPerMillion' | 'cacheCreationPerMillion',
+    field: 'inputPerMillion' | 'outputPerMillion' | 'cacheReadPerMillion' | 'cacheCreationPerMillion' | 'cacheCreationLongPerMillion',
     value: number
   ) => {
     setEditingPricing((prev) => ({
@@ -900,7 +903,7 @@ export function GatewayUsagePanel({
               title: t('claudeCodeConfig.usageSuccessRate'),
               key: 'successRate',
               width: 90,
-              render: (_: unknown, row: { requests: number; successes: number }) => (
+              render: (_: unknown, row: (typeof providerRows)[number]) => (
                 <Text style={{ fontSize: 11 }}>
                   {row.requests > 0 ? `${((row.successes / row.requests) * 100).toFixed(1)}%` : '—'}
                 </Text>
@@ -909,7 +912,7 @@ export function GatewayUsagePanel({
             {
               title: t('claudeCodeConfig.usageTotalTokens'),
               key: 'tokens',
-              render: (_: unknown, row: { input: number; output: number; cacheRead: number; cacheCreation: number }) => (
+              render: (_: unknown, row: (typeof providerRows)[number]) => (
                 <Text style={{ fontSize: 11 }}>
                   {formatTokenCount(row.input + row.output + row.cacheRead + row.cacheCreation)}
                 </Text>

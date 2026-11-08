@@ -223,7 +223,7 @@ export class YamlViewer {
 
   ${error ? `
     <div class="error-box">
-      <strong>${labels.error}:</strong> ${error}
+      <strong>${labels.error}:</strong> ${YamlViewer.escapeHtmlText(String(error))}
     </div>
   ` : `
     <div class="yaml-container">
@@ -232,8 +232,8 @@ export class YamlViewer {
   `}
 
   <script>
-    const yamlData = ${error ? 'null' : JSON.stringify(data)};
-    const yamlStr = ${error ? '""' : JSON.stringify(yamlStr)};
+    const yamlData = ${error ? 'null' : JSON.stringify(data).replace(/</g, '\\u003c')};
+    const yamlStr = ${error ? '""' : JSON.stringify(yamlStr).replace(/</g, '\\u003c')};
     const isChinese = ${isChinese ? 'true' : 'false'};
 
     function renderYamlTree(obj, indent) {

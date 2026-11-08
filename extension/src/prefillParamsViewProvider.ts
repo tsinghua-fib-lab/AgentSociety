@@ -42,11 +42,6 @@ export class PrefillParamsViewProvider {
   private readonly _panel: vscode.WebviewPanel;
 
   /**
-   * 扩展的URI
-   */
-  private readonly _extensionUri: vscode.Uri;
-
-  /**
    * 扩展路径
    */
   private readonly _extensionPath: string;
@@ -67,7 +62,7 @@ export class PrefillParamsViewProvider {
   public static createOrShow(
     context: vscode.ExtensionContext,
     apiClient: ApiClient,
-    kind?: 'env_module' | 'agent'
+    _kind?: 'env_module' | 'agent'
   ) {
     // 如果已经有一个面板打开，直接显示它（单例模式）
     if (PrefillParamsViewProvider.currentPanel) {
@@ -104,7 +99,6 @@ export class PrefillParamsViewProvider {
     apiClient: ApiClient
   ) {
     this._panel = panel;
-    this._extensionUri = context.extensionUri;
     this._extensionPath = context.extensionPath;
     this._apiClient = apiClient;
 

@@ -12,22 +12,21 @@
 
 import ast
 import asyncio
+import base64
 import hashlib
 import hmac
 import inspect
 import json
-import math
+import marshal
 import os
 import pickle
-import random
 import re
-import sys
 import time
 import types
 from contextlib import nullcontext
 from dataclasses import dataclass, field
 from datetime import datetime
-from io import StringIO
+from functools import lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, Optional, Protocol
 
@@ -161,6 +160,184 @@ class CacheEntry:
 # 按内容做键天然自失效；纯 CPU、仅事件循环内同步调用，无需加锁。
 _code_reads_memo: dict[str, frozenset[str] | None] = {}
 _CODE_READS_MEMO_MAX = 8192
+
+
+class _ExecutionGuards(ast.NodeTransformer):
+    """Instrument generated Python; environment tools stay on their owner loop.
+
+    These guards bound Python loops and restrict reflection inside numerical
+    workers. Environment tools execute on their original owner event loop.
+    """
+
+    def __init__(self, is_async: bool) -> None:
+        self.is_async = is_async
+
+    def _check(self) -> ast.Expr:
+        call = ast.Call(
+            func=ast.Name(id="__check_deadline__", ctx=ast.Load()), args=[], keywords=[]
+        )
+        if self.is_async:
+            call.func.id = "__async_check_deadline__"
+            return ast.Expr(value=ast.Await(value=call))
+        return ast.Expr(value=call)
+
+    def visit_Attribute(self, node: ast.Attribute) -> ast.AST:
+        self.generic_visit(node)
+        if isinstance(node.ctx, ast.Load):
+            return ast.copy_location(
+                ast.Call(
+                    func=ast.Name(id="__safe_getattr__", ctx=ast.Load()),
+                    args=[node.value, ast.Constant(value=node.attr)],
+                    keywords=[],
+                ),
+                node,
+            )
+        return node
+
+    def _visit_function(self, node: ast.AST, is_async: bool) -> ast.AST:
+        previous = self.is_async
+        self.is_async = is_async
+        self.generic_visit(node)
+        # Preserve a function docstring if present.
+        offset = int(
+            bool(
+                node.body
+                and isinstance(node.body[0], ast.Expr)
+                and isinstance(node.body[0].value, ast.Constant)
+                and isinstance(node.body[0].value.value, str)
+            )
+        )
+        node.body.insert(offset, self._check())
+        self.is_async = previous
+        return node
+
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> ast.AST:
+        return self._visit_function(node, False)
+
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> ast.AST:
+        return self._visit_function(node, True)
+
+    def visit_For(self, node: ast.For) -> ast.AST:
+        self.generic_visit(node)
+        node.body.insert(0, self._check())
+        return node
+
+    visit_While = visit_For
+    visit_AsyncFor = visit_For
+
+    def visit_comprehension(self, node: ast.comprehension) -> ast.AST:
+        self.generic_visit(node)
+        node.iter = ast.Call(
+            func=ast.Name(
+                id="__deadline_aiter__" if node.is_async else "__deadline_iter__",
+                ctx=ast.Load(),
+            ),
+            args=[node.iter],
+            keywords=[],
+        )
+        return node
+
+
+@dataclass(frozen=True)
+class _PreparedExecution:
+    """Immutable program preparation; no request state or deadline is retained."""
+
+    plan: tuple | None = None
+    program: str | None = None
+    program_key: str = ""
+    is_async: bool = False
+    error: str = ""
+
+    @property
+    def accepted(self):
+        return self.plan is not None or self.program is not None
+
+
+def _execution_policy(router: "CodeGenRouter | type[CodeGenRouter]") -> tuple[Any, ...]:
+    # Mutable deployment/test policy changes must invalidate prior validation.
+    return (
+        frozenset(router.ALLOWED_BUILTINS),
+        frozenset(router.ALLOWED_MODULES),
+        frozenset(router.DANGEROUS_MODULES),
+        frozenset(router.FORBIDDEN_AST_NODES),
+        Config.CODE_EXEC_BACKEND,
+        CodeStage._validate_code_safety.__code__,
+        CodeStage._validate_code_safety,
+    )
+
+
+@lru_cache(maxsize=128)
+def _prepare_execution_cached(code: str, policy: tuple[Any, ...]) -> _PreparedExecution:
+    validator = policy[-1]
+    # The validator and cache key share this immutable policy snapshot.
+    snapshot = types.SimpleNamespace(
+        ALLOWED_BUILTINS=policy[0],
+        ALLOWED_MODULES=policy[1],
+        DANGEROUS_MODULES=policy[2],
+        FORBIDDEN_AST_NODES=policy[3],
+    )
+    safe, reason = validator(snapshot, code)
+    if not safe:
+        return _PreparedExecution(error=reason)
+    tree = ast.parse(code)
+    from agentsociety2.env.codegen_plan import compile_plan
+
+    plan = (
+        compile_plan(tree, snapshot.ALLOWED_BUILTINS)
+        if policy[4] == "process"
+        else None
+    )
+    if plan is not None:
+        return _PreparedExecution(plan=plan)
+    is_async = any(
+        isinstance(node, (ast.Await, ast.AsyncFor, ast.AsyncWith))
+        for node in ast.walk(tree)
+    )
+    tree = _ExecutionGuards(is_async).visit(tree)
+    if is_async:
+        function = ast.AsyncFunctionDef(
+            name="_generated_main",
+            args=ast.arguments(
+                posonlyargs=[], args=[], kwonlyargs=[], kw_defaults=[], defaults=[]
+            ),
+            body=tree.body,
+            decorator_list=[],
+        )
+        tree = ast.Module(body=[function], type_ignores=[])
+    compiled = compile(
+        ast.fix_missing_locations(tree),
+        "<generated_async>" if is_async else "<generated>",
+        "exec",
+    )
+    wire = marshal.dumps(compiled)
+    return _PreparedExecution(
+        program=base64.b64encode(wire).decode("ascii"),
+        program_key=hashlib.sha256(wire).hexdigest(),
+        is_async=is_async,
+    )
+
+
+def _prepare_execution(
+    code: str, router: "CodeGenRouter | type[CodeGenRouter]"
+) -> _PreparedExecution:
+    try:
+        if (
+            len(code) > 1024 * 1024
+            or len(code.encode("utf-8", errors="surrogatepass")) > 1024 * 1024
+        ):
+            return _PreparedExecution(error="Generated source exceeds 1 MiB")
+        policy = _execution_policy(router)
+        # Bound both entry count and retained source bytes. Large programs still
+        # receive the same checks, but are not retained in the process-wide cache.
+        if (
+            len(code) > 65536
+            or len(code.encode("utf-8", errors="surrogatepass")) > 65536
+        ):
+            return _prepare_execution_cached.__wrapped__(code, policy)
+        return _prepare_execution_cached(code, policy)
+    except Exception as exc:
+        # Resource failures are request-local errors, not cached static verdicts.
+        return _PreparedExecution(error=f"Code preparation failed: {exc}")
 
 
 def _is_variables_mapping_expr(node: ast.AST | None, aliases: set[str]) -> bool:
@@ -499,11 +676,22 @@ def _get_env_class_type_key(env_modules: list) -> str:
 
 def _strip_code_fence(text: str) -> str:
     stripped = text.strip()
-    if stripped.startswith("```") and stripped.endswith("```"):
-        lines = stripped.splitlines()
-        if len(lines) >= 2:
-            stripped = "\n".join(lines[1:-1]).strip()
-    return stripped
+    if "```" not in stripped:
+        return stripped
+    # Valid Python can contain Markdown as string data. Preserve that program.
+    try:
+        ast.parse(stripped)
+        return stripped
+    except SyntaxError:
+        pass
+    opening = re.search(
+        r"(?im)^[ \t]*```(?:python|py)[ \t]*\r?\n|\A```[ \t]*\r?\n", stripped
+    )
+    if opening is None:
+        return stripped
+    body = stripped[opening.end() :]
+    closing = re.search(r"(?m)^[ \t]*```[ \t]*\r?$", body)
+    return (body[: closing.start()] if closing else body).strip()
 
 
 def _compact_results_text(results: dict[str, Any]) -> str:
@@ -546,22 +734,9 @@ def _cache_secret() -> bytes:
 
     :returns: 32 字节密钥。
     """
-    try:
-        return Path(_CACHE_SECRET_FILE).read_bytes()
-    except FileNotFoundError:
-        secret = os.urandom(32)
-        fd = os.open(_CACHE_SECRET_FILE, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-        try:
-            os.write(fd, secret)
-        finally:
-            os.close(fd)
-        return secret
-    except OSError:
-        # 只读环境/权限受限时退化为进程内随机密钥:签名跨进程不共享,
-        # 缓存退化为进程本地(写读同进程,签名仍有效;篡改面从持久
-        # 文件缩小到运行内存)。确定性空密钥不可取——HMAC(空钥)
-        # 可被离线伪造。
-        return os.urandom(32)
+    from agentsociety2.cache_integrity import cache_secret
+
+    return cache_secret(_CACHE_SECRET_FILE)
 
 
 class TemplateCacheDB:
@@ -1217,6 +1392,7 @@ summary step). So write it the way you would explain the result to a person:
 - On failure also set `results['reason'] = "<short why>"`.
 
 ## Allowed building blocks
+- `results` is an existing dictionary supplied by the executor. Update its items; never reassign or delete the `results` variable.
 - In scope: `ctx`, `modules`, `results`, `print()`. Importable: collections,
   itertools, functools, operator, copy, decimal, fractions, statistics, string,
   re, datetime, json, math, random, numpy (as `np`).
@@ -1281,9 +1457,7 @@ Please generate the corrected code:"""
                 )
                 get_logger().warning(context.codegen_error)
                 return "", token_usage
-            pattern = r"```(?:python)?\s*\n(.*?)```"
-            matches = re.findall(pattern, raw, re.DOTALL)
-            code = matches[0].strip() if matches else raw.strip()
+            code = _strip_code_fence(raw)
             return code, token_usage
         except Exception as e:
             get_logger().error(f"{_get_debug_info('LLM代码生成失败')} - {e}")
@@ -1387,11 +1561,7 @@ class CodeStage:
                 """判断 AST 节点是否为编译期真值常量。"""
                 if isinstance(node, ast.Constant):
                     return bool(node.value)
-                if isinstance(node, ast.Name) and node.id in {"True", "__debug__"}:
-                    return True
-                if isinstance(node, ast.Num):
-                    return bool(node.n)
-                return False
+                return isinstance(node, ast.Name) and node.id in {"True", "__debug__"}
 
             def _loop_has_break(node: ast.AST) -> bool:
                 """判断 while/for 循环体中是否含有可达的 break。"""
@@ -1403,7 +1573,7 @@ class CodeStage:
             def _assigns_result_status(node: ast.stmt) -> bool:
                 """判断语句是否为 ``results['status'] = ...`` 终态赋值(合并自 main)。"""
                 targets = node.targets if isinstance(node, ast.Assign) else []
-                if isinstance(node, ast.AnnAssign):
+                if isinstance(node, ast.AnnAssign) and node.value is not None:
                     targets = [node.target]
                 return any(
                     isinstance(target, ast.Subscript)
@@ -1414,21 +1584,141 @@ class CodeStage:
                     for target in targets
                 )
 
+            def _has_terminal_status(statements: list[ast.stmt], known=False) -> bool:
+                """Track classifications through branches and exception handlers.
+
+                Printing or filling another result field after classification
+                does not erase it. A caught exception can occur before the first
+                assignment, so every handler starts from the incoming state.
+                """
+                for statement in statements:
+                    if _assigns_result_status(statement):
+                        known = True
+                    elif isinstance(statement, ast.If):
+                        known = _has_terminal_status(
+                            statement.body, known
+                        ) and _has_terminal_status(statement.orelse, known)
+                    elif isinstance(statement, (ast.Try, ast.TryStar)):
+                        normal = _has_terminal_status(
+                            statement.body + statement.orelse, known
+                        )
+                        handled = all(
+                            _has_terminal_status(handler.body, known)
+                            for handler in statement.handlers
+                        )
+                        known = _has_terminal_status(
+                            statement.finalbody, normal and handled
+                        )
+                    elif isinstance(statement, (ast.For, ast.AsyncFor, ast.While)):
+                        # A loop may execute zero times or break before its else.
+                        known = known and _has_terminal_status(statement.body, known)
+                return known
+
+            def _dunder_attr_name(node: ast.Attribute) -> str | None:
+                """属性访问的 dunder 名;非 dunder 返回 None。
+
+                审计修复(2026-11-04):``print.__globals__['os']`` 一类属性链
+                直通宿主模块全局(os/sys/pickle 都在本模块顶层导入),而
+                ``getattr``/``type`` 又在 ALLOWED_BUILTINS——静态检查此前对
+                属性访问零检查,三类逃逸载荷实测全部通过。dunder 属性一律
+                拒绝:沙箱内合法生成的代码没有理由访问 ``__globals__``/
+                ``__class__``/``__init__``/``__builtins__`` 等。
+                """
+                if node.attr.startswith("__") and node.attr.endswith("__"):
+                    return node.attr
+                return None
+
+            def _dunder_string_arg(node: ast.Call) -> str | None:
+                """``getattr(x, '__globals__')`` 一类以 dunder 字符串为名的动态访问。
+
+                审计修复补充:dunder 名可以经 getattr/hasattr 的**字符串常量**
+                传入,不走 Attribute 节点——只拦属性访问会漏这条变体。
+                """
+                if (
+                    isinstance(node.func, ast.Name)
+                    and node.func.id in {"getattr", "hasattr", "setattr", "delattr"}
+                    and len(node.args) >= 2
+                ):
+                    arg = node.args[1]
+                    if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
+                        name = arg.value
+                        if name.startswith("__") and name.endswith("__"):
+                            return name
+                return None
+
             for node in ast.walk(tree):
+                if isinstance(node, ast.Name) and node.id.startswith("__"):
+                    violations.append(f"Reserved runtime name forbidden: {node.id}")
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.arg)):
+                    name = node.arg if isinstance(node, ast.arg) else node.name
+                    if name.startswith("__"):
+                        violations.append(f"Reserved runtime name forbidden: {name}")
+                if isinstance(node, ast.alias) and (
+                    node.name.startswith("_")
+                    or node.name == "*"
+                    or (node.asname or "").startswith("__")
+                ):
+                    violations.append(f"Private import name forbidden: {node.name}")
+                # The executor owns this output container. Rebinding it loses
+                # the caller's result reference after tool effects have occurred.
+                rebinds_results = (
+                    (
+                        isinstance(node, ast.Name)
+                        and node.id == "results"
+                        and isinstance(node.ctx, (ast.Store, ast.Del))
+                    )
+                    or (
+                        isinstance(
+                            node,
+                            (ast.FunctionDef, ast.AsyncFunctionDef, ast.ExceptHandler),
+                        )
+                        and node.name == "results"
+                    )
+                    or (
+                        isinstance(node, ast.alias)
+                        and (node.asname or node.name.split(".")[0]) == "results"
+                    )
+                )
+                if rebinds_results:
+                    violations.append(
+                        "Rebinding results is forbidden; update results['status'] and other fields in the supplied dictionary"
+                    )
                 if type(node) in router.FORBIDDEN_AST_NODES:
                     violations.append(f"Forbidden AST node type: {type(node).__name__}")
+                elif isinstance(node, ast.Attribute):
+                    if isinstance(node.ctx, (ast.Store, ast.Del)):
+                        violations.append(
+                            "Modifying object attributes is forbidden; use environment tools or returned values"
+                        )
+                    dunder = _dunder_attr_name(node)
+                    # Runtime access permits only a type's name string.
+                    if dunder and dunder != "__name__":
+                        violations.append(
+                            f"Dunder attribute access forbidden: .{dunder}"
+                        )
                 elif isinstance(node, ast.Call):
                     if (
                         isinstance(node.func, ast.Name)
                         and node.func.id in dangerous_functions
                     ):
                         violations.append(f"Dangerous function call: {node.func.id}()")
-                    elif isinstance(node.func, ast.Attribute) and node.func.attr in {
-                        "eval",
-                        "exec",
-                        "compile",
-                    }:
-                        violations.append(f"Dangerous method call: {node.func.attr}()")
+                    else:
+                        # getattr/hasattr/setattr/delattr 的 dunder 字符串参数
+                        dunder = _dunder_string_arg(node)
+                        if dunder and dunder != "__name__":
+                            violations.append(
+                                f"Dunder attribute access forbidden: .{dunder}"
+                            )
+                        elif isinstance(
+                            node.func, ast.Attribute
+                        ) and node.func.attr in {
+                            "eval",
+                            "exec",
+                            "compile",
+                        }:
+                            violations.append(
+                                f"Dangerous method call: {node.func.attr}()"
+                            )
                 elif isinstance(node, ast.Import):
                     for alias in node.names:
                         if is_dangerous_module(alias.name):
@@ -1447,11 +1737,13 @@ class CodeStage:
                             "Potential infinite loop: while True without break"
                         )
 
-            # 终态契约(合并自 main 6897ea07):末语句必须显式落
-            # ``results['status']``,且禁止把结果归类为 "unknown"——
+            # 终态契约:分支须明确赋值,允许分类后的输出;运行时再次核对结果。
+            # 禁止把结果归类为 "unknown"——
             # 公共物品博弈验证曾因模型产出 unknown 终态被误判成功。
-            if not tree.body or not _assigns_result_status(tree.body[-1]):
-                violations.append("Final statement must assign results['status']")
+            if not _has_terminal_status(tree.body):
+                violations.append(
+                    "Code must classify every normal completion path in results['status']"
+                )
             # Only execution-status expressions determine this contract. An
             # unknown sender/location in business data is valid and must not
             # trigger another paid code-generation attempt.
@@ -1478,7 +1770,7 @@ class CodeStage:
                 if isinstance(value, ast.Constant):
                     return (
                         isinstance(value.value, str)
-                        and value.value.lower() == "unknown"
+                        and value.value.strip().lower() == "unknown"
                     )
                 if isinstance(value, ast.Name):
                     if value.id in seen:
@@ -1507,148 +1799,94 @@ class CodeStage:
             return True, ""
         except SyntaxError as e:
             return False, f"Code syntax error: {e!s}"
-        except Exception as e:
-            return False, f"Code validation error: {e!s}"
 
     @staticmethod
     async def _execute_code(
         router: "CodeGenRouter", code: str, ctx: dict, readonly: bool
     ) -> dict[str, Any]:
-        results = {}
+        from agentsociety2.env.codegen_process import (
+            CodeExecutionTimeout,
+            ExecutionState,
+            WorkerProtocolError,
+            execute_in_worker,
+        )
 
-        def safe_import(name, globals=None, locals=None, fromlist=(), level=0):
-            if name not in router.ALLOWED_MODULES:
-                return None
-            return __import__(name, globals, locals, fromlist, level)
-
-        import collections
-        import copy
-        import decimal
-        import fractions
-        import functools
-        import itertools
-        import operator
-        import statistics
-        import string
-
-        allowed_modules = {
-            "collections": collections,
-            "itertools": itertools,
-            "functools": functools,
-            "operator": operator,
-            "copy": copy,
-            "decimal": decimal,
-            "fractions": fractions,
-            "statistics": statistics,
-            "string": string,
-            "re": re,
-            "datetime": datetime,
-            "json": json,
-            "math": math,
-            "random": random,
-            "numpy": np,
-            "np": np,
-        }
-        restricted_builtins = {
-            k: v for k, v in __builtins__.items() if k in router.ALLOWED_BUILTINS
-        }
-        restricted_builtins["__import__"] = safe_import
-        # 每次执行注入独立的 print，不再全局替换 sys.stdout：async 生成代码在
-        # await 环境工具期间让出事件循环，并发 ask 会互相换走进程级 stdout，
-        # 恢复后 print 串进别人的 buffer（64 并发下实测串台）。生成代码无法
-        # import sys（sys 在 DANGEROUS_MODULES），exec globals 又先于 builtins
-        # 解析，print 一律走此注入路径，各自写入本次执行的 StringIO。
-        captured_output = StringIO()
-
-        def _sandbox_print(*args, sep=" ", end="\n", file=None, flush=False):
-            print(
-                *args,
-                sep=sep,
-                end=end,
-                file=file if file is not None else captured_output,
-                flush=flush,
+        backend = Config.CODE_EXEC_BACKEND
+        if backend not in {"process", "inprocess"}:
+            raise ValueError(
+                "AGENTSOCIETY_CODE_EXEC_BACKEND must be process or inprocess"
             )
-
-        exec_globals = {
-            "__builtins__": restricted_builtins,
-            "ctx": ctx,
-            "modules": types.MappingProxyType(router._modules),
-            "results": results,
-            "print": _sandbox_print,
-            **allowed_modules,
-            "Exception": Exception,
-            "RuntimeError": RuntimeError,
-            "ValueError": ValueError,
-            "TypeError": TypeError,
-            "SyntaxError": SyntaxError,
-            "NameError": NameError,
-            "AttributeError": AttributeError,
-            "IndexError": IndexError,
-            "KeyError": KeyError,
-        }
-        exec_locals = {}
-        try:
-            is_async = "async" in code or "await" in code
-
-            # Note: the Layer 1 AST await-guard now runs at code-generation
-            # time (see LLMCodegenProvider.get_code and
-            # _generate_initialization_code_with_retry), so the code stored
-            # in _observe_code/_statistics_code and the template cache is
-            # already corrected. No need to re-parse on every execution.
-
-            if is_async:
-
-                async def run_async():
-                    indented = "\n".join(
-                        "    " + line if line.strip() else ""
-                        for line in code.split("\n")
-                    )
-                    async_code = f"async def _generated_main():\n{indented}"
-                    exec(
-                        compile(async_code, "<generated_async>", "exec"),
-                        exec_globals,
-                        exec_locals,
-                    )
-                    await exec_locals["_generated_main"]()
-
-                await asyncio.wait_for(run_async(), timeout=10)
-            else:
-                deadline = time.monotonic() + 10
-
-                def _timeout_tracer(frame, event, arg):
-                    if time.monotonic() > deadline:
-                        raise TimeoutError(
-                            "Code execution timeout: exceeded 10 seconds limit"
-                        )
-                    return _timeout_tracer
-
-                compiled = compile(code, "<generated>", "exec")
-                sys.settrace(_timeout_tracer)
-                try:
-                    exec(compiled, exec_globals, exec_locals)
-                finally:
-                    sys.settrace(None)
-            output = captured_output.getvalue()
-            print_outputs = [
-                line.strip() for line in output.split("\n") if line.strip()
-            ]
+        state = ExecutionState()
+        prepared = _prepare_execution(code, router)
+        if not prepared.accepted:
             return {
-                "results": results,
-                "output": output,
-                "print_outputs": print_outputs,
-                "success": True,
-            }
-        except TimeoutError:
-            raise TimeoutError(
-                "Code execution timeout: exceeded 10 seconds limit"
-            ) from None
-        except Exception as e:
-            return {
-                "results": results,
-                "output": captured_output.getvalue(),
+                "results": {},
+                "output": "",
                 "print_outputs": [],
-                "error": str(e),
                 "success": False,
+                "error": prepared.error,
+                "write_attempted": False,
+            }
+        try:
+            if prepared.plan is not None:
+                from agentsociety2.env.codegen_plan import execute_plan
+
+                return await execute_plan(
+                    router,
+                    prepared.plan,
+                    ctx,
+                    readonly,
+                    max(float(Config.CODE_EXEC_TIMEOUT), 0.001),
+                    state,
+                )
+            policy = tuple(
+                (name, tuple(sorted(getattr(router, name))))
+                for name in (
+                    "ALLOWED_BUILTINS",
+                    "ALLOWED_MODULES",
+                    "DANGEROUS_MODULES",
+                    "NUMPY_NUMERIC_NAMESPACES",
+                    "NUMPY_IO_NAMES",
+                )
+            )
+            if backend == "inprocess":
+                from agentsociety2.env.codegen_inprocess import execute_inprocess
+
+                return await execute_inprocess(
+                    router,
+                    prepared,
+                    ctx,
+                    readonly,
+                    policy,
+                    max(float(Config.CODE_EXEC_TIMEOUT), 0.001),
+                    state,
+                )
+            return await execute_in_worker(
+                router,
+                prepared,
+                ctx,
+                readonly,
+                policy,
+                max(float(Config.CODE_EXEC_TIMEOUT), 0.001),
+                Config.CODE_EXEC_MEMORY_MIB,
+                Config.CODE_EXEC_WORKERS,
+                len(code.encode("utf-8", errors="surrogatepass")) <= 65536,
+                state,
+            )
+        except CodeExecutionTimeout as error:
+            error.write_attempted = state.write_attempted
+            raise
+        except WorkerProtocolError as error:
+            return error.result
+        except Exception as error:
+            return {
+                "results": {},
+                "output": "",
+                "print_outputs": [],
+                "success": False,
+                "error": str(error),
+                "error_type": type(error).__name__,
+                "write_attempted": state.write_attempted,
             }
 
     async def process(self, context: AskContext, router: "CodeGenRouter") -> AskContext:
@@ -1689,8 +1927,10 @@ class CodeStage:
                 # AST 安全验证只用于拒绝首次 LLM 生成的代码；
                 # 预定义（init 时生成）和缓存命中（首次已验证）的代码跳过。
                 if context.code_source == "llm":
-                    is_safe, safety_violation = self._validate_code_safety(
-                        router, context.code
+                    prepared = _prepare_execution(context.code, router)
+                    is_safe, safety_violation = (
+                        prepared.accepted,
+                        prepared.error,
                     )
                     if not is_safe:
                         context.retry_count += 1
@@ -1721,6 +1961,7 @@ class CodeStage:
                     "results": {},
                     "print_outputs": [],
                     "output": "",
+                    "write_attempted": getattr(e, "write_attempted", False),
                 }
 
             context.execution_result = execution_result
@@ -1732,6 +1973,14 @@ class CodeStage:
                 )
             if not execution_result.get("success", False):
                 error = execution_result.get("error", "Unknown error")
+                if execution_result.get("write_attempted", False):
+                    # A tool can mutate state and then raise. Replaying a whole
+                    # generated program would duplicate those external effects.
+                    context.early_return = (
+                        {"status": "error", "error": error, "write_attempted": True},
+                        f"Code execution stopped after a write-tool attempt: {error}",
+                    )
+                    return context
                 context.retry_count += 1
                 context.previous_code = code
                 context.previous_errors.append(error)
@@ -1746,7 +1995,7 @@ class CodeStage:
 
             print_outputs = execution_result.get("print_outputs", [])
             results = execution_result.get("results", {})
-            status = results.get("status", "unknown")
+            status = results["status"]
             error = execution_result.get("error", "")
             process_text = "\n".join(print_outputs) if print_outputs else "无输出"
             if error:
@@ -1873,6 +2122,7 @@ class CodeGenRouter(RouterBase):
 
     # 允许导入的模块白名单
     ALLOWED_MODULES: ClassVar[set[str]] = {
+        "asyncio",
         "collections",
         "itertools",
         "functools",
@@ -1890,6 +2140,63 @@ class CodeGenRouter(RouterBase):
         "numpy",
         "np",  # numpy的别名
     }
+
+    # Environment programs perform numerical work; file IO and library loading
+    # belong in explicitly exposed, trusted environment tools. NumPy's public
+    # IO API can otherwise deserialize pickle or open arbitrary paths.
+    NUMPY_NUMERIC_NAMESPACES: ClassVar[frozenset[str]] = frozenset(
+        {
+            "numpy",
+            "numpy.linalg",
+            "numpy.fft",
+            "numpy.random",
+            "numpy.char",
+            "numpy.strings",
+            "numpy.ma",
+            "numpy.dtypes",
+            "numpy.exceptions",
+            "numpy.lib.scimath",
+            "numpy.polynomial",
+            "numpy.polynomial.polynomial",
+            "numpy.polynomial.chebyshev",
+            "numpy.polynomial.legendre",
+            "numpy.polynomial.hermite",
+            "numpy.polynomial.hermite_e",
+            "numpy.polynomial.laguerre",
+            "numpy.polynomial.polyutils",
+        }
+    )
+    NUMPY_IO_NAMES: ClassVar[frozenset[str]] = frozenset(
+        {
+            "load",
+            "loads",
+            "save",
+            "savez",
+            "savez_compressed",
+            "loadtxt",
+            "savetxt",
+            "genfromtxt",
+            "fromfile",
+            "fromregex",
+            "fromtextfile",
+            "memmap",
+            "DataSource",
+            "NpzFile",
+            "open_memmap",
+            "read_array",
+            "write_array",
+            "dump",
+            "dumps",
+            "tofile",
+            "test",
+            "source",
+            "info",
+            "lookfor",
+            "who",
+            "show_config",
+            "show_runtime",
+        }
+    )
 
     # 危险模块列表
     DANGEROUS_MODULES: ClassVar[set[str]] = {
@@ -2037,6 +2344,14 @@ class CodeGenRouter(RouterBase):
         if self._exec_needs_lock:
             return self._execute_lock
         return nullcontext()
+
+    async def close(self):
+        pool = getattr(self, "_codegen_pool", None)
+        if pool is not None:
+            pool.owners.discard(self)
+            if not pool.owners:
+                await pool.close()
+        await super().close()
 
     def _get_tools_code(self, tools_info) -> str:
         if self._code_format == "raw_code":
@@ -2330,7 +2645,8 @@ class CodeGenRouter(RouterBase):
             code = _ensure_await_async_calls(code, _collect_async_tool_names(self))
 
             dialog_history.append({"role": "assistant", "content": code})
-            is_safe, safety_violation = code_stage._validate_code_safety(self, code)
+            prepared = _prepare_execution(code, self)
+            is_safe, safety_violation = prepared.accepted, prepared.error
             if not is_safe:
                 previous_errors.append(safety_violation)
                 previous_code = code

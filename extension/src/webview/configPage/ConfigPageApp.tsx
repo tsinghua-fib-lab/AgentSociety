@@ -14,7 +14,7 @@ import {
   Collapse,
   Dropdown,
 } from 'antd';
-import { SaveOutlined, RocketOutlined, ReloadOutlined, SettingOutlined, MoreOutlined } from '@ant-design/icons';
+import { SaveOutlined, RocketOutlined, ReloadOutlined, SettingOutlined, MoreOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import type {
   AiCliGatewayStatus,
@@ -30,9 +30,14 @@ import { AdvancedConfigSection, type AdvancedTopTab } from './AdvancedConfigSect
 import type { PythonEnvironmentOption } from './PythonEnvironmentPicker';
 import { DefaultLlmConfigCard } from './DefaultLlmConfigCard';
 import { LiteratureConfigSection } from './LiteratureConfigSection';
+import { CodexDeviceLoginProvider } from './CodexDeviceLoginPanel';
+import { inferProviderAuthMode, providerSupportsRole } from '../../aiCli/providerAuth';
+import { EMPTY_PROVIDER_DRAFT } from './aiCliProviderTypes';
+import { OFFICIAL_OPENAI_BASE_URL } from '../../aiCli/officialEndpoints';
 import { AiCliConfigSection } from './AiCliConfigSection';
 import {
   WebConfigImportPanel,
+  type WebImportCliTargets,
   type DeviceAuthState,
   type PendingWebImport,
 } from './WebConfigImportPanel';
@@ -45,7 +50,7 @@ import { ConfigReadinessOverview } from './ConfigReadinessOverview';
 import { ConfigStatusDashboard } from './ConfigStatusDashboard';
 import { ConfigWizardStepPanel } from './ConfigWizardStepPanel';
 import { ENV_LLM_SLOT } from './envLlmSlots';
-import { supportsProviderUsageQuery } from './providerUsageSupport';
+import { supportsProviderUsageQuery } from '../../shared/providerUsage';
 import { normalizeProviderBaseUrl } from './providerBaseUrl';
 import { autoMapClaudeRoleModels } from './aiCliProviderTypes';
 import { advancedPanelInnerStyle } from './configPageStyles';
@@ -69,11 +74,15 @@ const DEFAULT_VALUES: ConfigValues = {
   llmApiBase: 'https://api.openai.com/v1',
   llmModel: 'gpt-5.5',
   llmThinking: '',
+  llmApiType: 'openai',
+  llmThinkingFormat: '',
   backendLogLevel: 'info',
   coderLlmApiKey: '',
   coderLlmApiBase: 'https://api.openai.com/v1',
   coderLlmModel: '',
   coderLlmThinking: '',
+  coderLlmApiType: '',
+  coderLlmThinkingFormat: '',
   embeddingApiKey: '',
   embeddingApiBase: 'https://api.openai.com/v1',
   embeddingModel: 'text-embedding-3-large',
@@ -98,6 +107,7 @@ const DEFAULT_EASYPAPER_VALUES: EasyPaperConfigValues = {
   llmApiKey: '',
   llmBaseUrl: '',
   vlmEnabled: false,
+  vlmProvider: 'openai',
   vlmModel: '',
   vlmApiKey: '',
   vlmBaseUrl: '',
@@ -115,8 +125,8 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
   const [form] = Form.useForm<ConfigValues>();
   const [claudeForm] = Form.useForm<ClaudeCodeConfigValues>();
   const [easyPaperForm] = Form.useForm<EasyPaperConfigValues>();
-  const watchedValues = Form.useWatch([], form) as Partial<ConfigValues> | undefined;
-  const watchedClaudeValues = Form.useWatch([], claudeForm) as Partial<ClaudeCodeConfigValues> | undefined;
+  const watchedValues = Form.useWatch([], { form, preserve: true }) as Partial<ConfigValues> | undefined;
+  const watchedClaudeValues = Form.useWatch([], { form: claudeForm, preserve: true }) as Partial<ClaudeCodeConfigValues> | undefined;
   const currentValues = watchedValues || {};
   const claudeValues = watchedClaudeValues || {};
   const [savedEnvConfig, setSavedEnvConfig] = React.useState<Partial<ConfigValues>>({});
@@ -234,7 +244,6 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
   const [claudeCliStatus, setClaudeCliStatus] = React.useState<ClaudeCodeCliStatus>({ installed: false });
   const [claudeSettingsPath, setClaudeSettingsPath] = React.useState('~/.claude/settings.json');
   const [claudeAvailableModels, setClaudeAvailableModels] = React.useState<ClaudeModelOption[]>([]);
-  const claudeModelsFetchFingerprintRef = React.useRef<string | null>(null);
   const [aiCliGatewayStatus, setAiCliGatewayStatus] = React.useState<AiCliGatewayStatus>({
     enabled: false,
     running: false,
@@ -243,6 +252,8 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
   });
   const [gatewayToggling, setGatewayToggling] = React.useState(false);
   const [claudeProviders, setClaudeProviders] = React.useState<import('./aiCliProviderTypes').AiCliProviderRecord[]>([]);
+  const modelRequestIds = React.useRef<Record<string, number>>({});
+  const nextModelRequestId = React.useRef(0);
   const [modelsByProvider, setModelsByProvider] = React.useState<Record<string, ClaudeModelOption[]>>({});
   const [modelsLoadingByProvider, setModelsLoadingByProvider] = React.useState<Record<string, boolean>>({});
   const [modelsErrorByProvider, setModelsErrorByProvider] = React.useState<Record<string, string | null>>({});
@@ -258,12 +269,15 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
   const [providerUsage, setProviderUsage] = React.useState<
     Record<string, import('./claudeCodeTypes').ProviderUsageQueryResult & { loading?: boolean }>
   >({});
+  const usageRequestCounter = React.useRef(0);
+  const latestUsageRequest = React.useRef(new Map<string, number>());
   const [providerCheckingUrls, setProviderCheckingUrls] = React.useState<Set<string>>(() => new Set());
   const [customPricing, setCustomPricing] = React.useState<ModelPricingMap>({});
   const [advancedTopTab, setAdvancedTopTab] = React.useState<AdvancedTopTab>('models');
   const [pageTab, setPageTab] = React.useState<ConfigPageTab>('cli');
   const [pythonEnvironmentOptions, setPythonEnvironmentOptions] = React.useState<PythonEnvironmentOption[]>([]);
   const [pythonEnvironmentScanning, setPythonEnvironmentScanning] = React.useState(false);
+  const configEditorOpened = React.useRef(false);
   const [configCollapseKeys, setConfigCollapseKeys] = React.useState<string[]>([]);
   const [wizardMode, setWizardMode] = React.useState(false);
   const [wizardStep, setWizardStep] = React.useState(0);
@@ -290,20 +304,34 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
   const advancedKeyPrevFingerprintRef = React.useRef<Partial<Record<AdvancedValidationKey, string>>>({});
   const advancedKeyValidFingerprintRef = React.useRef<Partial<Record<AdvancedValidationKey, string>>>({});
   const defaultValidFingerprintRef = React.useRef<string | null>(null);
+  const validationSequenceRef = React.useRef(0);
+  const pendingLlmValidationRef = React.useRef<Record<string, { requestId: number; fingerprint: string }>>({});
   const advancedKeyValidateTimersRef = React.useRef<
     Partial<Record<AdvancedValidationKey, ReturnType<typeof setTimeout>>>
   >({});
   const ADVANCED_CHANGE_VALIDATE_DELAY_MS = 1500;
 
   const getDefaultLlmFingerprint = React.useCallback(
-    () =>
+    (values = effectiveConfigValues) =>
       JSON.stringify({
-        llmApiKey: effectiveConfigValues.llmApiKey,
-        llmApiBase: effectiveConfigValues.llmApiBase,
-        llmModel: effectiveConfigValues.llmModel,
+        llmApiKey: values.llmApiKey,
+        llmApiBase: values.llmApiBase,
+        llmModel: values.llmModel,
+        llmApiType: values.llmApiType || 'openai',
+        llmThinking: values.llmThinking || '',
+        llmThinkingFormat: values.llmThinkingFormat || '',
       }),
-    [effectiveConfigValues.llmApiBase, effectiveConfigValues.llmApiKey, effectiveConfigValues.llmModel]
+    [effectiveConfigValues.llmApiBase, effectiveConfigValues.llmApiKey, effectiveConfigValues.llmModel, effectiveConfigValues.llmApiType, effectiveConfigValues.llmThinking, effectiveConfigValues.llmThinkingFormat]
   );
+
+  React.useEffect(() => {
+    const valid = defaultValidFingerprintRef.current === getDefaultLlmFingerprint() ? true : null;
+    setValidationState((previous) => {
+      const current = previous.default;
+      if (current.valid === valid && !current.validating && !current.error) { return previous; }
+      return { ...previous, default: { validating: false, valid, error: null } };
+    });
+  }, [getDefaultLlmFingerprint]);
 
   const markValidFingerprint = React.useCallback(
     (kind: string) => {
@@ -348,6 +376,8 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
   };
 
   const jumpToPage = (tab: ConfigPageTab, subTab?: AdvancedTopTab) => {
+    configEditorOpened.current = true;
+    setConfigCollapseKeys(['config']);
     setPageTab(tab);
     if (tab === 'specialized') {
       handleScanPythonEnvironments();
@@ -367,6 +397,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
   };
 
   const jumpToAdvanced = (tab: AdvancedTopTab | 'literature' | 'claude' = 'models') => {
+    setConfigCollapseKeys(['config']);
     if (tab === 'literature') {
       jumpToPage('literature');
       return;
@@ -469,7 +500,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
     }
     if (setupCompleted || wizardFlowCompleted || wizardDismissed) {
       setWizardMode(false);
-      if (setupCompleted || wizardFlowCompleted) {
+      if ((setupCompleted || wizardFlowCompleted) && !configEditorOpened.current) {
         setConfigCollapseKeys([]);
       }
       return;
@@ -555,7 +586,6 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
     setClaudeDraftOverrides({});
     claudeForm.setFieldsValue(DEFAULT_CLAUDE_VALUES);
     setClaudeAvailableModels([]);
-    claudeModelsFetchFingerprintRef.current = null;
     notification.info({
       message: t('configPage.resetClaudeDefaults'),
       placement: 'top',
@@ -575,10 +605,10 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
   }, []);
 
   const applyImportedWebConfig = React.useCallback(
-    (imported: PendingWebImport, options?: { overwriteCodexClaude?: boolean }) => {
-      const overwrite = options?.overwriteCodexClaude !== false;
+    (imported: PendingWebImport, targets: WebImportCliTargets) => {
       const importedConfig = imported.config ?? {};
-      const importedClaude = imported.claudeConfig ?? {};
+      const importedClaude = { ...imported.claudeConfig };
+      delete importedClaude.permissionMode;
       const importedEasyPaper = imported.easyPaperConfig ?? {};
       const mergedEnvConfig = {
         ...form.getFieldsValue(true),
@@ -590,13 +620,12 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
           ...prev,
           [ENV_LLM_SLOT.default]: toModelOptions(imported.modelOptions!.openaiCompatible),
         }));
-        setClaudeAvailableModels(toModelOptions(imported.modelOptions.claudeCode));
+        if (targets.claude) { setClaudeAvailableModels(toModelOptions(imported.modelOptions.claudeCode)); }
       }
       setEnvDraftOverrides((prev) => ({ ...prev, ...importedConfig }));
       form.setFieldsValue(mergedEnvConfig);
-      // When the user declines to overwrite their Codex/Claude Code live config,
-      // also skip pre-filling the Claude Code form (keep their own values intact).
-      if (overwrite && Object.keys(importedClaude).length > 0) {
+      // Import connection fields only for the selected CLI; retain its permission policy.
+      if (targets.claude && Object.keys(importedClaude).length > 0) {
         setClaudeDraftOverrides((prev) => ({ ...prev, ...importedClaude }));
         claudeForm.setFieldsValue({
           ...claudeForm.getFieldsValue(true),
@@ -607,7 +636,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
         ...easyPaperForm.getFieldsValue(true),
         ...importedEasyPaper,
       });
-      if (overwrite && imported.gatewayProvider) {
+      if (imported.gatewayProvider) {
         setWebImportApplying(true);
         clearWebImportApplyTimer();
         webImportApplyTimerRef.current = setTimeout(() => {
@@ -620,7 +649,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
             duration: 8,
           });
         }, WEB_IMPORT_APPLY_TIMEOUT_MS);
-        vscode.postMessage({ command: 'gatewayUpsertWebImportProvider' });
+        vscode.postMessage({ command: 'gatewayUpsertWebImportProvider', applyClaude: targets.claude, applyCodex: targets.codex });
         return;
       }
       resetWorkspaceValidationState();
@@ -656,8 +685,8 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
     setSavingEasyPaper(true);
     easyPaperForm
       .validateFields()
-      .then((values) => {
-        vscode.postMessage({ command: 'saveEasyPaperConfig', config: values });
+      .then(() => {
+        vscode.postMessage({ command: 'saveEasyPaperConfig', config: easyPaperForm.getFieldsValue(true) });
       })
       .catch(() => {
         setSavingEasyPaper(false);
@@ -732,30 +761,6 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
     [t]
   );
 
-  const _fetchClaudeModels = React.useCallback(
-    (options?: { force?: boolean }) => {
-      const claude = getClaudeValuesForValidation();
-      const baseUrl = (claude.baseUrl ?? '').trim();
-      const apiKey = (claude.apiKey ?? '').trim();
-      if (!baseUrl || !apiKey) {
-        setClaudeModelsError(t('claudeCodeConfig.modelsFetchErrors.missing_credentials'));
-        return;
-      }
-      const fingerprint = `${baseUrl}::${apiKey.length}::${apiKey.slice(-4)}`;
-      if (!options?.force && claudeModelsFetchFingerprintRef.current === fingerprint) {
-        return;
-      }
-      if (options?.force) {
-        claudeModelsFetchFingerprintRef.current = null;
-      }
-      claudeModelsFetchFingerprintRef.current = fingerprint;
-      setClaudeModelsLoading(true);
-      setClaudeModelsError(null);
-      vscode.postMessage({ command: 'fetchClaudeModels', baseUrl, apiKey });
-    },
-    [getClaudeValuesForValidation, t, vscode]
-  );
-
   const handleGatewayRouteToggle = React.useCallback(
     (target: 'claude' | 'codex', enabled: boolean) => {
       setGatewayToggling(true);
@@ -765,12 +770,14 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
   );
 
   const handleQueryProviderUsage = React.useCallback(
-    (providerId: string) => {
+    (providerId: string, force = false) => {
+      const requestId = ++usageRequestCounter.current;
+      latestUsageRequest.current.set(providerId, requestId);
       setProviderUsage((prev) => ({
         ...prev,
         [providerId]: { ...(prev[providerId] ?? { ok: false }), loading: true },
       }));
-      vscode.postMessage({ command: 'gatewayQueryProviderUsage', providerId });
+      vscode.postMessage({ command: 'gatewayQueryProviderUsage', providerId, force, requestId });
     },
     [vscode]
   );
@@ -779,11 +786,14 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
     (provider: import('./aiCliProviderTypes').AiCliProviderRecord) => {
       setClaudeProvidersLoading(true);
       vscode.postMessage({ command: 'gatewayUpdateProvider', provider });
-      if (provider.id) {
-        handleQueryProviderUsage(provider.id);
-      }
+      latestUsageRequest.current.delete(provider.id);
+      setProviderUsage((previous) => {
+        const next = { ...previous };
+        delete next[provider.id];
+        return next;
+      });
     },
-    [vscode, handleQueryProviderUsage]
+    [vscode]
   );
 
   const handleAddClaudeProvider = React.useCallback(
@@ -819,19 +829,22 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
 
   const handleFetchProviderModels = React.useCallback(
     (providerId: string, baseUrl: string, apiKey: string, apiKind?: 'anthropic' | 'openai') => {
-      if (!apiKey.trim() || !baseUrl.trim()) {
-        return;
-      }
-      setModelsLoadingByProvider((prev) => ({ ...prev, [providerId]: true }));
+      const requestId = ++nextModelRequestId.current;
+      modelRequestIds.current[providerId] = requestId;
+      setModelsByProvider((prev) => ({ ...prev, [providerId]: [] }));
       setModelsErrorByProvider((prev) => ({ ...prev, [providerId]: null }));
-      vscode.postMessage({ command: 'fetchClaudeModels', baseUrl, apiKey, providerId, apiKind });
+      const canFetch = Boolean(apiKey?.trim() && baseUrl?.trim());
+      setModelsLoadingByProvider((prev) => ({ ...prev, [providerId]: canFetch }));
+      if (canFetch) {
+        vscode.postMessage({ command: 'fetchClaudeModels', baseUrl, apiKey, providerId, apiKind, requestId });
+      }
     },
     [vscode]
   );
 
   const handleFetchEnvModels = React.useCallback(
-    (slotId: string, baseUrl: string, apiKey: string) => {
-      handleFetchProviderModels(slotId, baseUrl, apiKey, 'openai');
+    (slotId: string, baseUrl: string, apiKey: string, apiKind: 'openai' | 'anthropic' = 'openai') => {
+      handleFetchProviderModels(slotId, baseUrl, apiKey, apiKind);
     },
     [handleFetchProviderModels]
   );
@@ -840,9 +853,10 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
     handleFetchEnvModels(
       ENV_LLM_SLOT.default,
       effectiveConfigValues.llmApiBase,
-      effectiveConfigValues.llmApiKey
+      effectiveConfigValues.llmApiKey,
+      effectiveConfigValues.llmApiType || 'openai'
     );
-  }, [effectiveConfigValues.llmApiBase, effectiveConfigValues.llmApiKey, handleFetchEnvModels]);
+  }, [effectiveConfigValues.llmApiBase, effectiveConfigValues.llmApiKey, effectiveConfigValues.llmApiType, handleFetchEnvModels]);
 
   const providerModelsFetchedRef = React.useRef(new Set<string>());
 
@@ -914,13 +928,21 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
     setFailoverEnabled(enabled);
   }, [vscode]);
 
-  const _handleQueryAllProviderUsage = React.useCallback(() => {
-    for (const p of claudeProviders) {
-      if (supportsProviderUsageQuery(p.baseUrl)) {
-        handleQueryProviderUsage(p.id);
+  React.useEffect(() => {
+    if (!gatewayUsageVisible) { return; }
+    const refresh = () => {
+      if (document.hidden) { return; }
+      for (const provider of claudeProviders) {
+        if ((provider.activeClaude || provider.activeCodex) && supportsProviderUsageQuery(provider.baseUrl, {
+          apiKind: provider.apiKind, authMode: inferProviderAuthMode(provider), usageQuery: provider.usageQuery,
+        })) { handleQueryProviderUsage(provider.id); }
       }
-    }
-  }, [claudeProviders, handleQueryProviderUsage]);
+    };
+    refresh();
+    const timer = window.setInterval(refresh, 60_000);
+    document.addEventListener('visibilitychange', refresh);
+    return () => { window.clearInterval(timer); document.removeEventListener('visibilitychange', refresh); };
+  }, [gatewayUsageVisible, claudeProviders, handleQueryProviderUsage]);
 
   const handleGetPricing = React.useCallback(() => {
     vscode.postMessage({ command: 'gatewayGetPricing' });
@@ -985,6 +1007,12 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
   const submitValidation = React.useCallback(
     (llmType: string, values: ConfigValues, options?: { silent?: boolean }) => {
       const silent = options?.silent ?? false;
+      const sendLlmValidation = () => {
+        const requestId = ++validationSequenceRef.current;
+        const fingerprint = llmType === 'default' ? getDefaultLlmFingerprint(values) : getAdvancedKeyFingerprint(llmType as AdvancedValidationKey, values);
+        pendingLlmValidationRef.current[llmType] = { requestId, fingerprint };
+        vscode.postMessage({ command: 'validateConfig', config: values, llmType, requestId });
+      };
       const failLocal = (error: string) => {
         setValidationState((prev) => ({
           ...prev,
@@ -1023,7 +1051,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
           ...prev,
           [llmType]: { validating: true, valid: null, error: null },
         }));
-        vscode.postMessage({ command: 'validateConfig', config: values, llmType });
+        sendLlmValidation();
         return;
       }
 
@@ -1041,7 +1069,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
           ...prev,
           default: { validating: true, valid: null, error: null },
         }));
-        vscode.postMessage({ command: 'validateConfig', config: values, llmType });
+        sendLlmValidation();
         return;
       }
 
@@ -1057,7 +1085,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
         vscode.postMessage({ command: 'validateLiteratureSearch', config: values });
       }
     },
-    [t, vscode]
+    [t, vscode, getDefaultLlmFingerprint]
   );
 
   const validateAdvancedItem = React.useCallback(
@@ -1192,6 +1220,9 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
           llmApiKey: config.llmApiKey ?? DEFAULT_VALUES.llmApiKey ?? '',
           llmApiBase: config.llmApiBase ?? DEFAULT_VALUES.llmApiBase ?? '',
           llmModel: config.llmModel ?? DEFAULT_VALUES.llmModel ?? '',
+          llmApiType: config.llmApiType || 'openai',
+          llmThinking: config.llmThinking || '',
+          llmThinkingFormat: config.llmThinkingFormat || '',
         });
         if (cache?.fingerprint && cache.fingerprint === fingerprint) {
           defaultValidFingerprintRef.current = fingerprint;
@@ -1266,7 +1297,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
         message.command === 'gatewayCheckProviderResult' ||
         message.command === 'gatewaySpeedtestResult'
       ) {
-        const stMsg = message as { baseUrl: string; result: ProviderAvailabilityResult };
+        const stMsg = message as unknown as { baseUrl: string; result: ProviderAvailabilityResult };
         const key = normalizeProviderBaseUrl(stMsg.baseUrl);
         setProviderCheckingUrls((prev) => {
           const next = new Set(prev);
@@ -1401,7 +1432,11 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
           });
         }
       } else if (message.command === 'initialEasyPaperConfig') {
-        const msg = message as { config?: EasyPaperConfigValues };
+        const msg = message as { config?: EasyPaperConfigValues; error?: string };
+        if (msg.error) {
+          notification.error({ message: t('easyPaperConfig.loadFailed'), description: msg.error });
+          return;
+        }
         easyPaperForm.setFieldsValue({
           ...DEFAULT_EASYPAPER_VALUES,
           ...msg.config,
@@ -1448,11 +1483,17 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
         const uMsg = message as {
           providerId?: string;
           result?: import('./claudeCodeTypes').ProviderUsageQueryResult;
+          requestId?: number;
         };
-        if (uMsg.providerId && uMsg.result) {
+        if (uMsg.providerId && uMsg.result && uMsg.requestId === latestUsageRequest.current.get(uMsg.providerId)) {
           setProviderUsage((prev) => ({
             ...prev,
-            [uMsg.providerId!]: { ...uMsg.result!, loading: false },
+            [uMsg.providerId!]: {
+              ...uMsg.result!, loading: false,
+              plans: uMsg.result!.ok ? uMsg.result!.plans : prev[uMsg.providerId!]?.plans,
+              fetchedAt: uMsg.result!.fetchedAt ?? prev[uMsg.providerId!]?.fetchedAt,
+              scope: uMsg.result!.scope ?? prev[uMsg.providerId!]?.scope,
+            },
           }));
         }
       } else if (message.command === 'navigateAdvanced') {
@@ -1466,8 +1507,10 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
           // Leave wizardMode to the effect so a user-requested re-run is not force-closed.
           if (!wizardRequestedRef.current) {
             setWizardFlowCompleted(true);
-            setPageTab('cli');
-            setConfigCollapseKeys([]);
+            if (!configEditorOpened.current) {
+              setPageTab('cli');
+              setConfigCollapseKeys([]);
+            }
           }
         }
       } else if (message.command === 'backendStatus') {
@@ -1488,11 +1531,12 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
           error?: string;
           detail?: string;
           providerId?: string;
+          requestId?: number;
           apiKind?: 'anthropic' | 'openai';
           baseUrl?: string;
         };
         const pid = msg.providerId;
-        if (!pid) {
+        if (!pid || msg.requestId !== modelRequestIds.current[pid]) {
           return;
         }
         setModelsLoadingByProvider((prev) => ({ ...prev, [pid]: false }));
@@ -1507,6 +1551,12 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
             }));
           }
         } else {
+          if (msg.baseUrl) {
+            setProviderAvailabilityResults((prev) => ({
+              ...prev,
+              [normalizeProviderBaseUrl(msg.baseUrl!)]: { ok: false, models: 0, error: msg.error ?? 'unknown', detail: msg.detail },
+            }));
+          }
           const errorText = resolveClaudeModelsFetchError(String(msg.error ?? 'unknown'));
           setModelsErrorByProvider((prev) => ({
             ...prev,
@@ -1582,16 +1632,22 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
               placement: 'top',
             });
           }
-        } else if (msg.error) {
+        } else {
+          // 兜底:silent 启动路径 error 可能为空,零反馈会让用户以为
+          // 按钮失灵(2026-11-06 体验审查 #1)。
           notification.error({
             message: t('configPage.notifications.backendStartFailed', { defaultValue: 'Failed to start backend' }),
-            description: msg.error,
+            description: msg.error || t('configPage.notifications.backendStartFailedSilent', { defaultValue: 'Startup failed (see AgentSociety output for details)' }),
             placement: 'top',
             duration: 6,
           });
         }
       } else if (message.command === 'validationResult') {
-        const msg = message as unknown as { llmType: string; success?: boolean; error?: string };
+        const msg = message as unknown as { llmType: string; requestId?: number; success?: boolean; error?: string };
+        const pending = pendingLlmValidationRef.current[msg.llmType];
+        const fingerprint = msg.llmType === 'default' ? getDefaultLlmFingerprint() : getAdvancedKeyFingerprint(msg.llmType as AdvancedValidationKey, effectiveConfigRef.current);
+        if (!pending || pending.requestId !== msg.requestId || pending.fingerprint !== fingerprint) { return; }
+        delete pendingLlmValidationRef.current[msg.llmType];
         setValidationState(prev => ({
           ...prev,
           [msg.llmType]: { validating: false, valid: msg.success ?? false, error: msg.error || null },
@@ -1743,8 +1799,20 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
 
   return (
     <ConfigProvider theme={themeConfig}>
+      <CodexDeviceLoginProvider t={t} vscode={vscode}
+        loggedIn={aiCliGatewayStatus.codexOfficialLoginPresent ?? false}
+        usingAccount={claudeProviders.some((provider) => provider.activeCodex && inferProviderAuthMode(provider) === 'subscription') && !aiCliGatewayStatus.routeCodex}
+        applying={claudeProvidersLoading}
+        onRefresh={handleRefreshCodexOfficialLogin}
+        onOpenSettings={() => openConfigEditor('cli')}
+        onUseAccount={() => {
+          const official = claudeProviders.find((provider) => inferProviderAuthMode(provider) === 'subscription' && providerSupportsRole(provider, 'codex'));
+          if (official) { handleActivateClaudeProvider(official.id, 'codex'); }
+          else { handleAddClaudeProvider({ ...EMPTY_PROVIDER_DRAFT, name: 'OpenAI', baseUrl: OFFICIAL_OPENAI_BASE_URL, apiKey: '', apiKind: 'openai', authMode: 'subscription', activeClaude: false, activeCodex: true }); }
+        }}>
       <Layout style={{ minHeight: '100vh', background: palette.editorBackground }}>
         <Content
+          className="as-page-content"
           style={{
             padding: '20px 24px',
             maxWidth: 1000,
@@ -1753,21 +1821,14 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
             color: palette.editorForeground,
           }}
         >
-          {/* 头部区域 - 玻璃态 */}
           <div
+            className="as-page-hero"
             style={{
               marginBottom: 20,
               padding: '20px 24px',
               borderRadius: 16,
               border: `1px solid ${palette.panelBorder}`,
-              background: isDark
-                ? 'rgba(37, 37, 38, 0.7)'
-                : 'rgba(255, 255, 255, 0.65)',
-              backdropFilter: 'blur(24px)',
-              WebkitBackdropFilter: 'blur(24px)',
-              boxShadow: isDark
-                ? '0 4px 16px rgba(0,0,0,0.2)'
-                : '0 4px 16px rgba(0,0,0,0.08)',
+              background: palette.surfaceMuted,
             }}
           >
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 16 }}>
@@ -1780,7 +1841,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
                     width: 40,
                     height: 40,
                     borderRadius: 12,
-                    background: `linear-gradient(135deg, ${palette.linkForeground}20 0%, ${palette.linkForeground}10 100%)`,
+                    background: `color-mix(in srgb, ${palette.linkForeground} 12%, transparent)`,
                     color: palette.linkForeground,
                   }}
                 >
@@ -1800,7 +1861,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
                 </div>
               </div>
               {!wizardMode ? (
-                <Space wrap={false} align="center" size={8}>
+                <Space wrap align="center" size={8}>
                   {webImportPanel('header')}
                   <Tooltip title={saveDisabledReason || ''}>
                     <Button
@@ -1995,7 +2056,6 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
                     onSaveOutboundProxy={handleSaveOutboundProxy}
                     onRectifierChange={handleRectifierChange}
                     onOptimizerChange={handleOptimizerChange}
-                    onRefreshCodexOfficialLogin={handleRefreshCodexOfficialLogin}
                     easyPaperForm={easyPaperForm}
                     onSaveEasyPaper={saveEasyPaperConfig}
                   />
@@ -2015,11 +2075,11 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
                     {
                       key: 'config',
                       label: (
-                        <Space direction="vertical" size={0}>
+                        <Space size={8}>
                           <Text strong>{t('configPage.dashboard.editConfig')}</Text>
-                          <Text type="secondary" style={{ fontSize: 12, fontWeight: 400 }}>
-                            {t('configPage.dashboard.editConfigHint')}
-                          </Text>
+                          <Tooltip title={t('configPage.dashboard.editConfigHint')}>
+                            <QuestionCircleOutlined style={{ color: palette.descriptionForeground }} />
+                          </Tooltip>
                         </Space>
                       ),
                       children: (
@@ -2034,7 +2094,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
                               key: 'cli',
                               label: t('configPage.pageTabs.cli'),
                               children: (
-                                <div ref={claudeSectionRef} style={advancedPanelInnerStyle(isDark, palette)}>
+                                <div ref={claudeSectionRef} style={advancedPanelInnerStyle(palette)}>
                                   <AiCliConfigSection
                                     t={t}
                                     palette={palette}
@@ -2081,7 +2141,6 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
                                     onSaveOutboundProxy={handleSaveOutboundProxy}
                                     onRectifierChange={handleRectifierChange}
                                     onOptimizerChange={handleOptimizerChange}
-                                    onRefreshCodexOfficialLogin={handleRefreshCodexOfficialLogin}
                                   />
                                 </div>
                               ),
@@ -2112,7 +2171,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
                               key: 'specialized',
                               label: t('configPage.pageTabs.specialized'),
                               children: (
-                                <div style={advancedPanelInnerStyle(isDark, palette)}>
+                                <div style={advancedPanelInnerStyle(palette)}>
                                   <AdvancedConfigSection
                                     t={t}
                                     palette={palette}
@@ -2148,7 +2207,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
                               key: 'literature',
                               label: t('configPage.pageTabs.literature'),
                               children: (
-                                <div style={advancedPanelInnerStyle(isDark, palette)}>
+                                <div style={advancedPanelInnerStyle(palette)}>
                                   <LiteratureConfigSection
                                     t={t}
                                     palette={palette}
@@ -2208,7 +2267,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
                       key: 'specialized',
                       label: t('configPage.pageTabs.specialized'),
                       children: (
-                        <div style={advancedPanelInnerStyle(isDark, palette)}>
+                        <div style={advancedPanelInnerStyle(palette)}>
                           <AdvancedConfigSection
                             t={t}
                             palette={palette}
@@ -2244,7 +2303,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
                       key: 'literature',
                       label: t('configPage.pageTabs.literature'),
                       children: (
-                        <div style={advancedPanelInnerStyle(isDark, palette)}>
+                        <div style={advancedPanelInnerStyle(palette)}>
                           <LiteratureConfigSection
                             t={t}
                             palette={palette}
@@ -2268,7 +2327,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
                       key: 'cli',
                       label: t('configPage.pageTabs.cli'),
                       children: (
-                        <div ref={claudeSectionRef} style={advancedPanelInnerStyle(isDark, palette)}>
+                        <div ref={claudeSectionRef} style={advancedPanelInnerStyle(palette)}>
                           <AiCliConfigSection
                             t={t}
                             palette={palette}
@@ -2315,7 +2374,6 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
                             onSaveOutboundProxy={handleSaveOutboundProxy}
                             onRectifierChange={handleRectifierChange}
                             onOptimizerChange={handleOptimizerChange}
-                            onRefreshCodexOfficialLogin={handleRefreshCodexOfficialLogin}
                           />
                         </div>
                       ),
@@ -2328,6 +2386,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
           )}
         </Content>
       </Layout>
+      </CodexDeviceLoginProvider>
     </ConfigProvider>
   );
 };

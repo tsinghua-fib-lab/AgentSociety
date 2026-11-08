@@ -1,15 +1,15 @@
 import * as React from 'react';
-import { Alert, Card, Form, Input, Select, Space, Tag } from 'antd';
-import { KeyOutlined } from '@ant-design/icons';
+import { Alert, Card, Form, Input, Select, Space, Tag, Tooltip } from 'antd';
+import { KeyOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import type { TFunction } from 'i18next';
 import type { FormInstance } from 'antd';
 import type { VscodeThemePalette } from '../theme';
 import type { ClaudeModelOption } from './claudeCodeTypes';
 import type { ConfigValues, ValidationState } from './types';
-import { glassCardStyle } from './configPageStyles';
+import { panelCardStyle } from './configPageStyles';
 import { ValidationAction } from './ValidationAction';
 import { EnvLlmModelField } from './EnvLlmModelField';
-import { ThinkingSelect } from './ThinkingSelect';
+import { ThinkingSelect, LlmApiTypeField } from './ThinkingSelect';
 import { SIM_LLM_PRESETS, matchSimLlmPreset } from './simLlmPresets';
 
 type Props = {
@@ -47,15 +47,22 @@ export function DefaultLlmConfigCard({
 }: Props) {
   const safeBaseUrl = baseUrl ?? '';
   const safeApiKey = apiKey ?? '';
+  const apiType = Form.useWatch('llmApiType', form) || 'openai';
   const presetId = matchSimLlmPreset(safeBaseUrl);
+  const selectedPreset = SIM_LLM_PRESETS.find((preset) => preset.id === presetId);
   const canFetch = Boolean(safeBaseUrl.trim() && safeApiKey.trim());
   const fetchFingerprintRef = React.useRef('');
+  const connectionFingerprint = `${safeBaseUrl.trim()}::${safeApiKey}::${apiType}`;
 
   React.useEffect(() => {
+    const fingerprint = `${safeBaseUrl.trim()}::${safeApiKey}::${apiType}`;
     if (!canFetch) {
+      if (fetchFingerprintRef.current !== fingerprint) {
+        fetchFingerprintRef.current = fingerprint;
+        onFetchModels();
+      }
       return;
     }
-    const fingerprint = `${safeBaseUrl.trim()}::${safeApiKey.length}::${safeApiKey.slice(-4)}`;
     if (fetchFingerprintRef.current === fingerprint) {
       return;
     }
@@ -64,21 +71,23 @@ export function DefaultLlmConfigCard({
       onFetchModels();
     }, 800);
     return () => window.clearTimeout(timer);
-  }, [safeApiKey, safeBaseUrl, canFetch, onFetchModels]);
+  }, [safeApiKey, safeBaseUrl, apiType, canFetch, onFetchModels]);
 
   const handlePresetChange = (id: string) => {
     fetchFingerprintRef.current = '';
     if (id === 'custom') {
+      form.setFieldsValue({ llmApiBase: '', llmApiKey: '', llmModel: '' });
       return;
     }
     const preset = SIM_LLM_PRESETS.find((p) => p.id === id);
     if (!preset) {
       return;
     }
-    const patch: Partial<ConfigValues> = { llmApiBase: preset.baseUrl };
-    if (preset.defaultModel && !form.getFieldValue('llmModel')?.trim()) {
-      patch.llmModel = preset.defaultModel;
-    }
+    const patch: Partial<ConfigValues> = {
+      llmApiBase: preset.baseUrl,
+      llmModel: presetId === preset.id ? form.getFieldValue('llmModel') : '',
+    };
+    if (matchSimLlmPreset(safeBaseUrl) !== preset.id) { patch.llmApiKey = ''; }
     form.setFieldsValue(patch);
   };
 
@@ -88,21 +97,13 @@ export function DefaultLlmConfigCard({
         <Space>
           <KeyOutlined style={{ color: palette.errorForeground }} />
           <span>{t('configPage.llm.cardTitle')}</span>
+          {showIntro ? <Tooltip title={t('configPage.pageTabs.simulationIntroBody')}><QuestionCircleOutlined tabIndex={0} /></Tooltip> : null}
           <Tag color="red" style={{ marginLeft: 4 }}>{t('configPage.llm.requiredTag')}</Tag>
         </Space>
       )}
-      style={glassCardStyle(isDark, palette)}
+      style={panelCardStyle(palette)}
       styles={{ body: { padding: '16px 20px' } }}
     >
-      {showIntro ? (
-        <Alert
-          type="info"
-          showIcon
-          style={{ marginBottom: 14, fontSize: 12 }}
-          message={t('configPage.pageTabs.simulationIntroTitle')}
-          description={t('configPage.pageTabs.simulationIntroBody')}
-        />
-      ) : null}
       <Form.Item label={t('configPage.llm.presetLabel')} style={{ marginBottom: 12 }}>
         <Select
           value={presetId}
@@ -113,12 +114,12 @@ export function DefaultLlmConfigCard({
           onChange={handlePresetChange}
         />
       </Form.Item>
-      {presetId === 'fiblab' ? (
+      {selectedPreset?.hintKey ? (
         <Alert
           type="warning"
           showIcon
           style={{ marginBottom: 12, fontSize: 12 }}
-          message={t('configPage.llm.presetFiblabHint')}
+          message={t(selectedPreset.hintKey)}
         />
       ) : null}
       <Form.Item name="llmApiBase" label={t('configPage.llm.apiBase')}>
@@ -132,15 +133,16 @@ export function DefaultLlmConfigCard({
       >
         <Input.Password placeholder={t('configPage.llm.apiKeyPlaceholder')} autoComplete="off" />
       </Form.Item>
-      <Form.Item name="llmModel" label={t('configPage.llm.modelName')}>
+      <Form.Item name="llmModel" label={t('configPage.llm.modelName')}
+        rules={[{ required: true, whitespace: true, message: t('configPage.llm.modelRequired') }]}>
         <EnvLlmModelField
           t={t}
-          models={models}
+          models={fetchFingerprintRef.current === connectionFingerprint && canFetch ? models : []}
           loading={modelsLoading}
           error={modelsError}
           canFetch={canFetch}
           onFetch={() => {
-            fetchFingerprintRef.current = '';
+            fetchFingerprintRef.current = connectionFingerprint;
             onFetchModels();
           }}
           placeholder={t('configPage.llm.modelPlaceholder')}
@@ -153,6 +155,7 @@ export function DefaultLlmConfigCard({
       >
         <ThinkingSelect t={t} scope="default" />
       </Form.Item>
+      <LlmApiTypeField t={t} scope="default" />
       <ValidationAction
         t={t}
         palette={palette}

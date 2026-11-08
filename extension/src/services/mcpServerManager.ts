@@ -1,7 +1,11 @@
+import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { parse as parseToml, stringify as stringifyToml } from 'smol-toml';
+import { isDeepStrictEqual } from 'util';
+import { applyMcpImport, managedMcpId, parseMcpImport, type McpImportPreview, type McpImportSource } from './mcpImport';
 import { EnvManager } from '../envManager';
 import { readCodexConfigText, writeCodexConfigText } from './codexSettings';
 import type { McpServerRecord, McpTransport } from './mcpClient';
@@ -20,9 +24,13 @@ function readJsonFile(filePath: string): Record<string, unknown> {
     return {};
   }
   try {
-    return JSON.parse(fs.readFileSync(filePath, 'utf-8')) as Record<string, unknown>;
+    const data: unknown = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    if (!data || typeof data !== 'object' || Array.isArray(data)) { throw new Error('invalid_claude_config'); }
+    const servers = (data as Record<string, unknown>).mcpServers;
+    if (servers !== undefined && (!servers || typeof servers !== 'object' || Array.isArray(servers))) { throw new Error('invalid_claude_config'); }
+    return data as Record<string, unknown>;
   } catch {
-    return {};
+    throw new Error('invalid_claude_config');
   }
 }
 
@@ -32,7 +40,8 @@ function writeJsonFile(filePath: string, data: Record<string, unknown>): void {
     fs.mkdirSync(dir, { recursive: true });
   }
   const json = `${JSON.stringify(data, null, 2)}\n`;
-  const tmp = `${filePath}.tmp`;
+  // F2(2026-11-06):pid 后缀防多窗口同 tmp 路径交错。
+  const tmp = `${filePath}.${process.pid}.${crypto.randomUUID()}.tmp`;
   fs.writeFileSync(tmp, json, 'utf-8');
   try {
     fs.chmodSync(tmp, 0o600);
@@ -42,19 +51,11 @@ function writeJsonFile(filePath: string, data: Record<string, unknown>): void {
   fs.renameSync(tmp, filePath);
 }
 
-function managedId(name: string): string {
-  const slug = name
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-  return `${MANAGED_PREFIX}${slug || 'server'}`;
-}
-
 function toClaudeMcpEntry(server: McpServerRecord): Record<string, unknown> {
-  if (server.transport === 'http') {
+  if (server.transport === 'http' || server.transport === 'sse') {
     const entry: Record<string, unknown> = {
-      type: 'http',
+      ...server.claudeOptions,
+      type: server.transport,
       url: server.url ?? '',
     };
     if (server.httpHeaders && Object.keys(server.httpHeaders).length > 0) {
@@ -63,6 +64,7 @@ function toClaudeMcpEntry(server: McpServerRecord): Record<string, unknown> {
     return entry;
   }
   const entry: Record<string, unknown> = {
+    ...server.claudeOptions,
     command: server.command ?? '',
   };
   if (server.args && server.args.length > 0) {
@@ -75,46 +77,35 @@ function toClaudeMcpEntry(server: McpServerRecord): Record<string, unknown> {
 }
 
 function codexMcpBlockLines(server: McpServerRecord): string[] {
-  const lines: string[] = [`[mcp_servers.${server.id}]`];
+  if (server.transport === 'sse') { throw new Error('Legacy SSE MCP is supported by Claude only; use streamable HTTP for Codex.'); }
+  const entry: Record<string, unknown> = { ...server.codexOptions };
   if (server.transport === 'http') {
-    lines.push(`url = ${JSON.stringify(server.url ?? '')}`);
-    if (server.bearerTokenEnvVar?.trim()) {
-      lines.push(`bearer_token_env_var = ${JSON.stringify(server.bearerTokenEnvVar.trim())}`);
-    }
-    if (server.httpHeaders) {
-      for (const [key, value] of Object.entries(server.httpHeaders)) {
-        lines.push(`http_headers.${key} = ${JSON.stringify(value)}`);
-      }
-    }
-    return lines;
+    entry.url = server.url ?? '';
+    if (server.bearerTokenEnvVar?.trim()) { entry.bearer_token_env_var = server.bearerTokenEnvVar.trim(); }
+    if (server.httpHeaders) { entry.http_headers = server.httpHeaders; }
+  } else {
+    entry.command = server.command ?? '';
+    if (server.args?.length) { entry.args = server.args; }
+    if (server.env) { entry.env = server.env; }
   }
-  lines.push(`command = ${JSON.stringify(server.command ?? '')}`);
-  if (server.args && server.args.length > 0) {
-    lines.push(`args = ${JSON.stringify(server.args)}`);
-  }
-  if (server.env) {
-    for (const [key, value] of Object.entries(server.env)) {
-      lines.push(`env.${key} = ${JSON.stringify(value)}`);
-    }
-  }
-  return lines;
+  return stringifyToml({ mcp_servers: { [server.id]: entry } } as Parameters<typeof stringifyToml>[0]).trim().split('\n');
 }
 
 function removeCodexMcpBlocks(text: string, serverIds: string[]): string {
   let updated = text;
+  const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   for (const id of serverIds) {
-    const escaped = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    updated = updated.replace(
-      new RegExp(`\\n?\\[mcp_servers\\.${escaped}\\][^\\n]*(?:\\n(?!\\[)[^\\n]*)*`, 'g'),
-      ''
-    );
+    const keys = [id, JSON.stringify(id), ...(!id.includes("'") && !id.includes('\n') ? ["'" + id + "'"] : [])].map(escape).join('|');
+    updated = updated.replace(new RegExp(`\\n?\\[\\s*mcp_servers\\s*\\.\\s*(?:${keys})(?:\\s*\\.[^\\n]*)?\\s*\\][^\\n]*(?:\\n(?!\\s*\\[)[^\\n]*)*`, 'g'), '');
   }
   return updated;
 }
 
 function upsertCodexMcpBlocks(text: string, servers: McpServerRecord[]): string {
   const ids = servers.map((s) => s.id);
-  let updated = removeCodexMcpBlocks(text, ids).replace(/\n+$/, '');
+  let updated = removeCodexMcpBlocks(text, ids);
+  if (!servers.some((server) => server.enabledCodex)) { return updated; }
+  updated = updated.replace(/\n+$/, '');
   for (const server of servers) {
     if (!server.enabledCodex) {
       continue;
@@ -148,6 +139,7 @@ function literatureServerFromEnv(): McpServerRecord | null {
 }
 
 export class McpServerManager {
+  private pendingImport?: { preview: McpImportPreview; baseline: string };
   constructor(private readonly context: vscode.ExtensionContext) { }
 
   listServers(): McpServerRecord[] {
@@ -164,8 +156,12 @@ export class McpServerManager {
     if (input.builtin === 'literature') {
       throw new Error('literature_mcp_readonly');
     }
+    if (input.transport === 'sse' && input.enabledCodex) {
+      throw new Error('Legacy SSE MCP is supported by Claude only; use streamable HTTP for Codex.');
+    }
     const servers = this.listServers().filter((s) => s.builtin !== 'literature');
-    const id = input.id?.trim() || managedId(input.name);
+    const id = input.id?.trim() || managedMcpId(input.name);
+    if (!input.id && servers.some((server) => server.id === id || server.name === input.name.trim())) { throw new Error('mcp_server_exists'); }
     const record: McpServerRecord = {
       id,
       name: input.name.trim() || id,
@@ -176,6 +172,8 @@ export class McpServerManager {
       url: input.url,
       bearerTokenEnvVar: input.bearerTokenEnvVar,
       httpHeaders: input.httpHeaders,
+      claudeOptions: input.claudeOptions,
+      codexOptions: input.codexOptions,
       enabledClaude: input.enabledClaude,
       enabledCodex: input.enabledCodex,
     };
@@ -186,7 +184,7 @@ export class McpServerManager {
       servers.push(record);
     }
     await this.persistCustomServers(servers);
-    await this.syncLiveConfigs();
+    await this.syncLiveConfigs([], [id]);
     return this.listServers();
   }
 
@@ -197,7 +195,7 @@ export class McpServerManager {
     }
     const servers = this.listServers().filter((s) => s.builtin !== 'literature' && s.id !== id);
     await this.persistCustomServers(servers);
-    await this.syncLiveConfigs();
+    await this.syncLiveConfigs([id], []);
     return this.listServers();
   }
 
@@ -210,6 +208,9 @@ export class McpServerManager {
     if (target.builtin === 'literature') {
       throw new Error('literature_mcp_use_config_page');
     }
+    if (target.transport === 'sse' && app === 'codex' && enabled) {
+      throw new Error('Legacy SSE MCP is supported by Claude only; use streamable HTTP for Codex.');
+    }
     const custom = servers.filter((s) => s.builtin !== 'literature').map((s) =>
       s.id === id
         ? {
@@ -220,56 +221,58 @@ export class McpServerManager {
         : s
     );
     await this.persistCustomServers(custom);
-    await this.syncLiveConfigs();
+    await this.syncLiveConfigs([], [id]);
     return this.listServers();
   }
 
-  async importFromClaude(): Promise<McpServerRecord[]> {
-    const claudeJson = readJsonFile(resolveClaudeJsonPath());
-    const mcpServers = (claudeJson.mcpServers as Record<string, Record<string, unknown>> | undefined) ?? {};
-    const custom = this.listServers().filter((s) => s.builtin !== 'literature');
-    const byId = new Map(custom.map((s) => [s.id, s]));
-    for (const [name, entry] of Object.entries(mcpServers)) {
-      const id = name.startsWith(MANAGED_PREFIX) ? name : managedId(name);
-      const transport: McpTransport = entry.type === 'http' || typeof entry.url === 'string' ? 'http' : 'stdio';
-      byId.set(id, {
-        id,
-        name,
-        transport,
-        command: typeof entry.command === 'string' ? entry.command : undefined,
-        args: Array.isArray(entry.args) ? entry.args.map(String) : undefined,
-        env:
-          entry.env && typeof entry.env === 'object'
-            ? Object.fromEntries(
-              Object.entries(entry.env as Record<string, unknown>).map(([k, v]) => [k, String(v)])
-            )
-            : undefined,
-        url: typeof entry.url === 'string' ? entry.url : undefined,
-        httpHeaders:
-          entry.headers && typeof entry.headers === 'object'
-            ? Object.fromEntries(
-              Object.entries(entry.headers as Record<string, unknown>).map(([k, v]) => [k, String(v)])
-            )
-            : undefined,
-        enabledClaude: true,
-        enabledCodex: false,
-      });
+  previewImport(source: McpImportSource, text?: string): McpImportPreview {
+    const existing = this.listServers();
+    const content = source === 'claude' ? JSON.stringify(readJsonFile(resolveClaudeJsonPath()))
+      : source === 'codex' ? readCodexConfigText() : text ?? '';
+    const preview: McpImportPreview = { token: crypto.randomUUID(), source, items: parseMcpImport(content, source, existing) };
+    this.pendingImport = { preview, baseline: JSON.stringify(existing) };
+    return preview;
+  }
+
+  async applyImport(token: string, selected: string[], targets: { claude: boolean; codex: boolean }): Promise<{ added: number; updated: number; skipped: number }> {
+    const pending = this.pendingImport;
+    if (!pending || pending.preview.token !== token || JSON.stringify(this.listServers()) !== pending.baseline) { throw new Error('mcp_import_changed'); }
+    const result = applyMcpImport(this.listServers(), pending.preview.items, selected, targets);
+    const changed = pending.preview.items.filter((item) => selected.includes(item.key) && ['new', 'conflict'].includes(item.state)).map((item) => item.server!.id);
+    await this.persistCustomServers(result.servers);
+    await this.syncLiveConfigs([], changed);
+    this.pendingImport = undefined;
+    return { added: result.added, updated: result.updated, skipped: result.skipped };
+  }
+
+  async syncLiveConfigs(removedIds: string[] = [], changedIds?: string[]): Promise<void> {
+    const servers = this.listServers().filter((server) => !changedIds || changedIds.includes(server.id));
+    const originalCodexText = readCodexConfigText();
+    const codexText = upsertCodexMcpBlocks(removeCodexMcpBlocks(originalCodexText, removedIds), servers);
+    const managedIds = new Set([...servers.map((server) => server.id), ...removedIds]);
+    const before = parseToml(originalCodexText || '') as Record<string, unknown>;
+    const after = parseToml(codexText || '') as Record<string, unknown>;
+    for (const key of new Set([...Object.keys(before), ...Object.keys(after)])) {
+      if (key !== 'mcp_servers' && !isDeepStrictEqual(before[key], after[key])) { throw new Error('unsupported_codex_layout'); }
     }
-    await this.persistCustomServers([...byId.values()]);
-    await this.syncLiveConfigs();
-    return this.listServers();
-  }
+    const previousMcp = (before.mcp_servers ?? {}) as Record<string, unknown>;
+    const nextMcp = (after.mcp_servers ?? {}) as Record<string, unknown>;
+    for (const id of managedIds) {
+      const server = servers.find((entry) => entry.id === id && entry.enabledCodex);
+      const expected = server ? (parseToml(codexMcpBlockLines(server).join('\n')).mcp_servers as Record<string, unknown>)[id] : undefined;
+      if (!isDeepStrictEqual(nextMcp[id], expected)) { throw new Error('unsupported_codex_layout'); }
+    }
+    for (const key of Object.keys(previousMcp)) {
+      if (!managedIds.has(key) && !isDeepStrictEqual(previousMcp[key], nextMcp[key])) { throw new Error('unsupported_codex_layout'); }
+    }
 
-  async syncLiveConfigs(): Promise<void> {
-    const servers = this.listServers();
     const claudePath = resolveClaudeJsonPath();
     const claudeJson = readJsonFile(claudePath);
     const existing =
       (claudeJson.mcpServers as Record<string, Record<string, unknown>> | undefined) ?? {};
-    const managedIds = new Set(servers.map((s) => s.id));
-    const next: Record<string, Record<string, unknown>> = { ...existing };
+    const next: Record<string, Record<string, unknown>> = Object.assign(Object.create(null), existing);
     for (const id of Object.keys(next)) {
-      if (id.startsWith(MANAGED_PREFIX) || managedIds.has(id)) {
+      if (managedIds.has(id)) {
         delete next[id];
       }
     }
@@ -278,13 +281,15 @@ export class McpServerManager {
         next[server.id] = toClaudeMcpEntry(server);
       }
     }
-    claudeJson.mcpServers = next;
-    writeJsonFile(claudePath, claudeJson);
+    if (!isDeepStrictEqual(existing, { ...next })) {
+      claudeJson.mcpServers = next;
+      writeJsonFile(claudePath, claudeJson);
+    }
 
-    let codexText = readCodexConfigText();
-    const codexServers = servers.filter((s) => s.id.startsWith(MANAGED_PREFIX) || s.enabledCodex);
-    codexText = upsertCodexMcpBlocks(codexText, codexServers);
-    if (codexText.trim()) {
+    // Removing the last managed block must clear the file; a truthiness guard
+    // would leave the stale MCP enabled. Avoid creating an empty config when
+    // nothing needs syncing to Codex.
+    if (codexText !== originalCodexText) {
       writeCodexConfigText(codexText);
     }
   }

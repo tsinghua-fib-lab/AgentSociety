@@ -9,6 +9,7 @@ from typing import Any
 from litellm import AllMessageValues
 
 from agentsociety2.agent.json_utils import loads_llm_json
+from agentsociety2.config.llm_dispatcher import reasoning_fields
 from agentsociety2.env.base import EnvBase
 from agentsociety2.env.router_base import RouterBase
 from agentsociety2.logger import get_logger
@@ -400,6 +401,7 @@ Selected module:"""
             dialog.append(
                 {
                     "role": "assistant",
+                    **reasoning_fields(response),
                     "content": message.content or "",
                     "tool_calls": (
                         [

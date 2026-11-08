@@ -960,9 +960,6 @@ Generated world description:"""
                 "model": "summary",
                 "messages": dialog,
                 "stream": False,
-                # 每个 run 只生成一次并缓存（见本方法上方的 lazy 缓存），推理既无
-                # 收益又给 run 之间引入额外方差。
-                "thinking": "off",
             }
             if max_retries is not None:
                 completion_kwargs["max_retries"] = max_retries

@@ -231,7 +231,7 @@ export type ConfigWizardStepPanelProps = {
   onSavePricing: (pricing: ModelPricingMap) => void;
   onClearPricing: () => void;
   providerUsage: Record<string, import('./claudeCodeTypes').ProviderUsageQueryResult & { loading?: boolean }>;
-  onQueryProviderUsage: (providerId: string) => void;
+  onQueryProviderUsage: (providerId: string, force?: boolean) => void;
   onRestartCodex: () => void;
   onRestartClaude: () => void;
   onSyncClaudeConfig: () => void;
@@ -239,7 +239,6 @@ export type ConfigWizardStepPanelProps = {
   onSaveOutboundProxy: (url: string) => void;
   onRectifierChange: (settings: Record<string, boolean>) => void;
   onOptimizerChange: (settings: Record<string, boolean>) => void;
-  onRefreshCodexOfficialLogin: () => void;
   easyPaperForm: FormInstance<EasyPaperConfigValues>;
   onSaveEasyPaper: () => void;
 };
@@ -267,7 +266,7 @@ export function ConfigWizardStepPanel(props: ConfigWizardStepPanelProps) {
 
   if (stepKey === 'import') {
     return (
-      <div style={advancedPanelInnerStyle(isDark, palette)}>
+      <div style={advancedPanelInnerStyle(palette)}>
         {webImportPanel}
       </div>
     );
@@ -328,11 +327,15 @@ export function ConfigWizardStepPanel(props: ConfigWizardStepPanelProps) {
 
   if (stepKey === 'easypaper') {
     return (
-      <div style={advancedPanelInnerStyle(isDark, palette)}>
+      <div style={advancedPanelInnerStyle(palette)}>
         <EasyPaperConfigSection
           t={t}
           palette={palette}
           form={props.easyPaperForm}
+          modelsBySlot={modelsByProvider}
+          modelsLoadingBySlot={modelsLoadingByProvider}
+          modelsErrorBySlot={modelsErrorByProvider}
+          onFetchModels={props.onFetchProviderModels}
           defaultLlmApiKey={hasDefaultLlmKey ? (effectiveConfigValues.llmApiKey || '') : ''}
           defaultLlmApiBase={effectiveConfigValues.llmApiBase ?? ''}
           defaultLlmModel={effectiveConfigValues.llmModel ?? ''}
@@ -346,7 +349,7 @@ export function ConfigWizardStepPanel(props: ConfigWizardStepPanelProps) {
 
   if (stepKey === 'literature') {
     return (
-      <div style={advancedPanelInnerStyle(isDark, palette)}>
+      <div style={advancedPanelInnerStyle(palette)}>
         <LiteratureConfigSection
           t={t}
           palette={palette}
@@ -368,7 +371,7 @@ export function ConfigWizardStepPanel(props: ConfigWizardStepPanelProps) {
   }
 
   return (
-    <div ref={props.claudeSectionRef} style={advancedPanelInnerStyle(isDark, palette)}>
+    <div ref={props.claudeSectionRef} style={advancedPanelInnerStyle(palette)}>
       <AiCliConfigSection
         t={t}
         palette={palette}
@@ -415,7 +418,6 @@ export function ConfigWizardStepPanel(props: ConfigWizardStepPanelProps) {
         onSaveOutboundProxy={props.onSaveOutboundProxy}
         onRectifierChange={props.onRectifierChange}
         onOptimizerChange={props.onOptimizerChange}
-        onRefreshCodexOfficialLogin={props.onRefreshCodexOfficialLogin}
       />
     </div>
   );

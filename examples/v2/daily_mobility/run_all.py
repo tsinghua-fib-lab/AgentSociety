@@ -20,12 +20,14 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-
 EXP_DIR = Path(__file__).resolve().parent
 REPO_ROOT = EXP_DIR.parents[2]
 INIT_SCRIPT = EXP_DIR / "init" / "config_params.py"
 EVAL_SCRIPT = EXP_DIR / "tools" / "eval_metrics.py"
-DEFAULT_INIT_DIR = EXP_DIR / "tmp" / "init"
+# Follow the same per-experiment config directory as init/config_params.py.
+DEFAULT_INIT_DIR = Path(
+    os.environ.get("DAILY_MOBILITY_INIT_DIR", str(EXP_DIR / "tmp" / "init"))
+)
 DEFAULT_RUN_DIR = EXP_DIR / "tmp" / "run"
 
 
@@ -193,6 +195,8 @@ def compute_metrics(args: argparse.Namespace) -> None:
             str(args.run_dir),
             "--gt-dir",
             str(gt_dir),
+            "--config",
+            str((args.config or (DEFAULT_INIT_DIR / "init_config.json")).resolve()),
         ]
     )
 

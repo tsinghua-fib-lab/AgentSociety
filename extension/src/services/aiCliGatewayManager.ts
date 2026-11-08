@@ -1,8 +1,9 @@
 import * as fs from 'fs';
+import { createHash } from 'crypto';
 import * as vscode from 'vscode';
 import type { ClaudeCodeConfigValues } from '../webview/configPage/claudeCodeTypes';
 import {
-  AI_CLI_GATEWAY_PLACEHOLDER_TOKEN,
+  getOrCreateGatewayAuthToken,
   buildLocalGatewayBaseUrl,
   isLocalGatewayBaseUrl,
   type AiCliGatewayUpstream,
@@ -17,7 +18,7 @@ import {
 } from './claudeCodeSettings';
 import {
   fetchProviderModels,
-} from './claudeCodeModels';
+} from './providerModels';
 import {
   claudeSettingsBaseUrl,
   inferApiKindFromBaseUrl,
@@ -41,6 +42,7 @@ import {
 } from './gatewayRemotePricing';
 import {
   queryProviderUsage,
+  ProviderUsageCache,
   supportsProviderUsageQuery,
   type ProviderUsageResult,
 } from './gatewayProviderUsage';
@@ -52,6 +54,7 @@ import {
   detectCodexOfficialLogin,
   getCodexRoutingSnapshot,
   getCodexOfficialLoginSnapshot,
+  readCodexSubscriptionSession,
   isCodexConfiguredByUser,
   isCodexGatewayTakeoverConfig,
   readCodexConfigText,
@@ -77,6 +80,7 @@ import {
   inferProviderAuthMode,
   isOfficialSubscriptionProvider,
   providerEligibleForRoleUpstream,
+  providerSupportsRole,
   providerHasApiUpstream as providerHasApiKeyUpstream,
   providerHasConfiguredCredentials,
   type AiCliAuthMode,
@@ -103,6 +107,8 @@ const REMOTE_PRICING_STATE_KEY = 'aiCliGateway.remotePricing';
 const REMOTE_PRICING_FETCHED_AT_STATE_KEY = 'aiCliGateway.remotePricingFetchedAt';
 const FAILOVER_ENABLED_STATE_KEY = 'aiCliGateway.failoverEnabled';
 const ROUTE_CLAUDE_STATE_KEY = 'aiCliGateway.routeClaude';
+// 默认开标记(maybeEnableCodexRouteByDefault 写入,区别用户显式开)。
+const ROUTE_CODEX_AUTO_STATE_KEY = 'aiCliGateway.routeCodex.auto';
 const ROUTE_CODEX_STATE_KEY = 'aiCliGateway.routeCodex';
 /** Pre-takeover ~/.codex/config.toml snapshot (cc-switch live backup). */
 const CODEX_LIVE_BACKUP_SECRET_KEY = 'aiCliGateway.codexLiveBackup.secret';
@@ -133,6 +139,7 @@ export type AiCliProviderConfig = {
   apiKind?: AiCliApiKind;
   authMode?: AiCliAuthMode;
   authHeaderMode?: AiCliAuthHeaderMode;
+  usageQuery?: import('../shared/providerUsage').ProviderUsageConfig;
   activeClaude: boolean;
   activeCodex: boolean;
   failoverClaude: boolean;
@@ -174,6 +181,7 @@ export class AiCliGatewayManager {
   private providersCache: AiCliProviderConfig[] = [];
   private storedUpstreamCache: AiCliGatewayUpstream | undefined;
   private codexLiveBackupCache: string | undefined;
+  private readonly providerUsageCache = new ProviderUsageCache();
   private outboundProxyCache: OutboundProxyConfig | null;
   private codexLoginSnapshot = getCodexOfficialLoginSnapshot();
   private codexLoginRefreshed = false;
@@ -471,6 +479,9 @@ export class AiCliGatewayManager {
       target === 'claude' ? ROUTE_CLAUDE_STATE_KEY : ROUTE_CODEX_STATE_KEY,
       enabled
     );
+    if (target === 'codex') {
+      await this.context.globalState.update(ROUTE_CODEX_AUTO_STATE_KEY, false);
+    }
 
     if (!this.isRouteClaudeViaGateway() && !this.isRouteCodexViaGateway()) {
       const activeAnthropic = this.getActiveAnthropicProvider();
@@ -580,13 +591,32 @@ export class AiCliGatewayManager {
     if (!this.codexLoginRefreshed) {
       this.codexLoginRefreshed = true;
       this.codexLoginSnapshot = await detectCodexOfficialLogin();
+      await this.yieldCodexRouteToOfficialLoginIfNeeded();
     }
   }
 
-  async refreshCodexOfficialLogin(): Promise<AiCliGatewayPublicStatus> {
+  /** 官方登录出现且 codex 路由是「默认开」(非用户显式)时,自动让位:
+   *  关路由、恢复官方订阅配置。用户显式开过(手动 toggle)则绝不动。 */
+  private async yieldCodexRouteToOfficialLoginIfNeeded(): Promise<void> {
+    const autoEnabled = this.context.globalState.get<boolean>(ROUTE_CODEX_AUTO_STATE_KEY, false);
+    if (!autoEnabled || !this.codexLoginSnapshot.present) {
+      return;
+    }
+    await this.context.globalState.update(ROUTE_CODEX_STATE_KEY, undefined);
+    await this.context.globalState.update(ROUTE_CODEX_AUTO_STATE_KEY, false);
+    if (getCodexRoutingSnapshot().routedViaGateway || this.codexLiveBackupCache !== undefined) {
+      await this.releaseCodexProxyTakeover();
+    } else {
+      applyCodexOfficialSubscription();
+    }
+    this.log('Codex official login detected; auto-enabled gateway route yielded back to subscription');
+  }
+
+  async refreshCodexOfficialLogin(options?: { preserveRoute?: boolean }): Promise<AiCliGatewayPublicStatus> {
     await this.secretsReady;
     this.codexLoginSnapshot = await detectCodexOfficialLogin();
     this.codexLoginRefreshed = true;
+    if (!options?.preserveRoute) { await this.yieldCodexRouteToOfficialLoginIfNeeded(); }
     return this.getPublicStatus();
   }
 
@@ -775,7 +805,7 @@ export class AiCliGatewayManager {
     return {
       ...config,
       baseUrl: buildLocalGatewayBaseUrl(port),
-      apiKey: AI_CLI_GATEWAY_PLACEHOLDER_TOKEN,
+      apiKey: getOrCreateGatewayAuthToken(),
     };
   }
 
@@ -994,7 +1024,7 @@ export class AiCliGatewayManager {
   async addProvider(
     provider: Omit<AiCliProviderConfig, 'id' | 'activeClaude' | 'activeCodex' | 'failoverClaude' | 'failoverCodex'> &
       Partial<Pick<AiCliProviderConfig, 'activeClaude' | 'activeCodex' | 'failoverClaude' | 'failoverCodex'>>,
-    options?: { liveApply?: 'full' | 'inventory' }
+    options?: { liveApply?: 'full' | 'inventory' | 'none' }
   ): Promise<AiCliProviderConfig> {
     await this.initialize();
     const providers = this.getProviders();
@@ -1086,51 +1116,36 @@ export class AiCliGatewayManager {
       codexEnable1m?: boolean;
       permissionMode?: string;
     },
-    options?: { liveApply?: 'full' | 'inventory' }
+    options: { targets: { claude: boolean; codex: boolean } }
   ): Promise<AiCliProviderConfig> {
     await this.initialize();
     const providers = this.getProviders();
+    const targets = options.targets;
     const apiKind = draft.apiKind ?? inferApiKindFromBaseUrl(draft.baseUrl);
-    const normalizedBaseUrl = resolveProviderBaseUrl(draft.baseUrl, apiKind);
-    const existing = providers.find(
-      (provider) =>
-        provider.name === draft.name ||
-        providerUpstream(provider).baseUrl === normalizedBaseUrl
-    );
+    const baseUrl = resolveProviderBaseUrl(draft.baseUrl, apiKind);
+    const settings = Object.fromEntries(Object.entries({ ...draft, baseUrl: draft.baseUrl.trim(), apiKey: draft.apiKey.trim(), apiKind, authMode: 'api' })
+      .filter(([key, value]) => value !== undefined && key !== 'permissionMode')) as Partial<AiCliProviderConfig>;
+    const matches = providers.filter((provider) => providerUpstream(provider).baseUrl === baseUrl && inferProviderAuthMode(provider) === 'api');
+    const protectedRole = (provider: AiCliProviderConfig) => ((provider.activeClaude || provider.failoverClaude) && !targets.claude) || ((provider.activeCodex || provider.failoverCodex) && !targets.codex);
+    const sameSettings = (provider: AiCliProviderConfig) => Object.entries(settings).every(([key, value]) => key === 'name' || (provider as unknown as Record<string, unknown>)[key] === value);
+    const existing = matches.find(sameSettings) ?? matches.find((provider) => !protectedRole(provider));
     const payload = {
-      name: draft.name,
-      baseUrl: draft.baseUrl.trim(),
-      apiKey: draft.apiKey.trim(),
-      apiKind,
-      model: draft.model,
-      codexModel: draft.codexModel,
-      sonnetModel: draft.sonnetModel,
-      opusModel: draft.opusModel,
-      fableModel: draft.fableModel,
-      haikuModel: draft.haikuModel,
-      sonnetDisplayName: draft.sonnetDisplayName,
-      opusDisplayName: draft.opusDisplayName,
-      fableDisplayName: draft.fableDisplayName,
-      haikuDisplayName: draft.haikuDisplayName,
-      declareSonnet1m: draft.declareSonnet1m,
-      declareOpus1m: draft.declareOpus1m,
-      declareFable1m: draft.declareFable1m,
-      codexEnable1m: draft.codexEnable1m,
-      permissionMode: draft.permissionMode?.trim() || 'bypassPermissions',
-      activeClaude: true,
-      activeCodex: true,
-    };
-    if (existing) {
-      const apiKey = draft.apiKey.trim() || existing.apiKey.trim();
-      return this.updateProvider(existing.id, { ...payload, apiKey }, options);
-    }
-    return this.addProvider(payload, options);
+      ...settings, name: existing?.name ?? draft.name,
+      activeClaude: targets.claude || existing?.activeClaude || false,
+      activeCodex: targets.codex || existing?.activeCodex || false,
+      permissionMode: readClaudeConfig().permissionMode,
+    } as Omit<AiCliProviderConfig, 'id' | 'failoverClaude' | 'failoverCodex'>;
+    const provider = existing
+      ? await this.updateProvider(existing.id, payload, { liveApply: 'none' })
+      : await this.addProvider(payload, { liveApply: 'none' });
+    await this.applyProviderInventoryOnly(provider, targets);
+    return provider;
   }
 
   async updateProvider(
     id: string,
     patch: Partial<AiCliProviderConfig>,
-    options?: { liveApply?: 'full' | 'inventory' }
+    options?: { liveApply?: 'full' | 'inventory' | 'none' }
   ): Promise<AiCliProviderConfig> {
     await this.initialize();
     const providers = this.getProviders();
@@ -1161,8 +1176,9 @@ export class AiCliGatewayManager {
    */
   private async applyProviderAfterSave(
     provider: AiCliProviderConfig,
-    liveApply: 'full' | 'inventory'
+    liveApply: 'full' | 'inventory' | 'none'
   ): Promise<void> {
+    if (liveApply === 'none') { return; }
     if (liveApply === 'inventory') {
       await this.applyProviderInventoryOnly(provider);
       return;
@@ -1175,13 +1191,13 @@ export class AiCliGatewayManager {
     }
   }
 
-  private async applyProviderInventoryOnly(provider: AiCliProviderConfig): Promise<void> {
+  private async applyProviderInventoryOnly(provider: AiCliProviderConfig, targets = { claude: provider.activeClaude, codex: provider.activeCodex }): Promise<void> {
     const normalized = this.normalizeProvider(provider);
-    if (provider.activeClaude) {
+    if (targets.claude) {
       writeClaudeConfig(this.providerToClaudeConfig(normalized));
       await this.persistUpstream(this.providerToGatewayUpstream(normalized));
     }
-    if (provider.activeCodex) {
+    if (targets.codex) {
       await this.projectCodexProviderLive(normalized, undefined);
     }
   }
@@ -1225,7 +1241,9 @@ export class AiCliGatewayManager {
    */
   private async maybeEnableCodexRouteByDefault(provider: AiCliProviderConfig): Promise<boolean> {
     const explicitlySet =
-      this.context.globalState.get<boolean>(ROUTE_CODEX_STATE_KEY) !== undefined;
+      this.context.globalState.get<boolean>(ROUTE_CODEX_STATE_KEY) !== undefined
+      // 默认开的(我们写的)不算用户显式选择——官方登录出现时可让位。
+      && !this.context.globalState.get<boolean>(ROUTE_CODEX_AUTO_STATE_KEY, false);
     const fileLogin = getCodexOfficialLoginSnapshot();
     const shouldEnable = shouldEnableCodexRouteByDefault({
       explicitlySet,
@@ -1242,6 +1260,10 @@ export class AiCliGatewayManager {
       return false;
     }
     await this.context.globalState.update(ROUTE_CODEX_STATE_KEY, true);
+    // 标记为默认开(非用户显式):后续检测到 codex 官方登录出现时,
+    // 自动让位并恢复官方订阅配置(2026-11-06:用户反馈场景——先装扩展
+    // 后 codex login,官方登录被 gateway 接管,恢复麻烦)。
+    await this.context.globalState.update(ROUTE_CODEX_AUTO_STATE_KEY, true);
     this.log('Codex proxy enabled by default (no user-owned Codex config found)');
     return true;
   }
@@ -1335,17 +1357,8 @@ export class AiCliGatewayManager {
       throw new Error('provider_not_found');
     }
     const normalized = this.normalizeProvider(target);
-    if (role === 'codex') {
-      const subscriptionOk =
-        isOfficialSubscriptionProvider(normalized) && normalized.apiKind === 'openai';
-      if (!subscriptionOk && !providerEligibleForRoleUpstream(normalized, 'codex')) {
-        throw new Error('provider_not_eligible_for_codex');
-      }
-    } else if (
-      !isOfficialSubscriptionProvider(normalized) &&
-      !providerEligibleForRoleUpstream(normalized, 'claude')
-    ) {
-      throw new Error('provider_not_eligible_for_claude');
+    if (!providerSupportsRole(normalized, role) || !providerHasConfiguredCredentials(normalized)) {
+      throw new Error(`provider_not_eligible_for_${role}`);
     }
     for (const p of providers) {
       if (role === 'claude') {
@@ -1668,7 +1681,7 @@ export class AiCliGatewayManager {
     return supportsProviderUsageQuery(baseUrl);
   }
 
-  async queryProviderUsageById(providerId: string): Promise<ProviderUsageResult> {
+  async queryProviderUsageById(providerId: string, force = false): Promise<ProviderUsageResult> {
     await this.initialize();
     const provider = this.getProviders().find((p) => p.id === providerId);
     if (!provider) {
@@ -1677,7 +1690,10 @@ export class AiCliGatewayManager {
     const normalized = this.normalizeProvider(provider);
     const apiKind = normalized.apiKind ?? inferApiKindFromBaseUrl(normalized.baseUrl);
     const authMode = inferProviderAuthMode({ ...normalized, apiKind });
-    return queryProviderUsage(normalized.baseUrl, normalized.apiKey, { apiKind, authMode });
+    const options = { apiKind, authMode, usageQuery: normalized.usageQuery, authHeaderMode: normalized.authHeaderMode, proxy: this.getOutboundProxy() };
+    const login = authMode === 'subscription' ? readCodexSubscriptionSession() : undefined;
+    const fingerprint = createHash('sha256').update(JSON.stringify([normalized.id, normalized.baseUrl, normalized.apiKey, options, login])).digest('hex');
+    return this.providerUsageCache.query(fingerprint, () => queryProviderUsage(normalized.baseUrl, normalized.apiKey, options), force);
   }
 
   private buildClaudeFailoverUpstreams(): AiCliGatewayUpstream[] {

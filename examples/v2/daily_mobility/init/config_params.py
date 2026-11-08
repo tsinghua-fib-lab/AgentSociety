@@ -22,18 +22,18 @@ from pathlib import Path
 
 import yaml
 
-
 SCRIPT_DIR = Path(__file__).resolve().parent
 EXP_DIR = SCRIPT_DIR.parent
 REPO_ROOT = EXP_DIR.parents[2]
 TMP_DIR = EXP_DIR / "tmp"
-TMP_INIT_DIR = TMP_DIR / "init"
+# Isolate generated configs when multiple experiments run concurrently.
+TMP_INIT_DIR = Path(os.environ.get("DAILY_MOBILITY_INIT_DIR", str(TMP_DIR / "init")))
 TMP_RUN_DIR = TMP_DIR / "run"
 
 if str(EXP_DIR) not in sys.path:
     sys.path.insert(0, str(EXP_DIR))
 
-from daily_mobility_intentions import (  # noqa: E402
+from daily_mobility_intentions import (
     INTENTION_CHOICES,
     build_primary_intention_prompt,
 )
@@ -41,14 +41,14 @@ from daily_mobility_intentions import (  # noqa: E402
 INTENTION_CHOICE_LABELS = INTENTION_CHOICES
 
 
-def _profile_block(p: dict, slot_minutes: int) -> str:
+def _profile_block(p: dict, tick: int) -> str:
     aid = p["id"]
     return (
         f"Agent-{aid}, age {p.get('age', '?')}, gender {p.get('gender', '?')}, "
         f"education {p.get('education', '?')}, occupation {p.get('occupation', '?')}, "
         f"home AOI {p.get('home')}, work AOI {p.get('work')}. "
         "You are simulating an ordinary day in an urban mobility environment. "
-        f"Each simulation step advances about {slot_minutes} minutes on the same calendar day. "
+        f"Each simulation step advances about {tick / 60:g} minutes on the same calendar day. "
         "Use mobility tools as a real person would for commuting, errands, meals, and leisure, "
         "consistent with your profile."
     )
@@ -186,7 +186,13 @@ def main() -> None:
     mobility_home.mkdir(parents=True, exist_ok=True)
 
     persons = [
-        {"id": p["id"], "position": {"kind": "aoi", "aoi_id": p["home"]}} for p in use
+        {
+            "id": p["id"],
+            "position": {"kind": "aoi", "aoi_id": p["home"]},
+            "home_aoi": p["home"],
+            "work_aoi": p.get("work"),
+        }
+        for p in use
     ]
 
     agents = []
@@ -194,9 +200,12 @@ def main() -> None:
         aid = p["id"]
         agent_kwargs = {
             "id": aid,
-            "profile": _profile_block(p, slot_minutes),
+            "profile": _profile_block(p, tick),
             "max_react_turns": 6 if len(use) > 20 else 8,
-            "default_activated_skill_ids": ["built-in@daily-guidance"],
+            "default_activated_skill_ids": [
+                "built-in@daily-guidance",
+                "env:MobilitySpace@mobility",
+            ],
         }
         agents.append(
             {

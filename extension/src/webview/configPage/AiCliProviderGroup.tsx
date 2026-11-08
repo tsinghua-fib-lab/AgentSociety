@@ -1,6 +1,6 @@
 import * as React from 'react';
-import { Button, Card, Space, Switch, Tag, Tooltip, Typography } from 'antd';
-import { BarChartOutlined, EditOutlined, PlusOutlined, QuestionCircleOutlined, ReloadOutlined } from '@ant-design/icons';
+import { Button, Card, Space, Radio, Tag, Tooltip, Typography } from 'antd';
+import { EditOutlined, PlusOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import type { TFunction } from 'i18next';
 import type { VscodeThemePalette } from '../theme';
 import type { ClaudeModelOption, ProviderUsageQueryResult, ProviderAvailabilityResult } from './claudeCodeTypes';
@@ -8,8 +8,9 @@ import type { AiCliApiKind } from '../../aiCli/officialEndpoints';
 import type { AiCliProviderRecord } from './aiCliProviderTypes';
 import { EMPTY_PROVIDER_DRAFT } from './aiCliProviderTypes';
 import { ProviderEditor } from './AiCliProviderEditor';
-import { inferProviderAuthMode } from './providerAuth';
-import { supportsProviderUsageQuery } from './providerUsageSupport';
+import { inferProviderAuthMode, providerSupportsRole } from '../../aiCli/providerAuth';
+import { supportsProviderUsageQuery } from '../../shared/providerUsage';
+import { ProviderUsageCard } from './ProviderUsageCard';
 import { normalizeProviderBaseUrl } from './providerBaseUrl';
 
 const { Text } = Typography;
@@ -22,7 +23,6 @@ export type AiCliProviderGroupProps = {
   role: ProviderRole;
   providers: AiCliProviderRecord[];
   loading: boolean;
-  proxyEnabled: boolean;
   onSave: (provider: AiCliProviderRecord) => void;
   onAdd: (draft: Omit<AiCliProviderRecord, 'id'>) => void;
   onActivate: (id: string, role: 'claude' | 'codex') => void;
@@ -31,7 +31,7 @@ export type AiCliProviderGroupProps = {
   isProviderChecking?: (baseUrl: string) => boolean;
   availabilityResults: Record<string, ProviderAvailabilityResult>;
   providerUsage: Record<string, ProviderUsageQueryResult & { loading?: boolean }>;
-  onQueryProviderUsage: (id: string) => void;
+  onQueryProviderUsage: (id: string, force?: boolean) => void;
   modelsByProvider: Record<string, ClaudeModelOption[]>;
   modelsLoadingByProvider: Record<string, boolean>;
   modelsErrorByProvider: Record<string, string | null>;
@@ -43,7 +43,6 @@ export function AiCliProviderGroup({
   palette,
   providers,
   loading,
-  proxyEnabled,
   onSave,
   onAdd,
   onActivate,
@@ -61,109 +60,35 @@ export function AiCliProviderGroup({
   const NEW_ID = `__new__`;
   const [showNew, setShowNew] = React.useState(false);
   const [editingIds, setEditingIds] = React.useState<Set<string>>(() => new Set());
-  const queriedUsageIds = React.useRef(new Set<string>());
-
-  React.useEffect(() => {
-    const currentIds = new Set(providers.map((p) => p.id));
-    for (const id of queriedUsageIds.current) {
-      if (!currentIds.has(id)) {
-        queriedUsageIds.current.delete(id);
-      }
-    }
-    for (const provider of providers) {
-      const apiKind = provider.apiKind;
-      const supported = supportsProviderUsageQuery(provider.baseUrl, {
-        apiKind,
-        authMode: inferProviderAuthMode(provider),
-      });
-      if (supported && !providerUsage[provider.id] && !queriedUsageIds.current.has(provider.id)) {
-        queriedUsageIds.current.add(provider.id);
-        onQueryProviderUsage(provider.id);
-      }
-    }
-  }, [providers, onQueryProviderUsage, providerUsage]);
-
-  const renderUsage = (provider: AiCliProviderRecord) => {
-    const apiKind = provider.apiKind;
-    if (!supportsProviderUsageQuery(provider.baseUrl, {
-      apiKind,
-      authMode: inferProviderAuthMode(provider),
-    })) {
-      return null;
-    }
-    const usage = providerUsage[provider.id];
-    const refresh = (
-      <Button
-        type="text"
-        size="small"
-        loading={usage?.loading}
-        icon={<ReloadOutlined />}
-        aria-label={t('claudeCodeConfig.providerQueryQuota')}
-        onClick={() => onQueryProviderUsage(provider.id)}
-      />
-    );
-    if (usage?.ok && usage.summary) {
-      return (
-        <Space size={4}>
-          <BarChartOutlined style={{ color: palette.linkForeground }} />
-          <Tooltip title={usage.plans?.map((plan) => `${plan.name}: ${plan.remaining}`).join('\n')}>
-            <Text style={{ fontSize: 11 }}>{usage.summary}</Text>
-          </Tooltip>
-          {refresh}
-        </Space>
-      );
-    }
-    if (usage && !usage.ok && usage.error) {
-      const errorKey = `claudeCodeConfig.providerUsageErrors.${usage.error}`;
-      const errorText = t(errorKey) !== errorKey ? t(errorKey) : usage.error;
-      return (
-        <Space size={4}>
-          <Tooltip title={errorText}>
-            <Tag color="error" style={{ margin: 0, fontSize: 10 }}>{errorText}</Tag>
-          </Tooltip>
-          {refresh}
-        </Space>
-      );
-    }
-    return (
-      <Space size={4}>
-        <Text type="secondary" style={{ fontSize: 11 }}>
-          {usage?.loading
-            ? t('claudeCodeConfig.providerQuotaLoading')
-            : t('claudeCodeConfig.providerQueryQuota')}
-        </Text>
-        {refresh}
-      </Space>
-    );
-  };
-
-  // Compact role toggle row: Claude/Codex primary switch only
-  const renderRoleToggles = (provider: AiCliProviderRecord) => {
+  // A primary provider is an exclusive choice per CLI, rather than an on/off setting.
+  const renderRoleChoices = (provider: AiCliProviderRecord) => {
     const authMode = inferProviderAuthMode(provider);
     const canActivate = authMode === 'subscription' || Boolean(provider.apiKey.trim());
 
-    const roleSwitch = (label: string, active: boolean, isApplicable: boolean) => {
+    const roleChoice = (label: 'Claude' | 'Codex', active: boolean, isApplicable: boolean) => {
       if (!isApplicable) {
         return (
-          <Text type="secondary" style={{ fontSize: 10, width: 130 }}>
-            {t('claudeCodeConfig.providerCodexNotSupported')}
+          <Text type="secondary" style={{ fontSize: 11, width: 130 }}>
+            {t('claudeCodeConfig.providerRoleNotSupported', { tool: label })}
           </Text>
         );
       }
       return (
         <Tooltip title={!canActivate ? t('claudeCodeConfig.providerNeedCredentialsHint') : undefined}>
           <Space size={4}>
-            <Switch
-              size="small"
+            <Radio
+              name={`provider-primary-${label.toLowerCase()}`}
+              aria-label={t(label === 'Claude' ? 'claudeCodeConfig.providerUseForClaude' : 'claudeCodeConfig.providerUseForCodex')}
               checked={active}
-              disabled={!canActivate}
+              disabled={!canActivate || loading}
               onChange={() => onActivate(provider.id, label === 'Claude' ? 'claude' : 'codex')}
-            />
-            <Text style={{ fontSize: 11, color: active ? palette.linkForeground : palette.descriptionForeground, minWidth: 40 }}>
-              {label}
-            </Text>
+            >
+              <Text style={{ fontSize: 12, color: active ? palette.linkForeground : palette.descriptionForeground, minWidth: 40 }}>
+                {label}
+              </Text>
+            </Radio>
             {active ? (
-              <Tag color="blue" style={{ margin: 0, fontSize: 10, lineHeight: '16px' }}>
+              <Tag color="blue" style={{ margin: 0, fontSize: 11, lineHeight: '16px' }}>
                 {t('claudeCodeConfig.providerRolePrimary')}
               </Tag>
             ) : null}
@@ -174,8 +99,8 @@ export function AiCliProviderGroup({
 
     return (
       <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
-        {roleSwitch('Claude', provider.activeClaude, true)}
-        {roleSwitch('Codex', provider.activeCodex, true)}
+        {roleChoice('Claude', provider.activeClaude, providerSupportsRole(provider, 'claude'))}
+        {roleChoice('Codex', provider.activeCodex, providerSupportsRole(provider, 'codex'))}
       </div>
     );
   };
@@ -194,13 +119,13 @@ export function AiCliProviderGroup({
   const renderProtocolTag = (provider: AiCliProviderRecord) => {
     if (!provider.apiKind) {
       return (
-        <Tag style={{ margin: 0, fontSize: 10 }}>
+        <Tag style={{ margin: 0, fontSize: 11 }}>
           {t('claudeCodeConfig.providerProtocolAuto')}
         </Tag>
       );
     }
     return (
-      <Tag color={provider.apiKind === 'openai' ? 'blue' : 'purple'} style={{ margin: 0, fontSize: 10 }}>
+      <Tag color={provider.apiKind === 'openai' ? 'blue' : 'purple'} style={{ margin: 0, fontSize: 11 }}>
         {provider.apiKind === 'openai'
           ? t('claudeCodeConfig.providerProtocolOpenAiDetected')
           : t('claudeCodeConfig.providerProtocolAnthropicDetected')}
@@ -218,6 +143,9 @@ export function AiCliProviderGroup({
           <QuestionCircleOutlined style={{ opacity: 0.65, cursor: 'help' }} />
         </Tooltip>
       </Space>
+      <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 8 }}>
+        {t('claudeCodeConfig.providerSelectionHint')}
+      </Text>
       <Space direction="vertical" style={{ width: '100%' }} size={10}>
         {providers.map((p) => {
           const editing = editingIds.has(p.id);
@@ -239,7 +167,7 @@ export function AiCliProviderGroup({
               key={p.id}
               size="small"
               style={{
-                borderRadius: 8,
+                borderRadius: 12,
                 borderColor: hasAnyActive ? palette.focusBorder : undefined,
                 background: hasAnyActive ? palette.codeBlockBackground : undefined,
               }}
@@ -247,9 +175,9 @@ export function AiCliProviderGroup({
                 <Space size={6} wrap>
                   <Text strong style={{ fontSize: 13 }}>{p.name || p.baseUrl || t('claudeCodeConfig.providerUnnamed')}</Text>
                   {renderProtocolTag(p)}
-                  {hasAnyActive && proxyEnabled ? (
-                    <Tag color="green" style={{ margin: 0, fontSize: 10 }}>
-                      {t('claudeCodeConfig.providerGatewayActive')}
+                  {hasAnyActive ? (
+                    <Tag color="green" style={{ margin: 0, fontSize: 11 }}>
+                      {t('claudeCodeConfig.providerSelected')}
                     </Tag>
                   ) : null}
                 </Space>
@@ -266,13 +194,15 @@ export function AiCliProviderGroup({
                     <Text
                       type="secondary"
                       ellipsis={{ tooltip: p.baseUrl || t('claudeCodeConfig.providerSubscriptionDirect') }}
-                      style={{ display: 'block', minWidth: 0, fontSize: 11 }}
+                      style={{ display: 'block', minWidth: 0, fontSize: 12 }}
                     >
                       {p.baseUrl || t('claudeCodeConfig.providerSubscriptionDirect')}
                     </Text>
-                    {renderUsage(p)}
                   </div>
-                  {renderRoleToggles(p)}
+                  {renderRoleChoices(p)}
+                  {supportsProviderUsageQuery(p.baseUrl, { apiKind: p.apiKind, authMode: inferProviderAuthMode(p), usageQuery: p.usageQuery }) ? (
+                    <ProviderUsageCard usage={providerUsage[p.id]} palette={palette} onRefresh={() => onQueryProviderUsage(p.id, true)} />
+                  ) : null}
                 </div>
               ) : (
                 <ProviderEditor
@@ -292,7 +222,7 @@ export function AiCliProviderGroup({
                   onRemove={hasAnyActive ? undefined : () => onRemove(p.id)}
                   onCheckAvailability={onCheckAvailability}
                   providerUsage={providerUsage[p.id]}
-                  onQueryProviderUsage={() => onQueryProviderUsage(p.id)}
+                  onQueryProviderUsage={() => onQueryProviderUsage(p.id, true)}
                   onFetchModels={(baseUrl, apiKey, kind) =>
                     onFetchModels(p.id, baseUrl, apiKey, kind)
                   }
@@ -302,7 +232,7 @@ export function AiCliProviderGroup({
           );
         })}
         {providers.length === 0 && !showNew ? (
-          <Text type="secondary" style={{ fontSize: 11 }}>{t('claudeCodeConfig.providerEmpty')}</Text>
+          <Text type="secondary" style={{ fontSize: 12 }}>{t('claudeCodeConfig.providerEmpty')}</Text>
         ) : null}
         {showNew ? (
           <Card
@@ -315,7 +245,7 @@ export function AiCliProviderGroup({
                 </Tooltip>
               </Space>
             }
-            style={{ borderRadius: 8 }}
+            style={{ borderRadius: 12 }}
           >
             <ProviderEditor
               t={t}

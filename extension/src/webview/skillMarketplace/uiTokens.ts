@@ -1,18 +1,18 @@
 import type { CSSProperties } from 'react';
-import type { VscodeThemePalette } from '../theme';
+import { UI, type VscodeThemePalette } from '../theme';
 
 /** Shared layout tokens for the skill management webview. */
 export const SKILL_UI = {
   radius: {
-    sm: 8,
-    md: 12,
-    lg: 16,
+    sm: UI.radius.control,
+    md: UI.radius.card,
+    lg: UI.radius.panel,
   },
   space: {
     xs: 6,
-    sm: 8,
-    md: 12,
-    lg: 16,
+    sm: UI.radius.control,
+    md: UI.radius.card,
+    lg: UI.radius.panel,
     xl: 20,
   },
   maxWidth: 1180,
@@ -24,11 +24,10 @@ export function surfaceCardStyle(palette: VscodeThemePalette, opts?: {
   muted?: boolean;
 }): CSSProperties {
   return {
-    background: opts?.muted ? palette.surfaceMuted : palette.surfaceMuted,
+    background: opts?.muted ? palette.surfaceBackground : palette.surfaceMuted,
     border: `1px solid ${palette.panelBorder}`,
     borderLeft: opts?.accent ? `3px solid ${opts.accent}` : undefined,
     borderRadius: SKILL_UI.radius.md,
-    boxShadow: '0 1px 0 rgba(0,0,0,0.04)',
   };
 }
 
@@ -38,7 +37,7 @@ export function sectionShellStyle(palette: VscodeThemePalette): CSSProperties {
     padding: `${SKILL_UI.space.lg}px ${SKILL_UI.space.lg}px ${SKILL_UI.space.md}px`,
     borderRadius: SKILL_UI.radius.md,
     border: `1px solid ${palette.panelBorder}`,
-    background: `linear-gradient(180deg, ${palette.surfaceBackground} 0%, ${palette.editorBackground} 100%)`,
+    background: palette.surfaceMuted,
   };
 }
 
@@ -48,8 +47,7 @@ export function heroShellStyle(palette: VscodeThemePalette): CSSProperties {
     padding: '22px 24px',
     borderRadius: SKILL_UI.radius.lg,
     border: `1px solid ${palette.panelBorder}`,
-    background: `linear-gradient(180deg, ${palette.surfaceBackground} 0%, ${palette.editorBackground} 100%)`,
-    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+    background: palette.surfaceMuted,
   };
 }
 
@@ -62,7 +60,7 @@ export function iconBadgeStyle(accent: string): CSSProperties {
     height: 40,
     borderRadius: SKILL_UI.radius.md,
     flexShrink: 0,
-    background: `linear-gradient(145deg, ${accent}28 0%, ${accent}0c 100%)`,
+    background: `color-mix(in srgb, ${accent} 12%, transparent)`,
     color: accent,
   };
 }
@@ -70,7 +68,7 @@ export function iconBadgeStyle(accent: string): CSSProperties {
 export function skillGridStyle(): CSSProperties {
   return {
     display: 'grid',
-    gridTemplateColumns: `repeat(auto-fill, minmax(${SKILL_UI.cardMinWidth}px, 1fr))`,
+    gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, ${SKILL_UI.cardMinWidth}px), 1fr))`,
     gap: SKILL_UI.space.md,
   };
 }

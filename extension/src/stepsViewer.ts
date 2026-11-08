@@ -105,8 +105,8 @@ export class StepsViewer {
   private static updateWebview(
     panel: vscode.WebviewPanel,
     data: StepsConfig,
-    filePath: string,
-    context: vscode.ExtensionContext
+    _filePath: string,
+    _context: vscode.ExtensionContext
   ): void {
     const steps = data.steps || [];
     const isChinese = isExtensionZh();
@@ -572,10 +572,10 @@ export class StepsViewer {
   </div>
 
   <script>
-    const steps = ${JSON.stringify(steps)};
-    const startT = ${JSON.stringify(data.start_t || '')};
-    const serializedYaml = ${JSON.stringify(serializedYaml)};
-    const stepSnippets = ${JSON.stringify(stepSnippets)};
+    const steps = ${JSON.stringify(steps).replace(/</g, '\\u003c')};
+    const startT = ${JSON.stringify(data.start_t || '').replace(/</g, '\\u003c')};
+    const serializedYaml = ${JSON.stringify(serializedYaml).replace(/</g, '\\u003c')};
+    const stepSnippets = ${JSON.stringify(stepSnippets).replace(/</g, '\\u003c')};
     const isChinese = ${isChinese ? 'true' : 'false'};
     const vscode = acquireVsCodeApi();
     
@@ -752,7 +752,7 @@ export class StepsViewer {
           <div class="step-header">
             <div class="step-type">
               <span class="step-icon">\${icons[step.type]}</span>
-              <span class="step-label \${step.type}">\${labels[step.type]}</span>
+              <span class="step-label \${escapeHtml(step.type)}">\${escapeHtml(labels[step.type])}</span>
             </div>
             <span class="step-number">#\${index + 1}</span>
           </div>

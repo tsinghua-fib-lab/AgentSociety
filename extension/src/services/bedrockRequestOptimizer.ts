@@ -61,6 +61,7 @@ export function optimizeBedrockThinking(
   if (!settings.enabled || !settings.thinkingOptimizer) {
     return body;
   }
+  if (isObject(body.thinking) && body.thinking.type === 'disabled') { return body; }
   const model = typeof body.model === 'string' ? body.model : '';
   if (!model) {
     return body;

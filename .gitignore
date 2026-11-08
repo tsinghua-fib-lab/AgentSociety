@@ -213,3 +213,7 @@ packages/agentsociety2/run_*/
 # Allow JSON configs (but not generated JSON data)
 # Note: *.json and *.jsonl are ignored by default for generated data
 !packages/agentsociety2/agentsociety2/agent/skills/**/references/*.json
+
+# Local experiment data, reports, and one-off analysis tools
+/optimization/
+/packages/agentsociety2/benchmarks/

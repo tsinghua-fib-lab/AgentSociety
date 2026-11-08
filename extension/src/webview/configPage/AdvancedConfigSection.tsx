@@ -15,7 +15,7 @@ import type { ConfigValues, ValidationState, EasyPaperConfigValues } from './typ
 import { ValidationAction } from './ValidationAction';
 import { PythonEnvironmentPicker, type PythonEnvironmentOption } from './PythonEnvironmentPicker';
 import { EnvLlmModelField } from './EnvLlmModelField';
-import { ThinkingSelect } from './ThinkingSelect';
+import { ThinkingSelect, LlmApiTypeField } from './ThinkingSelect';
 import { EasyPaperConfigSection } from './EasyPaperConfigSection';
 import { tabBodyStyle } from './configPageStyles';
 import {
@@ -48,7 +48,7 @@ export interface AdvancedConfigSectionProps {
   modelsBySlot: Record<string, ClaudeModelOption[]>;
   modelsLoadingBySlot: Record<string, boolean>;
   modelsErrorBySlot: Record<string, string | null>;
-  onFetchSlotModels: (slotId: string, baseUrl: string, apiKey: string) => void;
+  onFetchSlotModels: (slotId: string, baseUrl: string, apiKey: string, apiKind?: 'anthropic' | 'openai') => void;
   effectiveValues: ConfigValues;
   pythonEnvironmentOptions: PythonEnvironmentOption[];
   pythonEnvironmentScanning: boolean;
@@ -135,7 +135,7 @@ export const AdvancedConfigSection: React.FC<AdvancedConfigSectionProps> = ({
     loading: modelsLoadingBySlot[slotId] ?? false,
     error: modelsErrorBySlot[slotId] ?? null,
     canFetch: Boolean((baseUrl ?? '').trim() && (apiKey ?? '').trim()),
-    onFetch: () => onFetchSlotModels(slotId, baseUrl ?? '', apiKey ?? ''),
+    onFetch: () => onFetchSlotModels(slotId, baseUrl ?? '', apiKey ?? '', slotId === ENV_LLM_SLOT.coder ? effectiveValues.coderLlmApiType || effectiveValues.llmApiType || 'openai' : 'openai'),
   });
 
   const coderBase = (effectiveValues.coderLlmApiBase || effectiveValues.llmApiBase || '').trim();
@@ -177,6 +177,7 @@ export const AdvancedConfigSection: React.FC<AdvancedConfigSectionProps> = ({
           >
             <ThinkingSelect t={t} scope="coder" />
           </Form.Item>
+          <LlmApiTypeField t={t} scope="coder" />
           {renderValidationAction('coder')}
         </div>
       ),
@@ -261,6 +262,10 @@ export const AdvancedConfigSection: React.FC<AdvancedConfigSectionProps> = ({
           t={t}
           palette={palette}
           form={easyPaperForm}
+          modelsBySlot={modelsBySlot}
+          modelsLoadingBySlot={modelsLoadingBySlot}
+          modelsErrorBySlot={modelsErrorBySlot}
+          onFetchModels={onFetchSlotModels}
           defaultLlmApiKey={hasDefaultLlmKey ? (effectiveValues.llmApiKey || '') : ''}
           defaultLlmApiBase={defaultLlmApiBase}
           defaultLlmModel={defaultLlmModel}

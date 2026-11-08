@@ -1,3 +1,6 @@
+import { DEFAULT_MCP_REGISTRY } from './shared/mcpRegistry';
+import { fetchRegistryPage, normalizeRegistrySource, registryProxy } from './services/mcpRegistry';
+import type { McpImportSource } from './services/mcpImport';
 /**
  * 技能管理 Webview：Agent（后端 API）与 Claude（.claude/skills）；
  * 市场条目来自用户在设置中配置的 GitHub/GitLab/Gitee 源。
@@ -19,7 +22,6 @@ import type {
   SkillPreset,
   SkillVersionRef,
   MarketplaceLoadError,
-  SkillFrontmatter,
 } from './webview/skillMarketplace/types';
 import { ApiClient } from './apiClient';
 import type { ProjectStructureProvider } from './projectStructureProvider';
@@ -38,7 +40,6 @@ import {
   normalizeSkillSources,
   isNetworkOrTimeoutError,
   dedupeMarketplaceSkills,
-  type GitHubContentItem,
 } from './skillMarketplace/utils';
 import {
   isValidGitBranch,
@@ -52,7 +53,8 @@ import {
 } from './skillMarketplace/security';
 import { ConfigPageViewProvider } from './configPageViewProvider';
 import { McpServerManager, MCP_SERVER_PRESETS, type McpServerInput } from './services/mcpServerManager';
-import { probeHttpMcpServer } from './services/mcpClient';
+import { mcpConnectionKey, probeHttpMcpServer } from './services/mcpClient';
+import { openMcpAuthentication } from './services/mcpAuthentication';
 import { appendSharedOutputLine, OUTPUT_CHANNEL_MAIN } from './shared/outputChannels';
 
 function hostFromMaybeUrl(value: string | undefined): string | undefined {
@@ -72,8 +74,37 @@ function hostFromMaybeUrl(value: string | undefined): string | undefined {
 const PANEL_VIEW_TYPE = 'aiSocialScientist.skillMarketplace';
 
 export class SkillMarketplacePanel {
+  private _managedSkillNamesCache: Set<string> | null = null;
+
+  /** F11(2026-11-06):扩展 skills/ 目录实际管理的技能名集合——
+   * 守卫市场安装不得覆盖(此前只保护 agentsociety- 前缀,office
+   * 平铺名 pdf/docx/xlsx/pptx 可被同名影子替换)。 */
+  private getExtensionManagedSkillNames(): Set<string> {
+    if (this._managedSkillNamesCache !== null) {
+      return this._managedSkillNamesCache;
+    }
+    const names = new Set<string>();
+    try {
+      const skillsRoot = path.join(this._extensionUri.fsPath, 'skills');
+      if (fs.existsSync(skillsRoot)) {
+        for (const entry of fs.readdirSync(skillsRoot, { withFileTypes: true })) {
+          if (entry.isDirectory() && !entry.name.startsWith('.')) {
+            names.add(entry.name);
+          }
+        }
+      }
+    } catch {
+      /* 目录不可读时退化为空前缀守卫 */
+    }
+    this._managedSkillNamesCache = names;
+    return names;
+  }
+
+
   public static current: SkillMarketplacePanel | undefined;
 
+  private _registryRequest = 0;
+  private readonly _context: vscode.ExtensionContext;
   private readonly _extensionUri: vscode.Uri;
   private readonly _panel: vscode.WebviewPanel;
   private readonly _webview: vscode.Webview;
@@ -88,6 +119,7 @@ export class SkillMarketplacePanel {
     apiClient: ApiClient,
     projectStructureProvider: ProjectStructureProvider
   ) {
+    this._context = context;
     this._extensionUri = extensionUri;
     this._panel = panel;
     this._webview = panel.webview;
@@ -108,12 +140,8 @@ export class SkillMarketplacePanel {
         }
         switch (data.type) {
           case 'ready':
-            await this._loadAgentSkills();
-            await this._loadClaudeCodeSkills();
-            await this._loadBuiltinSkills();
-            await this._loadSkillPresets();
-            await this._loadMarketplaceSkills();
-            await this._loadMcpServers();
+            // Installed skills, plugins and MCP servers have independent list requests.
+            await Promise.all([this._loadSkillPresets(), this._loadMarketplaceSkills()]);
             break;
 
           // Agent Skills
@@ -194,9 +222,11 @@ export class SkillMarketplacePanel {
           case 'fetchLocalSkillMarkdown':
             await this._fetchLocalSkillMarkdown(data.payload.skillDir);
             break;
-          case 'openExternal':
-            vscode.env.openExternal(vscode.Uri.parse(data.payload.url));
+          case 'openExternal': {
+            const uri = vscode.Uri.parse(String(data.payload.url ?? ''));
+            if (uri.scheme === 'https' || uri.scheme === 'http') { await vscode.env.openExternal(uri); }
             break;
+          }
           case 'openSkillSourcesSettings':
             await vscode.commands.executeCommand('workbench.action.openSettings', 'agentSkills.skillSources');
             break;
@@ -316,7 +346,7 @@ export class SkillMarketplacePanel {
             await this._loadMcpServers();
             break;
           case 'saveMcpServer':
-            await this._saveMcpServer(data.payload as McpServerInput);
+            await this._saveMcpServer(data.payload as McpServerInput, typeof data.requestId === 'string' ? data.requestId : undefined);
             break;
           case 'removeMcpServer': {
             const pl = data.payload as { id?: string } | undefined;
@@ -336,8 +366,17 @@ export class SkillMarketplacePanel {
             }
             break;
           }
-          case 'importMcpFromClaude':
-            await this._importMcpFromClaude();
+          case 'getMcpRegistrySource':
+            await this._postMessage({ type: 'mcpRegistrySource', payload: { source: this._context.globalState.get<string>('agentsociety.mcpRegistrySource', DEFAULT_MCP_REGISTRY) } });
+            break;
+          case 'listMcpRegistry':
+            await this._listMcpRegistry(data.payload);
+            break;
+          case 'previewMcpImport':
+            await this._previewMcpImport(data.payload);
+            break;
+          case 'applyMcpImport':
+            await this._applyMcpImport(data.payload);
             break;
           case 'syncMcpServers':
             await this._syncMcpServers();
@@ -347,6 +386,19 @@ export class SkillMarketplacePanel {
             const id = typeof pl?.id === 'string' ? pl.id : '';
             if (id) {
               await this._probeMcpServer(id);
+            }
+            break;
+          }
+          case 'authenticateMcpServer': {
+            const { id, app, requestId } = data.payload ?? {};
+            try {
+              const server = this._mcpManager.listServers().find((entry) => entry.id === id);
+              if (!server || !['codex', 'claude'].includes(app)) { throw new Error('mcp_auth_invalid_server'); }
+              await openMcpAuthentication(server, app, ConfigPageViewProvider.getOutboundProxyEnv());
+              await this._postMessage({ type: 'mcpAuthenticationResult', payload: { id, app, requestId, success: true } });
+            } catch (error) {
+              const code = error instanceof Error && /^mcp_auth_/.test(error.message) ? error.message : 'mcp_auth_start_failed';
+              await this._postMessage({ type: 'mcpAuthenticationResult', payload: { id, app, requestId, success: false, error: code } });
             }
             break;
           }
@@ -855,47 +907,6 @@ export class SkillMarketplacePanel {
     }
   }
 
-  private _isUnderDir(resolvedPath: string, resolvedDir: string): boolean {
-    return resolvedPath === resolvedDir || resolvedPath.startsWith(resolvedDir + path.sep);
-  }
-
-  /**
-   * 安全地解析路径，处理符号链接
-   * 返回路径的真实绝对路径，如果路径不存在或无法访问则返回 null
-   */
-  private _safeResolvePath(inputPath: string): string | null {
-    try {
-      // 首先解析为绝对路径
-      const absolutePath = path.resolve(inputPath);
-
-      // 检查路径是否存在
-      if (!fs.existsSync(absolutePath)) {
-        return absolutePath; // 不存在的路径，返回解析后的路径用于后续检查
-      }
-
-      // 使用 realpath 获取真实路径（解析符号链接）
-      const realPath = fs.realpathSync(absolutePath);
-      return realPath;
-    } catch {
-      return null;
-    }
-  }
-
-  /**
-   * 检查路径是否在允许的目录内（安全版本，处理符号链接）
-   */
-  private _isPathSafe(inputPath: string, allowedDir: string): boolean {
-    const resolvedInput = this._safeResolvePath(inputPath);
-    const resolvedAllowed = this._safeResolvePath(allowedDir);
-
-    if (!resolvedInput || !resolvedAllowed) {
-      return false;
-    }
-
-    return this._isUnderDir(resolvedInput, resolvedAllowed);
-  }
-
-
   private _readLocalSkillMarkdown(skillDir: string): string | null {
     if (!canReadSkillDir(skillDir, this._extensionUri)) {
       return null;
@@ -1282,8 +1293,15 @@ export class SkillMarketplacePanel {
         throw new Error(`Install path escapes skills directory: ${skill.id}`);
       }
 
-      if (skill.id.startsWith('agentsociety-')) {
-        throw new Error(`Built-in skill "${skill.id}" is managed by version presets; do not overwrite from marketplace.`);
+      const managedNames = this.getExtensionManagedSkillNames();
+      const clash = managedNames.has(skill.id)
+        ? skill.id
+        : (skill.id.startsWith('agentsociety-') ? skill.id : null);
+      if (clash) {
+        // F11(2026-11-06):守卫从「agentsociety- 前缀」扩为「扩展 skills/
+        // 目录实际存在的技能名」——office 技能(pdf/docx/xlsx/pptx)平铺
+        // 同步进 .claude/skills,市场同名安装即影子替换扩展管理的副本。
+        throw new Error(`Skill "${skill.id}" clashes with extension-managed skill "${clash}"; do not overwrite from marketplace.`);
       }
 
       const branch = skill.branch || 'main';
@@ -1536,7 +1554,7 @@ export class SkillMarketplacePanel {
     diffText: string,
     localRoot: string,
     remoteRoot: string,
-    skill: MarketplaceSkill
+    _skill: MarketplaceSkill
   ): {
     filesAdded: string[];
     filesDeleted: string[];
@@ -1907,14 +1925,15 @@ export class SkillMarketplacePanel {
     });
   }
 
-  private async _saveMcpServer(input: McpServerInput): Promise<void> {
+  private async _saveMcpServer(input: McpServerInput, requestId?: string): Promise<void> {
     try {
       const servers = await this._mcpManager.saveServer(input);
       await this._postMessage({ type: 'mcpServersLoaded', payload: servers });
-      vscode.window.showInformationMessage(`MCP server「${input.name}」已保存并同步`);
+      await this._postMessage({ type: 'mcpServerSaved', payload: { requestId } });
+      vscode.window.showInformationMessage(`MCP server「${input.name}」已保存`);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      await this._postMessage({ type: 'mcpError', payload: { error: message } });
+      await this._postMessage({ type: 'mcpError', payload: { error: message, requestId } });
     }
   }
 
@@ -1938,14 +1957,54 @@ export class SkillMarketplacePanel {
     }
   }
 
-  private async _importMcpFromClaude(): Promise<void> {
+  private async _listMcpRegistry(payload: { source?: string; search?: string; cursor?: string; requestId?: number }): Promise<void> {
+    const request = ++this._registryRequest;
     try {
-      const servers = await this._mcpManager.importFromClaude();
-      await this._postMessage({ type: 'mcpServersLoaded', payload: servers });
-      vscode.window.showInformationMessage('已从 ~/.claude.json 导入 MCP 配置');
+      const source = normalizeRegistrySource(payload.source ?? DEFAULT_MCP_REGISTRY);
+      const page = await fetchRegistryPage({ source, search: payload.search, cursor: payload.cursor,
+        proxy: registryProxy(source, vscode.workspace.getConfiguration('http').get<string>('proxy')) });
+      if (request !== this._registryRequest) { return; }
+      await this._context.globalState.update('agentsociety.mcpRegistrySource', source);
+      await this._postMessage({ type: 'mcpRegistryPage', payload: { ...page, source, requestId: payload.requestId } });
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      await this._postMessage({ type: 'mcpError', payload: { error: message } });
+      if (request !== this._registryRequest) { return; }
+      const code = error instanceof Error && /^(invalid_registry_|registry_)/.test(error.message) ? error.message : 'registry_network_error';
+      await this._postMessage({ type: 'mcpRegistryError', payload: { error: code, requestId: payload.requestId } });
+    }
+  }
+
+  private async _previewMcpImport(payload: { source?: McpImportSource; text?: string; requestId?: number }): Promise<void> {
+    try {
+      const source = payload.source ?? 'paste';
+      if (!['claude', 'codex', 'file', 'paste'].includes(source)) { throw new Error('invalid_mcp_import'); }
+      let text = payload.text;
+      if (source === 'file') {
+        const uris = await vscode.window.showOpenDialog({ canSelectMany: false, filters: { 'MCP configuration': ['json', 'toml'] } });
+        if (!uris?.[0]) { await this._postMessage({ type: 'mcpImportCancelled', payload: { requestId: payload.requestId } }); return; }
+        text = fs.readFileSync(uris[0].fsPath, 'utf-8');
+      }
+      const preview = this._mcpManager.previewImport(source, text);
+      const items = preview.items.map((item) => ({ ...item, server: item.server ? {
+        ...item.server, args: item.server.args?.map(() => '••••'),
+        url: item.server.url ? new URL(item.server.url).origin + new URL(item.server.url).pathname : undefined,
+        env: item.server.env ? Object.fromEntries(Object.keys(item.server.env).map((key) => [key, '••••'])) : undefined,
+        httpHeaders: item.server.httpHeaders ? Object.fromEntries(Object.keys(item.server.httpHeaders).map((key) => [key, '••••'])) : undefined,
+        claudeOptions: undefined, codexOptions: undefined,
+      } : undefined }));
+      await this._postMessage({ type: 'mcpImportPreview', payload: { ...preview, items, requestId: payload.requestId } });
+    } catch {
+      await this._postMessage({ type: 'mcpImportError', payload: { error: 'invalid_mcp_import', requestId: payload.requestId } });
+    }
+  }
+
+  private async _applyMcpImport(payload: { token?: string; selected?: string[]; claude?: boolean; codex?: boolean; requestId?: number }): Promise<void> {
+    try {
+      const result = await this._mcpManager.applyImport(payload.token ?? '', payload.selected ?? [], { claude: payload.claude === true, codex: payload.codex === true });
+      await this._loadMcpServers();
+      await this._postMessage({ type: 'mcpImportApplied', payload: { ...result, requestId: payload.requestId } });
+    } catch (error) {
+      const code = error instanceof Error && ['mcp_import_changed', 'sse_claude_only', 'unsupported_codex_layout', 'invalid_claude_config'].includes(error.message) ? error.message : 'mcp_import_failed';
+      await this._postMessage({ type: 'mcpImportError', payload: { error: code, requestId: payload.requestId } });
     }
   }
 
@@ -1966,8 +2025,21 @@ export class SkillMarketplacePanel {
     if (!server || server.transport !== 'http' || !server.url) {
       return;
     }
-    const result = await probeHttpMcpServer(server.url, server.httpHeaders);
-    await this._postMessage({ type: 'mcpProbeResult', payload: { id, result } });
+    const headers = { ...server.httpHeaders };
+    if (server.bearerTokenEnvVar && !Object.keys(headers).some((name) => name.toLowerCase() === 'authorization')) {
+      const token = process.env[server.bearerTokenEnvVar];
+      if (!token) {
+        await this._postMessage({ type: 'mcpProbeResult', payload: { id, result: { ok: false, status: 0, tools: [], error: `Missing environment variable: ${server.bearerTokenEnvVar}` } } });
+        return;
+      }
+      headers.Authorization = `Bearer ${token}`;
+    }
+    const connection = mcpConnectionKey(server);
+    const result = await probeHttpMcpServer(server.url, headers);
+    const current = this._mcpManager.listServers().find((row) => row.id === id);
+    const response = current && mcpConnectionKey(current) === connection ? result
+      : { ok: false, status: 0, tools: [], error: 'mcp_configuration_changed' };
+    await this._postMessage({ type: 'mcpProbeResult', payload: { id, result: response } });
   }
 
   private async _openLiteratureMcpConfig(): Promise<void> {
@@ -1997,11 +2069,19 @@ export class SkillMarketplacePanel {
     const scriptUri = webview.asWebviewUri(vscode.Uri.file(scriptPath));
     const lang = getCurrentLanguageCode();
 
+    // F15(2026-11-06):补 CSP(configPage/replay 等 5 个 provider 均有,
+    // 本面板是唯一缺口)。React 应用:script-src 限 webview 资源 + nonce,
+    // style-src 加 'unsafe-inline'(内联 style 块)。
+    const nonce = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+
     return `<!DOCTYPE html>
 <html lang="${lang}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} https: data:; style-src ${webview.cspSource} 'unsafe-inline'; script-src ${webview.cspSource} 'nonce-${nonce}'; font-src ${webview.cspSource}; connect-src ${webview.cspSource};">
   <title>${localize('skillMarketplace.title')}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -2011,7 +2091,7 @@ export class SkillMarketplacePanel {
 </head>
 <body>
   <div id="root"></div>
-  <script>window.__AS_LANG__=${JSON.stringify(lang)};</script>
+  <script nonce="${nonce}">window.__AS_LANG__=${JSON.stringify(lang).replace(/</g, '\\u003c')};</script>
   <script src="${scriptUri}"></script>
 </body>
 </html>`;

@@ -19,6 +19,8 @@ export interface ConfigValues {
   // LLM 默认配置
   llmApiBase: string;
   llmModel: string;
+  llmApiType?: 'openai' | 'anthropic' | '';
+  llmThinkingFormat?: string;
   /** 推理（thinking）开关：'' = 跟随网关默认（不发送该参数）/ 'on' / 'off' */
   llmThinking: string;
   // 可选
@@ -26,6 +28,8 @@ export interface ConfigValues {
   coderLlmApiKey: string;
   coderLlmApiBase: string;
   coderLlmModel: string;
+  coderLlmApiType?: 'openai' | 'anthropic' | '';
+  coderLlmThinkingFormat?: string;
   /** coder 角色的 thinking 开关：'' = 沿用默认 LLM 的取值 / 'on' / 'off' */
   coderLlmThinking: string;
   // Embedding
@@ -90,6 +94,7 @@ export interface EasyPaperConfigValues {
   llmApiKey: string;
   llmBaseUrl: string;
   vlmEnabled: boolean;
+  vlmProvider: string;
   vlmModel: string;
   vlmApiKey: string;
   vlmBaseUrl: string;

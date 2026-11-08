@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Card } from 'antd';
-import type { VscodeThemePalette } from '../theme';
+import type { VscodeThemePalette } from '../../theme';
 import { SKILL_UI, surfaceCardStyle } from '../uiTokens';
 
 export type ListCardProps = {
@@ -26,8 +26,15 @@ export function ListCard({
     <Card
       hoverable={hoverable}
       onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      className={onClick ? 'as-interactive-card' : undefined}
+      onKeyDown={onClick ? (event) => {
+        if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); onClick(); }
+      } : undefined}
       style={{
         ...surfaceCardStyle(palette, { accent }),
+        minWidth: 0,
         marginBottom: SKILL_UI.space.md,
         ...style,
       }}

@@ -1,56 +1,43 @@
 import * as https from 'https';
 import * as http from 'http';
 import { URL } from 'url';
-import { isOfficialOpenAiBaseUrl } from '../aiCli/officialEndpoints';
 import { readCodexSubscriptionSession } from './codexSettings';
+import { applyUpstreamAuthHeaders, type AiCliAuthHeaderMode } from '../aiCli/upstreamAuthHeaders';
+import { createOutboundProxyAgent, type OutboundProxyConfig } from './gatewayOutboundProxy';
+import { customUsageUrl, detectUsageTemplate, parseCustomUsage, type ProviderUsageOptions, type ProviderUsagePlan, type ProviderUsageResult } from '../shared/providerUsage';
+export { supportsProviderUsageQuery } from '../shared/providerUsage';
+export type { ProviderUsagePlan, ProviderUsageResult } from '../shared/providerUsage';
 
-export type ProviderUsagePlan = {
-  name: string;
-  remaining: string;
-  used?: string;
-  unit?: string;
-};
-
-export type ProviderUsageResult = {
-  ok: boolean;
-  template?: string;
-  summary?: string;
-  plans?: ProviderUsagePlan[];
-  error?: string;
-  unsupported?: boolean;
-};
+type UsageFetcher = (url: string, headers: Record<string, string>) => Promise<unknown>;
 
 const USAGE_TIMEOUT_MS = 12_000;
 
-function fetchJson(url: string, headers: Record<string, string>): Promise<unknown> {
+function fetchJson(url: string, headers: Record<string, string>, proxy?: OutboundProxyConfig | null): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const parsed = new URL(url);
     const transport = parsed.protocol === 'https:' ? https : http;
-    const req = transport.request(
-      parsed,
-      { method: 'GET', headers, timeout: USAGE_TIMEOUT_MS },
-      (res) => {
-        const chunks: Buffer[] = [];
-        res.on('data', (c) => chunks.push(c));
-        res.on('end', () => {
-          const text = Buffer.concat(chunks).toString('utf-8');
-          if ((res.statusCode ?? 0) >= 400) {
-            reject(new Error(`http_${res.statusCode}: ${text.slice(0, 200)}`));
-            return;
-          }
-          try {
-            resolve(JSON.parse(text));
-          } catch {
-            reject(new Error('invalid_json'));
-          }
-        });
-      }
-    );
-    req.on('error', reject);
-    req.on('timeout', () => {
-      req.destroy();
-      reject(new Error('timeout'));
+    const agent = createOutboundProxyAgent(proxy);
+    const req = transport.request(parsed, { method: 'GET', headers, agent }, (res) => {
+      const chunks: Buffer[] = [];
+      let size = 0;
+      res.on('error', reject);
+      res.on('data', (chunk: Buffer) => {
+        size += chunk.length;
+        if (size > 1024 * 1024) { req.destroy(new Error('response_too_large')); return; }
+        chunks.push(chunk);
+      });
+      res.on('end', () => {
+        if ((res.statusCode ?? 0) < 200 || (res.statusCode ?? 0) >= 300) {
+          reject(new Error(`http_${res.statusCode}`));
+          return;
+        }
+        try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf-8'))); }
+        catch { reject(new Error('invalid_json')); }
+      });
     });
+    const timer = setTimeout(() => req.destroy(new Error('timeout')), USAGE_TIMEOUT_MS);
+    req.on('error', reject);
+    req.on('close', () => { clearTimeout(timer); agent?.destroy(); });
     req.end();
   });
 }
@@ -63,34 +50,8 @@ function authHeader(apiKey: string): Record<string, string> {
   return { Authorization: `Bearer ${token}` };
 }
 
-function isHostnameOrSuffix(host: string, domain: string): boolean {
-  return host === domain || host.endsWith('.' + domain);
-}
-
-function detectTemplate(baseUrl: string): string | null {
-  let host: string;
-  try {
-    host = new URL(baseUrl).hostname.toLowerCase();
-  } catch {
-    host = baseUrl.toLowerCase();
-  }
-  if (isHostnameOrSuffix(host, 'open.bigmodel.cn') || isHostnameOrSuffix(host, 'bigmodel.cn')) {
-    return 'zhipu';
-  }
-  if (isHostnameOrSuffix(host, 'api.deepseek.com') || isHostnameOrSuffix(host, 'deepseek.com')) {
-    return 'deepseek';
-  }
-  if (isHostnameOrSuffix(host, 'openrouter.ai')) {
-    return 'openrouter';
-  }
-  if (isHostnameOrSuffix(host, 'api.siliconflow.cn') || isHostnameOrSuffix(host, 'siliconflow.cn')) {
-    return 'siliconflow';
-  }
-  return null;
-}
-
-async function queryZhipu(apiKey: string): Promise<ProviderUsageResult> {
-  const data = (await fetchJson('https://open.bigmodel.cn/api/monitor/usage/quota/limit', {
+async function queryZhipu(apiKey: string, request: UsageFetcher): Promise<ProviderUsageResult> {
+  const data = (await request('https://open.bigmodel.cn/api/monitor/usage/quota/limit', {
     ...authHeader(apiKey),
     'Content-Type': 'application/json',
   })) as {
@@ -109,69 +70,80 @@ async function queryZhipu(apiKey: string): Promise<ProviderUsageResult> {
     };
   };
   if (!data.success || !data.data?.limits) {
-    return { ok: false, template: 'zhipu', error: data.msg ?? 'query_failed' };
+    return { ok: false, template: 'zhipu', error: 'query_failed' };
   }
   const limits = data.data.limits;
   const tokenLimits = limits.filter((l) => l.type === 'TOKENS_LIMIT');
   const plans: ProviderUsagePlan[] = [];
   if (tokenLimits[0]) {
-    const p = tokenLimits[0].percentage ?? 0;
+    const p = tokenLimits[0].percentage;
+    if (p === undefined || !Number.isFinite(p)) { return { ok: false, error: 'invalid_usage_response' }; }
     plans.push({
       name: '5小时额度',
       remaining: `${Math.max(0, 100 - p).toFixed(0)}%`,
       used: `${p.toFixed(0)}%`,
       unit: '%',
+      remainingPercent: Math.max(0, Math.min(100, 100 - p)),
     });
   }
   if (tokenLimits[1]) {
-    const p = tokenLimits[1].percentage ?? 0;
+    const p = tokenLimits[1].percentage;
+    if (p === undefined || !Number.isFinite(p)) { return { ok: false, error: 'invalid_usage_response' }; }
     plans.push({
       name: '每周额度',
       remaining: `${Math.max(0, 100 - p).toFixed(0)}%`,
       used: `${p.toFixed(0)}%`,
       unit: '%',
+      remainingPercent: Math.max(0, Math.min(100, 100 - p)),
     });
   }
   const mcp = limits.find((l) => l.type === 'TIME_LIMIT');
   if (mcp) {
     plans.push({
       name: 'MCP 每月',
-      remaining: String(mcp.remaining ?? 0),
-      used: String(mcp.currentValue ?? 0),
+      remaining: mcp.remaining === undefined ? '—' : String(mcp.remaining),
+      used: mcp.currentValue === undefined ? undefined : String(mcp.currentValue),
       unit: '次',
     });
   }
   const summary = plans.map((p) => `${p.name} 余${p.remaining}`).join(' · ');
-  return { ok: true, template: 'zhipu', plans, summary };
+  return { ok: true, template: 'zhipu', scope: 'quota', plans, summary };
 }
 
-async function queryDeepseek(apiKey: string): Promise<ProviderUsageResult> {
-  const data = (await fetchJson('https://api.deepseek.com/user/balance', {
+async function queryDeepseek(apiKey: string, request: UsageFetcher): Promise<ProviderUsageResult> {
+  const data = (await request('https://api.deepseek.com/user/balance', {
     ...authHeader(apiKey),
     Accept: 'application/json',
   })) as {
     is_available?: boolean;
-    balance_infos?: Array<{ currency?: string; total_balance?: string }>;
+    balance_infos?: Array<{ currency?: string; total_balance?: string; granted_balance?: string; topped_up_balance?: string }>;
   };
   const infos = data.balance_infos ?? [];
-  if (infos.length === 0) {
+  if (!Array.isArray(infos) || infos.length === 0) {
     return { ok: false, template: 'deepseek', error: 'empty_balance' };
   }
+  if (infos.some((info) => typeof info.total_balance !== 'string' || !info.total_balance.trim() || !Number.isFinite(Number(info.total_balance)))) { return { ok: false, error: 'invalid_usage_response' }; }
   const parts = infos.map((i) => `${i.total_balance ?? '?'} ${i.currency ?? ''}`.trim());
   return {
     ok: true,
     template: 'deepseek',
+    scope: 'balance',
+    available: data.is_available,
     summary: parts.join(' · '),
     plans: infos.map((i, idx) => ({
       name: i.currency ?? `账户${idx + 1}`,
       remaining: i.total_balance ?? '—',
       unit: i.currency,
+      details: [
+        ...(i.topped_up_balance === undefined ? [] : [{ label: 'toppedUp', value: i.topped_up_balance }]),
+        ...(i.granted_balance === undefined ? [] : [{ label: 'granted', value: i.granted_balance }]),
+      ],
     })),
   };
 }
 
-async function queryOpenRouter(apiKey: string): Promise<ProviderUsageResult> {
-  const data = (await fetchJson('https://openrouter.ai/api/v1/auth/key', {
+async function queryOpenRouter(apiKey: string, request: UsageFetcher): Promise<ProviderUsageResult> {
+  const data = (await request('https://openrouter.ai/api/v1/key', {
     ...authHeader(apiKey),
     Accept: 'application/json',
   })) as {
@@ -190,35 +162,39 @@ async function queryOpenRouter(apiKey: string): Promise<ProviderUsageResult> {
   const remaining =
     typeof d.limit_remaining === 'number'
       ? `$${d.limit_remaining.toFixed(2)}`
-      : typeof d.limit === 'number'
-        ? `$${Math.max(0, d.limit - (d.usage ?? 0)).toFixed(2)}`
+      : typeof d.limit === 'number' && typeof d.usage === 'number'
+        ? `$${Math.max(0, d.limit - d.usage).toFixed(2)}`
         : '—';
   const summary =
     typeof d.limit === 'number'
       ? `剩余 ${remaining} / 额度 $${d.limit.toFixed(2)}`
-      : `已用 $${(d.usage ?? 0).toFixed(2)}`;
+      : typeof d.usage === 'number' ? `已用 $${d.usage.toFixed(2)}` : '—';
   return {
     ok: true,
     template: 'openrouter',
+    scope: 'key',
     summary,
-    plans: [{ name: d.label ?? 'API Key', remaining, used: `$${(d.usage ?? 0).toFixed(2)}`, unit: 'USD' }],
+    plans: [{ name: d.label ?? 'API Key', remaining, used: d.usage === undefined ? undefined : `$${d.usage.toFixed(2)}`, unit: 'USD',
+      total: typeof d.limit === 'number' ? d.limit.toFixed(2) : undefined,
+      remainingPercent: typeof d.limit === 'number' && d.limit > 0 && typeof d.limit_remaining === 'number' ? Math.max(0, Math.min(100, d.limit_remaining / d.limit * 100)) : undefined }],
   };
 }
 
-async function querySiliconFlow(apiKey: string): Promise<ProviderUsageResult> {
-  const data = (await fetchJson('https://api.siliconflow.cn/v1/user/info', {
+async function querySiliconFlow(apiKey: string, request: UsageFetcher): Promise<ProviderUsageResult> {
+  const data = (await request('https://api.siliconflow.cn/v1/user/info', {
     ...authHeader(apiKey),
     Accept: 'application/json',
   })) as {
     data?: { balance?: string; charge_balance?: string };
   };
   const balance = data.data?.balance ?? data.data?.charge_balance;
-  if (balance === undefined || balance === null) {
+  if (balance === undefined || balance === null || String(balance).trim() === '' || !Number.isFinite(Number(balance))) {
     return { ok: false, template: 'siliconflow', error: 'empty_balance' };
   }
   return {
     ok: true,
     template: 'siliconflow',
+    scope: 'balance',
     summary: `余额 ${balance}`,
     plans: [{ name: '账户余额', remaining: String(balance), unit: 'CNY' }],
   };
@@ -248,10 +224,10 @@ function formatRateLimitWindow(
   window: RateLimitWindowPayload | null | undefined,
   fallbackName: string
 ): ProviderUsagePlan | null {
-  if (!window || window.used_percent === undefined) {
+  if (!window || window.used_percent === undefined || !Number.isFinite(window.used_percent)) {
     return null;
   }
-  const used = window.used_percent;
+  const used = Math.max(0, Math.min(100, window.used_percent));
   const remaining = Math.max(0, 100 - used);
   const name = windowLabel(window.limit_window_seconds, fallbackName);
   return {
@@ -259,10 +235,12 @@ function formatRateLimitWindow(
     remaining: `${remaining.toFixed(0)}%`,
     used: `${used.toFixed(0)}%`,
     unit: '%',
+    remainingPercent: Math.min(100, remaining),
+    resetsAt: window.reset_at ? new Date(window.reset_at * 1000).toISOString() : undefined,
   };
 }
 
-async function queryCodexSubscriptionUsage(): Promise<ProviderUsageResult> {
+async function queryCodexSubscriptionUsage(request: UsageFetcher): Promise<ProviderUsageResult> {
   const session = readCodexSubscriptionSession();
   if (!session) {
     return { ok: false, template: 'codex_subscription', error: 'codex_not_logged_in' };
@@ -275,7 +253,7 @@ async function queryCodexSubscriptionUsage(): Promise<ProviderUsageResult> {
   if (session.accountId) {
     headers['ChatGPT-Account-Id'] = session.accountId;
   }
-  const data = (await fetchJson('https://chatgpt.com/backend-api/wham/usage', headers)) as {
+  const data = (await request('https://chatgpt.com/backend-api/wham/usage', headers)) as {
     rate_limit?: {
       primary_window?: RateLimitWindowPayload | null;
       secondary_window?: RateLimitWindowPayload | null;
@@ -312,69 +290,65 @@ async function queryCodexSubscriptionUsage(): Promise<ProviderUsageResult> {
     return { ok: false, template: 'codex_subscription', error: 'empty_quota' };
   }
   const summary = plans.map((p) => `${p.name} 余 ${p.remaining}`).join(' · ');
-  return { ok: true, template: 'codex_subscription', plans, summary };
+  return { ok: true, template: 'codex_subscription', scope: 'quota', plans, summary };
 }
 
-export type ProviderUsageQueryOptions = {
-  baseUrl: string;
-  apiKey?: string;
-  authMode?: 'subscription' | 'api';
-  apiKind?: 'anthropic' | 'openai';
+export type ProviderUsageQueryOptions = ProviderUsageOptions & {
+  authHeaderMode?: AiCliAuthHeaderMode;
+  proxy?: OutboundProxyConfig | null;
 };
 
-export function supportsProviderUsageQuery(
-  baseUrl: string,
-  options?: Pick<ProviderUsageQueryOptions, 'authMode' | 'apiKind'>
-): boolean {
-  if (
-    options?.apiKind === 'openai' &&
-    options.authMode === 'subscription' &&
-    isOfficialOpenAiBaseUrl(baseUrl)
-  ) {
-    return true;
+export async function queryProviderUsage(
+  baseUrl: string, apiKey: string, options?: ProviderUsageQueryOptions
+): Promise<ProviderUsageResult> {
+  const template = detectUsageTemplate(baseUrl, options);
+  if (!template) { return { ok: false, unsupported: true, error: 'unsupported_provider' }; }
+  if (template !== 'codex_subscription' && !apiKey.trim()) { return { ok: false, error: 'missing_api_key' }; }
+  const request: UsageFetcher = (url, headers) => fetchJson(url, headers, options?.proxy);
+  try {
+    let result: ProviderUsageResult;
+    switch (template) {
+      case 'zhipu': result = await queryZhipu(apiKey, request); break;
+      case 'deepseek': result = await queryDeepseek(apiKey, request); break;
+      case 'openrouter': result = await queryOpenRouter(apiKey, request); break;
+      case 'siliconflow': result = await querySiliconFlow(apiKey, request); break;
+      case 'codex_subscription': result = await queryCodexSubscriptionUsage(request); break;
+      case 'custom': {
+        const config = options!.usageQuery!;
+        const url = customUsageUrl(baseUrl, config);
+        if (!config.remainingPath?.trim() || !Number.isFinite(config.divisor ?? 1) || (config.divisor ?? 1) <= 0) { throw new Error('invalid_usage_config'); }
+        const headers = { Accept: 'application/json' };
+        applyUpstreamAuthHeaders(headers, apiKey, { upstreamBaseUrl: baseUrl, mode: options?.authHeaderMode });
+        result = parseCustomUsage(await request(url, headers), config);
+        break;
+      }
+      default: return { ok: false, unsupported: true, error: 'unsupported_provider' };
+    }
+    return { ...result, fetchedAt: result.ok ? new Date().toISOString() : undefined };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : '';
+    const error = /^(http_\d{3}|timeout|invalid_json|response_too_large|invalid_usage_config|invalid_usage_response)$/.test(message) ? message : 'network_error';
+    return { ok: false, template, error };
   }
-  return detectTemplate(baseUrl) !== null;
 }
 
-export async function queryProviderUsage(
-  baseUrl: string,
-  apiKey: string,
-  options?: Pick<ProviderUsageQueryOptions, 'authMode' | 'apiKind'>
-): Promise<ProviderUsageResult> {
-  if (
-    options?.apiKind === 'openai' &&
-    options.authMode === 'subscription' &&
-    isOfficialOpenAiBaseUrl(baseUrl)
-  ) {
-    try {
-      return await queryCodexSubscriptionUsage();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      return { ok: false, template: 'codex_subscription', error: message };
-    }
-  }
-  const template = detectTemplate(baseUrl);
-  if (!template) {
-    return { ok: false, unsupported: true, error: 'unsupported_provider' };
-  }
-  if (!apiKey.trim()) {
-    return { ok: false, error: 'missing_api_key' };
-  }
-  try {
-    switch (template) {
-      case 'zhipu':
-        return await queryZhipu(apiKey);
-      case 'deepseek':
-        return await queryDeepseek(apiKey);
-      case 'openrouter':
-        return await queryOpenRouter(apiKey);
-      case 'siliconflow':
-        return await querySiliconFlow(apiKey);
-      default:
-        return { ok: false, unsupported: true, error: 'unsupported_provider' };
-    }
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return { ok: false, template, error: message };
+/** One request per provider at a time; cache entries expire after one minute. */
+export class ProviderUsageCache {
+  private readonly entries = new Map<string, { at: number; result: ProviderUsageResult }>();
+  private readonly pending = new Map<string, Promise<ProviderUsageResult>>();
+
+  query(key: string, load: () => Promise<ProviderUsageResult>, force = false): Promise<ProviderUsageResult> {
+    const pending = this.pending.get(key);
+    if (pending) { return pending; }
+    const cached = this.entries.get(key);
+    if (!force && cached && Date.now() - cached.at < 60_000) { return Promise.resolve(cached.result); }
+    const task = load().then((result) => {
+      this.entries.delete(key);
+      if (this.entries.size >= 128) { this.entries.delete(this.entries.keys().next().value!); }
+      this.entries.set(key, { at: Date.now(), result });
+      return result;
+    }).finally(() => this.pending.delete(key));
+    this.pending.set(key, task);
+    return task;
   }
 }

@@ -1,11 +1,15 @@
 import * as React from 'react';
-import { Alert, Button, Form, Input, Switch, Typography } from 'antd';
+import { Alert, Button, Collapse, Form, Input, Select, Switch, Typography } from 'antd';
 import { CopyOutlined, SaveOutlined } from '@ant-design/icons';
 import type { FormInstance } from 'antd';
 import type { TFunction } from 'i18next';
 import type { VscodeThemePalette } from '../theme';
 import type { EasyPaperConfigValues } from './types';
+import type { ClaudeModelOption } from './claudeCodeTypes';
 import { tabBodyStyle } from './configPageStyles';
+import { EnvLlmModelField } from './EnvLlmModelField';
+import { ENV_LLM_SLOT } from './envLlmSlots';
+import { SIM_LLM_PRESETS, matchSimLlmPreset } from './simLlmPresets';
 
 const { Text } = Typography;
 
@@ -16,117 +20,130 @@ export interface EasyPaperConfigSectionProps {
   defaultLlmApiKey: string;
   defaultLlmApiBase: string;
   defaultLlmModel: string;
+  modelsBySlot: Record<string, ClaudeModelOption[]>;
+  modelsLoadingBySlot: Record<string, boolean>;
+  modelsErrorBySlot: Record<string, string | null>;
+  onFetchModels: (slot: string, base: string, key: string, apiKind?: 'openai' | 'anthropic') => void;
   onSave: () => void;
-  /** When false, hide the section footer save button (wizard uses bottom CTA). */
   showInlineSave?: boolean;
   showIntro?: boolean;
 }
 
 export function EasyPaperConfigSection({
-  t,
-  defaultLlmApiKey,
-  defaultLlmApiBase,
-  defaultLlmModel,
-  onSave,
-  form,
-  showInlineSave = true,
-  showIntro = true,
+  t, defaultLlmApiKey, defaultLlmApiBase, defaultLlmModel, onSave, form,
+  modelsBySlot, modelsLoadingBySlot, modelsErrorBySlot, onFetchModels,
+  showInlineSave = true, showIntro = true,
 }: EasyPaperConfigSectionProps) {
-  const vlmEnabled = Boolean(Form.useWatch('vlmEnabled', form));
+  const values = Form.useWatch([], form) as Partial<EasyPaperConfigValues> | undefined;
+  const llmBase = values?.llmBaseUrl ?? '';
+  const llmKey = values?.llmApiKey ?? '';
+  const vlmBase = values?.vlmBaseUrl ?? '';
+  const vlmKey = values?.vlmApiKey ?? '';
+  const vlmEnabled = Boolean(values?.vlmEnabled);
+  const vlmApiKind = values?.vlmProvider === 'claude' ? 'anthropic' : 'openai';
+  const requestedConnections = React.useRef<Record<string, string>>({});
+  const requestModels = React.useCallback((slot: string, base: string, key: string, apiKind: 'openai' | 'anthropic') => {
+    requestedConnections.current[slot] = `${base}::${key}::${apiKind}`;
+    onFetchModels(slot, base, key, apiKind);
+  }, [onFetchModels]);
+  const required = [{ required: true, whitespace: true, message: t('easyPaperConfig.required') }];
+
+  React.useEffect(() => {
+    if (!llmBase.trim() || !llmKey.trim()) {
+      requestModels(ENV_LLM_SLOT.easyPaperLlm, llmBase, llmKey, 'openai');
+      return;
+    }
+    const timer = window.setTimeout(() => requestModels(ENV_LLM_SLOT.easyPaperLlm, llmBase, llmKey, 'openai'), 800);
+    return () => window.clearTimeout(timer);
+  }, [llmBase, llmKey, requestModels]);
+
+  React.useEffect(() => {
+    if (!vlmEnabled || !vlmBase.trim() || !vlmKey.trim()) {
+      requestModels(ENV_LLM_SLOT.easyPaperVlm, '', '', vlmApiKind);
+      return;
+    }
+    const timer = window.setTimeout(() => requestModels(ENV_LLM_SLOT.easyPaperVlm, vlmBase, vlmKey, vlmApiKind), 800);
+    return () => window.clearTimeout(timer);
+  }, [vlmBase, vlmKey, vlmEnabled, vlmApiKind, requestModels]);
 
   const handleCopyFromAgentSociety = () => {
-    form.setFieldsValue({
-      llmModelName: defaultLlmModel || '',
-      llmApiKey: defaultLlmApiKey || '',
-      llmBaseUrl: defaultLlmApiBase || '',
-      vlmEnabled: true,
-      vlmModel: form.getFieldValue('vlmModel') || 'deepseek-v4-flash',
-      vlmApiKey: defaultLlmApiKey || '',
-      vlmBaseUrl: defaultLlmApiBase || '',
-    });
+    form.setFieldsValue({ llmModelName: defaultLlmModel, llmApiKey: defaultLlmApiKey, llmBaseUrl: defaultLlmApiBase });
   };
+
+  const handlePresetChange = (id: string) => {
+    const preset = SIM_LLM_PRESETS.find((entry) => entry.id === id);
+    if (!preset) { return; }
+    if (id === 'custom') {
+      form.setFieldsValue({ llmBaseUrl: '', llmApiKey: '', llmModelName: '' });
+      return;
+    }
+    if (matchSimLlmPreset(llmBase) !== id) {
+      form.setFieldsValue({ llmBaseUrl: preset.baseUrl, llmApiKey: '', llmModelName: '' });
+    }
+  };
+
+  const modelField = (slot: string, base: string, key: string, apiKind: 'openai' | 'anthropic') => (
+    <EnvLlmModelField
+      t={t}
+      models={requestedConnections.current[slot] === `${base}::${key}::${apiKind}` && base.trim() && key.trim() ? (modelsBySlot[slot] ?? []) : []}
+      loading={modelsLoadingBySlot[slot] ?? false}
+      error={modelsErrorBySlot[slot] ?? null}
+      canFetch={Boolean(base.trim() && key.trim())}
+      onFetch={() => requestModels(slot, base, key, apiKind)}
+      placeholder={t('easyPaperConfig.modelNamePlaceholder')}
+    />
+  );
 
   return (
     <div style={tabBodyStyle}>
-      {showIntro ? (
-        <Alert
-          type="info"
-          showIcon
-          style={{ marginBottom: 16, fontSize: 12 }}
-          message={t('easyPaperConfig.infoTitle')}
-          description={t('easyPaperConfig.infoDescription')}
-        />
-      ) : null}
-
+      {showIntro ? <Collapse size="small" style={{ marginBottom: 16 }} items={[{ key: 'intro', label: t('easyPaperConfig.infoTitle'), children: t('easyPaperConfig.infoDescription') }]} /> : null}
       <Form form={form} layout="vertical" component={false}>
-        <Text strong style={{ fontSize: 13, display: 'block', marginBottom: 8 }}>
-          {t('easyPaperConfig.llmSection')}
-          <Text type="secondary" style={{ fontWeight: 400, marginLeft: 8, fontSize: 12 }}>
-            {t('easyPaperConfig.llmSectionHint')}
-          </Text>
-        </Text>
-
-        <div style={{ marginBottom: 12 }}>
-          <Button
-            size="small"
-            icon={<CopyOutlined />}
-            onClick={handleCopyFromAgentSociety}
-            disabled={!defaultLlmApiKey}
-          >
-            {t('easyPaperConfig.copyFromAgentSociety')}
-          </Button>
-          {!defaultLlmApiKey ? (
-            <Text type="secondary" style={{ fontSize: 11, marginLeft: 8 }}>
-              {t('easyPaperConfig.copyDisabled')}
-            </Text>
-          ) : null}
-        </div>
-
-        <Form.Item name="llmModelName" label={t('easyPaperConfig.modelName')} style={{ marginBottom: 10 }}>
-          <Input placeholder={t('easyPaperConfig.modelNamePlaceholder')} autoComplete="off" />
+        <Text strong style={{ display: 'block', marginBottom: 8 }}>{t('easyPaperConfig.llmSection')}</Text>
+        <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>{t('easyPaperConfig.llmSectionHint')}</Text>
+        <Button size="small" icon={<CopyOutlined />} onClick={handleCopyFromAgentSociety}
+          disabled={!defaultLlmApiKey} style={{ marginBottom: 12 }}>
+          {t('easyPaperConfig.copyFromAgentSociety')}
+        </Button>
+        <Form.Item label={t('configPage.llm.presetLabel')}>
+          <Select value={matchSimLlmPreset(llmBase)} onChange={handlePresetChange}
+            options={SIM_LLM_PRESETS.map((preset) => ({ value: preset.id, label: t(preset.labelKey) }))} />
         </Form.Item>
-        <Form.Item name="llmBaseUrl" label="Base URL" style={{ marginBottom: 10 }}>
+        <Form.Item name="llmBaseUrl" label="Base URL" rules={required}>
           <Input placeholder={t('easyPaperConfig.baseUrlPlaceholder')} autoComplete="off" />
         </Form.Item>
-        <Form.Item name="llmApiKey" label="API Key" style={{ marginBottom: 16 }}>
+        <Form.Item name="llmApiKey" label="API Key" rules={required}>
           <Input.Password placeholder={t('easyPaperConfig.apiKeyPlaceholder')} autoComplete="off" />
         </Form.Item>
-
-        <div style={{ marginTop: 8, marginBottom: 8 }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            <Form.Item name="vlmEnabled" valuePropName="checked" noStyle>
-              <Switch size="small" />
-            </Form.Item>
-            <Text strong style={{ fontSize: 13 }}>{t('easyPaperConfig.vlmSection')}</Text>
-            <Text type="secondary" style={{ fontSize: 11, fontWeight: 400 }}>
-              {t('easyPaperConfig.vlmOptional')}
-            </Text>
-          </span>
+        <Form.Item name="llmModelName" label={t('easyPaperConfig.modelName')} rules={required}>
+          {modelField(ENV_LLM_SLOT.easyPaperLlm, llmBase, llmKey, 'openai')}
+        </Form.Item>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '16px 0' }}>
+          <Form.Item name="vlmEnabled" valuePropName="checked" noStyle><Switch size="small" /></Form.Item>
+          <Text strong>{t('easyPaperConfig.vlmSection')}</Text>
+          <Text type="secondary">{t('easyPaperConfig.vlmOptional')}</Text>
         </div>
-        {vlmEnabled ? (
-          <>
-            <Form.Item name="vlmModel" label={t('easyPaperConfig.vlmModel')} style={{ marginBottom: 10 }}>
-              <Input placeholder={t('easyPaperConfig.vlmModelPlaceholder')} autoComplete="off" />
-            </Form.Item>
-            <Form.Item name="vlmBaseUrl" label="Base URL" style={{ marginBottom: 10 }}>
-              <Input placeholder={t('easyPaperConfig.baseUrlPlaceholder')} autoComplete="off" />
-            </Form.Item>
-            <Form.Item name="vlmApiKey" label="API Key" style={{ marginBottom: 10 }}>
-              <Input.Password placeholder={t('easyPaperConfig.apiKeyPlaceholder')} autoComplete="off" />
-            </Form.Item>
-          </>
-        ) : null}
-
-        {showInlineSave ? (
-          <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
-            <Button type="primary" icon={<SaveOutlined />} onClick={onSave}>
-              {t('easyPaperConfig.save')}
-            </Button>
-            <Text type="secondary" style={{ fontSize: 11, alignSelf: 'center' }}>
-              {t('easyPaperConfig.saveHint')}
-            </Text>
-          </div>
-        ) : null}
+        {vlmEnabled ? <>
+          <Alert type="info" showIcon message={t('easyPaperConfig.visionHint')} style={{ marginBottom: 12 }} />
+          <Button size="small" icon={<CopyOutlined />} disabled={!llmBase || !llmKey}
+            onClick={() => form.setFieldsValue({ vlmProvider: 'openai', vlmBaseUrl: llmBase, vlmApiKey: llmKey })}
+            style={{ marginBottom: 12 }}>{t('easyPaperConfig.copyLlmConnection')}</Button>
+          <Form.Item name="vlmProvider" label={t('easyPaperConfig.vlmProvider')} rules={required}>
+            <Select options={[{ value: 'openai', label: 'OpenAI-compatible' }, { value: 'claude', label: 'Anthropic' }, { value: 'qwen', label: 'Qwen (DashScope)' }]} />
+          </Form.Item>
+          <Form.Item name="vlmBaseUrl" label="Base URL" rules={required}>
+            <Input placeholder={t('easyPaperConfig.baseUrlPlaceholder')} autoComplete="off" />
+          </Form.Item>
+          <Form.Item name="vlmApiKey" label="API Key" rules={required}>
+            <Input.Password placeholder={t('easyPaperConfig.apiKeyPlaceholder')} autoComplete="off" />
+          </Form.Item>
+          <Form.Item name="vlmModel" label={t('easyPaperConfig.vlmModel')} rules={required}>
+            {modelField(ENV_LLM_SLOT.easyPaperVlm, vlmBase, vlmKey, vlmApiKind)}
+          </Form.Item>
+        </> : null}
+        {showInlineSave ? <div style={{ display: 'flex', gap: 8 }}>
+          <Button type="primary" icon={<SaveOutlined />} onClick={onSave}>{t('easyPaperConfig.save')}</Button>
+          <Text type="secondary">{t('easyPaperConfig.saveHint')}</Text>
+        </div> : null}
       </Form>
     </div>
   );

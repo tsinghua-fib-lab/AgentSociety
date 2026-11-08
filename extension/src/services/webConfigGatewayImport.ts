@@ -134,6 +134,5 @@ export function buildGatewayProviderFromWebImport(
     fableModel: claudeConfig.fableModel?.trim() || undefined,
     haikuModel: claudeConfig.haikuModel?.trim() || undefined,
     codexEnable1m: options?.enableCodex1m,
-    permissionMode: 'bypassPermissions',
   };
 }

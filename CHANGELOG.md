@@ -14,6 +14,29 @@ Git 发版标签：`agentsociety2-v{major}.{minor}.{patch}`（见 `CONTRIBUTING.
 
 ## [Unreleased]
 
+### Fixed
+
+- **agentsociety2 / mobility**：路由请求使用正确的驾车/步行 RouteType，拒绝未知交通方式；ETA 按实际仿真速度返回，并以一微米距离容差处理终点浮点残差。
+- **agentsociety2**：写工具开始执行后，程序失败会停止单次 ask 内的整段纠错重试，返回写入尝试标记；只读限制在工具调用端执行。
+- **agentsociety2 / security**：完整 Python 与 NumPy 函数调用可显式选择带硬执行期限和地址空间限制的 Linux 工作进程；拒绝执行帧、代码对象及生成器/协程 frame/code 内省。
+
+- **agentsociety2**：技能元数据按实际读取内容生成指纹，修复等长编辑且文件时间戳相同时复用旧内容的问题。
+- **agentsociety2**：统一 Python 代码围栏解析，提取说明文字后的代码并保留合法字符串中的 Markdown；按分支检查终态赋值，并在执行后核验实际分类，允许分类后的正常打印。
+- **agentsociety2 / security**：限制生成代码访问 NumPy 文件、反序列化与原生接口，校验公开模块别名，并拒绝直接改写宿主对象属性。
+- **agentsociety2**：编译准备异常统一在入口返回，临时资源错误可在后续请求重新准备。
+- **agentsociety2**：执行工具前拒绝重绑定结果容器，修复结果丢失后纠错重试重复产生副作用的问题。
+
+- **agentsociety2 / agent**：创建、保存和恢复统一使用 `skills` 字段；环境技能发现后恢复已有激活状态，减少跨步重复激活。DailyMobility 初始化补充结构化 home/work AOI 并预激活移动技能。
+
+### Performance
+
+- **agentsociety2 / mobility**：附近 POI 观察共用一次空间查询并批量计算候选距离；路径请求复用 HTTP 会话。
+- **agentsociety2 / codegen**：默认使用 `inprocess` 在环境进程内计算，保留代码许可和工具权限约束；设为 `process` 可开启独立计算进程、硬执行期限与内存限制。
+
+- **agentsociety2**：短工具程序预先编译为受限操作计划，复用原事件循环的异步工具并发；数值进程复用策略绑定，准备结果缓存序列化程序。
+
+- **agentsociety2**：缓存最多 128 项静态校验与编译结果；每次执行独立创建上下文、结果、运行时检查与期限，策略变化使准备缓存失效。
+
 ## [2.10.1] - 2026-11-02
 
 - **agentsociety2** `2.10.1` · **extension** `1.8.1` · 标签 `agentsociety2-v2.10.1`

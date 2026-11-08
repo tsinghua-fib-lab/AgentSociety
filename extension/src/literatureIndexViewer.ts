@@ -49,7 +49,6 @@ interface LiteratureIndex {
 
 export class LiteratureIndexViewer {
   private static currentPanel: vscode.WebviewPanel | undefined;
-  private static currentIndexPath: string | undefined;
 
   private static safeWorkspacePath(workspaceRoot: string, filePath: string): string | undefined {
     const candidatePath = path.isAbsolute(filePath)
@@ -410,7 +409,6 @@ export class LiteratureIndexViewer {
     // 如果已有面板，复用它
     if (this.currentPanel) {
       this.currentPanel.reveal(vscode.ViewColumn.One);
-      this.currentIndexPath = filePath;
       this.updateWebview(this.currentPanel, data, filePath);
       return;
     }
@@ -427,12 +425,10 @@ export class LiteratureIndexViewer {
     );
 
     this.currentPanel = panel;
-    this.currentIndexPath = filePath;
 
     // 处理面板关闭
     panel.onDidDispose(() => {
       this.currentPanel = undefined;
-      this.currentIndexPath = undefined;
     });
 
     // 处理来自 webview 的消息
@@ -590,7 +586,7 @@ export class LiteratureIndexViewer {
   private static updateWebview(
     panel: vscode.WebviewPanel,
     data: LiteratureIndex,
-    filePath: string
+    _filePath: string
   ): void {
     const rawEntries = data.entries || [];
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
@@ -1019,6 +1015,22 @@ export class LiteratureIndexViewer {
       margin-right: 8px;
     }
 
+    * { box-sizing: border-box; }
+    button, input, select { max-width: 100%; font: inherit; }
+    button, input[type="text"], select { border-radius: 8px; }
+    button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--vscode-focusBorder); outline-offset: 3px; }
+    button:disabled { opacity: .5; cursor: default; }
+    .header { flex-wrap: wrap; gap: 16px; }
+    .entry { border-radius: 12px; }
+    .entry-title { border: 0; background: transparent; color: var(--vscode-textLink-foreground); text-align: left; padding: 0; overflow-wrap: anywhere; }
+    .abstract-toggle { border: 0; background: transparent; padding: 0; cursor: pointer; }
+    .keyword { border: 1px solid var(--vscode-panel-border); cursor: pointer; }
+    .file-path { overflow-wrap: anywhere; }
+    .filter-group { flex-wrap: wrap; flex-shrink: 1; min-width: 0; max-width: 100%; }
+    .toolbar-tools { max-width: 100%; }
+    .pagination { display: flex; justify-content: center; align-items: center; gap: 16px; padding: 16px 0; }
+    .pagination[hidden] { display: none; }
+    body.vscode-high-contrast .entry, body.vscode-high-contrast-light .entry { border-color: var(--vscode-contrastBorder); box-shadow: none; }
     @media (max-width: 720px) {
       body {
         padding: 12px;
@@ -1063,7 +1075,14 @@ export class LiteratureIndexViewer {
     </div>
     <div class="toolbar-tools">
       <div class="filter-group">
-        <select id="sortSelect" class="sort-select">
+        <select id="attachmentFilter" class="sort-select" aria-label="${isChinese ? '原文与笔记' : 'Files and notes'}">
+          <option value="all">${isChinese ? '全部文献' : 'All articles'}</option>
+          <option value="pdf">${isChinese ? '已有原文文件' : 'With full text'}</option>
+          <option value="missing-pdf">${isChinese ? '待获取原文' : 'Without full text'}</option>
+          <option value="notes">${isChinese ? '有本地笔记' : 'With local notes'}</option>
+        </select>
+        <select id="keywordFilter" class="sort-select" aria-label="${isChinese ? '关键词筛选' : 'Filter by keyword'}"><option value="">${isChinese ? '全部关键词' : 'All keywords'}</option></select>
+        <select id="sortSelect" class="sort-select" aria-label="${isChinese ? '排序' : 'Sort'}">
           <option value="default">${isChinese ? '默认排序' : 'Default Order'}</option>
           <option value="year-desc">${isChinese ? '年份 (新→旧)' : 'Year (New→Old)'}</option>
           <option value="year-asc">${isChinese ? '年份 (旧→新)' : 'Year (Old→New)'}</option>
@@ -1072,11 +1091,12 @@ export class LiteratureIndexViewer {
       </div>
     </div>
   </div>
-  <div id="resultLine" class="result-line hidden-when-empty"></div>
+  <div id="resultLine" class="result-line hidden-when-empty" aria-live="polite"></div>
 
   <div class="batch-actions hidden-when-empty">
     <input type="checkbox" id="selectAll" class="select-all-checkbox" />
-    <label for="selectAll" style="font-size: 12px; margin-right: 12px;">${isChinese ? '全选' : 'Select All'}</label>
+    <label for="selectAll" style="font-size: 12px; margin-right: 12px;">${isChinese ? '全选当前页' : 'Select this page'}</label>
+    <button class="batch-btn" id="clearSelectionBtn">${isChinese ? '清除选择' : 'Clear selection'}</button>
     <button class="batch-btn primary" id="copySelectedBtn">${isChinese ? '复制选中 @引用' : 'Copy Selected @Refs'}</button>
     <button class="batch-btn" id="downloadSelectedBtn">${isChinese ? '下载选中原文' : 'Download Selected PDFs'}</button>
     <button class="batch-btn" id="copyBibBtn">${isChinese ? '复制 BibTeX' : 'Copy BibTeX'}</button>
@@ -1085,12 +1105,25 @@ export class LiteratureIndexViewer {
   </div>
 
   <div id="entries"></div>
+  <nav id="pagination" class="pagination" aria-label="${isChinese ? '文献分页' : 'Library pages'}" hidden>
+    <button id="prevPage" class="batch-btn">${isChinese ? '上一页' : 'Previous'}</button>
+    <span id="pageInfo" aria-live="polite"></span>
+    <button id="nextPage" class="batch-btn">${isChinese ? '下一页' : 'Next'}</button>
+  </nav>
 
   <script>
     const entries = ${jsonForScript(entries)};
     const workspacePath = ${jsonForScript(workspaceFolder?.uri.fsPath ?? null)};
     const isChinese = ${isChinese ? 'true' : 'false'};
     const vscodeApi = acquireVsCodeApi();
+    const libraryPath = ${jsonForScript(_filePath)};
+    const saved = vscodeApi.getState() || {};
+    const viewState = saved.libraryPath === libraryPath ? saved : {};
+    const PAGE_SIZE = 50;
+    let page = Math.max(1, Number(viewState.page) || 1);
+    let currentEntries = entries;
+    const selectedIds = new Set();
+    const entriesById = new Map(entries.map(entry => [String(entry._entry_id), entry]));
 
     function escapeHtml(value) {
       return String(value ?? '')
@@ -1150,18 +1183,14 @@ export class LiteratureIndexViewer {
       return 'https://doi.org/' + doi;
     }
 
-    function getVisibleEntries() {
-      const rows = Array.from(document.querySelectorAll('.entry'));
-      return rows
-        .map(row => entries.find(entry => String(entry._entry_id) === row.getAttribute('data-entry-id')))
-        .filter(Boolean);
+    function getSelectedEntries() {
+      return selectedIds.size ? Array.from(selectedIds, id => entriesById.get(id)).filter(Boolean) : currentEntries;
     }
 
-    function getSelectedEntries() {
-      const selected = Array.from(document.querySelectorAll('.entry-checkbox:checked'))
-        .map(cb => entries.find(entry => String(entry._entry_id) === cb.getAttribute('data-entry-id')))
-        .filter(Boolean);
-      return selected.length > 0 ? selected : getVisibleEntries();
+    function persistView() {
+      vscodeApi.setState({ libraryPath, page, search: document.getElementById('searchInput').value,
+        sort: document.getElementById('sortSelect').value, attachment: document.getElementById('attachmentFilter').value,
+        keyword: document.getElementById('keywordFilter').value });
     }
 
     function updateSelectAllState() {
@@ -1170,6 +1199,14 @@ export class LiteratureIndexViewer {
       const checked = checkboxes.filter(cb => cb.checked).length;
       selectAll.checked = checkboxes.length > 0 && checked === checkboxes.length;
       selectAll.indeterminate = checked > 0 && checked < checkboxes.length;
+      selectAll.disabled = checkboxes.length === 0;
+      document.getElementById('clearSelectionBtn').disabled = selectedIds.size === 0;
+      document.getElementById('copySelectedBtn').disabled = selectedIds.size === 0;
+      document.getElementById('downloadSelectedBtn').disabled = selectedIds.size === 0;
+      for (const id of ['copyBibBtn', 'writeBibBtn', 'exportBtn']) { document.getElementById(id).disabled = currentEntries.length === 0; }
+      document.getElementById('exportBtn').textContent = selectedIds.size
+        ? (isChinese ? '复制选中 CSV' : 'Copy selected CSV') : (isChinese ? '复制结果 CSV' : 'Copy results CSV');
+      updateResultLine(currentEntries.length);
     }
 
     function applySelectAllToVisible() {
@@ -1177,21 +1214,30 @@ export class LiteratureIndexViewer {
       const shouldCheck = selectAll.checked && !selectAll.indeterminate;
       document.querySelectorAll('.entry-checkbox').forEach(function(cb) {
         cb.checked = shouldCheck;
+        if (shouldCheck) { selectedIds.add(cb.getAttribute('data-entry-id')); } else { selectedIds.delete(cb.getAttribute('data-entry-id')); }
       });
       updateSelectAllState();
     }
 
     function updateResultLine(count) {
-      const line = document.getElementById('resultLine');
-      line.textContent = isChinese
-        ? '当前显示 ' + count + ' / ' + entries.length + ' 篇文献'
-        : 'Showing ' + count + ' of ' + entries.length + ' articles';
+      const start = count ? (page - 1) * PAGE_SIZE + 1 : 0;
+      const end = Math.min(page * PAGE_SIZE, count);
+      document.getElementById('resultLine').textContent = isChinese
+        ? '显示 ' + start + '–' + end + ' / ' + count + ' 篇（库中共 ' + entries.length + ' 篇），已选 ' + selectedIds.size + ' 篇'
+        : 'Showing ' + start + '–' + end + ' of ' + count + ' (' + entries.length + ' in library), ' + selectedIds.size + ' selected';
     }
 
     function renderEntries(filteredEntries) {
       const container = document.getElementById('entries');
       container.innerHTML = '';
+      const pageCount = Math.max(1, Math.ceil(filteredEntries.length / PAGE_SIZE));
+      page = Math.min(page, pageCount);
+      document.getElementById('pagination').hidden = pageCount <= 1;
+      document.getElementById('prevPage').disabled = page <= 1;
+      document.getElementById('nextPage').disabled = page >= pageCount;
+      document.getElementById('pageInfo').textContent = page + ' / ' + pageCount;
       updateResultLine(filteredEntries.length);
+      persistView();
 
       if (filteredEntries.length === 0) {
         if (entries.length === 0) {
@@ -1220,13 +1266,14 @@ export class LiteratureIndexViewer {
             });
           }
         } else {
-          container.innerHTML = '<div class="empty-state">' + (isChinese ? '没有找到匹配的文献' : 'No matching articles found') + '</div>';
+          container.innerHTML = '<div class="empty-state"><p>' + (isChinese ? '没有找到匹配的文献' : 'No matching articles found') + '</p><button class="batch-btn" id="clearFiltersBtn">' + (isChinese ? '清除筛选' : 'Clear filters') + '</button></div>';
+          document.getElementById('clearFiltersBtn').addEventListener('click', clearFilters);
         }
         updateSelectAllState();
         return;
       }
 
-      filteredEntries.forEach((entry, index) => {
+      filteredEntries.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).forEach((entry, index) => {
         const div = document.createElement('div');
         div.className = 'entry';
         div.dataset.index = index;
@@ -1255,8 +1302,8 @@ export class LiteratureIndexViewer {
         const originalTarget = fullTextPath || sourceUrl;
         const fullTextEnriched = fullText.enriched === true;
         const fullTextStatus = typeof fullText.status === 'string' ? fullText.status : '';
-        const fullTextLabel = fullTextStatus === 'downloaded'
-          ? (isChinese ? '已下载原文 PDF' : 'Full-text PDF downloaded')
+        const fullTextLabel = fullTextPath
+          ? (isChinese ? '本地原文 PDF' : 'Local full-text PDF')
           : fullTextEnriched
             ? (isChinese ? '原文不可下载，笔记已人工补充' : 'PDF unavailable; note manually supplemented')
             : fullTextStatus === 'no_candidate'
@@ -1276,22 +1323,22 @@ export class LiteratureIndexViewer {
             <div class="entry-abstract">
               <div class="abstract-preview" id="abstract-preview-\${index}">\${escapeHtml(abstract.substring(0, 300))}\${needsTruncate ? '...' : ''}</div>
               <div class="abstract-full" id="abstract-full-\${index}">\${escapeHtml(abstract)}</div>
-              \${needsTruncate ? \`<span class="abstract-toggle" onclick="toggleAbstract(\${index})">\${isChinese ? '展开全文' : 'Show more'}</span>\` : ''}
+              \${needsTruncate ? \`<button type="button" class="abstract-toggle" onclick="toggleAbstract(\${index})">\${isChinese ? '展开全文' : 'Show more'}</button>\` : ''}
             </div>
           \`;
         }
 
         div.innerHTML = \`
           <div class="entry-header">
-            <input type="checkbox" class="entry-checkbox" data-entry-id="\${escapeHtml(String(entry._entry_id || index))}" data-filepath="\${escapeHtml(filePath)}" data-at-ref="\${escapeHtml(entry.at_ref || '')}" data-title="\${escapeHtml(title)}" style="margin-right: 10px;" />
-            <div class="entry-title" data-original-target="\${escapeHtml(originalTarget)}" data-is-local-file="\${fullTextPath ? 'true' : 'false'}" onclick="handleTitleClick(this)">\${escapeHtml(title)}</div>
+            <input type="checkbox" class="entry-checkbox" aria-label="\${escapeHtml(title)}" \${selectedIds.has(String(entry._entry_id)) ? 'checked' : ''} data-entry-id="\${escapeHtml(String(entry._entry_id || index))}" data-filepath="\${escapeHtml(filePath)}" data-at-ref="\${escapeHtml(entry.at_ref || '')}" data-title="\${escapeHtml(title)}" style="margin-right: 10px;" />
+            <button type="button" class="entry-title" data-original-target="\${escapeHtml(originalTarget)}" data-is-local-file="\${fullTextPath ? 'true' : 'false'}" onclick="handleTitleClick(this)">\${escapeHtml(title)}</button>
             \${year ? \`<span class="entry-year">\${escapeHtml(year)}</span>\` : ''}
           </div>
           \${journal ? \`<div class="entry-journal">\${escapeHtml(journal)}</div>\` : ''}
           \${authors.length > 0 ? \`<div class="entry-authors">\${escapeHtml(authors.join(', '))}</div>\` : ''}
           \${abstractHtml}
           <div class="entry-meta">
-            \${keywords.slice(0, 5).map(k => \`<span class="keyword">\${escapeHtml(k)}</span>\`).join('')}
+            \${keywords.slice(0, 5).map(k => \`<button type="button" class="keyword" data-keyword="\${escapeHtml(k)}" onclick="filterKeyword(this)">\${escapeHtml(k)}</button>\`).join('')}
           </div>
           \${filePath ? \`<div class="file-path">📝 \${isChinese ? 'Markdown' : 'Markdown'}: \${escapeHtml(filePath)}</div>\` : ''}
           \${sourceUrl ? \`<div class="file-path">🔗 \${isChinese ? '原文链接' : 'Source'}: \${escapeHtml(sourceUrl)}</div>\` : ''}
@@ -1309,7 +1356,7 @@ export class LiteratureIndexViewer {
 
         container.appendChild(div);
       });
-      applySelectAllToVisible();
+      updateSelectAllState();
     }
 
     function toggleAbstract(index) {
@@ -1421,11 +1468,7 @@ export class LiteratureIndexViewer {
       });
     }
 
-    function getCheckedEntryIds() {
-      return Array.from(document.querySelectorAll('.entry-checkbox:checked'))
-        .map(function(cb) { return cb.getAttribute('data-entry-id'); })
-        .filter(Boolean);
-    }
+    function getCheckedEntryIds() { return Array.from(selectedIds, Number); }
 
     function copyAtReferenceForEntry(btn) {
       const row = btn.closest('.entry');
@@ -1444,50 +1487,51 @@ export class LiteratureIndexViewer {
       });
     }
 
-    // 搜索功能
-    document.getElementById('searchInput').addEventListener('input', (e) => {
-      const query = e.target.value.toLowerCase();
-      const filtered = entries.filter(entry => {
-        const title = (entry.title || '').toLowerCase();
-        const authors = getEntryAuthors(entry).join(' ').toLowerCase();
-        const keywords = getEntryKeywords(entry).join(' ').toLowerCase();
-        const abstract = (entry.abstract || '').toLowerCase();
-        const journal = (entry.journal || '').toLowerCase();
-        const doi = (entry.doi || '').toLowerCase();
-        return title.includes(query) || authors.includes(query) || keywords.includes(query) || abstract.includes(query) || journal.includes(query) || doi.includes(query);
-      });
-      applySort(filtered);
-    });
-
-    // 排序功能
-    function applySort(entriesToSort) {
-      const sortValue = document.getElementById('sortSelect').value;
-      let sorted = [...entriesToSort];
-
-      if (sortValue === 'year-desc') {
-        sorted.sort((a, b) => (Number(getEntryYear(b)) || 0) - (Number(getEntryYear(a)) || 0));
-      } else if (sortValue === 'year-asc') {
-        sorted.sort((a, b) => (Number(getEntryYear(a)) || 0) - (Number(getEntryYear(b)) || 0));
-      } else if (sortValue === 'title') {
-        sorted.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
-      }
-
-      renderEntries(sorted);
+    const searchIndex = entries.map(entry => ({ entry, text: [entry.title, getEntryYear(entry), getEntryAuthors(entry).join(' '), getEntryKeywords(entry).join(' '), entry.abstract, entry.journal, entry.doi].join(' ').toLowerCase() }));
+    const keywords = Array.from(new Set(entries.flatMap(getEntryKeywords))).sort((a, b) => a.localeCompare(b));
+    const keywordSelect = document.getElementById('keywordFilter');
+    for (const keyword of keywords) {
+      const option = document.createElement('option'); option.value = keyword; option.textContent = keyword; keywordSelect.appendChild(option);
     }
+    document.getElementById('searchInput').value = typeof viewState.search === 'string' ? viewState.search : '';
+    document.getElementById('sortSelect').value = viewState.sort || 'default';
+    document.getElementById('attachmentFilter').value = viewState.attachment || 'all';
+    keywordSelect.value = viewState.keyword || '';
 
-    document.getElementById('sortSelect').addEventListener('change', () => {
-      const query = document.getElementById('searchInput').value.toLowerCase();
-      const filtered = entries.filter(entry => {
-        const title = (entry.title || '').toLowerCase();
-        const authors = getEntryAuthors(entry).join(' ').toLowerCase();
-        const keywords = getEntryKeywords(entry).join(' ').toLowerCase();
-        const abstract = (entry.abstract || '').toLowerCase();
-        const journal = (entry.journal || '').toLowerCase();
-        const doi = (entry.doi || '').toLowerCase();
-        return title.includes(query) || authors.includes(query) || keywords.includes(query) || abstract.includes(query) || journal.includes(query) || doi.includes(query);
-      });
-      applySort(filtered);
-    });
+    function hasFullText(entry) {
+      return Boolean(getExtraFields(entry).full_text?.file_path) || /\\.pdf$/i.test(entry.file_path || '');
+    }
+    function applyFilters(reset = true) {
+      if (reset) { page = 1; selectedIds.clear(); }
+      const terms = document.getElementById('searchInput').value.trim().toLowerCase().split(/\\s+/).filter(Boolean);
+      const attachment = document.getElementById('attachmentFilter').value;
+      const keyword = keywordSelect.value;
+      currentEntries = searchIndex.filter(({ entry, text }) => terms.every(term => text.includes(term)) &&
+        (!keyword || getEntryKeywords(entry).includes(keyword)) &&
+        (attachment === 'all' || !attachment || (attachment === 'pdf' && hasFullText(entry)) ||
+          (attachment === 'missing-pdf' && !hasFullText(entry)) || (attachment === 'notes' && /\\.(md|markdown|txt)$/i.test(entry.file_path || '')))).map(row => row.entry);
+      const sort = document.getElementById('sortSelect').value;
+      if (sort === 'year-desc' || sort === 'year-asc') {
+        const direction = sort === 'year-desc' ? -1 : 1;
+        currentEntries.sort((a, b) => {
+          const first = Number(getEntryYear(a)), second = Number(getEntryYear(b));
+          if (!first || !second) { return first ? -1 : second ? 1 : 0; }
+          return direction * (first - second);
+        });
+      } else if (sort === 'title') { currentEntries.sort((a, b) => String(a.title || '').localeCompare(String(b.title || ''))); }
+      renderEntries(currentEntries);
+    }
+    function clearFilters() {
+      document.getElementById('searchInput').value = ''; document.getElementById('attachmentFilter').value = 'all'; keywordSelect.value = ''; applyFilters();
+    }
+    function filterKeyword(button) { keywordSelect.value = button.getAttribute('data-keyword'); applyFilters(); }
+    document.getElementById('searchInput').addEventListener('input', () => applyFilters());
+    document.getElementById('sortSelect').addEventListener('change', () => { page = 1; applyFilters(false); });
+    document.getElementById('attachmentFilter').addEventListener('change', () => applyFilters());
+    keywordSelect.addEventListener('change', () => applyFilters());
+    document.getElementById('prevPage').addEventListener('click', () => { page--; renderEntries(currentEntries); });
+    document.getElementById('nextPage').addEventListener('click', () => { page++; renderEntries(currentEntries); });
+    document.getElementById('clearSelectionBtn').addEventListener('click', () => { selectedIds.clear(); renderEntries(currentEntries); });
 
     function submitDoi() {
       var input = document.getElementById('doiInput');
@@ -1542,7 +1586,7 @@ export class LiteratureIndexViewer {
       var ids = getCheckedEntryIds();
       vscodeApi.postMessage({
         command: 'exportBib',
-        entryIds: ids.length > 0 ? ids : undefined,
+        entryIds: ids.length > 0 ? ids : currentEntries.map(entry => Number(entry._entry_id)),
         mode: 'copy'
       });
     });
@@ -1550,13 +1594,13 @@ export class LiteratureIndexViewer {
       var ids = getCheckedEntryIds();
       vscodeApi.postMessage({
         command: 'exportBib',
-        entryIds: ids.length > 0 ? ids : undefined,
+        entryIds: ids.length > 0 ? ids : currentEntries.map(entry => Number(entry._entry_id)),
         mode: 'file'
       });
     });
 
     // 初始渲染（应用当前排序设置）
-    applySort(entries);
+    applyFilters(false);
 
     // 全选功能
     document.getElementById('selectAll').addEventListener('change', function() {
@@ -1566,14 +1610,15 @@ export class LiteratureIndexViewer {
 
     document.getElementById('entries').addEventListener('change', function(e) {
       if (e.target && e.target.classList && e.target.classList.contains('entry-checkbox')) {
+        const id = e.target.getAttribute('data-entry-id');
+        if (e.target.checked) { selectedIds.add(id); } else { selectedIds.delete(id); }
         updateSelectAllState();
       }
     });
 
     // 复制选中引用
     document.getElementById('copySelectedBtn').addEventListener('click', function() {
-      var checkboxes = document.querySelectorAll('.entry-checkbox:checked');
-      if (checkboxes.length === 0) {
+      if (selectedIds.size === 0) {
         vscodeApi.postMessage({
           command: 'copyText',
           text: '',
@@ -1582,8 +1627,8 @@ export class LiteratureIndexViewer {
         return;
       }
       var references = [];
-      checkboxes.forEach(function(cb) {
-        var ar = cb.getAttribute('data-at-ref');
+      selectedIds.forEach(function(id) {
+        var ar = entriesById.get(id)?.at_ref;
         if (ar) {
           references.push(ar);
         }
@@ -1615,17 +1660,16 @@ export class LiteratureIndexViewer {
         return;
       }
       
-      var csvContent = 'Title,Authors,Year,Journal,DOI,File Path\\n';
-      selectedEntries.forEach(function(e) {
-        var title = (e.title || '').replace(/"/g, '""');
-        var authors = getEntryAuthors(e).join('; ').replace(/"/g, '""');
-        var year = getEntryYear(e) || '';
-        var journal = (e.journal || '').replace(/"/g, '""');
-        var doi = e.doi || '';
-        var fp = e.file_path || '';
-        csvContent += '"' + title + '","' + authors + '","' + year + '","' + journal + '","' + doi + '","' + fp + '"\\n';
+      function csvCell(value) {
+        let text = String(value ?? '');
+        if (/^\\s*[=+@-]/.test(text)) { text = "'" + text; }
+        return '"' + text.replace(/"/g, '""') + '"';
+      }
+      var csvContent = ['Title', 'Authors', 'Year', 'Journal', 'DOI', 'File Path'].map(csvCell).join(',') + '\\n';
+      selectedEntries.forEach(function(entry) {
+        csvContent += [entry.title, getEntryAuthors(entry).join('; '), getEntryYear(entry), entry.journal, entry.doi, entry.file_path].map(csvCell).join(',') + '\\n';
       });
-      
+
       vscodeApi.postMessage({
         command: 'copyText',
         text: csvContent,
@@ -1641,7 +1685,7 @@ export class LiteratureIndexViewer {
         document.getElementById('searchInput').focus();
       }
       // Ctrl/Cmd + A: 全选
-      if ((e.ctrlKey || e.metaKey) && e.key === 'a' && document.activeElement.tagName !== 'INPUT') {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'a' && !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) {
         e.preventDefault();
         document.getElementById('selectAll').checked = true;
         document.getElementById('selectAll').indeterminate = false;
@@ -1649,8 +1693,7 @@ export class LiteratureIndexViewer {
       }
       // Escape: 清除搜索
       if (e.key === 'Escape') {
-        document.getElementById('searchInput').value = '';
-        applySort(entries);
+        clearFilters();
       }
     });
 

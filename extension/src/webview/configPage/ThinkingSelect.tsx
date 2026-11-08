@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Select } from 'antd';
+import { Collapse, Form, Select } from 'antd';
 import type { TFunction } from 'i18next';
 
 /**
@@ -47,4 +47,34 @@ export function ThinkingSelect({ t, scope = 'default', value, onChange }: Props)
       popupMatchSelectWidth
     />
   );
+}
+
+/** Advanced wire settings stay separate from the everyday on/off choice. */
+export function LlmApiTypeField({ t, scope = 'default' }: Pick<Props, 't' | 'scope'>) {
+  const form = Form.useFormInstance();
+  const ownApiType = Form.useWatch(scope === 'coder' ? 'coderLlmApiType' : 'llmApiType', form);
+  const defaultApiType = Form.useWatch('llmApiType', form);
+  const apiType = ownApiType || defaultApiType || 'openai';
+  const formatName = scope === 'coder' ? 'coderLlmThinkingFormat' : 'llmThinkingFormat';
+  return <Collapse size="small" style={{ marginBottom: 16 }} items={[{
+    key: 'thinking-options', label: t('configPage.thinking.advanced'), forceRender: true,
+    children: <>
+      <Form.Item name={scope === 'coder' ? 'coderLlmApiType' : 'llmApiType'} label={t('configPage.thinking.apiType')} tooltip={t('configPage.thinking.apiTypeHint')}>
+        <Select aria-label={t(scope === 'coder' ? 'configPage.thinking.coderApiType' : 'configPage.thinking.apiType')} options={[
+          ...(scope === 'coder' ? [{ value: '', label: t('configPage.thinking.inheritCoder') }] : []),
+          { value: 'openai', label: 'OpenAI Chat Completions' },
+          { value: 'anthropic', label: 'Anthropic Messages' },
+        ]} />
+      </Form.Item>
+      <Form.Item hidden={apiType === 'anthropic'} name={formatName} label={t('configPage.thinking.format')} tooltip={t('configPage.thinking.formatHint')} style={{ marginBottom: 0 }}>
+        <Select aria-label={t(scope === 'coder' ? 'configPage.thinking.coderFormat' : 'configPage.thinking.format')} disabled={apiType === 'anthropic'} options={[
+          { value: '', label: t(scope === 'coder' ? 'configPage.thinking.inheritCoder' : 'configPage.thinking.standard') },
+          { value: 'thinking', label: 'thinking.type' },
+          { value: 'enable_thinking', label: 'enable_thinking' },
+          { value: 'chat_template_kwargs', label: 'chat_template_kwargs.enable_thinking' },
+          { value: 'reasoning', label: 'reasoning.enabled' },
+        ]} />
+      </Form.Item>
+    </>,
+  }]} />;
 }

@@ -1,12 +1,11 @@
 """Tests for MobilityMap._route_to_xys driving vs walking segment handling."""
 
-
 import numpy as np
 import pytest
 from google.protobuf.json_format import ParseDict
-from pycityproto.city.routing.v2 import routing_pb2  # type: ignore[import-untyped]
-from pycityproto.city.routing.v2 import routing_service_pb2 as routing_service  # type: ignore[import-untyped]
-from shapely.geometry import LineString  # type: ignore[import-untyped]
+from pycityproto.city.routing.v2 import routing_pb2
+from pycityproto.city.routing.v2 import routing_service_pb2 as routing_service
+from shapely.geometry import LineString
 
 from agentsociety2.contrib.env.mobility_space.map import Map
 

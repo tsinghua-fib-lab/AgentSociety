@@ -1,5 +1,5 @@
 import type { AiCliApiKind } from '../../aiCli/officialEndpoints';
-import type { AiCliAuthMode } from './providerAuth';
+import type { AiCliAuthMode } from '../../aiCli/providerAuth';
 import type { AiCliAuthHeaderMode } from '../../aiCli/upstreamAuthHeaders';
 import type { ClaudeModelOption } from './claudeCodeTypes';
 
@@ -11,6 +11,7 @@ export type AiCliProviderRecord = {
   apiKind?: AiCliApiKind;
   authMode?: AiCliAuthMode;
   authHeaderMode?: AiCliAuthHeaderMode;
+  usageQuery?: import('../../shared/providerUsage').ProviderUsageConfig;
   activeClaude: boolean;
   activeCodex: boolean;
   failoverClaude: boolean;
@@ -34,7 +35,9 @@ export type AiCliProviderRecord = {
   permissionMode?: string;
 };
 
-export const EMPTY_PROVIDER_DRAFT: Omit<AiCliProviderRecord, 'id' | 'activeClaude' | 'activeCodex' | 'failoverClaude' | 'failoverCodex'> = {
+export const EMPTY_PROVIDER_DRAFT: Omit<AiCliProviderRecord, 'id' | 'activeClaude' | 'activeCodex'> = {
+  failoverClaude: false,
+  failoverCodex: false,
   name: '',
   baseUrl: '',
   apiKey: '',

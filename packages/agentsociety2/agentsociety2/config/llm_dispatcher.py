@@ -222,7 +222,11 @@ def is_context_limit_error(error: Exception) -> bool:
 
 
 class _AdjustableSemaphore:
-    """Capacity-adjustable asyncio semaphore (Condition-based)."""
+    """Capacity-adjustable semaphore retaining debt while requests are in flight.
+
+    ``_available`` may be negative after shrinking below the number of holders.
+    Releases repay this debt before waking a new request.
+    """
 
     def __init__(self, capacity: int) -> None:
         self._capacity = capacity
@@ -241,7 +245,7 @@ class _AdjustableSemaphore:
 
     async def release(self) -> None:
         async with self._cond:
-            self._available += 1
+            self._available = min(self._available + 1, self._capacity)
             self._cond.notify(1)
 
     async def set_capacity(self, new_capacity: int) -> int:
@@ -254,7 +258,7 @@ class _AdjustableSemaphore:
                 self._available += delta
                 self._cond.notify(delta)
             elif delta < 0:
-                self._available = max(0, self._available + delta)
+                self._available += delta
             return old
 
 
@@ -420,7 +424,9 @@ class AdaptiveSemaphore:
 # ═══════════════════════════════════════════════════════════
 
 
-def _build_router(base_url: str, api_key: str, model: str) -> Any:
+def _build_router(
+    base_url: str, api_key: str, model: str, api_type: str = "openai"
+) -> Any:
     """Build a litellm :class:`Router` for one model from raw connection params.
 
     Takes explicit params instead of reading them from process config/env, so a
@@ -432,11 +438,17 @@ def _build_router(base_url: str, api_key: str, model: str) -> Any:
     """
     from litellm import Router
 
+    if api_type not in {"openai", "anthropic"}:
+        raise ValueError("LLM api_type must be openai or anthropic")
+    if api_type == "anthropic":
+        # LiteLLM appends /v1/messages. Both a gateway root and its /v1 base
+        # are accepted in the configuration page.
+        base_url = base_url.rstrip("/").removesuffix("/v1")
     model_list = [
         {
             "model_name": model,
             "litellm_params": {
-                "model": f"openai/{model}",
+                "model": f"{api_type}/{model}",
                 "api_key": api_key,
                 "api_base": base_url,
             },
@@ -569,7 +581,11 @@ def build_client_for_role(role: str) -> LLMClient:
     Also resolves the role's reasoning (thinking) settings — see
     :func:`agentsociety2.config.config.get_llm_thinking`.
     """
-    from agentsociety2.config.config import get_llm_connection, get_llm_thinking
+    from agentsociety2.config.config import (
+        get_llm_api_type,
+        get_llm_connection,
+        get_llm_thinking,
+    )
 
     base_url, api_key, model_name = get_llm_connection(role)
     return LLMClient(
@@ -578,12 +594,32 @@ def build_client_for_role(role: str) -> LLMClient:
         api_key=api_key or "",
         model_type=role,
         thinking=ThinkingSettings(**get_llm_thinking(role)),
+        api_type=get_llm_api_type(role),
     )
 
 
 # ═══════════════════════════════════════════════════════════
 # LLMClient — serializable config; calls litellm in-process
 # ═══════════════════════════════════════════════════════════
+
+
+def reasoning_fields(response: Any) -> dict[str, Any]:
+    """Replay reasoning for native Messages or explicitly enabled reasoning.
+
+    Default Chat Completions keeps its original history encoding and token cost.
+    """
+    metadata = getattr(response, "_hidden_params", {})
+    if not isinstance(metadata, dict) or not metadata.get(
+        "agentsociety_preserve_reasoning"
+    ):
+        return {}
+    choices = getattr(response, "choices", None) or []
+    message = getattr(choices[0], "message", None) if choices else None
+    return {
+        key: value
+        for key in ("reasoning_content", "thinking_blocks")
+        if (value := getattr(message, key, None))
+    }
 
 
 @dataclass(frozen=True)
@@ -594,31 +630,120 @@ class ThinkingSettings:
     :func:`agentsociety2.config.config.get_llm_thinking` and carried on the
     :class:`LLMClient` so it survives the Ray task boundary.
 
-    Only OpenAI-compatible chat-completions parameters are produced — no
-    per-model-family probing. ``policy="inherit"`` (the default, and what an
-    unset environment yields) emits **nothing at all**, leaving the outgoing
-    request byte-identical to a build without this feature.
+    The selected protocol determines the wire parameters. Model names are
+    passed through unchanged. ``inherit`` contributes no request parameters.
     """
 
     policy: str = "inherit"
     reasoning_effort: str | None = None
     extra_body: dict[str, Any] | None = None
+    format: str = ""
 
-    def request_kwargs(self) -> dict[str, Any]:
-        """Return the completion kwargs this policy contributes.
-
-        ``inherit`` contributes nothing. Otherwise emit whichever of
-        ``reasoning_effort`` / ``extra_body`` were resolved (both may be set for
-        ``on``; ``get_llm_thinking`` deliberately leaves ``reasoning_effort``
-        unset for ``off`` when a gateway-specific ``extra_body`` is configured).
-        """
-        if self.policy == "inherit":
+    def request_kwargs(
+        self, api_type: str = "openai", *, policy: str | None = None
+    ) -> dict[str, Any]:
+        """Generate a real on/off instruction, retaining custom body fields."""
+        selected = policy or self.policy
+        if selected == "inherit":
             return {}
+        if selected not in {"on", "off"}:
+            raise ValueError("thinking must be inherit, on or off")
+        if self.format not in {
+            "",
+            "reasoning_effort",
+            "thinking",
+            "enable_thinking",
+            "chat_template_kwargs",
+            "reasoning",
+        }:
+            raise ValueError("Unsupported thinking control format")
+        enabled = selected == "on"
+        body = dict(self.extra_body or {})
+        if api_type == "openai":
+            # A declared wire format also works with custom model aliases.
+            controls = {
+                "thinking": {
+                    "thinking": {"type": "enabled" if enabled else "disabled"}
+                },
+                "enable_thinking": {"enable_thinking": enabled},
+                "chat_template_kwargs": {
+                    "chat_template_kwargs": {"enable_thinking": enabled}
+                },
+                "reasoning": {"reasoning": {"enabled": enabled}},
+            }
+            for key, value in controls.get(self.format, {}).items():
+                if isinstance(value, dict) and isinstance(body.get(key), dict):
+                    body[key] = {**body[key], **value}
+                else:
+                    body[key] = value
         kwargs: dict[str, Any] = {}
-        if self.reasoning_effort:
+        # Preserve the gateway's declared native switch and unrelated fields.
+        # These are protocol field names, never model-family guesses.
+        native_switch = False
+        if isinstance(body.get("thinking"), dict):
+            body["thinking"] = {
+                **body["thinking"],
+                "type": (
+                    "adaptive"
+                    if body["thinking"].get("type") == "adaptive"
+                    else "enabled"
+                )
+                if enabled
+                else "disabled",
+            }
+            if not enabled:
+                body["thinking"].pop("budget_tokens", None)
+            native_switch = True
+        if "enable_thinking" in body:
+            body["enable_thinking"] = enabled
+            native_switch = True
+        if (
+            isinstance(body.get("chat_template_kwargs"), dict)
+            and "enable_thinking" in body["chat_template_kwargs"]
+        ):
+            body["chat_template_kwargs"] = {
+                **body["chat_template_kwargs"],
+                "enable_thinking": enabled,
+            }
+            native_switch = True
+        if isinstance(body.get("reasoning"), dict) and (
+            "enabled" in body["reasoning"] or "effort" in body["reasoning"]
+        ):
+            reasoning = dict(body["reasoning"])
+            if "enabled" in reasoning:
+                reasoning["enabled"] = enabled
+            if "effort" in reasoning:
+                reasoning["effort"] = (
+                    (
+                        self.reasoning_effort
+                        or (
+                            reasoning["effort"]
+                            if reasoning["effort"] != "none"
+                            else "medium"
+                        )
+                    )
+                    if enabled
+                    else "none"
+                )
+            body["reasoning"] = reasoning
+            native_switch = True
+        if api_type == "anthropic":
+            thinking = body.pop("thinking", {})
+            kwargs["thinking"] = (
+                {"type": "enabled", "budget_tokens": 1024, **thinking}
+                if enabled
+                else {"type": "disabled"}
+            )
+            if kwargs["thinking"].get("type") == "adaptive":
+                kwargs["thinking"].pop("budget_tokens", None)
+        elif not native_switch:
+            kwargs["reasoning_effort"] = (
+                (self.reasoning_effort or "medium") if enabled else "none"
+            )
+        if enabled and self.reasoning_effort:
             kwargs["reasoning_effort"] = self.reasoning_effort
-        if self.extra_body:
-            kwargs["extra_body"] = dict(self.extra_body)
+        if body:
+            kwargs["extra_body"] = body
         return kwargs
 
 
@@ -643,12 +768,14 @@ class LLMClient:
     api_key: str = field(repr=False)
     model_type: str = "default"
     thinking: ThinkingSettings | None = None
+    api_type: str = "openai"
 
     def __post_init__(self) -> None:
         self._router: Any = None
         self._sem: AdaptiveSemaphore | None = None
         self._token_stats: dict[str, dict[str, int]] = {}
         self._loop: Any = None
+        self._thinking_off_warning = False
 
     # Pickle/cloudpickle: keep only connection params so the client crosses Ray
     # task boundaries. Each side rebuilds its own Router + semaphore in its own
@@ -660,6 +787,7 @@ class LLMClient:
             "api_key": self.api_key,
             "model_type": self.model_type,
             "thinking": self.thinking,
+            "api_type": self.api_type,
         }
 
     def __setstate__(self, state: dict[str, Any]) -> None:
@@ -671,10 +799,12 @@ class LLMClient:
         # ``or`` normalizes a missing/None value to the inert default so a
         # deserialized client can never crash on a missing attribute.
         self.thinking = state.get("thinking") or ThinkingSettings()
+        self.api_type = state.get("api_type", "openai")
         self._router = None
         self._sem = None
         self._token_stats = {}
         self._loop = None
+        self._thinking_off_warning = False
 
     def _ensure_runtime(self) -> None:
         """Build (or rebuild) the Router + semaphore for the current event loop."""
@@ -684,7 +814,9 @@ class LLMClient:
             loop = None
         if self._loop is loop and self._router is not None:
             return
-        self._router = _build_router(self.base_url, self.api_key, self.model_name)
+        self._router = _build_router(
+            self.base_url, self.api_key, self.model_name, self.api_type
+        )
         initial = max(1, Config.LLM_RAY_CONCURRENCY)
         # No hard cap: AIMD probes the real API ceiling freely and backs off
         # on latency slowdown / rate-limit errors. min=1 lets it shed load
@@ -718,21 +850,11 @@ class LLMClient:
     def _resolve_thinking_kwargs(
         self, thinking: str, kwargs: dict[str, Any]
     ) -> dict[str, Any]:
-        """在调用方 kwargs 之上合并本 client 的思考设置。
-
-        仅 ``"inherit"`` 与 ``"off"`` 有意义:client 每角色只携带一份已
-        解析的负载,不存在单独的"on"负载可强制。若调用方想在 ``off``
-        角色策略下仍启用推理,直接传 ``reasoning_effort`` /
-        ``extra_body``——它们在此胜出。
-
-        :param thinking: ``"inherit"`` 或 ``"off"``。
-        :param kwargs: 调用方的 completion kwargs(冲突时胜出)。
-        :returns: 转发给 ``router.acompletion`` 的 kwargs。
-        """
-        if thinking == "off" or self.thinking is None:
-            effective: dict[str, Any] = {}
-        else:
-            effective = self.thinking.request_kwargs()
+        """Apply role or per-call policy, then caller-supplied overrides."""
+        settings = self.thinking or ThinkingSettings()
+        effective = settings.request_kwargs(
+            self.api_type, policy=None if thinking == "inherit" else thinking
+        )
         merged = {**effective, **kwargs}
 
         # litellm's ``openai/`` adapter validates request params against its own
@@ -744,10 +866,14 @@ class LLMClient:
         # Deliberately NOT ``litellm.drop_params = True``: that would silently
         # swallow the parameter and the switch would appear to work while doing
         # nothing.
-        if "reasoning_effort" in merged:
+        explicit_params = [
+            key for key in ("reasoning_effort", "thinking") if key in merged
+        ]
+        if explicit_params:
             allowed = list(merged.get("allowed_openai_params") or [])
-            if "reasoning_effort" not in allowed:
-                allowed.append("reasoning_effort")
+            for key in explicit_params:
+                if key not in allowed:
+                    allowed.append(key)
             merged["allowed_openai_params"] = allowed
         return merged
 
@@ -776,9 +902,9 @@ class LLMClient:
 
         ``thinking`` is consumed here and never forwarded: ``"inherit"`` (the
         default) applies this client's role-level :class:`ThinkingSettings`,
-        ``"off"`` suppresses them for this call. Utility calls that gain
-        nothing from reasoning (memory consolidation, world-description
-        generation) pass ``thinking="off"``.
+        ``"on"`` and ``"off"`` send explicit instructions for this call.
+        Built-in utility calls inherit the configured policy so models that
+        require thinking remain usable when no off policy was selected.
 
         Any caller-supplied ``reasoning_effort`` / ``extra_body`` in ``kwargs``
         **replaces** the role-level value wholesale — no deep merge, so what
@@ -839,6 +965,61 @@ class LLMClient:
                 latency_ms = (time.monotonic() - t0) * 1000
                 sem.record_latency(latency_ms, is_error=False)
                 self._record_tokens(effective_model, response)
+                policy = (
+                    thinking
+                    if thinking != "inherit"
+                    else (self.thinking.policy if self.thinking else "inherit")
+                )
+                if self.api_type == "anthropic" or policy == "on":
+                    metadata = getattr(response, "_hidden_params", None)
+                    if not isinstance(metadata, dict):
+                        metadata = {}
+                        response._hidden_params = metadata
+                    metadata["agentsociety_preserve_reasoning"] = True
+                body = request_kwargs.get("extra_body") or {}
+
+                def field(value: Any, key: str) -> Any:
+                    return value.get(key) if isinstance(value, dict) else None
+
+                disabled = (
+                    request_kwargs.get("reasoning_effort") == "none"
+                    or field(request_kwargs.get("thinking"), "type") == "disabled"
+                    or field(body.get("thinking"), "type") == "disabled"
+                    or body.get("enable_thinking") is False
+                    or field(body.get("reasoning"), "enabled") is False
+                    or field(body.get("reasoning"), "effort") == "none"
+                    or field(body.get("chat_template_kwargs"), "enable_thinking")
+                    is False
+                )
+                if disabled and not self._thinking_off_warning:
+                    choices = getattr(response, "choices", None) or []
+                    message = getattr(choices[0], "message", None) if choices else None
+                    details = getattr(
+                        getattr(response, "usage", None),
+                        "completion_tokens_details",
+                        None,
+                    )
+                    if (
+                        getattr(message, "reasoning_content", None)
+                        or any(
+                            isinstance(block, dict)
+                            and (
+                                block.get("thinking")
+                                or block.get("type") == "redacted_thinking"
+                            )
+                            for block in (
+                                getattr(message, "thinking_blocks", None) or []
+                            )
+                        )
+                        or getattr(details, "reasoning_tokens", 0)
+                    ):
+                        self._thinking_off_warning = True
+                        logger.warning(
+                            "Model %s returned reasoning after a disable request via %s. "
+                            "Check the endpoint protocol and model thinking support.",
+                            effective_model,
+                            self.api_type,
+                        )
                 return response
             except Exception as e:
                 latency_ms = (time.monotonic() - t0) * 1000

@@ -1,3 +1,4 @@
+import { mcpJsonRpc, mcpSessionHeaders, normalizeMcpHttpEndpoint } from './services/mcpClient';
 /**
  * 配置页视图提供者 (Config Page View Provider)
  *
@@ -30,7 +31,8 @@ import {
   writeClaudeConfig,
 } from './services/claudeCodeSettings';
 import { isCodexConfiguredByUser } from './services/codexSettings';
-import { fetchProviderModels } from './services/claudeCodeModels';
+import { fetchProviderModels } from './services/providerModels';
+import { CodexDeviceLogin, type CodexDeviceLoginState } from './services/codexDeviceLogin';
 import { inferApiKindFromBaseUrl } from './aiCli/officialEndpoints';
 import type { AiCliGatewayManager, AiCliProviderConfig } from './services/aiCliGatewayManager';
 import type { ClaudeCodeConfigValues } from './webview/configPage/claudeCodeTypes';
@@ -76,10 +78,15 @@ export class ConfigPageViewProvider {
     ConfigPageViewProvider.configHealthStatus = status;
   }
 
+  public static getOutboundProxyEnv(): Record<string, string> | undefined {
+    return ConfigPageViewProvider.gatewayManager?.buildOutboundProxyEnv();
+  }
+
   private readonly _panel: vscode.WebviewPanel;
   private readonly _extensionPath: string;
   private readonly _context: vscode.ExtensionContext;
   private readonly _envManager: EnvManager;
+  private readonly _codexDeviceLogin: CodexDeviceLogin;
   private _webConfigImport: AgentsocietyWebConfigService | undefined;
   private _pendingImportedGateway: WebImportGatewayProviderDraft | undefined;
   private _disposables: vscode.Disposable[] = [];
@@ -117,6 +124,10 @@ export class ConfigPageViewProvider {
     this._context = context;
     this._extensionPath = context.extensionPath;
     this._envManager = new EnvManager();
+    this._codexDeviceLogin = new CodexDeviceLogin(
+      (state) => { void this._handleCodexDeviceLoginState(state); },
+      String(context.extension.packageJSON.version)
+    );
 
     this._panel.webview.html = this._getHtmlForWebview(this._panel.webview);
 
@@ -135,6 +146,7 @@ export class ConfigPageViewProvider {
     this._panel.webview.onDidReceiveMessage(
       async (message: {
         command: string;
+        action?: string;
         config?: Partial<ConfigValues> | ClaudeCodeConfigValues;
         llmType?: string;
         url?: string;
@@ -143,6 +155,7 @@ export class ConfigPageViewProvider {
         enabled?: boolean;
         routeTarget?: 'claude' | 'codex';
         providerId?: string;
+        requestId?: number;
         role?: 'claude' | 'codex';
         provider?: unknown;
         apiKind?: 'anthropic' | 'openai';
@@ -152,6 +165,9 @@ export class ConfigPageViewProvider {
         password?: string;
         settings?: Record<string, boolean>;
         fingerprint?: string;
+        force?: boolean;
+        applyClaude?: boolean;
+        applyCodex?: boolean;
       }) => {
         switch (message.command) {
           case 'requestConfig':
@@ -171,7 +187,7 @@ export class ConfigPageViewProvider {
             await this._handleStartBackend((message.config || {}) as Partial<ConfigValues>);
             break;
           case 'validateConfig':
-            await this._handleValidateConfig((message.config || {}) as Partial<ConfigValues>, message.llmType);
+            await this._handleValidateConfig((message.config || {}) as Partial<ConfigValues>, message.llmType, message.requestId);
             break;
           case 'validatePython':
             await this._handleValidatePython((message.config || {}) as Partial<ConfigValues>);
@@ -201,7 +217,8 @@ export class ConfigPageViewProvider {
               message.providerId ? String(message.providerId) : undefined,
               message.apiKind === 'openai' || message.apiKind === 'anthropic'
                 ? message.apiKind
-                : undefined
+                : undefined,
+              typeof message.requestId === 'number' ? message.requestId : undefined
             );
             break;
           case 'gatewayUpdateProvider':
@@ -293,6 +310,9 @@ export class ConfigPageViewProvider {
                 : {}
             );
             break;
+          case 'codexDeviceLogin':
+            await this._handleCodexDeviceLoginAction(message.action ?? '');
+            break;
           case 'refreshCodexOfficialLogin':
             await ConfigPageViewProvider.gatewayManager?.refreshCodexOfficialLogin();
             await this._postGatewayStatus();
@@ -307,7 +327,7 @@ export class ConfigPageViewProvider {
             }
             break;
           case 'gatewayQueryProviderUsage':
-            await this._handleGatewayQueryProviderUsage(String(message.providerId ?? ''));
+            await this._handleGatewayQueryProviderUsage(String(message.providerId ?? ''), message.requestId ?? 0, message.force === true);
             break;
           case 'restartCodexCli':
             await this._handleRestartCodexCli();
@@ -328,7 +348,7 @@ export class ConfigPageViewProvider {
             this._cancelCasdoorDeviceAuth();
             break;
           case 'gatewayUpsertWebImportProvider':
-            await this._handleGatewayUpsertWebImportProvider();
+            await this._handleGatewayUpsertWebImportProvider({ claude: message.applyClaude === true, codex: message.applyCodex === true });
             break;
           case 'dismissWebConfigImport':
             this._clearPendingImportedGateway();
@@ -406,10 +426,14 @@ export class ConfigPageViewProvider {
       llmModel: envConfig.llmModel || DEFAULT_LLM_MODEL,
       backendLogLevel: envConfig.backendLogLevel || 'info',
       llmThinking: envConfig.llmThinking || '',
+      llmThinkingFormat: envConfig.llmThinkingFormat || '',
+      llmApiType: envConfig.llmApiType === 'anthropic' ? 'anthropic' : 'openai',
       coderLlmApiKey: envConfig.coderLlmApiKey || '',
       coderLlmApiBase: envConfig.coderLlmApiBase || '',
       coderLlmModel: envConfig.coderLlmModel || '',
       coderLlmThinking: envConfig.coderLlmThinking || '',
+      coderLlmThinkingFormat: envConfig.coderLlmThinkingFormat || '',
+      coderLlmApiType: envConfig.coderLlmApiType as ConfigValues['coderLlmApiType'] || '',
       embeddingApiKey: envConfig.embeddingApiKey || '',
       embeddingApiBase: envConfig.embeddingApiBase || '',
       embeddingModel: envConfig.embeddingModel || 'text-embedding-3-large',
@@ -558,25 +582,15 @@ export class ConfigPageViewProvider {
     baseUrl: string,
     apiKey: string,
     providerId?: string,
-    apiKind?: 'anthropic' | 'openai'
+    apiKind?: 'anthropic' | 'openai',
+    requestId?: number
   ): Promise<void> {
     const result = await fetchProviderModels(baseUrl, apiKey, apiKind);
     if (result.ok) {
       const normalizedBaseUrl = baseUrl.trim().replace(/\/+$/, '');
-      if (providerId && providerId !== '__new__' && ConfigPageViewProvider.gatewayManager) {
-        const provider = ConfigPageViewProvider.gatewayManager
-          .getProviders()
-          .find((p) => p.id === providerId);
-        if (provider && provider.apiKind !== result.apiKind) {
-          await ConfigPageViewProvider.gatewayManager.updateProvider(providerId, {
-            ...provider,
-            apiKind: result.apiKind,
-          });
-          await this._postProvidersAndActiveConfig();
-        }
-      }
       this._panel.webview.postMessage({
         command: 'claudeModelsResult',
+        requestId,
         success: true,
         models: result.models,
         providerId,
@@ -587,7 +601,9 @@ export class ConfigPageViewProvider {
     }
     this._panel.webview.postMessage({
       command: 'claudeModelsResult',
+      requestId,
       success: false,
+      baseUrl: baseUrl.trim().replace(/\/+$/, ''),
       error: result.error,
       detail: result.detail,
       status: result.status,
@@ -678,7 +694,7 @@ export class ConfigPageViewProvider {
     }
   }
 
-  private async _postProvidersAndActiveConfig(): Promise<void> {
+  private async _postProvidersAndActiveConfig(includeClaude = true): Promise<void> {
     const manager = ConfigPageViewProvider.gatewayManager;
     if (!manager) {
       return;
@@ -688,7 +704,7 @@ export class ConfigPageViewProvider {
       providers: manager.getProviders(),
     });
     const active = manager.getActiveClaudeProvider();
-    if (active) {
+    if (includeClaude && active) {
       this._panel.webview.postMessage({
         command: 'activeProviderConfig',
         config: manager.providerToClaudeConfig(active),
@@ -706,6 +722,46 @@ export class ConfigPageViewProvider {
       command: 'gatewayProvidersList',
       providers: manager.getProviders(),
     });
+  }
+
+  private async _handleCodexDeviceLoginAction(action: string): Promise<void> {
+    if (action === 'start') {
+      this._codexDeviceLogin.start(ConfigPageViewProvider.gatewayManager?.buildOutboundProxyEnv());
+      return;
+    }
+    if (action === 'cancel') { this._codexDeviceLogin.cancel(); return; }
+    if (action === 'status') { await this._handleCodexDeviceLoginState(this._codexDeviceLogin.snapshot()); return; }
+    const state = this._codexDeviceLogin.snapshot();
+    if (action !== 'help' && (state.status !== 'waiting' || !state.userCode || !state.verificationUrl)) { return; }
+    if (action === 'copy' || action === 'copyAndOpen' || action === 'copyUrl') {
+      try {
+        await vscode.env.clipboard.writeText(action === 'copyUrl' ? state.verificationUrl! : state.userCode!);
+        await this._panel.webview.postMessage({ command: 'codexDeviceLoginCopied', target: action === 'copyUrl' ? 'url' : 'code' });
+      } catch {
+        await this._panel.webview.postMessage({ command: 'codexDeviceLoginActionError', action: 'copy' });
+      }
+    }
+    if (action === 'open' || action === 'copyAndOpen' || action === 'help') {
+      try {
+        const url = action === 'help' ? 'https://developers.openai.com/codex/auth' : state.verificationUrl!;
+        if (!await vscode.env.openExternal(vscode.Uri.parse(url))) { throw new Error('browser_unavailable'); }
+      } catch {
+        await this._panel.webview.postMessage({ command: 'codexDeviceLoginActionError', action: 'open' });
+      }
+    }
+  }
+
+  private async _handleCodexDeviceLoginState(state: CodexDeviceLoginState): Promise<void> {
+    await this._panel.webview.postMessage({ command: 'codexDeviceLoginState', state });
+    if (state.status === 'success') {
+      // Refresh detection only; an explicit provider or gateway selection remains the user's choice.
+      try {
+        await ConfigPageViewProvider.gatewayManager?.refreshCodexOfficialLogin({ preserveRoute: true });
+        await this._postGatewayStatus();
+      } catch {
+        vscode.window.showWarningMessage(localize('aiCliGateway.codexLoginRefreshFailed'));
+      }
+    }
   }
 
   private async _handleGatewayActivateProvider(
@@ -729,6 +785,7 @@ export class ConfigPageViewProvider {
       const message = err instanceof Error ? err.message : String(err);
       vscode.window.showErrorMessage(localize('aiCliGateway.toggleFailed', message));
       await this._postGatewayStatus();
+      await this._postProvidersAndActiveConfig();
     }
   }
 
@@ -898,7 +955,7 @@ export class ConfigPageViewProvider {
     });
   }
 
-  private async _handleGatewayQueryProviderUsage(providerId: string): Promise<void> {
+  private async _handleGatewayQueryProviderUsage(providerId: string, requestId: number, force = false): Promise<void> {
     const manager = ConfigPageViewProvider.gatewayManager;
     if (!manager || !providerId) {
       return;
@@ -907,10 +964,13 @@ export class ConfigPageViewProvider {
     if (!provider) {
       return;
     }
-    const result = await manager.queryProviderUsageById(providerId);
+    const fingerprint = JSON.stringify(provider);
+    const result = await manager.queryProviderUsageById(providerId, force);
+    if (JSON.stringify(manager.getProviders().find((item) => item.id === providerId)) !== fingerprint) { return; }
     this._panel.webview.postMessage({
       command: 'gatewayProviderUsageResult',
       providerId,
+      requestId,
       baseUrl: provider.baseUrl,
       result,
     });
@@ -1149,7 +1209,7 @@ export class ConfigPageViewProvider {
     this._pendingImportedGateway = undefined;
   }
 
-  private async _handleGatewayUpsertWebImportProvider(): Promise<void> {
+  private async _handleGatewayUpsertWebImportProvider(targets: { claude: boolean; codex: boolean }): Promise<void> {
     const manager = ConfigPageViewProvider.gatewayManager;
     const draft = this._pendingImportedGateway;
     if (
@@ -1157,10 +1217,8 @@ export class ConfigPageViewProvider {
       !draft?.name?.trim() ||
       !draft.baseUrl?.trim() ||
       !draft.apiKey?.trim() ||
-      !draft.model?.trim() ||
-      !draft.sonnetModel?.trim() ||
-      !draft.opusModel?.trim() ||
-      !draft.haikuModel?.trim()
+      (targets.claude && !draft.model?.trim()) ||
+      (targets.codex && !draft.codexModel?.trim())
     ) {
       this._panel.webview.postMessage({
         command: 'webConfigApplyResult',
@@ -1173,11 +1231,10 @@ export class ConfigPageViewProvider {
       // Web import must not start/reconcile the local gateway here — that path can hang
       // Confirm import. Inventory + direct CLI config is enough; wizard CLI step starts it later.
       const provider = await manager.upsertImportedGatewayProvider(draft, {
-        liveApply: 'inventory',
+        targets,
       });
       this._pendingImportedGateway = undefined;
-      await this._applyClaudeCodePermissionSettings('bypassPermissions');
-      await this._postProvidersAndActiveConfig();
+      await this._postProvidersAndActiveConfig(targets.claude);
       await this._postGatewayStatus();
       this._panel.webview.postMessage({
         command: 'webConfigApplyResult',
@@ -1210,9 +1267,12 @@ export class ConfigPageViewProvider {
       this._panel.webview.postMessage({ command: 'initialEasyPaperConfig', config: undefined });
       return;
     }
-    const configPath = path.join(workspaceFolder.uri.fsPath, 'easypaper_config.yaml');
-    const config = readEasyPaperConfig(configPath);
-    this._panel.webview.postMessage({ command: 'initialEasyPaperConfig', config });
+    try {
+      const config = readEasyPaperConfig(path.join(workspaceFolder.uri.fsPath, 'easypaper_config.yaml'));
+      this._panel.webview.postMessage({ command: 'initialEasyPaperConfig', config });
+    } catch (error) {
+      this._panel.webview.postMessage({ command: 'initialEasyPaperConfig', error: String(error) });
+    }
   }
 
   private async _handleSaveEasyPaperConfig(config: EasyPaperConfigValues | undefined): Promise<void> {
@@ -1235,7 +1295,8 @@ export class ConfigPageViewProvider {
     }
     try {
       const configPath = path.join(workspaceFolder.uri.fsPath, 'easypaper_config.yaml');
-      writeEasyPaperConfig(configPath, config);
+      const templatePath = path.join(this._context.extensionPath, 'plugins', 'easypaper', 'skills', 'easypaper-setup-environment', 'config.example.yaml');
+      writeEasyPaperConfig(configPath, config, templatePath);
       this._panel.webview.postMessage({ command: 'easyPaperSaveResult', success: true });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -1361,10 +1422,14 @@ export class ConfigPageViewProvider {
       llmModel: (config.llmModel ?? '').trim() || DEFAULT_LLM_MODEL,
       backendLogLevel: config.backendLogLevel,
       llmThinking: config.llmThinking,
+      llmThinkingFormat: config.llmThinkingFormat,
+      llmApiType: config.llmApiType,
       coderLlmApiKey: config.coderLlmApiKey,
       coderLlmApiBase: config.coderLlmApiBase,
       coderLlmModel: config.coderLlmModel,
       coderLlmThinking: config.coderLlmThinking,
+      coderLlmThinkingFormat: config.coderLlmThinkingFormat,
+      coderLlmApiType: config.coderLlmApiType,
       embeddingApiKey: config.embeddingApiKey,
       embeddingApiBase: config.embeddingApiBase,
       embeddingModel: config.embeddingModel,
@@ -1388,7 +1453,7 @@ export class ConfigPageViewProvider {
   /**
    * 处理 LLM 配置验证请求
    */
-  private async _handleValidateConfig(config: Partial<ConfigValues>, llmType: string = 'default'): Promise<void> {
+  private async _handleValidateConfig(config: Partial<ConfigValues>, llmType: string = 'default', requestId?: number): Promise<void> {
     const validator = new LLMValidator();
     const defaultModel = (config.llmModel ?? '').trim() || DEFAULT_LLM_MODEL;
 
@@ -1424,7 +1489,13 @@ export class ConfigPageViewProvider {
       apiBase = config.llmApiBase || '';
     }
 
-    const result = await validator.validate({ apiKey, apiBase, model }, validationType);
+    const saved = this._envManager.readEnv();
+    const coder = llmType === 'coder';
+    const apiType = coder ? config.coderLlmApiType || config.llmApiType || 'openai' : config.llmApiType || 'openai';
+    const thinking = coder ? config.coderLlmThinking || config.llmThinking : config.llmThinking;
+    const effort = coder ? saved.coderLlmReasoningEffort || saved.llmReasoningEffort : saved.llmReasoningEffort;
+    const extra = coder ? saved.coderLlmExtraBody || saved.llmExtraBody : saved.llmExtraBody;
+    const result = await validator.validate({ apiKey, apiBase, model, apiType, thinking, thinkingFormat: coder ? config.coderLlmThinkingFormat || config.llmThinkingFormat : config.llmThinkingFormat, reasoningEffort: effort, extraBody: extra }, validationType);
 
     if (llmType === 'default') {
       ConfigPageViewProvider.configHealthStatus?.updateFromValidation(
@@ -1437,6 +1508,7 @@ export class ConfigPageViewProvider {
     this._panel.webview.postMessage({
       command: 'validationResult',
       llmType,
+      requestId,
       success: result.success,
       error: result.error || null,
     });
@@ -1465,52 +1537,8 @@ export class ConfigPageViewProvider {
     });
   }
 
-  /**
-   * 向 MCP Streamable HTTP 端点发送 JSON-RPC 请求并解析响应。
-   *
-   * litellm 的 /mcp/ 返回 text/event-stream（每行 `data: {...}`），也可能直接返回 JSON，
-   * 这里统一提取出 JSON-RPC payload。叠加检测超时，避免长调用挂起。
-   */
-  private async _mcpJsonRpc(
-    endpoint: string,
-    headerMap: Record<string, string> | undefined,
-    payload: Record<string, unknown>
-  ): Promise<{ ok: boolean; status: number; data: unknown | null }> {
-    const headers = {
-      ...(headerMap ?? {}),
-      'Content-Type': 'application/json',
-      Accept: 'application/json, text/event-stream',
-    };
-    const { signal, cleanup } = createTimeoutSignal(CONFIG_PAGE_API_VALIDATE_TIMEOUT_MS);
-    try {
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(payload),
-        signal,
-      });
-      const text = await res.text();
-      let data: unknown = null;
-      for (const line of text.split(/\r?\n/)) {
-        if (line.startsWith('data: ')) {
-          try {
-            data = JSON.parse(line.slice('data: '.length));
-          } catch {
-            // 忽略无法解析的 data 行
-          }
-        }
-      }
-      if (data === null) {
-        try {
-          data = JSON.parse(text);
-        } catch {
-          data = null;
-        }
-      }
-      return { ok: res.ok, status: res.status, data };
-    } finally {
-      cleanup();
-    }
+  private _mcpJsonRpc(endpoint: string, headers: Record<string, string> | undefined, payload: Record<string, unknown>): ReturnType<typeof mcpJsonRpc> {
+    return mcpJsonRpc(endpoint, headers, payload, CONFIG_PAGE_API_VALIDATE_TIMEOUT_MS);
   }
 
   private _literatureAuthHeaders(apiKey: string): Record<string, string> | undefined {
@@ -1548,21 +1576,6 @@ export class ConfigPageViewProvider {
     );
   }
 
-  /** 规范化 MCP Streamable HTTP 端点：必须以 /mcp/ 结尾，返回完整 URL；非法返回 null。 */
-  private _literatureMcpEndpoint(mcpUrl: string): string | null {
-    try {
-      const trimmed = mcpUrl.trim();
-      const normalized = trimmed.endsWith('/mcp') ? `${trimmed}/` : trimmed;
-      if (!normalized.endsWith('/mcp/')) {
-        return null;
-      }
-      new URL(normalized);
-      return normalized;
-    } catch {
-      return null;
-    }
-  }
-
   private _pickLiteratureMcpTool(
     toolNames: string[],
     suffix: (typeof ConfigPageViewProvider.LITERATURE_MCP_TOOL_SUFFIXES)[number]
@@ -1581,7 +1594,7 @@ export class ConfigPageViewProvider {
   private async _handleValidateLiteratureSearch(config: Partial<ConfigValues>): Promise<void> {
     const mcpUrl = config.literatureSearchMcpUrl || '';
     const apiKey = config.literatureSearchApiKey || '';
-    const authHeaders = this._literatureAuthHeaders(apiKey);
+    let authHeaders = this._literatureAuthHeaders(apiKey);
 
     if (!mcpUrl.trim()) {
       this._panel.webview.postMessage({
@@ -1601,25 +1614,9 @@ export class ConfigPageViewProvider {
       return;
     }
 
-    if (!mcpUrl.includes('/mcp')) {
-      this._panel.webview.postMessage({
-        command: 'literatureValidationResult',
-        success: false,
-        error: 'MCP 地址应为 https://llmapi.fiblab.net/mcp/',
-      });
-      return;
-    }
-
-    // 直接走 MCP Streamable HTTP 端点（与运行时子进程的实际调用方式一致）。
-    // 不再使用 /mcp-rest/*：litellm v1.85 的 /mcp-rest/tools/call 要求 server_id，
-    // 而 /mcp-rest/tools/list 不返回 server_id，导致检测必然 400 失败。
-    const endpoint = this._literatureMcpEndpoint(mcpUrl);
+    const endpoint = normalizeMcpHttpEndpoint(mcpUrl);
     if (!endpoint) {
-      this._panel.webview.postMessage({
-        command: 'literatureValidationResult',
-        success: false,
-        error: '请使用 MCP 网关地址 https://llmapi.fiblab.net/mcp/',
-      });
+      this._panel.webview.postMessage({ command: 'literatureValidationResult', success: false, error: '请输入有效的 HTTP(S) MCP 地址' });
       return;
     }
 
@@ -1635,7 +1632,7 @@ export class ConfigPageViewProvider {
         id: 1,
         method: 'initialize',
         params: {
-          protocolVersion: '2024-11-05',
+          protocolVersion: '2025-11-25',
           capabilities: {},
           clientInfo: { name: 'agentsociety-ext', version: '1' },
         },
@@ -1648,6 +1645,8 @@ export class ConfigPageViewProvider {
         });
         return;
       }
+
+      authHeaders = mcpSessionHeaders(init, authHeaders);
 
       // 2) 发送 initialized 通知（无需响应）
       await this._mcpJsonRpc(endpoint, authHeaders, {
@@ -1783,6 +1782,7 @@ export class ConfigPageViewProvider {
 
   public dispose(): void {
     ConfigPageViewProvider.currentPanel = undefined;
+    this._codexDeviceLogin.dispose();
     this._cancelCasdoorDeviceAuth();
     this._envManager.dispose();
     while (this._disposables.length) {

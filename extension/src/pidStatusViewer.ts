@@ -58,7 +58,8 @@ export class PidStatusViewer {
   }
 
   private getWebviewContent(data: any, isChinese: boolean): string {
-    const status = data.status || 'unknown';
+    const esc = (value: unknown): string => String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    const status = String(data.status || 'unknown');
     const statusEmoji = status === 'completed' ? '✅' : status === 'running' ? '🔄' : status === 'failed' ? '❌' : '⏸️';
     const statusColor = status === 'completed' ? '#28a745' : status === 'running' ? '#007bff' : status === 'failed' ? '#dc3545' : '#6c757d';
 
@@ -187,7 +188,7 @@ export class PidStatusViewer {
     <div class="header">
       <div class="status-badge ${status === 'running' ? 'running-animation' : ''}">
         <span class="status-emoji">${statusEmoji}</span>
-        <span>${status.toUpperCase()}</span>
+        <span>${esc(status.toUpperCase())}</span>
       </div>
     </div>
     
@@ -195,24 +196,24 @@ export class PidStatusViewer {
       ${data.pid ? `
       <div class="info-item">
         <span class="info-label">${labels.pid}</span>
-        <span class="info-value">${data.pid}</span>
+        <span class="info-value">${esc(data.pid)}</span>
       </div>
       ` : ''}
       
       <div class="info-item">
         <span class="info-label">${labels.experimentId}</span>
-        <span class="info-value">${data.experiment_id || labels.notAvailable}</span>
+        <span class="info-value">${esc(data.experiment_id || labels.notAvailable)}</span>
       </div>
       
       <div class="info-item">
         <span class="info-label">${labels.startTime}</span>
-        <span class="info-value">${data.start_time || labels.notAvailable}</span>
+        <span class="info-value">${esc(data.start_time || labels.notAvailable)}</span>
       </div>
       
       ${data.end_time ? `
       <div class="info-item">
         <span class="info-label">${labels.endTime}</span>
-        <span class="info-value">${data.end_time}</span>
+        <span class="info-value">${esc(data.end_time)}</span>
       </div>
       ` : ''}
       
@@ -224,22 +225,23 @@ export class PidStatusViewer {
       ${data.simulation_time ? `
       <div class="info-item">
         <span class="info-label">${labels.simulationTime}</span>
-        <span class="info-value">${data.simulation_time}</span>
+        <span class="info-value">${esc(data.simulation_time)}</span>
       </div>
       ` : ''}
       
       ${data.step_count !== undefined ? `
       <div class="info-item">
         <span class="info-label">${labels.stepCount}</span>
-        <span class="info-value">${data.step_count}</span>
+        <span class="info-value">${esc(data.step_count)}</span>
       </div>
       ` : ''}
     </div>
   </div>
   
   <script>
-    // 自动刷新（运行中的实验）
-    if ('${status}' === 'running') {
+    // 自动刷新（运行中的实验）。JSON.stringify 转义引号/反斜杠,
+    // < 防 </script> 提前闭合(2026-11-06 二轮审计:此前裸拼可注入)。
+    if (${JSON.stringify(String(status ?? '')).replace(/</g, '\\u003c')} === 'running') {
       setTimeout(() => location.reload(), 5000);
     }
   </script>

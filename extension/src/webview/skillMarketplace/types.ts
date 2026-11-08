@@ -395,29 +395,11 @@ export const DEFAULT_AGENT_SOURCES: SkillSourceConfig[] = [];
 
 // ============ MCP Integrations（Claude Code + Codex） ============
 
-export type McpTransport = 'stdio' | 'http';
+export type McpTransport = import('../../services/mcpClient').McpTransport;
 
-export type McpServerRecord = {
-  id: string;
-  name: string;
-  transport: McpTransport;
-  command?: string;
-  args?: string[];
-  env?: Record<string, string>;
-  url?: string;
-  bearerTokenEnvVar?: string;
-  httpHeaders?: Record<string, string>;
-  enabledClaude: boolean;
-  enabledCodex: boolean;
-  builtin?: 'literature' | 'agentsociety';
-};
+export type McpServerRecord = import('../../services/mcpClient').McpServerRecord;
 
-export type McpProbeResult = {
-  ok: boolean;
-  status: number;
-  tools: string[];
-  error?: string;
-};
+export type McpProbeResult = import('../../services/mcpClient').McpProbeResult;
 
 export type McpPresetCatalogItem = {
   presetId: string;

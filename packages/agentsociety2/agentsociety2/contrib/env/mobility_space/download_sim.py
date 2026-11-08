@@ -1,6 +1,11 @@
+"""Download a versioned routing binary and verify it before publication."""
+
+import hashlib
 import os
 import platform
-import stat
+import re
+import tempfile
+from pathlib import Path
 
 import requests
 
@@ -16,47 +21,66 @@ BIN_SOURCES = {
     },
 }
 
+# Digests captured from the publisher's versioned HTTPS artifacts on 2026-11-07.
+# macOS matches the original branch's separately recorded digest. The publisher
+# supplies no detached signature; these pins prevent later content replacement,
+# and are not evidence of reproducible builds or independent provenance.
+ROUTING_SHA256 = {
+    "linux_x86_64": "8484cd3b96aaceea29b3feffa3fa3caee9dad8de4c44754b239c4f93bea9e74c",
+    "darwin_arm64": "38c5c98cbb3e423b5f9f4bdb5f01175e0d7201338949f1761eb1c236bbd21fa5",
+}
+
 
 def download_binary(home_dir: str) -> str:
-    binary_name = "routing"
-    bin_path = os.path.join(home_dir, binary_name)
-    if os.path.exists(bin_path):
-        return bin_path
-
-    system = platform.system()
-    machine = platform.machine()
-
-    if system == "Linux":
-        plat_dir = "linux"
-        if machine == "x86_64":
-            arch = "x86_64"
-        else:
-            raise Exception(
-                "routing: Unsupported architecture on Linux. Only x86_64 is supported."
-            )
-    elif system == "Darwin" and machine.startswith("arm"):
-        plat_dir = "darwin"
-        arch = "arm64"
+    """Return a verified executable, preserving the previous file on failure."""
+    system, machine = platform.system(), platform.machine()
+    if system == "Linux" and machine == "x86_64":
+        key = "linux_x86_64"
+    elif system == "Darwin" and machine in {"arm64", "aarch64"}:
+        key = "darwin_arm64"
     else:
-        raise Exception(
-            "routing: Unsupported platform. Only Linux x86_64 and Darwin (macOS) arm64 are supported."
+        raise RuntimeError("routing supports Linux x86_64 and macOS arm64 only")
+    expected = os.environ.get(
+        f"AGENTSOCIETY_ROUTING_SHA256_{key.upper()}", ROUTING_SHA256.get(key, "")
+    )
+    if not re.fullmatch(r"[0-9a-fA-F]{64}", expected):
+        raise ValueError(f"Missing or invalid routing SHA-256 for {key}")
+    expected = expected.lower()
+    destination = Path(home_dir).absolute() / "routing"
+    if destination.is_file():
+        actual = hashlib.sha256(destination.read_bytes()).hexdigest()
+        if actual == expected:
+            destination.chmod(0o700)
+            return str(destination)
+        get_logger().warning(
+            f"Pre-existing routing binary SHA-256 mismatch for {key}; replacing after verification"
         )
 
-    url = BIN_SOURCES[binary_name].get(f"{plat_dir}_{arch}")
-    if not url:
-        raise Exception(f"No binary found for {binary_name}")
-
-    response = requests.get(url, timeout=120)
+    response = requests.get(BIN_SOURCES["routing"][key], timeout=120)
     if response.status_code != 200:
-        raise Exception(f"Download failed for {binary_name}")
+        raise RuntimeError("Download failed for routing")
+    data = response.content
+    actual = hashlib.sha256(data).hexdigest()
+    if actual != expected:
+        raise ValueError(
+            f"routing binary SHA-256 mismatch for {key}: expected {expected}, got {actual}"
+        )
 
-    bin_path = os.path.abspath(bin_path)
-
-    with open(bin_path, "wb") as f:
-        f.write(response.content)
-    os.chmod(bin_path, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)
-    get_logger().info(msg=f"Downloaded {binary_name} to {bin_path}")
-    return bin_path
+    # The executable path is visible only after the verified bytes are complete.
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    fd, temporary = tempfile.mkstemp(prefix=".routing-", dir=destination.parent)
+    try:
+        with os.fdopen(fd, "wb") as stream:
+            stream.write(data)
+            stream.flush()
+            os.fsync(stream.fileno())
+            os.fchmod(stream.fileno(), 0o700)
+        os.replace(temporary, destination)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+    get_logger().info(f"Downloaded verified routing to {destination}")
+    return str(destination)
 
 
 if __name__ == "__main__":

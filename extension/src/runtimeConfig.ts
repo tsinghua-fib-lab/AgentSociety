@@ -65,9 +65,30 @@ export function getBackendAccessUrl(config?: Partial<EnvConfig>): string {
   return `http://${host}:${port}`;
 }
 
+/** 模板占位符(envManager 写入的默认值)——不算已配置。
+ * 2026-11-06 体验审查 #2:此前只判非空,新用户的 .env 模板占位符
+ * 全过判定,引导跳过配置、后端可启动,直到实验 LLM 调用 401 才暴露。 */
+const ENV_PLACEHOLDER_VALUES = new Set([
+  'your-api-key-here',
+  'your_api_key',
+  'your_coder_api_key',
+  'your_embedding_api_key',
+  'sk-your-litellm-virtual-key',
+  'your-litellm-api-key',
+]);
+
+export function isEnvPlaceholder(value: unknown): boolean {
+  if (typeof value !== 'string') {
+    return false;
+  }
+  const trimmed = value.trim();
+  return trimmed.length === 0 || ENV_PLACEHOLDER_VALUES.has(trimmed);
+}
+
 export function hasConfiguredLlmApiKey(config?: Partial<EnvConfig>): boolean {
   const resolvedConfig = config ?? readWorkspaceEnvConfig();
-  return isNonEmptyString(resolvedConfig.llmApiKey);
+  return isNonEmptyString(resolvedConfig.llmApiKey)
+    && !isEnvPlaceholder(resolvedConfig.llmApiKey);
 }
 
 function shouldFillEnvValue(

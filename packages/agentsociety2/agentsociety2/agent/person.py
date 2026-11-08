@@ -303,8 +303,8 @@ Minimal config example:
 
         这里处理的 person 专属前缀:
 
-        - ``memory_*`` → :meth:`_dispatch_memory_tool`(person 记忆运行时)。
-        - ``todo_*`` → :meth:`dispatch_todo_tool`(继承自
+        - ``memory_*`` → :meth:`_dispatch_memory_tool` (person 记忆运行时)。
+        - ``todo_*`` → :meth:`dispatch_todo_tool` (继承自
           :class:`AgentBase`;通用 TODO 存储 + 参数归一化)。
 
         其余所有动作(workspace / skill / ask_env)委托给
