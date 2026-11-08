@@ -144,6 +144,8 @@ all = [
 packages = ["agentsociety2"]
 # Explicitly include contrib env files that match test patterns
 artifacts = [
+  "agentsociety2/custom/**/examples/**/*.py",
+  "agentsociety2/custom/**/examples/**/*.md",
   "agentsociety2/contrib/env/*_test.py",
   "agentsociety2/contrib/env/*_effect.py",
   "agentsociety2/contrib/env/*.py",
@@ -157,6 +159,8 @@ include = [
     "/CHANGELOG.md",
 ]
 artifacts = [
+  "agentsociety2/custom/**/examples/**/*.py",
+  "agentsociety2/custom/**/examples/**/*.md",
   "agentsociety2/contrib/env/*_test.py",
   "agentsociety2/contrib/env/*_effect.py",
   "agentsociety2/contrib/env/*.py",

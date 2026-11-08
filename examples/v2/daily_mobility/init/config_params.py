@@ -41,14 +41,14 @@ from daily_mobility_intentions import (
 INTENTION_CHOICE_LABELS = INTENTION_CHOICES
 
 
-def _profile_block(p: dict, slot_minutes: int) -> str:
+def _profile_block(p: dict, tick: int) -> str:
     aid = p["id"]
     return (
         f"Agent-{aid}, age {p.get('age', '?')}, gender {p.get('gender', '?')}, "
         f"education {p.get('education', '?')}, occupation {p.get('occupation', '?')}, "
         f"home AOI {p.get('home')}, work AOI {p.get('work')}. "
         "You are simulating an ordinary day in an urban mobility environment. "
-        f"Each simulation step advances about {slot_minutes} minutes on the same calendar day. "
+        f"Each simulation step advances about {tick / 60:g} minutes on the same calendar day. "
         "Use mobility tools as a real person would for commuting, errands, meals, and leisure, "
         "consistent with your profile."
     )
@@ -200,7 +200,7 @@ def main() -> None:
         aid = p["id"]
         agent_kwargs = {
             "id": aid,
-            "profile": _profile_block(p, slot_minutes),
+            "profile": _profile_block(p, tick),
             "max_react_turns": 6 if len(use) > 20 else 8,
             "default_activated_skill_ids": [
                 "built-in@daily-guidance",
