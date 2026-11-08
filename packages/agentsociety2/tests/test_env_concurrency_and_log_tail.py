@@ -106,14 +106,16 @@ async def test_exec_print_capture_isolated_between_concurrent_asks() -> None:
     让出事件循环，另一个 ask 会换走全局 stdout，本执行恢复后的 print 写进
     别人的 buffer。现改为向 exec globals 注入每执行独立的 print。
     """
+    from agentsociety2.env import tool
     from agentsociety2.env.router_codegen import CodeGenRouter, CodeStage
 
     class _Snoozer:
-        async def snooze(self):
+        @tool(readonly=True)
+        async def snooze(self) -> None:
+            """Yield briefly so generated programs overlap."""
             await asyncio.sleep(0.02)
 
     router = CodeGenRouter(env_modules=[], final_summary_enabled=False)
-    _Snoozer.snooze._tool_info = {"readonly": True}
     router._modules = {"env": _Snoozer()}
 
     async def run(tag: str) -> dict:
