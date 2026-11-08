@@ -18,3 +18,16 @@ def _ensure_llm_env_for_tests() -> None:
 
 
 _ensure_llm_env_for_tests()
+
+
+# The production router closes its workers during environment shutdown. Tests
+# use a fresh event loop each time, so reap that loop's workers before teardown.
+import pytest_asyncio
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def close_codegen_worker_pools():
+    yield
+    from agentsociety2.env.codegen_process import close_pools
+
+    await close_pools()

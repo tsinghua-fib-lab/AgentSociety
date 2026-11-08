@@ -454,6 +454,33 @@ class Config:
     decrease) based on observed latency and rate-limit errors.
     """
 
+    CODE_EXEC_TIMEOUT: int = _env_int("AGENTSOCIETY_CODE_EXEC_TIMEOUT", 10)
+    """
+    Execution limit for generated code and tools, in seconds. The process backend
+    enforces a hard wall-clock limit; inprocess uses cooperative Python checks.
+
+    Environment variable: AGENTSOCIETY_CODE_EXEC_TIMEOUT
+    """
+
+    CODE_EXEC_BACKEND: str = os.getenv("AGENTSOCIETY_CODE_EXEC_BACKEND", "inprocess")
+    """Full Python backend: inprocess by default; process enables worker isolation.
+
+    Inprocess uses cooperative Python deadlines and deployment resource limits.
+    Environment variable: AGENTSOCIETY_CODE_EXEC_BACKEND
+    """
+
+    CODE_EXEC_MEMORY_MIB: int = _env_int("AGENTSOCIETY_CODE_EXEC_MEMORY_MIB", 512)
+    """Address-space limit per numerical worker, including its Python/NumPy runtime.
+
+    Environment variable: AGENTSOCIETY_CODE_EXEC_MEMORY_MIB
+    """
+
+    CODE_EXEC_WORKERS: int = _env_int("AGENTSOCIETY_CODE_EXEC_WORKERS", 4)
+    """Maximum numerical workers shared by routers on the same event loop.
+
+    Environment variable: AGENTSOCIETY_CODE_EXEC_WORKERS
+    """
+
     BATCH_SIZE: int = _env_int("AGENTSOCIETY_BATCH_SIZE", 256)
     """
     Number of agents per ``step_agent_batch`` Ray Task.
