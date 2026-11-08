@@ -160,6 +160,7 @@ export class ConfigPageViewProvider {
         password?: string;
         settings?: Record<string, boolean>;
         fingerprint?: string;
+        force?: boolean;
       }) => {
         switch (message.command) {
           case 'requestConfig':
@@ -319,7 +320,7 @@ export class ConfigPageViewProvider {
             }
             break;
           case 'gatewayQueryProviderUsage':
-            await this._handleGatewayQueryProviderUsage(String(message.providerId ?? ''));
+            await this._handleGatewayQueryProviderUsage(String(message.providerId ?? ''), message.requestId ?? 0, message.force === true);
             break;
           case 'restartCodexCli':
             await this._handleRestartCodexCli();
@@ -943,7 +944,7 @@ export class ConfigPageViewProvider {
     });
   }
 
-  private async _handleGatewayQueryProviderUsage(providerId: string): Promise<void> {
+  private async _handleGatewayQueryProviderUsage(providerId: string, requestId: number, force = false): Promise<void> {
     const manager = ConfigPageViewProvider.gatewayManager;
     if (!manager || !providerId) {
       return;
@@ -952,10 +953,13 @@ export class ConfigPageViewProvider {
     if (!provider) {
       return;
     }
-    const result = await manager.queryProviderUsageById(providerId);
+    const fingerprint = JSON.stringify(provider);
+    const result = await manager.queryProviderUsageById(providerId, force);
+    if (JSON.stringify(manager.getProviders().find((item) => item.id === providerId)) !== fingerprint) { return; }
     this._panel.webview.postMessage({
       command: 'gatewayProviderUsageResult',
       providerId,
+      requestId,
       baseUrl: provider.baseUrl,
       result,
     });

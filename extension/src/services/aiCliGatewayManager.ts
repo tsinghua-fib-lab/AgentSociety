@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import { createHash } from 'crypto';
 import * as vscode from 'vscode';
 import type { ClaudeCodeConfigValues } from '../webview/configPage/claudeCodeTypes';
 import {
@@ -41,6 +42,7 @@ import {
 } from './gatewayRemotePricing';
 import {
   queryProviderUsage,
+  ProviderUsageCache,
   supportsProviderUsageQuery,
   type ProviderUsageResult,
 } from './gatewayProviderUsage';
@@ -52,6 +54,7 @@ import {
   detectCodexOfficialLogin,
   getCodexRoutingSnapshot,
   getCodexOfficialLoginSnapshot,
+  readCodexSubscriptionSession,
   isCodexConfiguredByUser,
   isCodexGatewayTakeoverConfig,
   readCodexConfigText,
@@ -136,6 +139,7 @@ export type AiCliProviderConfig = {
   apiKind?: AiCliApiKind;
   authMode?: AiCliAuthMode;
   authHeaderMode?: AiCliAuthHeaderMode;
+  usageQuery?: import('../shared/providerUsage').ProviderUsageConfig;
   activeClaude: boolean;
   activeCodex: boolean;
   failoverClaude: boolean;
@@ -177,6 +181,7 @@ export class AiCliGatewayManager {
   private providersCache: AiCliProviderConfig[] = [];
   private storedUpstreamCache: AiCliGatewayUpstream | undefined;
   private codexLiveBackupCache: string | undefined;
+  private readonly providerUsageCache = new ProviderUsageCache();
   private outboundProxyCache: OutboundProxyConfig | null;
   private codexLoginSnapshot = getCodexOfficialLoginSnapshot();
   private codexLoginRefreshed = false;
@@ -1690,7 +1695,7 @@ export class AiCliGatewayManager {
     return supportsProviderUsageQuery(baseUrl);
   }
 
-  async queryProviderUsageById(providerId: string): Promise<ProviderUsageResult> {
+  async queryProviderUsageById(providerId: string, force = false): Promise<ProviderUsageResult> {
     await this.initialize();
     const provider = this.getProviders().find((p) => p.id === providerId);
     if (!provider) {
@@ -1699,7 +1704,10 @@ export class AiCliGatewayManager {
     const normalized = this.normalizeProvider(provider);
     const apiKind = normalized.apiKind ?? inferApiKindFromBaseUrl(normalized.baseUrl);
     const authMode = inferProviderAuthMode({ ...normalized, apiKind });
-    return queryProviderUsage(normalized.baseUrl, normalized.apiKey, { apiKind, authMode });
+    const options = { apiKind, authMode, usageQuery: normalized.usageQuery, authHeaderMode: normalized.authHeaderMode, proxy: this.getOutboundProxy() };
+    const login = authMode === 'subscription' ? readCodexSubscriptionSession() : undefined;
+    const fingerprint = createHash('sha256').update(JSON.stringify([normalized.id, normalized.baseUrl, normalized.apiKey, options, login])).digest('hex');
+    return this.providerUsageCache.query(fingerprint, () => queryProviderUsage(normalized.baseUrl, normalized.apiKey, options), force);
   }
 
   private buildClaudeFailoverUpstreams(): AiCliGatewayUpstream[] {

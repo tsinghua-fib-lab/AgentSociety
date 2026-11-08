@@ -12,7 +12,6 @@ import {
   Typography,
 } from 'antd';
 import {
-  BarChartOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
   DeleteOutlined,
@@ -33,7 +32,10 @@ import { ClaudeModelSelect } from './ClaudeModelSelect';
 import type { AiCliProviderRecord } from './aiCliProviderTypes';
 import { autoMapClaudeRoleModels } from './aiCliProviderTypes';
 import { inferProviderAuthMode, providerSupportsRole, clampProviderRoleFlags } from '../../aiCli/providerAuth';
-import { supportsProviderUsageQuery } from './providerUsageSupport';
+import { ProviderUsageCard } from './ProviderUsageCard';
+import { ProviderUsageSettings } from './ProviderUsageSettings';
+import { customUsageUrl } from '../../shared/providerUsage';
+import { supportsProviderUsageQuery } from '../../shared/providerUsage';
 import { normalizeProviderBaseUrl } from './providerBaseUrl';
 import { shouldShowProviderModelConfiguration } from '../../services/manualConfigSync';
 
@@ -188,7 +190,17 @@ export function ProviderEditor({
   const activeProtocolChanged =
     (provider.activeClaude && !providerSupportsRole(draft, 'claude')) ||
     (provider.activeCodex && !providerSupportsRole(draft, 'codex'));
-  const canSave = !activeProtocolChanged && (isSubscription || (Boolean(draft.baseUrl.trim()) && Boolean(draft.apiKey.trim()) && Boolean(layoutApiKind)));
+  let usageConfigValid = true;
+  if (draft.usageQuery?.mode === 'custom') {
+    try { customUsageUrl(draft.baseUrl, draft.usageQuery); }
+    catch { usageConfigValid = false; }
+    usageConfigValid = usageConfigValid && Boolean(draft.usageQuery.remainingPath?.trim()) &&
+      Number.isFinite(draft.usageQuery.divisor ?? 1) && (draft.usageQuery.divisor ?? 1) > 0;
+  }
+  const canSave = usageConfigValid && !activeProtocolChanged && (isSubscription || (Boolean(draft.baseUrl.trim()) && Boolean(draft.apiKey.trim()) && Boolean(layoutApiKind)));
+  const usageMatchesSaved = connectionFingerprint(draft.baseUrl, draft.apiKey, draft.apiKind) === connectionFingerprint(provider.baseUrl, provider.apiKey, provider.apiKind) &&
+    draft.authMode === provider.authMode && draft.authHeaderMode === provider.authHeaderMode &&
+    JSON.stringify(draft.usageQuery) === JSON.stringify(provider.usageQuery);
   const matchedPreset = findPresetByUrl(draft.baseUrl, layoutApiKind)?.id ?? CUSTOM_PRESET;
   const selectedForClaude = draft.activeClaude;
   const selectedForCodex = draft.activeCodex;
@@ -285,64 +297,7 @@ export function ProviderEditor({
     );
   };
 
-  const renderUsage = () => {
-    if (isNew) {
-      return (
-        <Text type="secondary" style={{ fontSize: 11 }}>
-          {t('claudeCodeConfig.providerQuotaAfterSave')}
-        </Text>
-      );
-    }
-    const supported = supportsProviderUsageQuery(draft.baseUrl, {
-      apiKind: layoutApiKind,
-      authMode: inferProviderAuthMode({ ...draft, apiKind: layoutApiKind }),
-    });
-    if (!supported) {
-      return null;
-    }
-    const usage = providerUsage;
-    const refresh = onQueryProviderUsage ? (
-      <Button
-        type="text"
-        size="small"
-        loading={usage?.loading}
-        icon={<ReloadOutlined />}
-        aria-label={t('claudeCodeConfig.providerQueryQuota')}
-        onClick={onQueryProviderUsage}
-      />
-    ) : null;
-    if (usage?.ok && usage.summary) {
-      return (
-        <Space size={4}>
-          <BarChartOutlined style={{ color: palette.linkForeground }} />
-          <Tooltip title={usage.plans?.map((plan) => `${plan.name}: ${plan.remaining}`).join('\n')}>
-            <Text style={{ fontSize: 11 }}>{usage.summary}</Text>
-          </Tooltip>
-          {refresh}
-        </Space>
-      );
-    }
-    if (usage && !usage.ok && usage.error && !usage.loading) {
-      const errorKey = `claudeCodeConfig.providerUsageErrors.${usage.error}`;
-      const errorText = t(errorKey) !== errorKey ? t(errorKey) : usage.error;
-      return (
-        <Space size={4}>
-          <Tag color="error" style={{ margin: 0, fontSize: 10 }}>{errorText}</Tag>
-          {refresh}
-        </Space>
-      );
-    }
-    return (
-      <Space size={4}>
-        <Text type="secondary" style={{ fontSize: 11 }}>
-          {usage?.loading
-            ? t('claudeCodeConfig.providerQuotaLoading')
-            : t('claudeCodeConfig.providerQueryQuota')}
-        </Text>
-        {refresh}
-      </Space>
-    );
-  };
+
 
   const handlePresetChange = (id: string) => {
     autoFetchFingerprintRef.current = '';
@@ -433,7 +388,6 @@ export function ProviderEditor({
           {protocolTag()}
           {availabilityTag()}
         </Space>
-        {renderUsage()}
       </div>
 
       <div>
@@ -490,7 +444,7 @@ export function ProviderEditor({
                 },
                 { value: 'api', label: t('claudeCodeConfig.providerAuthApiKey') },
               ]}
-              onChange={(value) => patch({ authMode: value })}
+              onChange={(value) => patch({ authMode: value, usageQuery: value === 'subscription' && draft.usageQuery?.mode === 'custom' ? { mode: 'auto' } : draft.usageQuery })}
             />
           ) : null}
           {!isSubscription ? (
@@ -564,6 +518,12 @@ export function ProviderEditor({
         </Space>
       </div>
 
+      <ProviderUsageSettings allowCustom={!isSubscription} value={draft.usageQuery} onChange={(usageQuery) => patch({ usageQuery })} />
+      {!usageConfigValid ? <Text type="warning">{t('claudeCodeConfig.providerUsageErrors.invalid_usage_config')}</Text> : null}
+      {!isNew && supportsProviderUsageQuery(provider.baseUrl, { apiKind: provider.apiKind, authMode: inferProviderAuthMode(provider), usageQuery: provider.usageQuery }) ? (
+        usageMatchesSaved ? <ProviderUsageCard usage={providerUsage} palette={palette} onRefresh={onQueryProviderUsage} />
+          : <Text type="secondary">{t('claudeCodeConfig.providerQuotaAfterSave')}</Text>
+      ) : null}
       <div style={sectionStyle(palette)}>
         <Space size={6} style={{ marginBottom: 8 }}>
           <Text strong style={{ fontSize: 12 }}>{t('claudeCodeConfig.providerUsageSection')}</Text>

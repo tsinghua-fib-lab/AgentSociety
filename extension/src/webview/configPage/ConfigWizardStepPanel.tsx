@@ -231,7 +231,7 @@ export type ConfigWizardStepPanelProps = {
   onSavePricing: (pricing: ModelPricingMap) => void;
   onClearPricing: () => void;
   providerUsage: Record<string, import('./claudeCodeTypes').ProviderUsageQueryResult & { loading?: boolean }>;
-  onQueryProviderUsage: (providerId: string) => void;
+  onQueryProviderUsage: (providerId: string, force?: boolean) => void;
   onRestartCodex: () => void;
   onRestartClaude: () => void;
   onSyncClaudeConfig: () => void;

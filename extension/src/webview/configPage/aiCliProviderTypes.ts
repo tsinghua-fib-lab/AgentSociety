@@ -11,6 +11,7 @@ export type AiCliProviderRecord = {
   apiKind?: AiCliApiKind;
   authMode?: AiCliAuthMode;
   authHeaderMode?: AiCliAuthHeaderMode;
+  usageQuery?: import('../../shared/providerUsage').ProviderUsageConfig;
   activeClaude: boolean;
   activeCodex: boolean;
   failoverClaude: boolean;

@@ -43,7 +43,7 @@ export type ProviderSectionCommonProps = {
     apiKind?: 'anthropic' | 'openai'
   ) => void;
   providerUsage: Record<string, ProviderUsageQueryResult & { loading?: boolean }>;
-  onQueryProviderUsage: (id: string) => void;
+  onQueryProviderUsage: (id: string, force?: boolean) => void;
 };
 
 export interface ClaudeCodeConfigSectionProps extends ProviderSectionCommonProps {

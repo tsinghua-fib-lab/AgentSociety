@@ -260,6 +260,7 @@ export function GatewayUsagePanel({
   );
 
   const usageToolbar = (
+    <>
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
       <Space>
         <BarChartOutlined />
@@ -288,6 +289,8 @@ export function GatewayUsagePanel({
         </Button>
       </Space>
     </div>
+    <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 12 }}>{t('claudeCodeConfig.usageLocalScope')}</Text>
+    </>
   );
 
   if (!hasAnyRecords && !loading) {

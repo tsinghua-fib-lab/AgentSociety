@@ -69,14 +69,7 @@ export interface CodexRoutingStatus {
   directUrl?: string;
 }
 
-export interface ProviderUsageQueryResult {
-  ok: boolean;
-  template?: string;
-  summary?: string;
-  plans?: Array<{ name: string; remaining: string; used?: string; unit?: string }>;
-  error?: string;
-  unsupported?: boolean;
-}
+export type ProviderUsageQueryResult = import('../../shared/providerUsage').ProviderUsageResult;
 
 export type ProviderAvailabilityResult = {
   ok: boolean;

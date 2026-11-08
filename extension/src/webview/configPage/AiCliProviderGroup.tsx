@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Button, Card, Space, Radio, Tag, Tooltip, Typography } from 'antd';
-import { BarChartOutlined, EditOutlined, PlusOutlined, QuestionCircleOutlined, ReloadOutlined } from '@ant-design/icons';
+import { EditOutlined, PlusOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import type { TFunction } from 'i18next';
 import type { VscodeThemePalette } from '../theme';
 import type { ClaudeModelOption, ProviderUsageQueryResult, ProviderAvailabilityResult } from './claudeCodeTypes';
@@ -9,7 +9,8 @@ import type { AiCliProviderRecord } from './aiCliProviderTypes';
 import { EMPTY_PROVIDER_DRAFT } from './aiCliProviderTypes';
 import { ProviderEditor } from './AiCliProviderEditor';
 import { inferProviderAuthMode, providerSupportsRole } from '../../aiCli/providerAuth';
-import { supportsProviderUsageQuery } from './providerUsageSupport';
+import { supportsProviderUsageQuery } from '../../shared/providerUsage';
+import { ProviderUsageCard } from './ProviderUsageCard';
 import { normalizeProviderBaseUrl } from './providerBaseUrl';
 
 const { Text } = Typography;
@@ -30,7 +31,7 @@ export type AiCliProviderGroupProps = {
   isProviderChecking?: (baseUrl: string) => boolean;
   availabilityResults: Record<string, ProviderAvailabilityResult>;
   providerUsage: Record<string, ProviderUsageQueryResult & { loading?: boolean }>;
-  onQueryProviderUsage: (id: string) => void;
+  onQueryProviderUsage: (id: string, force?: boolean) => void;
   modelsByProvider: Record<string, ClaudeModelOption[]>;
   modelsLoadingByProvider: Record<string, boolean>;
   modelsErrorByProvider: Record<string, string | null>;
@@ -59,82 +60,6 @@ export function AiCliProviderGroup({
   const NEW_ID = `__new__`;
   const [showNew, setShowNew] = React.useState(false);
   const [editingIds, setEditingIds] = React.useState<Set<string>>(() => new Set());
-  const queriedUsageIds = React.useRef(new Set<string>());
-
-  React.useEffect(() => {
-    const currentIds = new Set(providers.map((p) => p.id));
-    for (const id of queriedUsageIds.current) {
-      if (!currentIds.has(id)) {
-        queriedUsageIds.current.delete(id);
-      }
-    }
-    for (const provider of providers) {
-      const apiKind = provider.apiKind;
-      const supported = supportsProviderUsageQuery(provider.baseUrl, {
-        apiKind,
-        authMode: inferProviderAuthMode(provider),
-      });
-      if (supported && !providerUsage[provider.id] && !queriedUsageIds.current.has(provider.id)) {
-        queriedUsageIds.current.add(provider.id);
-        onQueryProviderUsage(provider.id);
-      }
-    }
-  }, [providers, onQueryProviderUsage, providerUsage]);
-
-  const renderUsage = (provider: AiCliProviderRecord) => {
-    const apiKind = provider.apiKind;
-    if (!supportsProviderUsageQuery(provider.baseUrl, {
-      apiKind,
-      authMode: inferProviderAuthMode(provider),
-    })) {
-      return null;
-    }
-    const usage = providerUsage[provider.id];
-    const refresh = (
-      <Button
-        type="text"
-        size="small"
-        loading={usage?.loading}
-        icon={<ReloadOutlined />}
-        aria-label={t('claudeCodeConfig.providerQueryQuota')}
-        onClick={() => onQueryProviderUsage(provider.id)}
-      />
-    );
-    if (usage?.ok && usage.summary) {
-      return (
-        <Space size={4}>
-          <BarChartOutlined style={{ color: palette.linkForeground }} />
-          <Tooltip title={usage.plans?.map((plan) => `${plan.name}: ${plan.remaining}`).join('\n')}>
-            <Text style={{ fontSize: 12 }}>{usage.summary}</Text>
-          </Tooltip>
-          {refresh}
-        </Space>
-      );
-    }
-    if (usage && !usage.ok && usage.error) {
-      const errorKey = `claudeCodeConfig.providerUsageErrors.${usage.error}`;
-      const errorText = t(errorKey) !== errorKey ? t(errorKey) : usage.error;
-      return (
-        <Space size={4}>
-          <Tooltip title={errorText}>
-            <Tag color="error" style={{ margin: 0, fontSize: 11 }}>{errorText}</Tag>
-          </Tooltip>
-          {refresh}
-        </Space>
-      );
-    }
-    return (
-      <Space size={4}>
-        <Text type="secondary" style={{ fontSize: 12 }}>
-          {usage?.loading
-            ? t('claudeCodeConfig.providerQuotaLoading')
-            : t('claudeCodeConfig.providerQueryQuota')}
-        </Text>
-        {refresh}
-      </Space>
-    );
-  };
-
   // A primary provider is an exclusive choice per CLI, rather than an on/off setting.
   const renderRoleChoices = (provider: AiCliProviderRecord) => {
     const authMode = inferProviderAuthMode(provider);
@@ -273,9 +198,11 @@ export function AiCliProviderGroup({
                     >
                       {p.baseUrl || t('claudeCodeConfig.providerSubscriptionDirect')}
                     </Text>
-                    {renderUsage(p)}
                   </div>
                   {renderRoleChoices(p)}
+                  {supportsProviderUsageQuery(p.baseUrl, { apiKind: p.apiKind, authMode: inferProviderAuthMode(p), usageQuery: p.usageQuery }) ? (
+                    <ProviderUsageCard usage={providerUsage[p.id]} palette={palette} onRefresh={() => onQueryProviderUsage(p.id, true)} />
+                  ) : null}
                 </div>
               ) : (
                 <ProviderEditor
@@ -295,7 +222,7 @@ export function AiCliProviderGroup({
                   onRemove={hasAnyActive ? undefined : () => onRemove(p.id)}
                   onCheckAvailability={onCheckAvailability}
                   providerUsage={providerUsage[p.id]}
-                  onQueryProviderUsage={() => onQueryProviderUsage(p.id)}
+                  onQueryProviderUsage={() => onQueryProviderUsage(p.id, true)}
                   onFetchModels={(baseUrl, apiKey, kind) =>
                     onFetchModels(p.id, baseUrl, apiKey, kind)
                   }

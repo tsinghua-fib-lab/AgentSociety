@@ -49,7 +49,7 @@ import { ConfigReadinessOverview } from './ConfigReadinessOverview';
 import { ConfigStatusDashboard } from './ConfigStatusDashboard';
 import { ConfigWizardStepPanel } from './ConfigWizardStepPanel';
 import { ENV_LLM_SLOT } from './envLlmSlots';
-import { supportsProviderUsageQuery } from './providerUsageSupport';
+import { supportsProviderUsageQuery } from '../../shared/providerUsage';
 import { normalizeProviderBaseUrl } from './providerBaseUrl';
 import { autoMapClaudeRoleModels } from './aiCliProviderTypes';
 import { advancedPanelInnerStyle } from './configPageStyles';
@@ -264,6 +264,8 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
   const [providerUsage, setProviderUsage] = React.useState<
     Record<string, import('./claudeCodeTypes').ProviderUsageQueryResult & { loading?: boolean }>
   >({});
+  const usageRequestCounter = React.useRef(0);
+  const latestUsageRequest = React.useRef(new Map<string, number>());
   const [providerCheckingUrls, setProviderCheckingUrls] = React.useState<Set<string>>(() => new Set());
   const [customPricing, setCustomPricing] = React.useState<ModelPricingMap>({});
   const [advancedTopTab, setAdvancedTopTab] = React.useState<AdvancedTopTab>('models');
@@ -750,12 +752,14 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
   );
 
   const handleQueryProviderUsage = React.useCallback(
-    (providerId: string) => {
+    (providerId: string, force = false) => {
+      const requestId = ++usageRequestCounter.current;
+      latestUsageRequest.current.set(providerId, requestId);
       setProviderUsage((prev) => ({
         ...prev,
         [providerId]: { ...(prev[providerId] ?? { ok: false }), loading: true },
       }));
-      vscode.postMessage({ command: 'gatewayQueryProviderUsage', providerId });
+      vscode.postMessage({ command: 'gatewayQueryProviderUsage', providerId, force, requestId });
     },
     [vscode]
   );
@@ -764,11 +768,14 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
     (provider: import('./aiCliProviderTypes').AiCliProviderRecord) => {
       setClaudeProvidersLoading(true);
       vscode.postMessage({ command: 'gatewayUpdateProvider', provider });
-      if (provider.id) {
-        handleQueryProviderUsage(provider.id);
-      }
+      latestUsageRequest.current.delete(provider.id);
+      setProviderUsage((previous) => {
+        const next = { ...previous };
+        delete next[provider.id];
+        return next;
+      });
     },
-    [vscode, handleQueryProviderUsage]
+    [vscode]
   );
 
   const handleAddClaudeProvider = React.useCallback(
@@ -902,13 +909,21 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
     setFailoverEnabled(enabled);
   }, [vscode]);
 
-  const _handleQueryAllProviderUsage = React.useCallback(() => {
-    for (const p of claudeProviders) {
-      if (supportsProviderUsageQuery(p.baseUrl)) {
-        handleQueryProviderUsage(p.id);
+  React.useEffect(() => {
+    if (!gatewayUsageVisible) { return; }
+    const refresh = () => {
+      if (document.hidden) { return; }
+      for (const provider of claudeProviders) {
+        if ((provider.activeClaude || provider.activeCodex) && supportsProviderUsageQuery(provider.baseUrl, {
+          apiKind: provider.apiKind, authMode: inferProviderAuthMode(provider), usageQuery: provider.usageQuery,
+        })) { handleQueryProviderUsage(provider.id); }
       }
-    }
-  }, [claudeProviders, handleQueryProviderUsage]);
+    };
+    refresh();
+    const timer = window.setInterval(refresh, 60_000);
+    document.addEventListener('visibilitychange', refresh);
+    return () => { window.clearInterval(timer); document.removeEventListener('visibilitychange', refresh); };
+  }, [gatewayUsageVisible, claudeProviders, handleQueryProviderUsage]);
 
   const handleGetPricing = React.useCallback(() => {
     vscode.postMessage({ command: 'gatewayGetPricing' });
@@ -1440,11 +1455,17 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
         const uMsg = message as {
           providerId?: string;
           result?: import('./claudeCodeTypes').ProviderUsageQueryResult;
+          requestId?: number;
         };
-        if (uMsg.providerId && uMsg.result) {
+        if (uMsg.providerId && uMsg.result && uMsg.requestId === latestUsageRequest.current.get(uMsg.providerId)) {
           setProviderUsage((prev) => ({
             ...prev,
-            [uMsg.providerId!]: { ...uMsg.result!, loading: false },
+            [uMsg.providerId!]: {
+              ...uMsg.result!, loading: false,
+              plans: uMsg.result!.ok ? uMsg.result!.plans : prev[uMsg.providerId!]?.plans,
+              fetchedAt: uMsg.result!.fetchedAt ?? prev[uMsg.providerId!]?.fetchedAt,
+              scope: uMsg.result!.scope ?? prev[uMsg.providerId!]?.scope,
+            },
           }));
         }
       } else if (message.command === 'navigateAdvanced') {
