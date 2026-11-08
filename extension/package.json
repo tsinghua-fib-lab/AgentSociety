@@ -440,7 +440,7 @@
         },
         {
           "command": "aiSocialScientist.viewLiteratureIndex",
-          "when": "false"
+          "when": "workspaceFolderCount > 0"
         },
         {
           "command": "aiSocialScientist.viewStepsYaml",
