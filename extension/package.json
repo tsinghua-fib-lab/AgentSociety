@@ -887,7 +887,7 @@
     "@ant-design/icons": "^6.3.4",
     "@ant-design/x": "^2.9.0",
     "@ant-design/x-markdown": "^2.9.0",
-    "@deck.gl/core": "^9.4.0",
+    "@deck.gl/core": "^9.4.1",
     "@deck.gl/layers": "^9.4.0",
     "@deck.gl/react": "^9.4.0",
     "@deck.gl/widgets": "^9.4.0",
