@@ -126,6 +126,14 @@ def audit(root: Path) -> list[str]:
     ):
         errors.append("CodeQL fallback must use the official GitHub asset API")
     release = load(root / ".github/workflows/agentsociety2-publish.yml")
+    docs_workflow = load(root / ".github/workflows/docs-ci.yml")
+    for label, setup in [
+        ("GitHub docs", commands(docs_workflow["jobs"]["docs"])),
+        ("GitHub release/docs", commands(release["jobs"]["documentation"])),
+        ("GitLab docs", "\n".join(gitlab["documentation"].get("before_script", []))),
+    ]:
+        if not re.search(r"\bapt-get install\b[^\n]*\bgraphviz\b", setup):
+            errors.append(f"{label} must install Graphviz for documentation diagrams")
     for job, targets in [
         ("validate", ["ci-config", "ci-python-lint", "ci-python-test", "ci-extension"]),
         ("documentation", ["ci-frontend", "ci-docs-build", "ci-docs-browser"]),

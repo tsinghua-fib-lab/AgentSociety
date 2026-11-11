@@ -88,7 +88,10 @@ jobs:
           cache-suffix: docs-3.12
 
       - name: Install documentation dependencies
-        run: uv sync --frozen --package agentsociety2 --no-default-groups --extra docs
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends graphviz
+          uv sync --frozen --package agentsociety2 --no-default-groups --extra docs
 
       - name: Set up Node.js
         uses: actions/setup-node@v7
