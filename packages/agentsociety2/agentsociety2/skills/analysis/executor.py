@@ -1,4 +1,4 @@
-"""Execution helpers for the analysis tool layer."""
+"""分析工具层的执行辅助。"""
 
 import asyncio
 import fnmatch
@@ -19,7 +19,7 @@ logger = get_logger()
 
 @dataclass
 class ExecutionResult:
-    """Code execution result."""
+    """代码执行结果。"""
 
     success: bool
     stdout: str = ""
@@ -31,7 +31,7 @@ class ExecutionResult:
 
 @dataclass
 class ToolInfo:
-    """Tool metadata."""
+    """工具元数据。"""
 
     name: str
     description: str
@@ -40,7 +40,7 @@ class ToolInfo:
 
 
 class ToolResult(BaseModel):
-    """Tool execution result."""
+    """工具执行结果。"""
 
     success: bool
     content: str
@@ -49,7 +49,7 @@ class ToolResult(BaseModel):
 
 
 class ToolRegistry:
-    """Registry for built-in analysis tools."""
+    """内置分析工具的注册表。"""
 
     def __init__(self, workspace_path: Path):
         self.workspace_path = Path(workspace_path)
@@ -99,7 +99,7 @@ class ToolRegistry:
 
 
 class GlobTool:
-    """Find files matching a glob pattern."""
+    """查找匹配 glob 模式的文件。"""
 
     def __init__(self, workspace_path: Path):
         self.workspace_path = Path(workspace_path)
@@ -141,7 +141,7 @@ class GlobTool:
 
 
 class ListDirectoryTool:
-    """List directory contents."""
+    """列出目录内容。"""
 
     def __init__(self, workspace_path: Path):
         self.workspace_path = Path(workspace_path)
@@ -187,7 +187,7 @@ class ListDirectoryTool:
 
 
 class ReadFileTool:
-    """Read file contents."""
+    """读取文件内容。"""
 
     def __init__(self, workspace_path: Path):
         self.workspace_path = Path(workspace_path)
@@ -225,7 +225,7 @@ class ReadFileTool:
 
 
 class WriteFileTool:
-    """Write file contents."""
+    """写入文件内容。"""
 
     def __init__(self, workspace_path: Path):
         self.workspace_path = Path(workspace_path)
@@ -257,7 +257,7 @@ class WriteFileTool:
 
 
 class SearchFileContentTool:
-    """Search file contents."""
+    """搜索文件内容。"""
 
     def __init__(self, workspace_path: Path):
         self.workspace_path = Path(workspace_path)
@@ -296,7 +296,7 @@ class SearchFileContentTool:
 
 
 class ReplaceTool:
-    """Replace text in a file."""
+    """替换文件中的文本。"""
 
     def __init__(self, workspace_path: Path):
         self.workspace_path = Path(workspace_path)
@@ -336,7 +336,7 @@ class ReplaceTool:
 
 
 class RunShellCommandTool:
-    """Run a shell command inside the workspace."""
+    """在工作区内执行 shell 命令。"""
 
     def __init__(self, workspace_path: Path):
         self.workspace_path = Path(workspace_path)
@@ -414,7 +414,7 @@ class RunShellCommandTool:
 
 
 class WriteTodoTool:
-    """Manage todo lists."""
+    """管理 todo 列表。"""
 
     def __init__(self, workspace_path: Path):
         self.workspace_path = Path(workspace_path)
@@ -462,7 +462,7 @@ class WriteTodoTool:
 
 
 class LoadLiteratureTool:
-    """Load indexed literature entries."""
+    """加载已建立索引的文献条目。"""
 
     def __init__(self, workspace_path: Path):
         self.workspace_path = Path(workspace_path)
@@ -489,7 +489,7 @@ class LoadLiteratureTool:
 
 
 class LiteratureSearchTool:
-    """Search literature and save results into the workspace."""
+    """检索文献并将结果保存到工作区。"""
 
     def __init__(self, workspace_path: Path):
         self.workspace_path = Path(workspace_path)

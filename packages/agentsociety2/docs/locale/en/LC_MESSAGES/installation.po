@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: AgentSociety 2 2.6.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-18 22:50+0800\n"
+"POT-Creation-Date: 2026-11-10 12:10+0800\n"
 "PO-Revision-Date: 2026-03-05 23:50+0800\n"
 "Last-Translator: AgentSociety Team\n"
 "Language: en\n"
@@ -19,171 +19,587 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: ../../installation.rst:2
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:2
 msgid "安装"
 msgstr "Installation"
 
-#: ../../installation.rst:5
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:5
 msgid "系统要求"
 msgstr "Requirements"
 
-#: ../../installation.rst:7
-msgid "AgentSociety 2 需要 Python 3.11 或更高版本。"
-msgstr "AgentSociety 2 requires Python 3.11 or later."
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:7
+msgid "AgentSociety 2 需要 Python 3.11–3.13。"
+msgstr "AgentSociety 2 requires Python 3.11–3.13."
 
-#: ../../installation.rst:10
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:10
 msgid "从 PyPI 安装"
 msgstr "Install from PyPI"
 
-#: ../../installation.rst:12
-msgid "最简单的安装 AgentSociety 2 的方法是使用 pip："
-msgstr "The easiest way to install AgentSociety 2 is using pip:"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:12
+msgid "仅运行 SDK 示例时，安装核心包即可；文档、开发和分析依赖按需添加。工作台安装步骤见 :doc:`user_guide`。"
+msgstr ""
+"Install the core package for SDK examples; add documentation, development and "
+"analysis dependencies as needed. See :doc:`user_guide` for workbench installation."
 
-#: ../../installation.rst:18
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:14
+msgid "pip install agentsociety2"
+msgstr "pip install agentsociety2"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:18
 msgid "这将安装核心包。如果要安装开发依赖："
 msgstr ""
-"This will install the core package. If you want to install with "
-"development dependencies:"
+"This will install the core package. If you want to install with development "
+"dependencies:"
 
-#: ../../installation.rst:24
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:20
+msgid "pip install \"agentsociety2[dev]\""
+msgstr "pip install \"agentsociety2[dev]\""
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:24
 msgid "对于文档依赖："
 msgstr "For documentation dependencies:"
 
-#: ../../installation.rst:30
-msgid "安装所有内容："
-msgstr "Install everything:"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:26
+msgid "pip install \"agentsociety2[docs]\""
+msgstr "pip install \"agentsociety2[docs]\""
 
-#: ../../installation.rst:37
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:30
+msgid "分析技能与特定环境的可选依赖："
+msgstr "Optional dependencies for the analysis skill and specific environments:"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:32
+msgid ""
+"pip install \"agentsociety2[analysis]\"   # EDA 报告与数据剖析（analysis 技能）\n"
+"pip install \"agentsociety2[eda]\"        # statsmodels 高级统计分析（analysis 技能）\n"
+"pip install \"agentsociety2[ml]\"         # torch 深度学习推荐算法（social_media 环境）"
+msgstr ""
+"pip install \"agentsociety2[analysis]\"   # EDA reports and data profiling for the analysis skill"
+"\n"
+"pip install \"agentsociety2[eda]\"        # Advanced statsmodels analysis for the analysis skill\n"
+"pip install \"agentsociety2[ml]\"         # PyTorch recommendation models for the social_media "
+"environment"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:38
+msgid "安装所有内容（含以上全部可选依赖）："
+msgstr "Install everything (including all the optional dependencies above):"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:40
+msgid "pip install \"agentsociety2[all]\""
+msgstr "pip install \"agentsociety2[all]\""
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:45
 msgid "从源码安装"
 msgstr "Install from Source"
 
-#: ../../installation.rst:39
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:47
 msgid "要从最新的源代码安装："
 msgstr "To install from the latest source code:"
 
-#: ../../installation.rst:48
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:49
+msgid ""
+"git clone https://github.com/tsinghua-fib-lab/agentsociety.git\n"
+"cd agentsociety/packages/agentsociety2\n"
+"pip install -e ."
+msgstr ""
+"git clone https://github.com/tsinghua-fib-lab/agentsociety.git\n"
+"cd agentsociety/packages/agentsociety2\n"
+"pip install -e ."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:56
 msgid "验证安装"
 msgstr "Verify Installation"
 
-#: ../../installation.rst:50
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:58
 msgid "要验证您的安装，运行："
 msgstr "To verify your installation, run:"
 
-#: ../../installation.rst:57
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:60
+msgid ""
+"import agentsociety2\n"
+"print(agentsociety2.__version__)"
+msgstr ""
+"import agentsociety2\n"
+"print(agentsociety2.__version__)"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:65
 msgid "您应该能看到版本号被打印出来。"
 msgstr "You should see the version number printed."
 
-#: ../../installation.rst:60
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:68
 msgid "配置"
 msgstr "Configuration"
 
-#: ../../installation.rst:62
-msgid "AgentSociety 2 需要 LLM API 凭证。设置以下环境变量："
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:70
+msgid "运行会调用模型的示例前，需要配置服务地址与 API Key。模型名可显式设置；未设置时使用框架默认值。下面使用占位密钥，请替换为自己的配置。"
 msgstr ""
-"AgentSociety 2 requires LLM API credentials. Set the following "
-"environment variables:"
+"Configure a service endpoint and API key before running model-calling examples. Set a"
+" model name explicitly or use the framework default. Replace the placeholder key "
+"below with your own configuration."
 
-#: ../../installation.rst:64
-msgid "**必需配置**"
-msgstr "**Required Configuration**"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:72
+msgid "**默认模型配置**"
+msgstr "**Default Model Configuration**"
 
-#: ../../installation.rst:73
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:74
+msgid ""
+"# Default LLM (Required - for most operations)\n"
+"export AGENTSOCIETY_LLM_API_KEY=\"your-api-key\"\n"
+"export AGENTSOCIETY_LLM_API_BASE=\"https://api.openai.com/v1\"\n"
+"export AGENTSOCIETY_LLM_MODEL=\"gpt-5.5\""
+msgstr ""
+"# Default LLM (Required - for most operations)\n"
+"export AGENTSOCIETY_LLM_API_KEY=\"your-api-key\"\n"
+"export AGENTSOCIETY_LLM_API_BASE=\"https://api.openai.com/v1\"\n"
+"export AGENTSOCIETY_LLM_MODEL=\"gpt-5.5\""
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:81
 msgid "**高级配置**"
-msgstr "**Required Configuration**"
+msgstr "**Advanced Configuration**"
 
-#: ../../installation.rst:75
-msgid "对于专门的任务，您可以配置单独的 LLM 实例。如果未设置这些选项， 它们将回退到默认 LLM 配置："
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:83
+msgid "对于专门的任务，您可以配置单独的 LLM 实例。如果未设置这些选项，它们将回退到默认 LLM 配置："
 msgstr ""
-"For specialized tasks, you can configure separate LLM instances. If these"
-" are not set, they will fall back to the default LLM configuration:"
+"For specialized tasks, you can configure separate LLM instances. If these are not set, they will "
+"fall back to the default LLM configuration:"
 
-#: ../../installation.rst:99
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:85
+msgid ""
+"# Coder LLM (for code-related tasks)\n"
+"# Falls back to: AGENTSOCIETY_LLM_API_KEY, AGENTSOCIETY_LLM_API_BASE\n"
+"export AGENTSOCIETY_CODER_LLM_API_KEY=\"your-coder-api-key\"      # Optional\n"
+"export AGENTSOCIETY_CODER_LLM_API_BASE=\"https://api.openai.com/v1\"  # Optional\n"
+"export AGENTSOCIETY_CODER_LLM_MODEL=\"gpt-5.5\"                    # Optional\n"
+"\n"
+"# Embedding model (for text embedding and semantic search)\n"
+"# Falls back to: AGENTSOCIETY_LLM_API_KEY, AGENTSOCIETY_LLM_API_BASE\n"
+"export AGENTSOCIETY_EMBEDDING_API_KEY=\"your-embedding-api-key\"  # Optional\n"
+"export AGENTSOCIETY_EMBEDDING_API_BASE=\"https://api.openai.com/v1\"  # Optional\n"
+"export AGENTSOCIETY_EMBEDDING_MODEL=\"text-embedding-3-large\"   # Optional\n"
+"export AGENTSOCIETY_EMBEDDING_DIMS=\"1024\"                      # Optional"
+msgstr ""
+"# Coder LLM (for code-related tasks)\n"
+"# Falls back to: AGENTSOCIETY_LLM_API_KEY, AGENTSOCIETY_LLM_API_BASE\n"
+"export AGENTSOCIETY_CODER_LLM_API_KEY=\"your-coder-api-key\"      # Optional\n"
+"export AGENTSOCIETY_CODER_LLM_API_BASE=\"https://api.openai.com/v1\"  # Optional\n"
+"export AGENTSOCIETY_CODER_LLM_MODEL=\"gpt-5.5\"                    # Optional\n"
+"\n"
+"# Embedding model (for text embedding and semantic search)\n"
+"# Falls back to: AGENTSOCIETY_LLM_API_KEY, AGENTSOCIETY_LLM_API_BASE\n"
+"export AGENTSOCIETY_EMBEDDING_API_KEY=\"your-embedding-api-key\"  # Optional\n"
+"export AGENTSOCIETY_EMBEDDING_API_BASE=\"https://api.openai.com/v1\"  # Optional\n"
+"export AGENTSOCIETY_EMBEDDING_MODEL=\"text-embedding-3-large\"   # Optional\n"
+"export AGENTSOCIETY_EMBEDDING_DIMS=\"1024\"                      # Optional"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:101
+msgid "**接口协议与推理（thinking）开关**"
+msgstr "**API Protocol and Thinking Switch**"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:103
+msgid ""
+"``AGENTSOCIETY_LLM_API_TYPE`` 选择接口协议：``openai`` 对应 Chat Completions（默认）， "
+"``anthropic`` 对应 Messages。推理控制项未设置时，不额外发送对应的推理参数。"
+msgstr ""
+"``AGENTSOCIETY_LLM_API_TYPE`` selects ``openai`` for Chat Completions (default) or "
+"``anthropic`` for Messages. Unset reasoning controls do not add the corresponding "
+"reasoning parameters."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:105
+#, python-brace-format
+msgid ""
+"# openai（默认）使用 Chat Completions；anthropic 使用 Messages。\n"
+"# coder 角色可单独用 AGENTSOCIETY_CODER_LLM_API_TYPE 覆盖。\n"
+"export AGENTSOCIETY_LLM_API_TYPE=\"openai\"\n"
+"\n"
+"# on / off (also accepts 1/0/true/false). Unset = send nothing.\n"
+"export AGENTSOCIETY_LLM_THINKING=\"off\"\n"
+"\n"
+"# OpenAI 接口：off 发送 reasoning_effort=\"none\"，on 默认 \"medium\"；\n"
+"# 显式设置本变量后按该值发送。\n"
+"# Anthropic Messages：发送显式 thinking 开关（off 为 disabled，on 默认预算 1024 tokens）。\n"
+"export AGENTSOCIETY_LLM_REASONING_EFFORT=\"\"\n"
+"\n"
+"# 可选的显式控制字段：reasoning_effort / thinking / enable_thinking /\n"
+"# chat_template_kwargs / reasoning。未设时按接口协议自动选择。\n"
+"export AGENTSOCIETY_LLM_THINKING_FORMAT=\"\"\n"
+"\n"
+"# Gateway-specific OpenAI-compatible switch, a JSON object merged into the\n"
+"# request's extra_body, e.g. {\"enable_thinking\": false} or\n"
+"# {\"thinking\": {\"type\": \"disabled\"}}. When set, thinking=off sends ONLY this\n"
+"# (no reasoning_effort), so the gateway never sees two conflicting switches.\n"
+"export AGENTSOCIETY_LLM_EXTRA_BODY=\"\"\n"
+"\n"
+"# Per-role overrides for the coder model (env-router code generation);\n"
+"# each falls back to the corresponding AGENTSOCIETY_LLM_* value.\n"
+"export AGENTSOCIETY_CODER_LLM_THINKING=\"\"            # Optional\n"
+"export AGENTSOCIETY_CODER_LLM_REASONING_EFFORT=\"\"    # Optional\n"
+"export AGENTSOCIETY_CODER_LLM_EXTRA_BODY=\"\"          # Optional"
+msgstr ""
+"# openai (default) uses Chat Completions; anthropic uses Messages.\n"
+"# Override the coder role with AGENTSOCIETY_CODER_LLM_API_TYPE.\n"
+"export AGENTSOCIETY_LLM_API_TYPE=\"openai\"\n"
+"\n"
+"# on / off (also accepts 1/0/true/false). Unset = send nothing.\n"
+"export AGENTSOCIETY_LLM_THINKING=\"off\"\n"
+"\n"
+"# OpenAI: off sends reasoning_effort=\"none\"; on defaults to \"medium\".\n"
+"# An explicit value in this variable overrides the default.\n"
+"# Anthropic Messages sends an explicit thinking switch: off is disabled; on defaults to a "
+"1024-token budget.\n"
+"export AGENTSOCIETY_LLM_REASONING_EFFORT=\"\"\n"
+"\n"
+"# Optional explicit control field: reasoning_effort / thinking / enable_thinking /\n"
+"# chat_template_kwargs / reasoning. Defaults to automatic selection based on the API protocol.\n"
+"export AGENTSOCIETY_LLM_THINKING_FORMAT=\"\"\n"
+"\n"
+"# Gateway-specific OpenAI-compatible switch, a JSON object merged into the\n"
+"# request's extra_body, e.g. {\"enable_thinking\": false} or\n"
+"# {\"thinking\": {\"type\": \"disabled\"}}. When set, thinking=off sends ONLY this\n"
+"# (no reasoning_effort), so the gateway never sees two conflicting switches.\n"
+"export AGENTSOCIETY_LLM_EXTRA_BODY=\"\"\n"
+"\n"
+"# Per-role overrides for the coder model (env-router code generation);\n"
+"# each falls back to the corresponding AGENTSOCIETY_LLM_* value.\n"
+"export AGENTSOCIETY_CODER_LLM_THINKING=\"\"            # Optional\n"
+"export AGENTSOCIETY_CODER_LLM_REASONING_EFFORT=\"\"    # Optional\n"
+"export AGENTSOCIETY_CODER_LLM_EXTRA_BODY=\"\"          # Optional"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:136
 msgid "**数据目录**"
 msgstr "**Data Directory**"
 
-#: ../../installation.rst:107
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:137
+msgid ""
+"# Directory for storing agent data, memory and persistence files\n"
+"# Default: ./agentsociety_data\n"
+"export AGENTSOCIETY_HOME_DIR=\"/path/to/your/data\""
+msgstr ""
+"# Directory for storing agent data, memory and persistence files\n"
+"# Default: ./agentsociety_data\n"
+"export AGENTSOCIETY_HOME_DIR=\"/path/to/your/data\""
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:144
+msgid "**后端服务**"
+msgstr "**Backend Service**"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:146
+msgid "独立 FastAPI 后端（``python -m agentsociety2.backend.run``）的配置："
+msgstr ""
+"Configuration for the standalone FastAPI backend (``python -m "
+"agentsociety2.backend.run``):"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:147
+msgid ""
+"export BACKEND_HOST=\"127.0.0.1\"     # 监听地址\n"
+"export BACKEND_PORT=\"8001\"          # 监听端口\n"
+"export WORKSPACE_PATH=\"/absolute/path/to/research-workspace\"\n"
+"# 外部部署时显式设置可信 Host（逗号分隔）；后端本身不提供身份认证\n"
+"# export BACKEND_TRUSTED_HOSTS=\"example.com\"\n"
+"# 跨域网页访问需要显式列出可信 Origin（逗号分隔的完整 URL）\n"
+"# export BACKEND_ALLOWED_ORIGINS=\"https://example.com\""
+msgstr ""
+"export BACKEND_HOST=\"127.0.0.1\"     # Bind address\n"
+"export BACKEND_PORT=\"8001\"          # Listening port\n"
+"export WORKSPACE_PATH=\"/absolute/path/to/research-workspace\"\n"
+"# Explicit trusted Hosts for external deployment, comma-separated; the backend has no user "
+"authentication\n"
+"# export BACKEND_TRUSTED_HOSTS=\"example.com\"\n"
+"# For cross-origin access, explicitly list trusted Origins as comma-separated complete URLs\n"
+"# export BACKEND_ALLOWED_ORIGINS=\"https://example.com\""
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:158
+msgid "**生成代码执行**"
+msgstr "**Generated Code Execution**"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:160
+msgid "``CodeGenRouter`` 生成代码的执行后端与资源上限："
+msgstr "Execution backend and resource limits for code generated by ``CodeGenRouter``:"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:161
+msgid ""
+"# inprocess（默认）在环境进程内计算；process 开启独立计算进程与硬资源限制\n"
+"export AGENTSOCIETY_CODE_EXEC_BACKEND=\"inprocess\"\n"
+"# export AGENTSOCIETY_CODE_EXEC_TIMEOUT=10       # 程序执行与工具等待期限（秒）\n"
+"# export AGENTSOCIETY_CODE_EXEC_MEMORY_MIB=512   # process 后端每 worker 地址空间上限\n"
+"# export AGENTSOCIETY_CODE_EXEC_WORKERS=4         # 共享数值工作进程数上限"
+msgstr ""
+"# inprocess (default) computes inside the environment; process adds isolation and hard resource "
+"limits\n"
+"export AGENTSOCIETY_CODE_EXEC_BACKEND=\"inprocess\"\n"
+"# export AGENTSOCIETY_CODE_EXEC_TIMEOUT=10       # Deadline for execution and tool waits, in "
+"seconds\n"
+"# export AGENTSOCIETY_CODE_EXEC_MEMORY_MIB=512   # Address-space limit per process worker, in MiB"
+"\n"
+"# export AGENTSOCIETY_CODE_EXEC_WORKERS=4         # Maximum shared numerical worker processes"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:170
+msgid "详见 :doc:`codegen_execution`。"
+msgstr "See :doc:`codegen_execution` for details."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:172
+msgid "**工作区路径**"
+msgstr "**Workspace Path**"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:173
+msgid ""
+"# 后端服务工作区根目录（custom/ 文件夹所在位置），用于限制后端可访问的路径\n"
+"export WORKSPACE_PATH=\"/path/to/workspace\""
+msgstr ""
+"# Backend workspace root containing custom/; restricts accessible paths\n"
+"export WORKSPACE_PATH=\"/path/to/workspace\""
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:179
+msgid "**文献检索服务**"
+msgstr "**Literature Search Service**"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:181
+msgid "``literature`` 研究技能使用的外部服务（见 :doc:`skills`）："
+msgstr "External services used by the ``literature`` research skill (see :doc:`skills`):"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:182
+msgid ""
+"export LITERATURE_SEARCH_MCP_URL=\"https://llmapi.fiblab.net/mcp/\"\n"
+"export LITERATURE_SEARCH_API_KEY=\"your-literature-search-key\""
+msgstr ""
+"export LITERATURE_SEARCH_MCP_URL=\"https://llmapi.fiblab.net/mcp/\"\n"
+"export LITERATURE_SEARCH_API_KEY=\"your-literature-search-key\""
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:188
 msgid "**使用 .env 文件**"
 msgstr "**Using a .env File**"
 
-#: ../../installation.rst:109
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:190
 msgid "您也可以在项目目录中创建 ``.env`` 文件："
 msgstr "You can also create a ``.env`` file in your project directory:"
 
-#: ../../installation.rst:138
-msgid "**环境变量区分**："
-msgstr "**Environment variable namespaces**:"
-
-#: ../../installation.rst:140
-msgid "``AGENTSOCIETY_LLM_*``: 全局 LLM API 配置，用于模型调用"
-msgstr "``AGENTSOCIETY_LLM_*``: global LLM API settings for model calls"
-
-#: ../../installation.rst:141
-msgid "``AGENT_*``: Agent 行为配置，如上下文窗口大小、工具循环轮数等"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:191
+msgid ""
+"# 推荐：从仓库根目录复制模板（若你在源码仓库内）\n"
+"cp .env.example .env\n"
+"# 然后编辑 .env 填入 API Key"
 msgstr ""
-"``AGENT_*``: agent behavior settings such as context window size and "
-"tool-loop limits"
+"# Recommended: copy the template from the repository root when working from source\n"
+"cp .env.example .env\n"
+"# Edit .env and enter your API Key"
 
-#: ../../installation.rst:144
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:197
+msgid ""
+"# Required - LLM API Configuration\n"
+"AGENTSOCIETY_LLM_API_KEY=your-api-key\n"
+"AGENTSOCIETY_LLM_API_BASE=https://api.openai.com/v1\n"
+"AGENTSOCIETY_LLM_MODEL=gpt-5.5\n"
+"\n"
+"# Optional - Specialized LLM instances (fallback to default)\n"
+"AGENTSOCIETY_CODER_LLM_MODEL=gpt-5.5\n"
+"AGENTSOCIETY_EMBEDDING_MODEL=text-embedding-3-large\n"
+"AGENTSOCIETY_EMBEDDING_DIMS=1024\n"
+"AGENTSOCIETY_HOME_DIR=./agentsociety_data"
+msgstr ""
+"# Required - LLM API Configuration\n"
+"AGENTSOCIETY_LLM_API_KEY=your-api-key\n"
+"AGENTSOCIETY_LLM_API_BASE=https://api.openai.com/v1\n"
+"AGENTSOCIETY_LLM_MODEL=gpt-5.5\n"
+"\n"
+"# Optional - Specialized LLM instances (fallback to default)\n"
+"AGENTSOCIETY_CODER_LLM_MODEL=gpt-5.5\n"
+"AGENTSOCIETY_EMBEDDING_MODEL=text-embedding-3-large\n"
+"AGENTSOCIETY_EMBEDDING_DIMS=1024\n"
+"AGENTSOCIETY_HOME_DIR=./agentsociety_data"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:212
+msgid ""
+"``AGENTSOCIETY_LLM_*`` 环境变量是全局 LLM API 配置，用于模型调用。智能体自身的行为（如 "
+"``max_react_turns``、``enable_todo_list``、``disabled_skill_ids``）不通过环境变量设置，而是在实验配置的 "
+"``AgentConfig.kwargs`` 中按智能体指定，见 :ref:`agent-config`。"
+msgstr ""
+"``AGENTSOCIETY_LLM_*`` environment variables are the global LLM API configuration used for model "
+"calls. Agent behavior itself (such as ``max_react_turns``, ``enable_todo_list``, and "
+"``disabled_skill_ids``) is not configured through environment variables; it is specified per "
+"agent in ``AgentConfig.kwargs`` in the experiment configuration. See :ref:`agent-config`."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:218
 msgid "LLM 调度与本地并发控制"
 msgstr "LLM Dispatch and Local Concurrency Control"
 
-#: ../../installation.rst:146
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:217
 msgid ""
-"LLM 调度由可序列化的 ``LLMClient`` 完成。每个 Ray task、env router actor 或 driver "
-"进程在自己的 事件循环中首次调用 LLM 时，本地创建 litellm Router 与 ``AdaptiveSemaphore``。 "
-"``AdaptiveSemaphore`` 基于近期延迟和 rate-limit 错误做 AIMD 自适应并发。"
+"LLM 调度由可序列化的 ``LLMClient`` 完成。每个 Ray task、env router actor 或 driver 进程在自己的事件循环中首次调用 LLM 时，本地创建 "
+"litellm Router 与 ``AdaptiveSemaphore``。 ``AdaptiveSemaphore`` 基于近期延迟和 rate-limit 错误做 AIMD 自适应并发。"
 msgstr ""
-"LLM dispatch is handled by serializable ``LLMClient`` instances. When "
-"each Ray task, env router actor, or driver process calls an LLM for the "
-"first time in its own event loop, it creates a local litellm Router and "
-"``AdaptiveSemaphore``. ``AdaptiveSemaphore`` adapts concurrency with AIMD"
-" based on recent latency and rate-limit errors."
+"LLM dispatch is handled by serializable ``LLMClient`` instances. When each Ray task, env router "
+"actor, or driver process calls an LLM for the first time in its own event loop, it creates a "
+"local litellm Router and ``AdaptiveSemaphore``. ``AdaptiveSemaphore`` adapts concurrency with "
+"AIMD based on recent latency and rate-limit errors."
 
-#: ../../installation.rst:169
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:220
 msgid ""
-"``AGENTSOCIETY_LLM_RAY_CONCURRENCY`` 只是 AIMD 的起点，没有人工上下限——每进程并发会 自动逼近 API"
-" 真实容量并在延迟/限流恶化时回退。若网关有严格 QPS 上限可调低起点； 实际总并发还取决于同时运行的 Ray task "
-"数（``AGENTSOCIETY_LLM_RAY_MAX_WORKERS``）。"
+"# Ray CPU 预算（ray.init 的 num_cpus）：封顶每 tick 同时运行的 step_agent_batch\n"
+"# Ray Task 数。默认取机器 CPU 核数；调低可为 driver / env actor / trace 留出空间。\n"
+"# export AGENTSOCIETY_LLM_RAY_MAX_WORKERS=8\n"
+"\n"
+"# 每个本地 LLMClient 的 AIMD 初始并发；无人工上下限，由 AIMD 依延迟/限流自由自调节。\n"
+"export AGENTSOCIETY_LLM_RAY_CONCURRENCY=16\n"
+"\n"
+"# 每个 step_agent_batch Ray Task 处理的 agent 数；task 数 = ⌈N / BATCH_SIZE⌉，\n"
+"# 应 ≥ 同时运行的 worker 数才能打满 CPU（CLI --batch-size 可覆盖）。\n"
+"# export AGENTSOCIETY_BATCH_SIZE=256\n"
+"\n"
+"# AIMD “慢调用”判定\n"
+"export AGENTSOCIETY_LLM_LATENCY_DEGRADE_FACTOR=4.0   # 相对退避因子（相对健康基线的倍数）\n"
+"# export AGENTSOCIETY_LLM_SLOW_LATENCY_MS=8000       # 可选：绝对延迟 SLO（毫秒）"
 msgstr ""
+"# Ray CPU budget (ray.init num_cpus) caps concurrent step_agent_batch\n"
+"# Ray Tasks per tick. Defaults to CPU count; lower it to leave capacity for the driver, env "
+"actor, and trace.\n"
+"# export AGENTSOCIETY_LLM_RAY_MAX_WORKERS=8\n"
+"\n"
+"# Initial AIMD concurrency per local LLMClient; adapts to latency and rate limits without manual "
+"bounds.\n"
+"export AGENTSOCIETY_LLM_RAY_CONCURRENCY=16\n"
+"\n"
+"# Agents per step_agent_batch Ray Task; task count = ceil(N / BATCH_SIZE).\n"
+"# Keep this at least as large as the active worker count to fill CPU capacity; CLI --batch-size "
+"overrides it.\n"
+"# export AGENTSOCIETY_BATCH_SIZE=256\n"
+"\n"
+"# AIMD slow-call detection\n"
+"export AGENTSOCIETY_LLM_LATENCY_DEGRADE_FACTOR=4.0   # Backoff factor relative to the healthy "
+"baseline\n"
+"# export AGENTSOCIETY_LLM_SLOW_LATENCY_MS=8000       # Optional absolute latency SLO in "
+"milliseconds"
 
-#: ../../installation.rst:174
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:239
+msgid ""
+"``AGENTSOCIETY_LLM_RAY_CONCURRENCY`` 只是 AIMD 的起点，没有人工上下限——每进程并发会根据近期响应调整，并在延迟或限流恶化时回退。若网关有严格 QPS "
+"上限可调低起点；实际总并发还取决于同时运行的 Ray task 数（``AGENTSOCIETY_LLM_RAY_MAX_WORKERS``）。"
+msgstr ""
+"``AGENTSOCIETY_LLM_RAY_CONCURRENCY`` is the AIMD starting point, not a manual bound. Per-process "
+"concurrency adjusts to recent responses and backs off when latency or rate limiting worsens. "
+"Lower the starting point for strict gateway QPS limits; total concurrency also depends on "
+"simultaneous Ray tasks (``AGENTSOCIETY_LLM_RAY_MAX_WORKERS``)."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:250
+msgid "独立启动后端"
+msgstr "Start the standalone backend"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:252
+msgid "插件可管理后端进程；使用 REST API 或自行排查时，也可在研究工作区根目录启动。使用安装了 SDK 的同一 Python 环境，并先按上文准备模型配置："
+msgstr ""
+"The extension can manage the backend process. For REST API access or manual "
+"diagnosis, start it from the research workspace root using the same Python "
+"environment as the SDK. Configure models as described above first:"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:248
+msgid ""
+"export WORKSPACE_PATH=\"$PWD\"\n"
+"export BACKEND_HOST=\"127.0.0.1\"\n"
+"export BACKEND_PORT=\"8001\"\n"
+"python -m agentsociety2.backend.run --log-level info"
+msgstr ""
+"export WORKSPACE_PATH=\"$PWD\"\n"
+"export BACKEND_HOST=\"127.0.0.1\"\n"
+"export BACKEND_PORT=\"8001\"\n"
+"python -m agentsociety2.backend.run --log-level info"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:261
+msgid ""
+"在另一个终端运行 ``curl http://127.0.0.1:8001/health`` 检查服务，再用浏览器打开 "
+"``http://127.0.0.1:8001/docs`` 查看当前接口。前台进程用 ``Ctrl+C`` 停止。"
+msgstr ""
+"In another terminal, run ``curl http://127.0.0.1:8001/health`` to check the service, "
+"then open ``http://127.0.0.1:8001/docs`` in a browser for current interfaces. Stop "
+"the foreground process with ``Ctrl+C``."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:263
+msgid ""
+"``WORKSPACE_PATH`` 必须指向存在的研究根目录；请求中的 ``workspace_path`` "
+"也必须解析到同一目录。切换项目后应重新配置或启动该项目的后端，不能只更换请求参数。"
+msgstr ""
+"``WORKSPACE_PATH`` must point to an existing research root. A request’s "
+"``workspace_path`` must resolve to the same directory. After switching projects, "
+"reconfigure or start that project’s backend; changing only a request parameter is "
+"insufficient."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:269
+msgid "服务"
+msgstr "Service"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:270
+msgid "用途"
+msgstr "Purpose"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:271
+msgid "访问入口"
+msgstr "Entry point"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:272
+msgid "在线平台 / code-server"
+msgstr "Online platform / code-server"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:273
+msgid "创建开发环境、打开网页 IDE 与插件"
+msgstr "Create a development environment and open the web IDE and extension"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:274
+msgid "平台给出的工作区链接"
+msgstr "Workspace link provided by the platform"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:275
+msgid "AgentSociety 后端"
+msgstr "AgentSociety backend"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:276
+msgid "模块、技能、实验和回放 API"
+msgstr "Module, skill, experiment, and replay APIs"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:277
+msgid "默认 ``127.0.0.1:8001``"
+msgstr "``127.0.0.1:8001`` by default"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:278
+msgid "CLI Gateway"
+msgstr "CLI Gateway"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:279
+msgid "Claude / Codex 的可选供应商路由"
+msgstr "Optional provider routing for Claude / Codex"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:280
+msgid "配置页显示的本地 Gateway 端口"
+msgstr "Local Gateway port shown in configuration"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:282
+msgid ""
+"三者分别运行；打开网页 IDE、启动后端或启用 Gateway 都不会自动执行实验。对外托管后端时，需要由部署层提供身份认证，并显式配置可信 Host 和浏览器 "
+"Origin。请求模型见 :doc:`api/backend`。"
+msgstr ""
+"These services run separately. Opening the web IDE, starting the backend, or enabling"
+" Gateway does not run an experiment. When hosting the backend externally, provide "
+"authentication at the deployment layer and explicitly configure trusted Hosts and "
+"browser Origins. See :doc:`api/backend` for request models."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:285
 msgid "支持的 LLM 提供商"
 msgstr "Supported LLM Providers"
 
-#: ../../installation.rst:176
-msgid ""
-"AgentSociety 2 通过 LiteLLM 路由模型调用；文档中的默认示例使用 OpenAI 兼容的 Chat Completions "
-"接口："
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:287
+msgid "AgentSociety 2 通过 LiteLLM 路由模型调用；文档中的默认示例使用 OpenAI 兼容的 Chat Completions 接口："
 msgstr ""
-"AgentSociety 2 routes model calls through LiteLLM. Default examples in "
-"the docs use an OpenAI-compatible Chat Completions API:"
+"AgentSociety 2 routes model calls through LiteLLM. Default examples in the docs use "
+"an OpenAI-compatible Chat Completions API:"
 
-#: ../../installation.rst:178
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:289
 msgid "``AGENTSOCIETY_LLM_API_BASE=https://api.openai.com/v1``"
 msgstr "``AGENTSOCIETY_LLM_API_BASE=https://api.openai.com/v1``"
 
-#: ../../installation.rst:179
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:290
 msgid "``AGENTSOCIETY_LLM_MODEL=gpt-5.5``"
 msgstr "``AGENTSOCIETY_LLM_MODEL=gpt-5.5``"
 
-#: ../../installation.rst:181
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/installation.rst:292
 msgid ""
-"如果你使用其它 LiteLLM 支持的 OpenAI 兼容网关，请保持同样的环境变量结构，并把 "
-"``AGENTSOCIETY_LLM_API_BASE`` 与模型名替换为该网关提供的值。"
+"如果你使用其它 LiteLLM 支持的 OpenAI 兼容网关，请保持同样的环境变量结构，并把 ``AGENTSOCIETY_LLM_API_BASE`` "
+"与模型名替换为该网关提供的值。"
 msgstr ""
-"If you use another LiteLLM-supported OpenAI-compatible gateway, keep the "
-"same variable names and set ``AGENTSOCIETY_LLM_API_BASE`` and the model "
-"name to values provided by that gateway."
-
-#~ msgid ""
-#~ "若你的 LLM 网关有明确的 QPS / 并发上限，优先调低 "
-#~ "``AGENTSOCIETY_LLM_RAY_CONCURRENCY``； 实际总并发还取决于同时运行的 Ray"
-#~ " task / actor 数量。"
-#~ msgstr ""
-#~ "If your LLM gateway has explicit "
-#~ "QPS / concurrency limits, lower "
-#~ "``AGENTSOCIETY_LLM_RAY_CONCURRENCY`` first. Actual "
-#~ "total concurrency also depends on the"
-#~ " number of Ray tasks / actors "
-#~ "running at the same time."
-
+"If you use another LiteLLM-supported OpenAI-compatible gateway, keep the same "
+"variable names and set ``AGENTSOCIETY_LLM_API_BASE`` and the model name to values "
+"provided by that gateway."

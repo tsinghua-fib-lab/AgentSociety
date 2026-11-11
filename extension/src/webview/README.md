@@ -1,68 +1,11 @@
-# Webview 组件
+# Webview 前端
 
-此目录包含 VSCode 插件中使用的 Webview 前端组件（React）。
+此目录包含扩展内嵌的 React 界面，与仓库的独立 `frontend/` 网页应用分开构建。
 
-## 目录结构
+- 页面入口和 bundle 名称以 [webpack.config.js](../../webpack.config.js) 的 webview entries 为准。
+- 共享组件位于 `components/`，翻译资源位于 `i18n/`。
+- 宿主端的 `*ViewProvider.ts` / `*EditorProvider.ts` 负责消息、文件访问和后端请求；页面通过 Webview 消息协议与宿主交互。
+- 构建命令：在 `extension/` 执行 `npm ci`、`npm run build-webview`，产物写入 `out/webview/`。
+- 页面清单、消息协议、开发调试与截图流程统一维护在[扩展开发指南](../../docs/DEVELOPMENT.md)。
 
-```
-webview/
-├── components/      # 共享 React 组件
-├── configPage/      # 配置页面 Webview 组件
-├── prefillParams/   # 预填充参数查看器组件
-├── replay/          # 回放可视化组件
-├── simSettings/     # SIM_SETTINGS 编辑器组件
-├── i18n/            # 国际化资源
-└── tsconfig.json    # TypeScript 配置
-```
-
-## 关联文件
-
-### 前端入口（VSCode Extension）
-
-- `@extension/src/configPageViewProvider.ts` - 配置页面提供者，加载 `configPage.js`
-- `@extension/src/prefillParamsViewProvider.ts` - 预填充参数提供者，加载 `prefillParams.js`
-- `@extension/src/replayWebviewProvider.ts` - 回放可视化提供者，加载 `replay.js`
-- `@extension/src/simSettingsEditorProvider.ts` - SIM_SETTINGS 编辑器，加载 `simSettings.js`
-
-### 后端 API
-
-- `@packages/agentsociety2/agentsociety2/backend/app.py` - FastAPI 应用主入口
-- `@packages/agentsociety2/agentsociety2/backend/routers/prefill_params.py` - 预填充参数 API
-- `@packages/agentsociety2/agentsociety2/backend/routers/experiments.py` - 实验数据 API
-- `@packages/agentsociety2/agentsociety2/backend/routers/replay.py` - 回放数据 API
-- `@packages/agentsociety2/agentsociety2/backend/routers/modules.py` - 模块列表 API
-
-## 构建流程
-
-React 组件通过 webpack 编译为单个 JavaScript 文件，输出到 `extension/out/webview/` 目录：
-
-- `configPage.tsx` → `out/webview/configPage.js`
-- `prefillParams.tsx` → `out/webview/prefillParams.js`
-- `replay.tsx` → `out/webview/replay.js`
-- `simSettings.tsx` → `out/webview/simSettings.js`
-
-## 组件说明
-
-### configPage
-
-配置页面，用于首次启动或手动配置时设置 LLM API 密钥等参数。
-
-**关联：** `@extension/src/configPageViewProvider.ts`, `@extension/src/envManager.ts`
-
-### prefillParams
-
-预填充参数查看器（只读），显示可用的 Agent 类和 Environment 模块类的预填充参数。
-
-**关联：** `@extension/src/prefillParamsViewProvider.ts`
-
-### replay
-
-回放可视化组件，用于展示和回放仿真实验数据。
-
-**关联：** `@extension/src/replayWebviewProvider.ts`
-
-### simSettings
-
-SIM_SETTINGS.json 文件的自定义编辑器。
-
-**关联：** `@extension/src/simSettingsEditorProvider.ts`
+新增页面时同时更新 webpack entry 和宿主加载路径，并核对命令、消息、翻译以及打包后的资源；不在此重复维护随页面变化的完整清单。

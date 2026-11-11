@@ -1,9 +1,8 @@
-"""DuckDB read side for distributed JSONL replay data.
+"""分布式 JSONL 回放数据的 DuckDB 读取端。
 
-The replay writer stores rows as sharded newline-delimited JSON files under a
-``replay/`` directory plus a ``_schema.json`` sidecar. ``ReplayReader`` exposes
-the same metadata-driven query surface the backend used to obtain from the old
-SQLite catalog tables, but builds DuckDB views over the JSONL shards.
+回放写入器将数据行以分片换行分隔 JSON 文件的形式存储在 ``replay/`` 目录下，
+并附带 ``_schema.json`` 伴随文件。``ReplayReader`` 提供与旧 SQLite catalog 表
+等价的元数据驱动查询接口，只是改为在 JSONL 分片之上构建 DuckDB 视图。
 """
 
 from __future__ import annotations
@@ -72,9 +71,15 @@ def _json_safe(value: Any) -> Any:
 
 
 class ReplayReader:
-    """Read replay ``_schema.json`` + sharded JSONL rows via DuckDB."""
+    """通过 DuckDB 读取回放 ``_schema.json`` 与分片 JSONL 行数据。"""
 
     def __init__(self, replay_dir: str | Path) -> None:
+        """绑定已有的回放目录，查询时再创建 DuckDB 内存连接。
+
+        :param replay_dir: 含有 ``_schema.json`` 的回放目录。
+        :raises FileNotFoundError: 目录或元数据文件不存在。
+        :raises ValueError: 路径包含空字节或父目录跳转。
+        """
         _path = Path(replay_dir)
         # Reject path traversal and null bytes
         if "\0" in str(_path):
@@ -93,6 +98,10 @@ class ReplayReader:
         self._registered_tables: set[str] = set()
 
     def close(self) -> None:
+        """释放当前 DuckDB 连接；重复调用是安全的。
+
+        关闭后仍保留目录与元数据缓存，下次数据查询会重新建立连接。
+        """
         if self._conn is not None:
             self._conn.close()
             self._conn = None
@@ -111,7 +120,7 @@ class ReplayReader:
         return datetime.fromtimestamp(self.schema_path.stat().st_mtime)
 
     def load_dataset_catalog(self) -> list[dict[str, Any]]:
-        """Return dataset metadata using the backend's legacy dict shape."""
+        """读取并缓存数据集目录，保留列定义、排序规则和能力标记。"""
         if self._catalog is not None:
             return self._catalog
 
@@ -158,6 +167,12 @@ class ReplayReader:
         return catalog
 
     def get_dataset_by_id(self, dataset_id: str) -> dict[str, Any]:
+        """按稳定标识读取一个数据集的目录条目。
+
+        :param dataset_id: 目录返回的完整标识，例如 ``core.agent_profile``。
+        :returns: 可传给行查询方法的数据集元数据。
+        :raises KeyError: 未找到该标识。
+        """
         for dataset in self.load_dataset_catalog():
             if dataset["dataset_id"] == dataset_id:
                 return dataset
@@ -166,6 +181,14 @@ class ReplayReader:
     def find_dataset_by_capability(
         self, capability: str, *, kind: str | None = None
     ) -> dict[str, Any]:
+        """查找具有指定能力标记的数据集，可同时限制数据集类型。
+
+        多个匹配项按 ``dataset_id`` 排序后返回第一个，便于确定性选择。
+
+        :param capability: 能力标记，例如 ``agent_profile`` 或 ``timeseries``。
+        :param kind: 可选的数据集类型，例如 ``entity_static``。
+        :raises KeyError: 没有同时满足条件的数据集。
+        """
         matches = []
         for dataset in self.load_dataset_catalog():
             if capability not in dataset.get("capabilities", []):
@@ -299,6 +322,10 @@ class ReplayReader:
     def normalize_row(
         self, dataset: dict[str, Any], row: dict[str, Any]
     ) -> dict[str, Any]:
+        """根据列元数据解码 JSON，并将日期和字节转换为可序列化值。
+
+        返回新的行字典，不修改传入的记录。
+        """
         column_map = self._get_column_map(dataset)
         return {
             key: self._normalize_value(column_map.get(key), value)
@@ -363,6 +390,14 @@ class ReplayReader:
         limit: int | None = None,
         offset: int = 0,
     ) -> dict[str, Any]:
+        """读取数据集记录，支持投影、排序和按步号或实体过滤。
+
+        ``start_step``、``end_step`` 与 ``max_step`` 包含边界；省略排序列时使用数据集的 ``default_order``。
+        ``latest_per_entity`` 需要数据集声明实体键和步号键。仅在提供 ``limit`` 时可使用非零 ``offset``。
+
+        :returns: ``columns`` 列名列表与 ``rows`` 记录列表。
+        :raises ValueError: 列名、排序或过滤条件不符合数据集定义。
+        """
         selected_columns = self._validate_selected_columns(dataset, columns)
         filters, params = self._build_filter_sql(
             dataset,
@@ -408,6 +443,10 @@ class ReplayReader:
         max_step: int | None = None,
         latest_per_entity: bool = False,
     ) -> int:
+        """统计符合步号与实体过滤条件的记录数。
+
+        ``latest_per_entity=True`` 时按每个实体的最新记录计数；可用同一组过滤条件与行查询核对分页总数。
+        """
         self._validate_selected_columns(dataset, None)
         filters, params = self._build_filter_sql(
             dataset,
@@ -453,6 +492,12 @@ class ReplayReader:
         columns: list[str] | None = None,
         latest_per_entity: bool = False,
     ) -> dict[str, Any]:
+        """按页查询记录，并返回相同过滤条件下的总数。
+
+        :param page: 从 1 开始的页码。
+        :param page_size: 每页记录数，应为正整数。
+        :returns: ``columns``、当前页 ``rows`` 与过滤后的 ``total``。
+        """
         offset = (page - 1) * page_size
         total = self.count_dataset_rows(
             dataset,
@@ -482,6 +527,12 @@ class ReplayReader:
     def distinct_values(
         self, dataset: dict[str, Any], column: str, *, order: bool = True
     ) -> list[Any]:
+        """列出一列的非空去重值，默认按该列升序排列。
+
+        :param column: 数据集定义中的列名。
+        :param order: 是否排序；关闭后不保证返回顺序。
+        :raises ValueError: 列名不属于该数据集。
+        """
         if column not in set(self._get_column_names(dataset)):
             raise ValueError(
                 f"Unknown column for dataset '{dataset['dataset_id']}': {column}"
@@ -494,6 +545,11 @@ class ReplayReader:
         return [row[0] for row in self._connection().execute(sql).fetchall()]
 
     def count_distinct(self, dataset: dict[str, Any], column: str) -> int:
+        """统计一列的非空去重值数量。
+
+        :param column: 数据集定义中的列名。
+        :raises ValueError: 列名不属于该数据集。
+        """
         if column not in set(self._get_column_names(dataset)):
             raise ValueError(
                 f"Unknown column for dataset '{dataset['dataset_id']}': {column}"
@@ -509,6 +565,10 @@ class ReplayReader:
         return int(row[0] or 0)
 
     def min_value(self, dataset: dict[str, Any], column: str) -> Any:
+        """返回一列的最小非空值，无记录时返回 ``None``。
+
+        比较方式由列的存储类型决定；列名必须来自数据集定义。
+        """
         if column not in set(self._get_column_names(dataset)):
             raise ValueError(
                 f"Unknown column for dataset '{dataset['dataset_id']}': {column}"
@@ -521,6 +581,10 @@ class ReplayReader:
         )
 
     def max_value(self, dataset: dict[str, Any], column: str) -> Any:
+        """返回一列的最大非空值，无记录时返回 ``None``。
+
+        比较方式由列的存储类型决定；列名必须来自数据集定义。
+        """
         if column not in set(self._get_column_names(dataset)):
             raise ValueError(
                 f"Unknown column for dataset '{dataset['dataset_id']}': {column}"

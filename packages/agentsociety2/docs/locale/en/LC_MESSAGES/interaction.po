@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: AgentSociety 2 2.6.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-02 22:32+0800\n"
+"POT-Creation-Date: 2026-11-10 12:26+0800\n"
 "PO-Revision-Date: 2026-03-06 00:15+0800\n"
 "Last-Translator: AgentSociety Team\n"
 "Language: en\n"
@@ -19,141 +19,173 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: ../../interaction.rst:2
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/interaction.rst:2
 msgid "与 AgentSociety 交互"
 msgstr "Interacting with AgentSociety"
 
-#: ../../interaction.rst:4
-msgid "本指南介绍如何在实验期间与 AgentSociety 2 交互。"
-msgstr ""
-"This guide introduces how to interact with AgentSociety 2 during "
-"experiments."
-
-#: ../../interaction.rst:7
-msgid "概述"
-msgstr "Overview"
-
-#: ../../interaction.rst:9
-msgid "AgentSociety 2 提供两种主要的交互模式："
-msgstr "AgentSociety 2 provides two main interaction modes:"
-
-#: ../../interaction.rst:11
-msgid "**查询模式** (只读): 提问而不修改模拟状态"
-msgstr ""
-"**Query Mode** (read-only): Ask questions without modifying simulation "
-"state"
-
-#: ../../interaction.rst:12
-msgid "**干预模式** (读写): 修改智能体状态或环境变量"
-msgstr ""
-"**Intervention Mode** (read-write): Modify agent state or environment "
-"variables"
-
-#: ../../interaction.rst:14
-msgid "这些交互可以在以下时间执行："
-msgstr "These interactions can be performed at:"
-
-#: ../../interaction.rst:16
-msgid "**模拟期间**: 在步骤之间或特定时间点"
-msgstr "**During simulation**: Between steps or at specific time points"
-
-#: ../../interaction.rst:17
-msgid "**模拟后**: 查询最终状态或收集调查数据"
-msgstr "**After simulation**: Query final state or collect survey data"
-
-#: ../../interaction.rst:20
-msgid "交互模式对比"
-msgstr "Interaction Mode Comparison"
-
-#: ../../interaction.rst:61
-msgid "基本交互模式"
-msgstr "Basic Interaction Patterns"
-
-#: ../../interaction.rst:64
-msgid "ask() 方法 - 只读查询"
-msgstr "ask() Method - Read-only Queries"
-
-#: ../../interaction.rst:66
-msgid "使用 ``society.ask()`` 进行不修改模拟的只读查询："
-msgstr ""
-"Use ``society.ask()`` for read-only queries that don't modify the "
-"simulation:"
-
-#: ../../interaction.rst:80
-msgid "intervene() 方法 - 读写修改"
-msgstr "intervene() Method - Read-Write Modifications"
-
-#: ../../interaction.rst:82
-msgid "使用 ``society.intervene()`` 对模拟进行更改："
-msgstr "Use ``society.intervene()`` to make changes to the simulation:"
-
-#: ../../interaction.rst:102
-msgid "模拟工作流程"
-msgstr "Simulation Workflow"
-
-#: ../../interaction.rst:105
-msgid "使用逐步控制运行"
-msgstr "Running with Step Control"
-
-#: ../../interaction.rst:135
-msgid "数据收集"
-msgstr "Data Collection"
-
-#: ../../interaction.rst:138
-msgid "收集智能体响应"
-msgstr "Collecting Agent Responses"
-
-#: ../../interaction.rst:162
-msgid "使用 ReplayWriter 进行环境数据收集"
-msgstr "Data Collection with ReplayWriter"
-
-#: ../../interaction.rst:189
-msgid "常见交互场景"
-msgstr "Common Interaction Scenarios"
-
-#: ../../interaction.rst:192
-msgid "场景 1: 事件干预"
-msgstr "Scenario 1: Event Intervention"
-
-#: ../../interaction.rst:212
-msgid "场景 2: 政策实验"
-msgstr "Scenario 2: Policy Experiments"
-
-#: ../../interaction.rst:239
-msgid "场景 3: 多个时间点收集数据"
-msgstr "Scenario 3: Data Collection at Multiple Time Points"
-
-#: ../../interaction.rst:260
-msgid "最佳实践"
-msgstr "Best Practices"
-
-#: ../../interaction.rst:262
-msgid "**对查询使用 ask()**: 只需要信息时始终使用 ``ask()``"
-msgstr ""
-"**Use ask() for queries**: Always use ``ask()`` when you only need "
-"information"
-
-#: ../../interaction.rst:264
-msgid "**对更改使用 intervene()**: 只在想修改状态时使用 ``intervene()``"
-msgstr ""
-"**Use intervene() for changes**: Only use ``intervene()`` when you want "
-"to modify state"
-
-#: ../../interaction.rst:266
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/interaction.rst:4
 msgid ""
-"**结合 ReplayWriter**: 用环境 replay dataset 做实验分析；agent 本地调试则查看 "
-"``run/agents/agent_xxxx/`` 下的 workspace 文件"
+"使用 ``society.ask()`` 查询状态，使用 ``society.intervene()`` 调用写工具，使用 ``step()`` 或 ``run()`` "
+"推进模拟时间。初始化流程见 :doc:`quickstart`。"
 msgstr ""
-"**Use ReplayWriter**: analyze experiments with environment replay "
-"datasets; for local agent debugging, inspect workspace files under "
-"``run/agents/agent_xxxx/``"
+"Use ``society.ask()`` to query state, ``society.intervene()`` to call write tools, "
+"and ``step()`` or ``run()`` to advance simulation time. See :doc:`quickstart` for "
+"initialization."
 
-#: ../../interaction.rst:268
-msgid "**查询特定智能体**: 向特定智能体提问以获得有针对性的响应"
-msgstr "**Query specific agents**: Ask specific agents for targeted responses"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/interaction.rst:7
+msgid "交互入口"
+msgstr "Interaction Entry Points"
 
-#: ../../interaction.rst:270
-msgid "**适时干预**: 在适当的模拟时间进行干预以获得现实效果"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/interaction.rst:9
+msgid "查询使用只读工具，干预可以调用写工具"
+msgstr "Queries use read-only tools; interventions can call write tools"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/interaction.rst:53
+msgid "查询、修改与推进"
+msgstr "Query, Modify and Advance"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/interaction.rst:55
+msgid "下面使用内置天气环境演示完整调用顺序："
+msgstr "The built-in weather environment demonstrates the complete call sequence:"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/interaction.rst:57
+#, python-brace-format
+msgid ""
+"import asyncio\n"
+"from datetime import datetime\n"
+"from pathlib import Path\n"
+"\n"
+"from agentsociety2.contrib.env import WeatherEnvironment\n"
+"from agentsociety2.env import CodeGenRouter\n"
+"from agentsociety2.society import AgentSociety\n"
+"\n"
+"async def main():\n"
+"    society = AgentSociety(\n"
+"        agent_specs=[{\"id\": 1, \"profile\": {\"name\": \"Demo Agent\"}, \"config\": {}}],\n"
+"        agent_class_name=\"PersonAgent\",\n"
+"        env_router=CodeGenRouter(env_modules=[WeatherEnvironment()]),\n"
+"        start_t=datetime(2026, 1, 1),\n"
+"        run_dir=Path(\"run\"),\n"
+"    )\n"
+"    try:\n"
+"        await society.init()\n"
+"        print(await society.ask(\"What is the current weather?\"))\n"
+"        print(await society.intervene(\"Change the weather to rainy at 15 degrees Celsius\"))\n"
+"        print(await society.ask(\"What is the current weather now?\"))\n"
+"        await society.run(num_steps=2, tick=600)\n"
+"    finally:\n"
+"        await society.close()\n"
+"\n"
+"asyncio.run(main())"
 msgstr ""
-"**Intervene at appropriate times**: Intervene at appropriate simulation "
-"times for realistic effects"
+"import asyncio\n"
+"from datetime import datetime\n"
+"from pathlib import Path\n"
+"\n"
+"from agentsociety2.contrib.env import WeatherEnvironment\n"
+"from agentsociety2.env import CodeGenRouter\n"
+"from agentsociety2.society import AgentSociety\n"
+"\n"
+"async def main():\n"
+"    society = AgentSociety(\n"
+"        agent_specs=[{\"id\": 1, \"profile\": {\"name\": \"Demo Agent\"}, \"config\": {}}],\n"
+"        agent_class_name=\"PersonAgent\",\n"
+"        env_router=CodeGenRouter(env_modules=[WeatherEnvironment()]),\n"
+"        start_t=datetime(2026, 1, 1),\n"
+"        run_dir=Path(\"run\"),\n"
+"    )\n"
+"    try:\n"
+"        await society.init()\n"
+"        print(await society.ask(\"What is the current weather?\"))\n"
+"        print(await society.intervene(\"Change the weather to rainy at 15 degrees Celsius\"))\n"
+"        print(await society.ask(\"What is the current weather now?\"))\n"
+"        await society.run(num_steps=2, tick=600)\n"
+"    finally:\n"
+"        await society.close()\n"
+"\n"
+"asyncio.run(main())"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/interaction.rst:86
+msgid "``ask`` 使用只读环境工具；``intervene`` 可调用环境公开的写工具。可用操作取决于挂载的模块，工具定义见 :doc:`env_modules`。"
+msgstr ""
+"``ask`` uses read-only environment tools; ``intervene`` can call write tools exposed "
+"by the environment. Available operations depend on mounted modules; see "
+":doc:`env_modules` for tool definitions."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/interaction.rst:89
+msgid "按时间点读取状态"
+msgstr "Read State at Time Points"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/interaction.rst:91
+msgid "在已初始化的 ``society`` 上逐步运行："
+msgstr "Advance an initialized ``society`` step by step:"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/interaction.rst:93
+msgid ""
+"for step_number in range(3):\n"
+"    print(step_number, await society.ask(\"Describe the current environment state\"))\n"
+"    await society.step(tick=600)"
+msgstr ""
+"for step_number in range(3):\n"
+"    print(step_number, await society.ask(\"Describe the current environment state\"))\n"
+"    await society.step(tick=600)"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/interaction.rst:99
+msgid "``tick`` 的单位是秒。每步先推进智能体，再推进环境，最后更新模拟时钟；返回值与状态记录可配合查看。"
+msgstr ""
+"``tick`` is measured in seconds. Each step advances agents, then the environment, "
+"then the simulation clock. Inspect returned responses together with recorded state."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/interaction.rst:102
+msgid "查看输出"
+msgstr "View Outputs"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/interaction.rst:104
+msgid "当前问答结果：读取 ``ask`` / ``intervene`` 的返回值。"
+msgstr "Current responses: read the return values of ``ask`` and ``intervene``."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/interaction.rst:105
+msgid "时序状态：使用 ``ReplayReader`` 读取 ``run/replay/``，见 :doc:`storage`。"
+msgstr "Time-series state: read ``run/replay/`` with ``ReplayReader``; see :doc:`storage`."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/interaction.rst:106
+msgid "工具与模型调用：查看 ``run/trace/``。"
+msgstr "Tool and model calls: inspect ``run/trace/``."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/interaction.rst:107
+msgid "保存问答产物：CLI 的 ``ask`` / ``intervene`` 步骤自动写入 ``run/artifacts/``，见 :doc:`cli`。"
+msgstr ""
+"Saved responses: CLI ``ask`` / ``intervene`` steps automatically write to "
+"``run/artifacts/``; see :doc:`cli`."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/interaction.rst:109
+msgid "更多接口见 :doc:`api/society`；定向查询智能体的方法见 ``AgentSocietyHelper``。"
+msgstr ""
+"Further interfaces are in :doc:`api/society`; see ``AgentSocietyHelper`` for targeted"
+" agent queries."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/interaction.rst:112
+msgid "结构化问卷"
+msgstr "Structured questionnaires"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/interaction.rst:114
+msgid ""
+"需要向多个参与者发放同一组问题时，使用 ``society.run_questionnaire(questionnaire, "
+"target_agent_ids=...)``。``Questionnaire`` 指定问卷编号和题目列表，``QuestionnaireResponse`` 保留目标 "
+"Agent、原始回答、解析值与解析是否成功等结果；输入与返回类型见 :doc:`api/society`，题目字段见 :doc:`api/config`。"
+msgstr ""
+"To ask multiple participants the same questions, use "
+"``society.run_questionnaire(questionnaire, target_agent_ids=...)``. ``Questionnaire``"
+" specifies the questionnaire ID and items. ``QuestionnaireResponse`` preserves target"
+" agents, raw answers, parsed values, and parsing status. See :doc:`api/society` for "
+"input and result types and :doc:`api/config` for question fields."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/interaction.rst:116
+msgid ""
+"CLI 的 ``questionnaire`` 步骤会把问卷产物写入 ``run/artifacts/``，适合在模拟的指定时点收集结构化响应，配置方式见 "
+":doc:`cli`。直接调用 SDK 时，调用方负责保存返回结果；检查 ``parse_success`` 和原始回答后再汇总指标。"
+msgstr ""
+"The CLI ``questionnaire`` step writes artifacts to ``run/artifacts/`` for collecting "
+"structured responses at specified simulation points; see :doc:`cli` for "
+"configuration. With direct SDK calls, save the returned result yourself. Check "
+"``parse_success`` and raw answers before aggregating metrics."

@@ -8,17 +8,16 @@
     "build": "tsc -b && vite build",
     "lint": "eslint . --max-warnings=0",
     "preview": "vite preview",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:docs": "playwright test --config playwright.docs.config.ts"
   },
   "dependencies": {
     "@ant-design/icons": "^6.2.5",
     "@ant-design/pro-components": "^2.8.3",
     "@ant-design/x": "^2.10.0",
     "@monaco-editor/react": "^4.7.0",
-    "@types/react-plotly.js": "^2.6.4",
     "antd": "^6.6.5",
     "casdoor-js-sdk": "^0.21.1",
-    "casdoor-react-sdk": "^1.2.0",
     "dayjs": "^1.11.21",
     "i18next": "~26.5.12",
     "i18next-browser-languagedetector": "~8.2.4",
@@ -32,9 +31,7 @@
     "react-i18next": "^17.1.9",
     "react-map-gl": "^8.1.1",
     "react-plotly.js": "^4.0.0",
-    "react-resizable": "^4.0.2",
     "react-router": "^8.3.0",
-    "tinycolor2": "^1.6.0",
     "@deck.gl/core": "^9.4.0",
     "@deck.gl/react": "^9.4.0",
     "@deck.gl/aggregation-layers": "^9.4.0",
@@ -59,7 +56,8 @@
     "vite": "^8.3.5",
     "@vitejs/plugin-react": "^6.1.2",
     "@playwright/test": "^1.64.1",
-    "@types/node": "^22.0.0"
+    "@types/node": "^22.0.0",
+    "@types/react-plotly.js": "^2.6.4"
   },
   "overrides": {
     "minimatch": "^11.0.1",
@@ -80,5 +78,8 @@
   },
   "allowScripts": {
     "es5-ext@0.10.64": true
-  }
+  },
+  "workspaces": [
+    "tests/docs"
+  ]
 }

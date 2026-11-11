@@ -49,14 +49,13 @@ pip install agentsociety2
 
 ### Requirements
 
-- Python >= 3.11
+- Python 3.11–3.13
 - An LLM API key (OpenAI, Anthropic, or any provider supported by LiteLLM)
 
 ## Quick Start
 
-Before running the examples, set the LLM environment variables described in
-[Configuration](#configuration). The package validates them when `agentsociety2`
-is imported.
+Before running examples that call a model, set the LLM environment variables in
+[Configuration](#configuration). The framework uses its default model when no model name is supplied.
 
 ### Create Your First Agent
 
@@ -185,7 +184,7 @@ async def main():
     print(f"Answer: {answer}")
 
     # Intervene (read-write)
-    result = await society.intervene("Set all agents' happiness to 0.8")
+    result = await society.intervene("Ask Alice to send Bob a greeting")
     print(f"Result: {result}")
 
     await society.close()
@@ -204,8 +203,8 @@ Agents are autonomous entities that interact with environments through LLM-power
 - **AgentBase**: Abstract base class for all agents
 - **PersonAgent**: Skills-based agent — a lightweight orchestrator whose capabilities are provided by a pluggable skill pipeline
 - Agents support two interaction modes:
-  - `ask(question, readonly=True)`: Query without side effects
-  - `intervene(instruction)`: Make changes to the environment
+  - `society.ask(question)`: Query using read-only environment tools
+  - `society.intervene(instruction)`: Use available write tools to change the environment
 
 #### Agent Skills
 
@@ -222,8 +221,9 @@ agent/skills/
 Each skill has:
 
 - `SKILL.md` — YAML frontmatter (`name`, `description`, optional `script` / `hooks`) + behavior docs
-- `scripts/*.py` — optional scripts. By default these run **in-process via an `entrypoint(argv, ctx)`**
-  contract (millisecond, concurrency-safe), with dynamic-wrapper and subprocess fallbacks.
+- `scripts/*.py` — optional scripts. Trusted built-in skills run **in-process via an `entrypoint(argv, ctx)`**
+  contract; custom/`env:` skills execute the same contract in an isolated `skill_worker.py` subprocess,
+  and scripts without a callable run as plain subprocesses.
 
 Skills follow metadata-first selection:
 
@@ -256,7 +256,7 @@ Routers mediate agent-environment interactions using different reasoning pattern
 
 ### Storage
 
-AgentSociety 2 currently has two persistence paths:
+The following example registers a replay table. Register a dataset as well when it should appear in the catalog; directory and dataset conventions are in [the storage guide](docs/storage.rst):
 
 ```python
 from agentsociety2.storage import ReplayReader, ReplayWriter
@@ -288,9 +288,9 @@ reader.close()
 - **ReplayWriter / ReplayReader**: write sharded JSONL replay datasets plus `_schema.json`
   metadata, then read them through DuckDB-backed views.
 - **PersonAgent workspace**: stores per-agent local files under `run/agents/agent_xxxx/`, such as
-  `config.json`, `AGENT.json`, `AGENT_MEMORY.md`, `state/*.json`, and `.runtime/logs/*.jsonl`.
-- **Trace**: the `agentsociety2.trace` module writes distributed tracing spans (sharded writer +
-  background-thread actor) for profiling steps and LLM calls.
+  `config.json`, `AGENT.json`, `MEMORY.md`, `memory/episodes.jsonl` and `state/`.
+- **Trace**: the `agentsociety2.trace` module writes distributed tracing spans through per-process sharded append writers in `run/trace/`
+  for profiling steps and model calls.
 
 Legacy SQLite tables like `agent_profile`, `agent_status`, and `agent_dialog` are kept only for compatibility when reading old experiment databases; new runs write `run/replay/` instead.
 
@@ -298,7 +298,7 @@ Legacy SQLite tables like `agent_profile`, `agent_status`, and `agent_dialog` ar
 
 Set your LLM API credentials via environment variables. The examples below use the OpenAI API endpoint and `gpt-5.5`; other LiteLLM-supported providers can be used by changing the base URL and model id.
 
-**Required Configuration**
+**Default Model Configuration**
 
 ```bash
 # Default LLM (required - used for most operations)
@@ -344,8 +344,8 @@ cp .env.example .env
 ```
 
 > **Note**
-> AgentSociety 2 validates `AGENTSOCIETY_LLM_API_KEY` at import time. Make sure it is set
-> before importing `agentsociety2`, or load `.env` early in your entrypoint.
+> Configure credentials before model calls. If using `.env`, load it early in your entrypoint.
+> Simulation model settings are separate from Claude Code / Codex provider routing.
 
 ## Examples
 
@@ -367,7 +367,7 @@ Longer batch scripts (Trust Game, Volunteer's Dilemma, Commons Tragedy, etc.) li
 
 - [English Documentation](https://agentsociety2.readthedocs.io/)
 - [中文文档](https://agentsociety2.readthedocs.io/zh_CN/latest/)
-- [API Reference](https://agentsociety2.readthedocs.io/en/latest/api.html)
+- [API Reference](https://agentsociety2.readthedocs.io/en/latest/api/index.html)
 
 ## Development
 

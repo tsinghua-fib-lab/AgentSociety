@@ -1,6 +1,6 @@
-"""Experiment configuration tool
+"""实验配置工具
 
-Simplified tool for initializing and validating experiment configurations.
+用于初始化与校验实验配置的简化工具。
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ logger = get_logger()
 
 
 class ExperimentConfigTool:
-    """Tool for initializing and validating experiment configurations"""
+    """初始化与校验实验配置的工具"""
 
     def __init__(
         self,
@@ -23,11 +23,11 @@ class ExperimentConfigTool:
         progress_callback: Any = None,
         tool_id: str = "",
     ):
-        """Initialize the experiment config tool
+        """初始化实验配置工具
 
-        :param workspace_path: Path to workspace directory
-        :param progress_callback: Optional callback for progress updates
-        :param tool_id: Optional tool identifier
+        :param workspace_path: 工作区目录路径
+        :param progress_callback: 可选的进度更新回调
+        :param tool_id: 可选的工具标识符
         """
         self.workspace_path = Path(workspace_path).resolve()
         self._progress_callback = progress_callback
@@ -63,11 +63,11 @@ class ExperimentConfigTool:
         }
 
     async def execute(self, arguments: dict[str, Any]) -> Any:
-        """Execute the experiment configuration
+        """执行实验配置
 
-        :param arguments: Dictionary with hypothesis_id, experiment_id, and optional parameters
+        :param arguments: 包含 ``hypothesis_id``、``experiment_id`` 及可选参数的字典
 
-        :returns: ToolResult-like object with success, content, error fields
+        :returns: 含 ``success``、``content``、``error`` 字段的结果对象
         """
         hypothesis_id = arguments.get("hypothesis_id")
         experiment_id = arguments.get("experiment_id")
@@ -152,7 +152,7 @@ class ExperimentConfigTool:
 
 
 def _result(success: bool, content: str, error: str | None = None) -> Any:
-    """Create a result object compatible with ToolResult"""
+    """创建与 ToolResult 兼容的结果对象"""
 
     # Use a simple class since we can't import the original ToolResult
     class SimpleResult:

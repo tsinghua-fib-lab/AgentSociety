@@ -3,15 +3,18 @@
 本模块包含两个核心概念：
 
 **EnvBase** — 环境模块基类：
+
 - 定义 Agent 可执行的操作（通过 ``@tool`` 装饰器）
 - 管理环境状态
 - 提供 ``observe()`` 方法供 Agent 感知环境
 
 **RouterBase** — 路由器基类：
+
 - 将 Agent 的自然语言指令转换为工具调用
 - 支持多种路由策略（ReAct、PlanExecute、CodeGen 等）
 
 路由器实现：
+
 - ``ReActRouter``: ReAct 范式（推理-行动循环）
 - ``PlanExecuteRouter``: 计划-执行范式
 - ``CodeGenRouter``: 代码生成范式
@@ -19,7 +22,8 @@
 - ``TwoTierPlanExecuteRouter``: 两层计划执行路由
 - ``SearchToolRouter``: 搜索工具路由
 
-工具装饰器 ``@tool``：
+工具装饰器 ``@tool`` ：
+
 - ``readonly=True``: 只读工具，不修改环境状态
 - ``readonly=False``: 可修改环境状态的工具
 - ``kind="observe"``: 观察类工具（自动调用）

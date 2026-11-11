@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: AgentSociety 2 2.6.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-18 09:09+0800\n"
+"POT-Creation-Date: 2026-11-10 12:16+0800\n"
 "PO-Revision-Date: 2026-03-05 23:50+0800\n"
 "Last-Translator: AgentSociety Team\n"
 "Language: en\n"
@@ -19,156 +19,261 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: ../../quickstart.rst:2
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/quickstart.rst:2
 msgid "快速入门"
 msgstr "Quick Start"
 
-#: ../../quickstart.rst:4
-msgid "本指南将帮助您快速上手 AgentSociety 2。"
-msgstr "This guide will help you get started with AgentSociety 2."
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/quickstart.rst:4
+msgid ""
+"本页运行一个最小的 Python SDK 仿真。使用 VS Code / code-server 工作台时，可先阅读 "
+":doc:`user_guide`；从配置文件运行实验时，阅读 :doc:`cli`。"
+msgstr ""
+"This page runs a minimal Python SDK simulation. For the VS Code / code-server "
+"workbench, start with :doc:`user_guide`; for configuration-based execution, see "
+":doc:`cli`."
 
-#: ../../quickstart.rst:7
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/quickstart.rst:7
 msgid "前置条件"
 msgstr "Prerequisites"
 
-#: ../../quickstart.rst:9
-msgid "在运行示例前，请先配置 LLM 环境变量（见 :doc:`installation`），或在项目目录中准备好 ``.env`` 并在入口处尽早加载。"
-msgstr ""
-"Before running examples, configure LLM environment variables (see "
-":doc:`installation`), or prepare a ``.env`` file in the project directory"
-" and load it early at the entry point."
-
-#: ../../quickstart.rst:12
-msgid "您的第一个智能体"
-msgstr "Your First Agent"
-
-#: ../../quickstart.rst:14
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/quickstart.rst:9
 msgid ""
-"使用 :class:`~agentsociety2.society.AgentSociety` 创建一个简单的智能体并与它交互。注意：智能体现在 "
-"以 **spec（元数据）** 的形式声明，由编排器在 ``init`` 时批量创建 workspace；不再直接 "
-"``PersonAgent(...)`` 实例化（见 :doc:`agents`）。"
+"先按 :doc:`installation` 安装 SDK 并配置模型。下面代码会访问模型服务；``python`` 应来自已安装 SDK 的环境。也可在项目目录准备 "
+"``.env``，在导入 SDK 前用 ``load_dotenv()`` 加载。"
 msgstr ""
-"Create a simple agent with :class:`~agentsociety2.society.AgentSociety` and interact "
-"with it. Note that agents are now declared as **specs (metadata)**; the orchestrator "
-"creates workspaces in batches during ``init``. They are no longer instantiated directly "
-"with ``PersonAgent(...)`` (see :doc:`agents`)."
+"Install the SDK and configure models following :doc:`installation`. The code below "
+"calls a model service; use ``python`` from the SDK environment. Alternatively, "
+"prepare a project ``.env`` and load it with ``load_dotenv()`` before importing the "
+"SDK."
 
-#: ../../quickstart.rst:67
-msgid "运行此代码将产生类似以下输出："
-msgstr "Running this code will produce output similar to:"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/quickstart.rst:12
+msgid "创建并运行"
+msgstr "Create and run"
 
-#: ../../quickstart.rst:75
-msgid "创建自定义环境"
-msgstr "Creating Custom Environments"
-
-#: ../../quickstart.rst:77
-msgid "环境模块允许智能体与特定功能进行交互："
-msgstr "Environment modules allow agents to interact with specific functionality:"
-
-#: ../../quickstart.rst:120
-msgid "使用 CLI 运行实验"
-msgstr "Running Experiments with CLI"
-
-#: ../../quickstart.rst:122
-msgid "AgentSociety 2 提供了一个强大的 CLI 用于运行实验。"
-msgstr "AgentSociety 2 provides a powerful CLI for running experiments."
-
-#: ../../quickstart.rst:124
-msgid "**前台运行（调试）:**"
-msgstr "**Foreground Execution (Debug):**"
-
-#: ../../quickstart.rst:134
-msgid "**后台运行（生产）:**"
-msgstr "**Background Execution (Production):**"
-
-#: ../../quickstart.rst:145
-msgid "**重要**: 后台运行时必须指定 ``--log-file`` 参数。"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/quickstart.rst:14
+msgid "通过元数据声明一个参与者，创建共享环境路由，查询画像并推进两个时间步："
 msgstr ""
-"**Important**: When running in background, you must specify the ``--log-"
-"file`` parameter."
+"Declare one participant as metadata, create a shared environment router, query the "
+"profile, and advance two steps:"
 
-#: ../../quickstart.rst:147
-msgid "更多详情请参见 :doc:`cli`。"
-msgstr "See :doc:`cli` for more details."
-
-#: ../../quickstart.rst:150
-msgid "运行实验（代码方式）"
-msgstr "Running Experiments (Code)"
-
-#: ../../quickstart.rst:152
-msgid "下面是一个使用 AgentSociety 2 的多智能体完整实验示例："
-msgstr ""
-"Here's a complete example of a multi-agent experiment using AgentSociety "
-"2:"
-
-#: ../../quickstart.rst:198
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/quickstart.rst:16
+#, python-brace-format
 msgid ""
-"``ReplayWriter`` 现在把 replay dataset 写入 ``run/replay/`` 的 sharded JSONL， "
-"并用 ``_schema.json`` 保存 catalog。``PersonAgent`` 的本地状态、thread 和工具日志 会落在 "
-"``run/agents/agent_xxxx/`` 目录，而不是旧 SQLite 的 ``agent_status`` / "
-"``agent_profile`` 表。"
+"import asyncio\n"
+"from datetime import datetime\n"
+"from pathlib import Path\n"
+"\n"
+"from agentsociety2.env import create_env_router_proxy\n"
+"from agentsociety2.society import AgentSociety\n"
+"\n"
+"async def main():\n"
+"    run_dir = Path(\"run_quickstart\")\n"
+"    agent_specs = [\n"
+"        {\n"
+"            \"id\": 1,\n"
+"            \"profile\": {\"name\": \"Alice\", \"age\": 28, \"bio\": \"Enjoys reading.\"},\n"
+"            \"config\": {},\n"
+"        }\n"
+"    ]\n"
+"    env_router = await create_env_router_proxy(\n"
+"        [\"SimpleSocialSpace\"],\n"
+"        {\"SimpleSocialSpace\": {\"agent_id_name_pairs\": [(1, \"Alice\")]}},\n"
+"        run_dir=run_dir,\n"
+"    )\n"
+"    society = AgentSociety(\n"
+"        agent_specs=agent_specs,\n"
+"        agent_class_name=\"PersonAgent\",\n"
+"        env_router=env_router,\n"
+"        start_t=datetime(2026, 1, 1, 8, 0),\n"
+"        run_dir=run_dir,\n"
+"    )\n"
+"    try:\n"
+"        await society.init()\n"
+"        answer = await society.ask(\n"
+"            \"Use get_agent_profile for name=Alice. Summarize the profile.\"\n"
+"        )\n"
+"        print(answer)\n"
+"        await society.run(num_steps=2, tick=600)\n"
+"        print(society.all_token_stats())\n"
+"    finally:\n"
+"        await society.close()\n"
+"\n"
+"if __name__ == \"__main__\":\n"
+"    asyncio.run(main())"
 msgstr ""
-"``ReplayWriter`` now records environment-side replay datasets only. "
-"``PersonAgent`` local state, threads, and tool logs live under "
-"``run/agents/agent_xxxx/``, not in SQLite ``agent_status`` / "
-"``agent_profile`` tables."
+"import asyncio\n"
+"from datetime import datetime\n"
+"from pathlib import Path\n"
+"\n"
+"from agentsociety2.env import create_env_router_proxy\n"
+"from agentsociety2.society import AgentSociety\n"
+"\n"
+"async def main():\n"
+"    run_dir = Path(\"run_quickstart\")\n"
+"    agent_specs = [\n"
+"        {\n"
+"            \"id\": 1,\n"
+"            \"profile\": {\"name\": \"Alice\", \"age\": 28, \"bio\": \"Enjoys reading.\"},\n"
+"            \"config\": {},\n"
+"        }\n"
+"    ]\n"
+"    env_router = await create_env_router_proxy(\n"
+"        [\"SimpleSocialSpace\"],\n"
+"        {\"SimpleSocialSpace\": {\"agent_id_name_pairs\": [(1, \"Alice\")]}},\n"
+"        run_dir=run_dir,\n"
+"    )\n"
+"    society = AgentSociety(\n"
+"        agent_specs=agent_specs,\n"
+"        agent_class_name=\"PersonAgent\",\n"
+"        env_router=env_router,\n"
+"        start_t=datetime(2026, 1, 1, 8, 0),\n"
+"        run_dir=run_dir,\n"
+"    )\n"
+"    try:\n"
+"        await society.init()\n"
+"        answer = await society.ask(\n"
+"            \"Use get_agent_profile for name=Alice. Summarize the profile.\"\n"
+"        )\n"
+"        print(answer)\n"
+"        await society.run(num_steps=2, tick=600)\n"
+"        print(society.all_token_stats())\n"
+"    finally:\n"
+"        await society.close()\n"
+"\n"
+"if __name__ == \"__main__\":\n"
+"    asyncio.run(main())"
 
-#: ../../quickstart.rst:204
-msgid "下一步"
-msgstr "Next Steps"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/quickstart.rst:60
+msgid ""
+"``agent_specs`` 描述画像与配置，由 ``init()`` 创建 Agent 工作目录；不直接用画像参数构造 ``PersonAgent`` "
+"实例。``create_env_router_proxy`` 让各 Ray worker 访问同一环境，使用方式与 CLI 一致。"
+msgstr ""
+"``agent_specs`` declares profiles and configuration; ``init()`` creates the agent "
+"workspaces. Do not construct ``PersonAgent`` instances with profile arguments. "
+"``create_env_router_proxy`` gives Ray workers access to a shared environment, as in "
+"the CLI."
 
-#: ../../quickstart.rst:206
-msgid "既然您已经掌握了基础知识，可以继续探索："
-msgstr "Now that you have the basics, you can continue exploring:"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/quickstart.rst:62
+msgid ""
+"``tick`` 的单位是秒，表示每步模拟时间跨度，不是等待的真实秒数。回答和 Agent 决策随模型与上下文变化；运行记录在 "
+"``run_quickstart/``。再次独立运行时使用新的输出目录；恢复实验见 :doc:`cli`。"
+msgstr ""
+"``tick`` is simulated seconds per step, not a real-time delay. Answers and agent "
+"decisions depend on the model and context. Run records are written to "
+"``run_quickstart/``. Use a new output directory for another independent run; see "
+":doc:`cli` for recovery."
 
-#: ../../quickstart.rst:208
-msgid ":doc:`agents` - 详细了解智能体"
-msgstr ":doc:`agents` - Learn more about agents"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/quickstart.rst:65
+msgid "检查结果"
+msgstr "Inspect results"
 
-#: ../../quickstart.rst:209
-msgid ":doc:`env_modules` - 创建自定义环境模块"
-msgstr ":doc:`env_modules` - Create custom environment modules"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/quickstart.rst:67
+msgid "查看终端输出与 ``run_quickstart/SOCIETY_STEP.json`` 确认推进进度，结合调用记录检查错误。"
+msgstr ""
+"Check terminal output and ``run_quickstart/SOCIETY_STEP.json`` for progress, and "
+"inspect call records for errors."
 
-#: ../../quickstart.rst:210
-msgid ":doc:`concepts` - 理解核心概念"
-msgstr ":doc:`concepts` - Understand core concepts"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/quickstart.rst:68
+msgid "``run_quickstart/replay/`` 保存 catalog 与时序数据；可用字段取决于实际写入的数据集。"
+msgstr ""
+"``run_quickstart/replay/`` stores the catalog and temporal data; available fields "
+"depend on the datasets actually recorded."
 
-#: ../../quickstart.rst:211
-msgid ":doc:`architecture` - 系统架构与 Ray 执行模型"
-msgstr ":doc:`architecture` - system architecture and Ray execution model"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/quickstart.rst:69
+msgid "``run_quickstart/agents/`` 保存人物的持久状态，``run_quickstart/trace/`` 保存调用记录。"
+msgstr ""
+"``run_quickstart/agents/`` stores participant state; ``run_quickstart/trace/`` stores"
+" call records."
 
-#: ../../quickstart.rst:212
-msgid ":doc:`storage` - 了解回放系统"
-msgstr ":doc:`storage` - Learn about the replay system"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/quickstart.rst:71
+msgid ""
+"回放与报告入口见 :doc:`results`；程序读取方法见 :doc:`storage`。SDK 直接运行的目录可用 ``ReplayReader`` "
+"读取；插件回放默认从研究工作区的假设 / 实验目录读取数据。"
+msgstr ""
+"See :doc:`results` for replay and reports, and :doc:`storage` for programmatic "
+"access. Direct SDK output can be read with ``ReplayReader``; extension replay reads "
+"hypothesis/experiment directories in a research workspace by default."
 
-#: ../../quickstart.rst:213
-msgid ":doc:`examples` - 查看更多示例"
-msgstr ":doc:`examples` - See more examples"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/quickstart.rst:74
+msgid "查询、干预与推进"
+msgstr "Query, intervene, and advance"
 
-#: ../../quickstart.rst:216
-msgid "常见模式"
-msgstr "Common Patterns"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/quickstart.rst:76
+msgid "在已经初始化的 ``society`` 上，三个入口的用途分别是："
+msgstr "On an initialized ``society``, the three entry points serve these purposes:"
 
-#: ../../quickstart.rst:219
-msgid "只读查询"
-msgstr "Read-only Queries"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/quickstart.rst:82
+msgid "方法"
+msgstr "Method"
 
-#: ../../quickstart.rst:221
-msgid "对于不修改状态的查询，使用 ``society.ask()``："
-msgstr "For queries that don't modify state, use ``society.ask()``:"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/quickstart.rst:83
+msgid "用途"
+msgstr "Purpose"
 
-#: ../../quickstart.rst:229
-msgid "进行修改"
-msgstr "Making Modifications"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/quickstart.rst:84
+msgid "``society.ask(question)``"
+msgstr "``society.ask(question)``"
 
-#: ../../quickstart.rst:231
-msgid "对于修改环境的操作，使用 ``society.intervene()``："
-msgstr "For operations that modify the environment, use ``society.intervene()``:"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/quickstart.rst:85
+msgid "通过辅助器规划只读查询，可检查画像、询问目标 Agent 或查询环境。"
+msgstr ""
+"Plan a read-only query through the helper to inspect profiles, ask a target agent, or"
+" query the environment."
 
-#: ../../quickstart.rst:239
-msgid "查询特定智能体"
-msgstr "Querying Specific Agents"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/quickstart.rst:86
+msgid "``society.intervene(instruction)``"
+msgstr "``society.intervene(instruction)``"
 
-#: ../../quickstart.rst:241
-msgid "向特定智能体提问："
-msgstr "Ask a specific agent:"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/quickstart.rst:87
+msgid "允许调用环境写工具，具体操作由挂载模块提供。"
+msgstr "Allow environment write tools; mounted modules determine available actions."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/quickstart.rst:88
+msgid "``society.step(tick)`` / ``run(num_steps, tick)``"
+msgstr "``society.step(tick)`` / ``run(num_steps, tick)``"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/quickstart.rst:89
+msgid "推进参与者、环境与仿真时钟。"
+msgstr "Advance participants, environment, and simulation clock."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/quickstart.rst:91
+msgid ""
+"查询画像中的已有字段时，可明确请求 ``get_agent_profile``；需要参与者作答时，明确 Agent 编号并请求 "
+"``ask_agents``。只读查询仍可能留下日志；它不会自动推进仿真时钟。详细交互方法见 :doc:`interaction`。"
+msgstr ""
+"For existing profile fields, explicitly request ``get_agent_profile``. To obtain a "
+"participant response, specify the agent ID and request ``ask_agents``. Read-only "
+"queries may still write logs and do not automatically advance the clock. See "
+":doc:`interaction` for details."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/quickstart.rst:94
+msgid "扩展与后续步骤"
+msgstr "Extensions and next steps"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/quickstart.rst:96
+msgid ":doc:`research_workflow`：组织研究问题、假设与实验，保留可检查的中间产物。"
+msgstr ""
+":doc:`research_workflow`: Organize questions, hypotheses, and experiments with "
+"inspectable intermediate artifacts."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/quickstart.rst:97
+msgid ":doc:`datasets`：准备画像、环境输入或比较数据。"
+msgstr ":doc:`datasets`: Prepare profiles, environment inputs, or comparison data."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/quickstart.rst:98
+msgid ":doc:`custom_modules`：实现自己的 Agent 或环境工具。"
+msgstr ":doc:`custom_modules`: Implement your own agents or environment tools."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/quickstart.rst:99
+msgid ":doc:`agent_skills`：扩展仿真参与者的行为能力。"
+msgstr ":doc:`agent_skills`: Extend simulation participants’ behavior."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/quickstart.rst:100
+msgid ":doc:`examples`：查看仓库中的入门、博弈和进阶示例。"
+msgstr ":doc:`examples`: Explore introductory, game-theory, and advanced repository examples."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/quickstart.rst:102
+msgid "完整研究不要求手写全部编排代码；工作台与研究技能的使用方式见 :doc:`user_guide`、:doc:`skills`。"
+msgstr ""
+"You do not need to write all orchestration code by hand for a complete study. See "
+":doc:`user_guide` and :doc:`skills` for workbench and research skill usage."

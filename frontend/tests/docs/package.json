@@ -1,0 +1,9 @@
+{
+  "name": "agentsociety-docs-browser",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "devDependencies": {
+    "@playwright/test": "^1.64.1"
+  }
+}

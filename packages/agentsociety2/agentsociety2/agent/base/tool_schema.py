@@ -1,7 +1,7 @@
 """ReAct 工具循环使用的通用 OpenAI function/tool schema。
 
 中文：集中定义 ReAct 工具循环使用的通用 OpenAI function/tool schema
-（``react_tool_schemas`` 和 ``readonly_tool_names``）。这些 schema 与具体
+（``react_tool_schemas`` 和 ``readonly_tool_names`` ）。这些 schema 与具体
 agent（PersonAgent 等）无关，只描述 workspace / skill / memory 检索 / TODO
 / ask_env 等通用动作。
 English: Defines the generic OpenAI function/tool schemas used by the ReAct
@@ -10,7 +10,7 @@ are agent-agnostic and only describe workspace / skill / memory retrieval /
 TODO / ask_env actions.
 
 person 专属的 memory schema(抽取、整理)仍位于
-:mod:`agentsociety2.agent.person_tools`。
+:mod:`agentsociety2.agent.person_tools` 。
 """
 
 from __future__ import annotations

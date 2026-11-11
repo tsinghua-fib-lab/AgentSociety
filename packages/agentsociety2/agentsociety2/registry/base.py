@@ -101,7 +101,7 @@ class ModuleRegistry:
     ) -> None:
         """注册环境模块。
 
-        :param module_type: type identifier（例如 ``simple_social_space``）。
+        :param module_type: type identifier（例如 ``simple_social_space`` ）。
         :param module_class: 环境模块类。
         :param is_custom: 是否为自定义模块。
         """
@@ -117,7 +117,7 @@ class ModuleRegistry:
     ) -> None:
         """注册 agent。
 
-        :param agent_type: type identifier（例如 ``person_agent``）。
+        :param agent_type: type identifier（例如 ``person_agent`` ）。
         :param agent_class: agent 类。
         :param is_custom: 是否为自定义 agent。
         """
@@ -132,7 +132,7 @@ class ModuleRegistry:
         """按 type 获取环境模块类（会触发惰性加载）。
 
         :param module_type: type identifier。
-        :returns: 环境模块类；未找到返回 ``None``。
+        :returns: 环境模块类；未找到返回 ``None`` 。
         """
         self._ensure_loaded()
         return self._env_modules.get(module_type)
@@ -141,7 +141,7 @@ class ModuleRegistry:
         """按 type 获取 agent 类（会触发惰性加载）。
 
         :param agent_type: type identifier。
-        :returns: agent 类；未找到返回 ``None``。
+        :returns: agent 类；未找到返回 ``None`` 。
         """
         self._ensure_loaded()
         return self._agent_modules.get(agent_type)
@@ -167,7 +167,7 @@ class ModuleRegistry:
         logger.debug(f"Registry workspace set to: {self._workspace_path}")
 
     def _resolve_workspace_path(self) -> Path | None:
-        """返回用于 custom 模块发现的 workspace 路径；若无法推断则返回 ``None``。"""
+        """返回用于 custom 模块发现的 workspace 路径；若无法推断则返回 ``None`` 。"""
 
         if self._workspace_path is not None:
             return self._workspace_path
@@ -233,7 +233,7 @@ class ModuleRegistry:
         """获取模块信息（会触发惰性加载）。
 
         :param module_type: type identifier。
-        :param kind: ``env_module`` 或 ``agent``。
+        :param kind: ``env_module`` 或 ``agent`` 。
         :returns: 模块信息字典（含参数签名、描述、是否 custom 等）。
         """
         self._ensure_builtin_loaded()

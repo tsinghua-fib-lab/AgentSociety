@@ -1,6 +1,6 @@
-"""Literature data models
+"""文献数据模型
 
-Pydantic models for literature search results and indexing.
+用于文献检索结果与索引的 Pydantic 模型。
 """
 
 from __future__ import annotations
@@ -16,9 +16,9 @@ logger = get_logger()
 
 
 class LiteratureEntry(BaseModel):
-    """Literature entry data model
+    """文献条目数据模型
 
-    Used to standardize literature JSON entries, ensuring data structure consistency and type safety.
+    用于标准化文献 JSON 条目，确保数据结构一致性与类型安全。
     """
 
     # Basic information
@@ -78,7 +78,7 @@ class LiteratureEntry(BaseModel):
     @field_validator("saved_at")
     @classmethod
     def validate_saved_at(cls, v: str) -> str:
-        """Validate save time format"""
+        """校验保存时间格式"""
         try:
             datetime.fromisoformat(v)
         except ValueError:
@@ -88,7 +88,7 @@ class LiteratureEntry(BaseModel):
     @field_validator("doi")
     @classmethod
     def validate_doi(cls, v: str | None) -> str | None:
-        """Validate DOI format (basic check)"""
+        """校验 DOI 格式（基础检查）"""
         if v is None:
             return v
         # Basic DOI format check: 10.xxxx/xxxx
@@ -98,9 +98,9 @@ class LiteratureEntry(BaseModel):
 
 
 class LiteratureIndex(BaseModel):
-    """Literature index data model
+    """文献索引数据模型
 
-    Used to standardize the entire literature index JSON file structure.
+    用于标准化整个文献索引 JSON 文件的结构。
     """
 
     entries: list[LiteratureEntry] = Field(

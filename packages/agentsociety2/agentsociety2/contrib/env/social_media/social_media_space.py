@@ -282,7 +282,7 @@ class SocialMediaSpace(EnvBase):
 
         ``_rec_engine``/``_allowed_user_ids``/``_agent_names``/极化参数由
         ``__init__`` 从 kwargs 重建，不在此覆盖。``_comments`` 还原为
-        ``defaultdict(list)``，``_recent_events`` 还原为 ``deque(maxlen=200)``。
+        ``defaultdict(list)`` ，``_recent_events`` 还原为 ``deque(maxlen=200)`` 。
         """
         self._bind_workspace(workspace_path)
         state_path = self._workspace_root / _STATE_REL

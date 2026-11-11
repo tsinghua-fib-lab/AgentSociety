@@ -1,6 +1,6 @@
 export default {
   title: 'Agent Skills',
-  description: '管理 Agent 可用的技能——内置技能只读，自定义技能可创建、上传、编辑和删除。',
+  description: '智能体在仿真中按需选择技能。创建或上传自定义技能后，可扫描工作区查看。',
   columns: {
     name: '名称',
     description: '描述',

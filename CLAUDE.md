@@ -47,12 +47,8 @@ uv run mypy packages/agentsociety2/tests/ --follow-imports=skip
 ### Running Experiments (CLI)
 
 ```bash
-# Get PYTHON_PATH from workspace .env
-PYTHON_PATH=$(grep "^PYTHON_PATH=" .env | cut -d'=' -f2)
-PYTHON_PATH=${PYTHON_PATH:-.venv/bin/python}
-
 # Run an experiment (--log-file REQUIRED for background execution)
-$PYTHON_PATH -m agentsociety2.society.cli \
+.venv/bin/python -m agentsociety2.society.cli \
     --config hypothesis_1/experiment_1/init/init_config.json \
     --steps hypothesis_1/experiment_1/init/steps.yaml \
     --run-dir hypothesis_1/experiment_1/run \
@@ -61,7 +57,7 @@ $PYTHON_PATH -m agentsociety2.society.cli \
     --log-file hypothesis_1/experiment_1/run/output.log &
 
 # Or run in foreground (logs to console)
-$PYTHON_PATH -m agentsociety2.society.cli \
+.venv/bin/python -m agentsociety2.society.cli \
     --config init_config.json \
     --steps steps.yaml \
     --run-dir run
@@ -121,7 +117,7 @@ graph TB
     subgraph "Core Simulation"
         Society[AgentSociety<br/>Orchestrator]
         Router[Environment Router<br/>ReAct/PlanExecute/CodeGen]
-        Storage[(ReplayWriter<br/>SQLite)]
+        Storage[(ReplayWriter<br/>JSONL)]
     end
 
     subgraph "Agents"
@@ -140,9 +136,7 @@ graph TB
         Lit[literature]
         Exp[experiment]
         Hyp[hypothesis]
-        Paper[paper]
         Analysis[analysis]
-        Agent[agent]
     end
 
     subgraph "External Services"
@@ -188,7 +182,7 @@ PersonAgent follows a **metadata-first, selected-only** model. The skill *infras
 - Skills are self-contained directories; each has `SKILL.md` (YAML frontmatter: `name`/`description`/optional `script`/`hooks` + behavior docs) and optional `scripts/<name>.py` and `references/`.
 - The only **built-in skill is `daily-guidance`** (the old `observation`/`cognition`/`plan`/`memory` skills were removed).
 - **Selection Stage**: LLM sees skill catalog (name/description only).
-- **Execution Stage**: only LLM-selected skills are activated; skill scripts run **in-process via an `entrypoint(argv, ctx)` contract** (ms-level, concurrency-safe), with dynamic-wrapper and subprocess fallbacks.
+- **Execution Stage**: only LLM-selected skills are activated; trusted built-in skills run **in-process via an `entrypoint(argv, ctx)` contract**, while custom/`env:` skills execute the same contract in an isolated `skill_worker.py` subprocess (scripts without a callable run as plain env-whitelisted subprocesses; the old dynamic-wrapper fallback was removed).
 - `pre_step`/`post_step` lifecycle hooks render into a dedicated `<skill_hooks>` block; `env:`-prefixed skills redirect to `ask_env`.
 - Custom skills go in `<workspace>/custom/skills/` and are hot-loaded at runtime.
 
@@ -196,31 +190,31 @@ PersonAgent follows a **metadata-first, selected-only** model. The skill *infras
 - **RouterBase**: Abstract router for environment modules
 - **EnvBase**: Base class for environment modules with `@tool` decorator; override `is_concurrency_safe()` when tools are safe to fan out
 - **Router implementations**: CodeGenRouter (default; FAISS template cache only when `template_mode=True`), ReActRouter, PlanExecuteRouter, TwoTierReActRouter, TwoTierPlanExecuteRouter, SearchToolRouter
-- In production the router runs in a dedicated **Ray actor** (`env_router_actor.py` + `env_router_proxy.py::EnvRouterProxy`); `max_concurrency` is `AGENTSOCIETY_ENV_ACTOR_MAX_CONCURRENCY` (default 8) only when all mounted modules are concurrency-safe, else 1
+- In production the router runs in a dedicated **Ray actor** (`env_router_actor.py` + `env_router_proxy.py::EnvRouterProxy`); `max_concurrency` is `AGENTSOCIETY_ENV_ACTOR_MAX_CONCURRENCY` (default 64; the old default of 8 starved the actor) only when all mounted modules are concurrency-safe, else 1
+- Codegen execution backend: `AGENTSOCIETY_CODE_EXEC_BACKEND` selects `inprocess` (default; cooperative deadlines inside the env process) or `process` (isolated workers with hard wall-clock deadlines and address-space limits); see also `AGENTSOCIETY_CODE_EXEC_TIMEOUT` / `AGENTSOCIETY_CODE_EXEC_MEMORY_MIB` / `AGENTSOCIETY_CODE_EXEC_WORKERS`
 - Environment modules register tools as observe/statistics/regular methods; routers mediate between agents and environment modules; empty observe/statistics sets skip init LLM codegen
 
 #### CLI (`agentsociety2/society/cli.py`)
 - **Main entry point**: `python -m agentsociety2.society.cli`
-- **Arguments**: `--config`, `--steps`, `--run-dir`, `--experiment-id`, `--log-level`, `--log-file`
-- **Features**: Progress tracking with pid.json, automatic database creation, artifact generation
+- **Arguments**: `--config`, `--steps`, `--run-dir`, `--experiment-id`, `--log-level`, `--log-file`, `--batch-size` (agents per `step_agent_batch` Ray Task; default `AGENTSOCIETY_BATCH_SIZE` env or 256), `--replay-disable` (no-op replay proxy, useful at large scale), `--resume` (resume an interrupted run from `run_dir/SOCIETY.json`, restoring the society clock and env module state and skipping already-completed top-level steps)
+- **Features**: Progress tracking with pid.json, automatic replay dataset creation (sharded JSONL under `run/replay/`), artifact generation
 
 #### Research Skills (`agentsociety2/skills/`)
 - **literature**: Academic literature search and management
 - **experiment**: Experiment configuration and execution
 - **hypothesis**: Hypothesis generation and management
-- **paper**: Academic paper generation (deprecated; replaced by the external `paper-toolkit` plugin, which provides a deterministic CLI for evidence DAG, typesetting, and checks, plus a companion Claude Code skill for writing and review)
 - **analysis**: Data analysis harness (phase-gated CLI, EDA embed, experience memory via `draft-reflection` / `promote-reflection`, HTML report bundles)
-- **agent**: Agent processing, selection, generation, and filtering
+- **paper**: Removed in 2.5.2 — paper workflows moved to the external `paper-toolkit` plugin (deterministic CLI for evidence DAG, typesetting, and checks, plus a companion Claude Code skill for writing and review)
 
 #### Backend API (`agentsociety2/backend/`)
 - **FastAPI**-based REST API for external integrations
-- **Routes**: `/api/v1/experiments` (incl. log `?tail=`), `/api/v1/modules`, `/api/v1/replay`, `/api/v1/custom`
+- **Routes**: `/api/v1/experiments` (incl. log `?tail=`), `/api/v1/modules`, `/api/v1/replay`, `/api/v1/custom`, `/api/v1/agent-skills` (list/scan/import/create/upload skills — backend for the extension & frontend skill marketplace), `/api/v1/prefill-params` (read-only prefill params from `{workspace}/.agentsociety/prefill_params.json`)
 - **Separate from core simulation** - runs as independent service
 - **API documentation**: Available at `/docs` when running
 
 #### Storage (`agentsociety2/storage/`)
-- **ReplayWriter**: SQLite-based storage for simulation replay
-- **Models**: AgentProfile, AgentStatus, AgentDialog (SQLModel)
+- **ReplayWriter**: Distributed append-only sharded JSONL sink for simulation replay (`replay_sink.py`; replaced the former central SQLite/Ray-actor write path)
+- **Models**: AgentProfile, AgentStatus, AgentDialog (SQLModel) — kept only for reading legacy databases
 - **ColumnDef/TableSchema**: Dynamic table registration for custom environment data
 
 #### Logger (`agentsociety2/logger/`)
@@ -232,7 +226,7 @@ PersonAgent follows a **metadata-first, selected-only** model. The skill *infras
 #### Society (`agentsociety2/society/`)
 - **AgentSociety**: Main simulation orchestrator
 - **AgentSocietyHelper**: Plan-and-Execute helper for external questions/interventions (XML `<plan>`/`<answer>`; tools include `get_agent_profile`)
-- **Models**: InitConfig, StepsConfig, ExperimentConfig
+- **Models**: InitConfig, StepsConfig (`society/models.py`); ExperimentConfig lives in `skills/experiment/models.py`
 
 #### Module Registry (`agentsociety2/registry/`)
 - **ModuleRegistry**: Singleton registry for agent classes and environment modules
@@ -254,6 +248,8 @@ Environment variables (see `.env.example`):
 **Optional LLM Configuration** (falls back to default if not set):
 - `AGENTSOCIETY_CODER_LLM_*` - Code generation LLM
 - `AGENTSOCIETY_EMBEDDING_*` - Embedding model settings
+- `AGENTSOCIETY_LLM_API_TYPE` / `AGENTSOCIETY_CODER_LLM_API_TYPE` - API protocol: `openai` (Chat Completions) or `anthropic` (Messages)
+- `AGENTSOCIETY_LLM_THINKING`, `AGENTSOCIETY_LLM_THINKING_FORMAT`, `AGENTSOCIETY_LLM_REASONING_EFFORT`, `AGENTSOCIETY_LLM_EXTRA_BODY` - Reasoning control (on/off switch, control-field format per provider, effort level, gateway-specific extra body; the matching `AGENTSOCIETY_CODER_LLM_*` variables override the coder role)
 
 **Other Settings:**
 - `AGENTSOCIETY_HOME_DIR` - Data directory (default: ./agentsociety_data)
@@ -276,7 +272,7 @@ LLM routing via `agentsociety2.config`:
 
 ### Frontend Architecture
 
-- React 18 with TypeScript
+- React 19 with TypeScript
 - Ant Design UI components (@ant-design/pro-components, @ant-design/x)
 - MobX for state management
 - React Router for navigation
@@ -333,9 +329,7 @@ graph TD
         SK1[literature/]
         SK2[experiment/]
         SK3[hypothesis/]
-        SK4[paper/]
         SK5[analysis/]
-        SK6[agent/]
     end
 
     subgraph "backend/"
@@ -362,9 +356,7 @@ graph TD
     SK --> SK1
     SK --> SK2
     SK --> SK3
-    SK --> SK4
     SK --> SK5
-    SK --> SK6
     B --> B1
     B --> B2
     B --> B3
@@ -408,8 +400,7 @@ graph LR
         Config --> CLI[CLI Execution]
         CLI --> Results[(Results)]
         Results --> Analysis[Data Analysis]
-        Analysis --> Paper[Paper Generator]
-        Paper --> Final[Final Paper]
+        Analysis --> PT[paper-toolkit plugin<br/>external]
     end
 ```
 
@@ -420,8 +411,8 @@ flowchart TD
     Start([CLI Start]) --> Validate[Validate Environment]
     Validate --> LoadConfig[Load init_config.json]
     LoadConfig --> LoadSteps[Load steps.yaml]
-    LoadSteps --> InitDB[Initialize SQLite DB]
-    InitDB --> CreateAgents[Create Agents]
+    LoadSteps --> InitReplay[Initialize replay dir]
+    InitReplay --> CreateAgents[Create Agents]
     CreateAgents --> CreateEnv[Create Environment Router]
     CreateEnv --> InitSociety[Initialize AgentSociety]
     InitSociety --> Steps{Execute Steps}
@@ -429,10 +420,12 @@ flowchart TD
     Steps --> Ask[ask: Query]
     Steps --> Intervene[intervene: Modify]
     Steps --> Step[step: Simulate tick]
+    Steps --> Questionnaire[questionnaire: Survey agents]
 
     Ask --> SaveArtifact[Save Artifact]
     Intervene --> SaveArtifact
     Step --> SaveArtifact
+    Questionnaire --> SaveArtifact
 
     SaveArtifact --> More{More Steps?}
     More -->|Yes| Steps
@@ -460,10 +453,10 @@ graph TD
 ```
 
 ### Memory Architecture
-PersonAgent maintains local workspace-backed memory:
+PersonAgent maintains local workspace-backed memory via `AgentMemoryStore` (`agent/memory.py`):
 - **Thread context**: Recent tool/LLM interactions, compacted when needed
-- **AgentMemory**: Persistent runtime summary in `AGENT_MEMORY.md`
-- **memory skill**: Optional event memory in `state/memory.jsonl`
+- **MEMORY.md**: Persistent runtime summary maintained by the memory store
+- **memory/episodes.jsonl**: Append-only event memory (authoritative episode source); `memory/state.json` tracks consolidation cursors/counters. Agents retrieve episodes through the `memory_recent` / `memory_search` / `memory_range` / `memory_read` tools
 
 ### Agent-Environment Interaction
 - Agents call `await env_router.ask(question, readonly=False)`
@@ -474,7 +467,7 @@ PersonAgent maintains local workspace-backed memory:
 - Environment data is written by `ReplayWriter` to `run/replay/` as catalog-driven sharded JSONL datasets, with `ReplayReader` exposing a DuckDB-backed read side
 - Replay metadata is stored in `_schema.json`; env modules register datasets/tables via `register_table(ColumnDef*, TableSchema)` / `register_dataset`
 - Legacy framework tables (`agent_profile`, `agent_status`, `agent_dialog`) are kept **only for reading old databases** — new runs no longer write them
-- Distributed tracing via `agentsociety2.trace` (sharded writer + background-thread `TraceActor`); spans emitted through `service_proxy.trace`
+- Distributed tracing via `agentsociety2.trace`: each process appends spans directly to O_APPEND sharded files (no central actor; records capped under `PIPE_BUF` for atomic single writes, oversized attribute values truncated — full data lives in the replay DB); spans emitted through `service_proxy.trace`
 - Agent state lives in per-agent workspaces (`run/agents/agent_<id>/`: `config.json`, `AGENT.json` incl. `world_description`, `state/*`, `.runtime/logs/*`)
 - Onboarding examples: `packages/agentsociety2/examples/{basics,games,advanced}` (contrib `WeatherEnvironment` / `SpecialistAgent`)
 
@@ -482,12 +475,12 @@ PersonAgent maintains local workspace-backed memory:
 
 - **agentsociety2 is a Python package**: ALWAYS access `agentsociety2` via `import agentsociety2`, NEVER search for it in the file system (e.g., `packages/agentsociety2`). The package is installed in the Python environment and available for import.
 - **CLI --log-file is REQUIRED**: When running experiments in background, always specify `--log-file` to capture verbose logs.
-- **HuggingFace connectivity**: The framework auto-switches to Chinese mirror (`hf-mirror.com`) if HuggingFace is unreachable.
-- **Version compatibility**: Use Python >= 3.11
+- **HuggingFace connectivity (v1 only)**: The legacy `agentsociety` package auto-switches to the Chinese mirror (`hf-mirror.com`) if HuggingFace is unreachable; agentsociety2 has no HuggingFace dependency.
+- **Version compatibility**: Use Python 3.11 – 3.13
 - **Dependencies**: Managed via uv workspace - run `uv sync` from root
 - **Frontend build**: Use `npm run build` in `frontend/` directory
 - **Testing**: pytest configuration in `packages/agentsociety2/`
-- **Ray-based execution**: agentsociety2 uses **Ray**. Agents are workspace-bound stateless records driven by Ray Tasks (`step_agent_batch`); the env router, trace writer, and replay writer run as long-lived shared Ray actors, while LLM access is handled by each process through the local dispatcher and injected via `ServiceProxy`. (v1 also used Ray for city simulation; v2 simplified away the gRPC integration but kept Ray for scalability.)
-- **Research skills**: The skills/ module provides LLM-native research workflows for literature search, hypothesis generation, experiment design, and paper writing.
-- **Agent Skills**: PersonAgent uses a metadata-first skill selection model. Skills are activated on-demand (in-process `entrypoint`), not pre-loaded. The only built-in skill is `daily-guidance`; custom skills go in `custom/skills/`.
+- **Ray-based execution**: agentsociety2 uses **Ray**. Agents are workspace-bound stateless records driven by Ray Tasks (`step_agent_batch`); the env router runs as a long-lived shared Ray actor, while trace and replay use distributed O_APPEND sharded writers with no central actor, and LLM access is handled by each process through the local dispatcher and injected via `ServiceProxy`. (v1 also used Ray for city simulation; v2 simplified away the gRPC integration but kept Ray for scalability.)
+- **Research skills**: The skills/ module provides LLM-native research workflows for literature search, hypothesis generation, experiment design, and data analysis (paper writing moved to the external `paper-toolkit` plugin).
+- **Agent Skills**: PersonAgent uses a metadata-first skill selection model. Skills are activated on-demand (built-ins run in-process via `entrypoint`; custom/`env:` skills go through an isolated `skill_worker.py` subprocess), not pre-loaded. The only built-in skill is `daily-guidance`; custom skills go in `custom/skills/`.
 - **Module Registry**: Use `get_registry()` to access the singleton ModuleRegistry for discovering agents and environment modules.

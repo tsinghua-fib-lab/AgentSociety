@@ -1,0 +1,24 @@
+{
+  "name": "Restrict main updates to deploy keys",
+  "target": "branch",
+  "enforcement": "disabled",
+  "bypass_actors": [
+    {
+      "actor_type": "DeployKey",
+      "actor_id": null,
+      "bypass_mode": "always"
+    }
+  ],
+  "conditions": {
+    "ref_name": {
+      "include": ["~DEFAULT_BRANCH"],
+      "exclude": []
+    }
+  },
+  "rules": [
+    {
+      "type": "update",
+      "parameters": { "update_allows_fetch_and_merge": false }
+    }
+  ]
+}

@@ -14,12 +14,12 @@ pip install agentsociety2
 
 要求：
 
-- Python >= 3.11
+- Python 3.11–3.13
 - 一个 LiteLLM 支持的 LLM API Key
 
 ## 快速开始
 
-运行示例前请先配置 LLM 环境变量。`agentsociety2` 会在导入时校验这些变量：
+运行会调用模型的示例前，先配置 LLM 环境变量；未显式指定模型名时使用框架默认值：
 
 ```bash
 export AGENTSOCIETY_LLM_API_KEY="your-api-key"
@@ -74,14 +74,14 @@ asyncio.run(main())
 ## 核心概念
 
 - **PersonAgent / AgentBase**：默认人物智能体。基于 `AgentBase`（直接拥有 workspace / 技能运行时 / ReAct 循环 / TODO / trace），作为 workspace 绑定的**无状态 record**，由 Ray Task 流式驱动。
-- **Agent Skills**：metadata-first 的 skill 选择模型；当前唯一内置技能是 `daily-guidance`，自定义技能放在 `custom/skills/`。脚本默认经进程内 `entrypoint(argv, ctx)` 执行。
+- **Agent Skills**：metadata-first 的 skill 选择模型；当前唯一内置技能是 `daily-guidance`，自定义技能放在 `custom/skills/`。内置技能脚本可在进程内执行；自定义技能的 `entrypoint(argv, ctx)` 在独立 worker 子进程中执行。
 - **Environment Modules**：继承 `EnvBase`，通过 `@tool` 暴露可观察、统计和读写工具；可声明
   `is_concurrency_safe()`，全部安全时 env Ray actor 并行 fan-out（`AGENTSOCIETY_ENV_ACTOR_MAX_CONCURRENCY`）。
 - **ServiceProxy**：把 env / LLM clients / trace / replay 句柄收口为单一容器注入 agent。
 - **CodeGenRouter**：推荐的环境路由器（另有 ReAct / Plan-Execute / Two-Tier / Search 路由器可选）；
   FAISS 指令模板缓存仅在 `template_mode=True` 时启用。
 - **ReplayWriter / ReplayReader / Trace**：`run/replay/` 下的 sharded JSONL replay dataset、`_schema.json` catalog 与 DuckDB 读侧 + 分布式 trace span。新实验不再写旧的 `sqlite.db`、`agent_profile` / `agent_status` / `agent_dialog` 表。
-- **Agent Workspace**：每个 `PersonAgent` 在 `run/agents/agent_xxxx/` 下维护 `config.json` / `AGENT.json`（含 `world_description`） / `state/*` / `.runtime/logs/*`。
+- **Agent Workspace**：每个 `PersonAgent` 在 `run/agents/agent_xxxx/` 下维护 `config.json` / `AGENT.json`（含 `world_description`） / `MEMORY.md` / `memory/` / `state/`；调用追踪位于 `run/trace/`。
 
 ## 示例
 
@@ -95,7 +95,7 @@ asyncio.run(main())
 
 ## 配置
 
-必需：
+默认模型配置：
 
 ```bash
 export AGENTSOCIETY_LLM_API_KEY="your-api-key"
@@ -154,7 +154,7 @@ python -m agentsociety2.backend.run
 
 ```bash
 uv sync
-uv run pytest packages/agentsociety2
+MEM0_TELEMETRY=False ANONYMIZED_TELEMETRY=False uv run pytest packages/agentsociety2/tests
 uv run ruff check packages/agentsociety2
 uv run ruff format packages/agentsociety2
 ```

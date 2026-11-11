@@ -1,18 +1,18 @@
 ## Meet the Layout
 
-Click the **AI Social Scientist** icon in the activity bar. Numbered regions match the red boxes:
+Click **AI Social Scientist** in the activity bar to open the project tree. The table lists the main entry points.
 
-![Layout overview with numbered regions](../images/vscode-layout-overview.png)
+![Workbench overview](../images/vscode-layout-overview.png)
 
-| # | Name | What it does |
-|---|------|--------------|
-| **1** | **Activity Bar** | Switch Explorer, Search, Git, Extensions, AI Social Scientist, and other views. |
-| **2** | **AI Social Scientist sidebar** | Project tree: AI Chat, skill management (Agent / Claude / Marketplace), environments & agents, research topic (`TOPIC.md`), literature, user data, datasets, custom modules. |
-| **3** | **Editor** | Config pages, Markdown, experiment files, Claude Code, replay, and more; idle view shows useful shortcuts. |
-| **4** | **AI Chat** | Right-side chat: pick Agent / model, describe a task, attach file context. |
-| **5** | **Status Bar** | Git, diagnostics, backend port (e.g. `8001`), active model; click to manage backend and gateway. |
-| **6** | **Accounts / Settings** | Bottom of the activity bar: account sync and VS Code settings, keybindings, themes. |
-| **7** | **Title bar / breadcrumbs** | Current path and layout controls; quick access to chat or panel layout. |
+| Name | What it does |
+|------|--------------|
+| **Activity Bar** | Switch Explorer, Search, Git, Extensions, AI Social Scientist, and other views. |
+| **AI Social Scientist sidebar** | Project tree: AI Chat, skill management (Runtime / Claude / Market / MCP), environments & agents, research topic (`TOPIC.md`), literature, user data, datasets, custom modules. |
+| **Editor** | Config pages, Markdown, experiment files, Claude Code, replay, and more; idle view shows useful shortcuts. |
+| **AI Chat** | Chat surface: select an available model, describe a task and attach file context. The exact panel depends on the installed client. |
+| **Status Bar** | Git, diagnostics, backend port (e.g. `8001`), active model; click to manage backend and gateway. |
+| **Accounts / Settings** | Bottom of the activity bar: account sync and VS Code settings, keybindings, themes. |
+| **Title bar / breadcrumbs** | Current path and layout controls; quick access to chat or panel layout. |
 
 ### A human-steered research workspace
 
@@ -20,18 +20,20 @@ The interface implements the paper's **Interactive Research Environment (IRE)**:
 
 ![Human-steered IRE: high-level researcher guidance and low-level AI Social Scientist execution](../images/agentsociety2-human-steered-ire.png)
 
-*Conceptual architecture adapted from Figure 4 of the [AgentSociety 2 paper](https://arxiv.org/abs/2607.11895).*
+*Conceptual architecture adapted from Figure 4 of the [AgentSociety 2 paper](https://arxiv.org/abs/2607.11895). Human guidance determines the question and review points; tool operations update workspace files and experiments.*
 
 ### Sidebar actions
 
 | Button | Function |
 |--------|----------|
+| ⚙️ Config | Open LLM / API settings |
 | 🔄 Refresh | Reload the project tree |
-| 🧩 Skills | Open skill management |
+| 🗺️ Quick Start | Open this walkthrough |
 | ⬇️ Export | Pack this research project to send to someone else |
 | ⬆️ Import | Open a project archive someone shared with you |
-| ⚙️ Config | Open LLM / API settings |
-| 📖 Help | Open the user guide |
+| 🌐 Language | Switch the extension UI between Chinese and English |
+
+Skill management is not a toolbar button: click the **Skills** item at the top of the project tree (Agent · Claude · Marketplace), or use the Command Palette. The user guide is also available from the Command Palette.
 
 ### Typical folders
 
@@ -43,6 +45,7 @@ workspace-root/
 ├── user_data/       # User data
 ├── custom/          # Custom modules and agent skills
 ├── .claude/skills/  # Claude / Codex skills
+├── .agentsociety/   # Project settings and workflow state
 ├── hypothesis_*/    # Hypotheses and experiments
 ├── presentation/    # Analysis reports and assets
 ├── synthesis/       # Cross-hypothesis synthesis

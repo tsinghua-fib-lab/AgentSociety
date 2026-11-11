@@ -1,7 +1,7 @@
 """
 分析模块工具：路径、`instruction_md` 发现、replay schema、LLM XML/报告解析。
 
-行为与目录约定见同包 `README.md`。
+行为与目录约定见同包 `README.md` 。
 """
 
 import json
@@ -83,7 +83,7 @@ def _sanitize_id(raw: str) -> str:
 
 
 def _resolve_replay_dir(path: Path) -> Path | None:
-    """Return the replay directory for a run/replay/sqlite-compatible path."""
+    """返回 ``run``/``replay``/``sqlite.db`` 兼容路径对应的 replay 目录。"""
     p = Path(path)
     candidates = []
     if p.is_dir():
@@ -167,9 +167,9 @@ def synthesis_paths(
 
 
 def _parse_skill_frontmatter(path: Path) -> dict[str, Any]:
-    """Parse YAML-like frontmatter from markdown skill files.
+    """从 Markdown 技能文件解析类 YAML frontmatter。
 
-    Supported keys: name, priority, description, required.
+    支持的键：``name`` 、``priority`` 、``description`` 、``required`` 。
     """
     if not path.exists():
         return {}
@@ -425,7 +425,8 @@ def parse_llm_report_response(content: str) -> dict[str, str]:
           <html_en><![CDATA[...]]></html_en>
         </report>
 
-    Returns dict with keys: markdown_zh, html_zh, markdown_en, html_en, markdown, html.
+    返回字典，键为：``markdown_zh`` 、``html_zh`` 、``markdown_en`` 、
+    ``html_en`` 、``markdown`` 、``html`` 。
 
     - 缺少必须的字段（至少 markdown_zh/markdown_en + html_zh/html_en）：抛出 XmlParseError。
     """
@@ -480,7 +481,7 @@ def _quote_identifier(name: str) -> str:
 
 
 def extract_database_schema(db_path: Path) -> dict[str, Any]:
-    """Extract replay schema from metadata catalog tables."""
+    """从 metadata catalog 表提取 replay schema。"""
     if not db_path or not db_path.exists():
         return {}
     replay_dir = _resolve_replay_dir(db_path)

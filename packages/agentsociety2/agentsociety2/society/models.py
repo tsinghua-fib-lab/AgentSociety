@@ -30,7 +30,7 @@ class EnvModuleConfig(BaseModel):
 
 
 class AgentConfig(BaseModel):
-    """Agent配置模型，匹配init_config.json中的格式"""
+    """Agent配置模型，匹配``init_config.json``中的格式"""
 
     agent_id: int = Field(..., description="Agent的唯一ID")
     agent_type: str = Field(..., description="Agent类型")

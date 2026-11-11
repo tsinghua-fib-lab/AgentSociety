@@ -1,4 +1,4 @@
-"""Output helpers for the analysis tool layer."""
+"""分析工具层的输出辅助模块。"""
 
 from __future__ import annotations
 
@@ -45,7 +45,7 @@ logger = get_logger()
 
 @dataclass
 class ReportPaths:
-    """Report file paths."""
+    """报告文件路径。"""
 
     markdown: Path
     html: Path
@@ -57,7 +57,7 @@ class ReportPaths:
 
 
 class AssetManager:
-    """Discover and normalize analysis assets."""
+    """发现并归一化分析资产。"""
 
     def __init__(self, workspace_path: Path):
         self.workspace_path = Path(workspace_path)
@@ -68,7 +68,7 @@ class AssetManager:
         experiment_id: str,
         hypothesis_id: str,
     ) -> list[ReportAsset]:
-        """Discover image assets under `run/artifacts`."""
+        """发现 ``run/artifacts`` 下的图片资产。"""
 
         hid = _sanitize_id(hypothesis_id)
         eid = _sanitize_id(experiment_id)
@@ -108,7 +108,7 @@ class AssetManager:
         *,
         include_embedded_data: bool = True,
     ) -> dict[str, Any]:
-        """Copy assets into `assets/`; optionally generate base64 payloads."""
+        """将资产复制到 ``assets/`` 下；可选生成 base64 内嵌数据。"""
 
         assets_dir = output_dir / DIR_REPORT_ASSETS
         assets_dir.mkdir(exist_ok=True)
@@ -185,7 +185,7 @@ AssetProcessor = AssetManager
 
 
 class EDAGenerator:
-    """Generate exploratory data analysis artifacts."""
+    """生成探索性数据分析（EDA）产物。"""
 
     def __init__(self):
         self.logger = logger
@@ -195,7 +195,7 @@ class EDAGenerator:
         reader,
         tables: list[str] | None,
     ) -> tuple[list[str], list[str], list[str]]:
-        """Return requested, selected, and invalid table names."""
+        """返回请求的、选中的与无效的表名。"""
 
         available_tables = reader.read_schema().tables
         if tables is None:
@@ -256,7 +256,7 @@ class EDAGenerator:
         max_rows: int = 50000,
         tables: list[str] | None = None,
     ) -> Path | None:
-        """Generate a missing-value report with missingno."""
+        """使用 missingno 生成缺失值报告。"""
 
         if not db_path.exists():
             return None
@@ -395,7 +395,7 @@ class EDAGenerator:
         max_rows: int = 50000,
         tables: list[str] | None = None,
     ) -> Path | None:
-        """Generate a correlation report."""
+        """生成相关性报告。"""
 
         if not db_path.exists():
             return None
@@ -503,7 +503,7 @@ class EDAGenerator:
         max_rows: int = 10000,
         tables: list[str] | None = None,
     ) -> Path | None:
-        """Generate a ydata-profiling report."""
+        """生成 ydata-profiling 报告。"""
 
         if not db_path.exists():
             return None
@@ -637,7 +637,7 @@ class EDAGenerator:
         max_rows: int = 10000,
         tables: list[str] | None = None,
     ) -> Path | None:
-        """Generate a Sweetviz report."""
+        """生成 Sweetviz 报告。"""
 
         if not db_path.exists():
             return None

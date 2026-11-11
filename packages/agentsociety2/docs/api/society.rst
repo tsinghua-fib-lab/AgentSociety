@@ -1,7 +1,7 @@
 Society 模块
 =============
 
-本模块提供仿真的核心编排器和辅助工具。
+本页用于查编排器的初始化、时间推进、查询与干预接口。按配置文件运行实验见 :doc:`/cli`，交互片段见 :doc:`/interaction`。
 
 AgentSociety
 ------------
@@ -24,4 +24,21 @@ PlanStep
 
 .. autoclass:: agentsociety2.society.helper.PlanStep
    :members:
+
+问卷输入与结果
+--------------
+
+.. autoclass:: agentsociety2.society.questionnaire.Questionnaire
+   :members:
+
+.. autoclass:: agentsociety2.society.questionnaire.QuestionnaireResponse
+   :members:
+
+.. autoclass:: agentsociety2.society.questionnaire.AgentQuestionnaireResult
+   :no-members:
+   :no-special-members:
+
+.. autoclass:: agentsociety2.society.questionnaire.QuestionnaireAnswer
+   :no-members:
+   :no-special-members:
    :undoc-members:

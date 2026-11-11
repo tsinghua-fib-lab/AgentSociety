@@ -1,6 +1,6 @@
-"""Hypothesis management functionality
+"""假设管理功能
 
-Functions for creating, reading, updating, and deleting hypotheses.
+提供 hypothesis 的创建、读取、更新与删除函数。
 """
 
 from __future__ import annotations
@@ -25,15 +25,15 @@ logger = get_logger()
 def validate_hypothesis_with_modules(
     hypothesis_data: dict[str, Any],
 ) -> tuple[bool, str | None, HypothesisDataModel | None, dict[str, Any] | None]:
-    """Validate hypothesis data with module selection validation
+    """校验 hypothesis 数据（含模块选择校验）
 
-    This is an enhanced validation that checks:
-    1. Schema validity (via Pydantic)
-    2. Agent and environment module selection (at least one of each required)
+    这是增强版校验，检查以下内容：
+    1. schema 合法性（通过 Pydantic）
+    2. agent 与环境模块的选择（各至少需要选择一个）
 
-    :param hypothesis_data: Hypothesis data dictionary
+    :param hypothesis_data: hypothesis 数据字典
 
-    :returns: Tuple of (is_valid, error_message, validated_model, guidance_dict)
+    :returns: ``(is_valid, 错误消息, 已校验模型, 引导信息字典)`` 元组
     """
     # First, validate schema
     schema_valid, schema_error, hypothesis_model = validate_hypothesis_schema(
@@ -75,11 +75,11 @@ def validate_hypothesis_with_modules(
 
 
 def find_existing_hypotheses(workspace_path: Path) -> list[Path]:
-    """Find existing hypothesis directories
+    """查找已有的 hypothesis 目录
 
-    :param workspace_path: Path to workspace directory
+    :param workspace_path: 工作区目录路径
 
-    :returns: Sorted list of hypothesis directory paths
+    :returns: 排序后的 hypothesis 目录路径列表
     """
     hypothesis_dirs = []
     for item in workspace_path.iterdir():
@@ -89,11 +89,11 @@ def find_existing_hypotheses(workspace_path: Path) -> list[Path]:
 
 
 def get_next_hypothesis_id(workspace_path: Path) -> str:
-    """Get the next hypothesis ID
+    """获取下一个 hypothesis ID
 
-    :param workspace_path: Path to workspace directory
+    :param workspace_path: 工作区目录路径
 
-    :returns: Next hypothesis ID as string
+    :returns: 字符串形式的下一个 hypothesis ID
     """
     existing = find_existing_hypotheses(workspace_path)
     if not existing:
@@ -112,11 +112,11 @@ def get_next_hypothesis_id(workspace_path: Path) -> str:
 def validate_hypothesis_schema(
     hypothesis_data: dict[str, Any],
 ) -> tuple[bool, str | None, HypothesisDataModel | None]:
-    """Validate hypothesis data against schema
+    """按 schema 校验 hypothesis 数据
 
-    :param hypothesis_data: Hypothesis data dictionary
+    :param hypothesis_data: hypothesis 数据字典
 
-    :returns: Tuple of (is_valid, error_message, validated_model)
+    :returns: ``(is_valid, 错误消息, 已校验模型)`` 元组
     """
     try:
         model = HypothesisDataModel(**hypothesis_data)
@@ -137,13 +137,13 @@ def create_hypothesis_structure(
     hypothesis_id: str,
     hypothesis_model: HypothesisDataModel,
 ) -> Path:
-    """Create hypothesis directory structure
+    """创建 hypothesis 目录结构
 
-    :param workspace_path: Path to workspace directory
-    :param hypothesis_id: Hypothesis ID
-    :param hypothesis_model: Validated hypothesis data model
+    :param workspace_path: 工作区目录路径
+    :param hypothesis_id: hypothesis ID
+    :param hypothesis_model: 已校验的 hypothesis 数据模型
 
-    :returns: Path to created hypothesis directory
+    :returns: 创建的 hypothesis 目录路径
     """
     hyp_dir = workspace_path / f"hypothesis_{hypothesis_id}"
     hyp_dir.mkdir(parents=True, exist_ok=True)
@@ -175,11 +175,11 @@ def create_hypothesis_structure(
 
 
 def generate_hypothesis_markdown(hypothesis_model: HypothesisDataModel) -> str:
-    """Generate HYPOTHESIS.md content
+    """生成 ``HYPOTHESIS.md`` 内容
 
-    :param hypothesis_model: Validated hypothesis data model
+    :param hypothesis_model: 已校验的 hypothesis 数据模型
 
-    :returns: Markdown content for HYPOTHESIS.md
+    :returns: ``HYPOTHESIS.md`` 的 Markdown 内容
     """
     lines = []
     lines.append("# Hypothesis")
@@ -213,12 +213,12 @@ def generate_hypothesis_markdown(hypothesis_model: HypothesisDataModel) -> str:
 
 
 def generate_experiment_markdown(group: ExperimentGroupModel, exp_idx: int) -> str:
-    """Generate EXPERIMENT.md content
+    """生成 ``EXPERIMENT.md`` 内容
 
-    :param group: Experiment group model
-    :param exp_idx: Experiment index
+    :param group: 实验分组模型
+    :param exp_idx: 实验序号
 
-    :returns: Markdown content for EXPERIMENT.md
+    :returns: ``EXPERIMENT.md`` 的 Markdown 内容
     """
     lines = []
     lines.append(f"# Experiment {exp_idx}")
@@ -245,11 +245,11 @@ def generate_experiment_markdown(group: ExperimentGroupModel, exp_idx: int) -> s
 
 
 def generate_sim_settings(hypothesis_model: HypothesisDataModel) -> dict[str, Any]:
-    """Generate SIM_SETTINGS.json content
+    """生成 ``SIM_SETTINGS.json`` 内容
 
-    :param hypothesis_model: Validated hypothesis data model
+    :param hypothesis_model: 已校验的 hypothesis 数据模型
 
-    :returns: SIM_SETTINGS dictionary
+    :returns: ``SIM_SETTINGS.json`` 对应的字典
     """
     sim_settings = {}
 
@@ -271,12 +271,12 @@ def add_hypothesis(
     workspace_path: Path,
     hypothesis_data: dict[str, Any],
 ) -> dict[str, Any]:
-    """Add a new hypothesis
+    """新增一个 hypothesis
 
-    :param workspace_path: Path to workspace directory
-    :param hypothesis_data: Hypothesis data dictionary
+    :param workspace_path: 工作区目录路径
+    :param hypothesis_data: hypothesis 数据字典
 
-    :returns: Result dictionary with success status and info
+    :returns: 包含成功状态与信息的结果字典
     """
     # Validate schema
     valid, error_msg, hypothesis_model = validate_hypothesis_schema(hypothesis_data)
@@ -315,17 +315,17 @@ def add_hypothesis_with_validation(
     hypothesis_data: dict[str, Any],
     validate_modules: bool = True,
 ) -> dict[str, Any]:
-    """Add a new hypothesis with enhanced module validation
+    """新增一个 hypothesis（含增强模块校验）
 
-    This function provides enhanced validation that checks:
-    1. Schema validity (via Pydantic)
-    2. Agent and environment module selection (at least one of each required)
+    本函数提供增强版校验，检查以下内容：
+    1. schema 合法性（通过 Pydantic）
+    2. agent 与环境模块的选择（各至少需要选择一个）
 
-    :param workspace_path: Path to workspace directory
-    :param hypothesis_data: Hypothesis data dictionary
-    :param validate_modules: Whether to validate module selection (default: True)
+    :param workspace_path: 工作区目录路径
+    :param hypothesis_data: hypothesis 数据字典
+    :param validate_modules: 是否校验模块选择（默认 True）
 
-    :returns: Result dictionary with success status and info. If module validation fails, includes guidance for module selection.
+    :returns: 包含成功状态与信息的结果字典；若模块校验失败，还会附带模块选择引导信息。
     """
     if validate_modules:
         valid, error_msg, hypothesis_model, guidance = validate_hypothesis_with_modules(
@@ -380,13 +380,13 @@ def get_hypothesis(
     hypothesis_id: str | None = None,
     hypothesis_path: str | None = None,
 ) -> dict[str, Any]:
-    """Get hypothesis details
+    """获取 hypothesis 详情
 
-    :param workspace_path: Path to workspace directory
-    :param hypothesis_id: Hypothesis ID (e.g., '1', '2')
-    :param hypothesis_path: Relative path to hypothesis folder
+    :param workspace_path: 工作区目录路径
+    :param hypothesis_id: hypothesis ID（如 '1'、'2'）
+    :param hypothesis_path: hypothesis 文件夹的相对路径
 
-    :returns: Result dictionary with hypothesis details
+    :returns: 包含 hypothesis 详情的结果字典
     """
     # Determine folder to get
     if hypothesis_path:
@@ -463,11 +463,11 @@ def get_hypothesis(
 
 
 def list_hypotheses(workspace_path: Path) -> dict[str, Any]:
-    """List all hypotheses
+    """列出全部 hypothesis
 
-    :param workspace_path: Path to workspace directory
+    :param workspace_path: 工作区目录路径
 
-    :returns: Result dictionary with list of hypotheses
+    :returns: 包含 hypothesis 列表的结果字典
     """
     hypothesis_dirs = find_existing_hypotheses(workspace_path)
 
@@ -528,13 +528,13 @@ def delete_hypothesis(
     hypothesis_id: str | None = None,
     hypothesis_path: str | None = None,
 ) -> dict[str, Any]:
-    """Delete a hypothesis folder
+    """删除 hypothesis 文件夹
 
-    :param workspace_path: Path to workspace directory
-    :param hypothesis_id: Hypothesis ID (e.g., '1', '2')
-    :param hypothesis_path: Relative path to hypothesis folder
+    :param workspace_path: 工作区目录路径
+    :param hypothesis_id: hypothesis ID（如 '1'、'2'）
+    :param hypothesis_path: hypothesis 文件夹的相对路径
 
-    :returns: Result dictionary with deletion status
+    :returns: 包含删除状态的结果字典
     """
     # Determine folder to delete
     if hypothesis_path:

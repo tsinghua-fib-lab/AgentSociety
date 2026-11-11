@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: AgentSociety 2 2.6.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-23 12:35+0800\n"
+"POT-Creation-Date: 2026-11-09 11:56+0800\n"
 "PO-Revision-Date: 2026-05-19 12:00+0800\n"
 "Last-Translator: AgentSociety Team\n"
 "Language: en\n"
@@ -19,773 +19,1025 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: ../../agent_skills.rst:2
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:2
 msgid "Agent Skills（智能体技能）"
 msgstr "Agent Skills"
 
-#: ../../agent_skills.rst:5
-msgid "概述"
-msgstr "Overview"
-
-#: ../../agent_skills.rst:7
-msgid ""
-"Agent Skills 是 ``PersonAgent`` 的能力组织方式。``PersonAgent`` 是一个轻量的 ReAct "
-"编排器，其能力 由**可插拔的 Skill 流水线**提供。它解决的问题不只是“如何写插件”，而是如何把社会科学中的行为机制拆 "
-"成可以检查的仿真环节：一个人看到了什么，如何解释这个情境，形成了什么意图，采取了什么行动，又把哪些 经历带到后续决策中。"
-msgstr ""
-"Agent Skills are the capability organization mechanism for "
-"``PersonAgent``. The problem it solves goes beyond \"how to write "
-"plugins\" — it addresses how to decompose behavioral mechanisms from "
-"social science into inspectable simulation stages: what a person "
-"perceives, how they interpret the situation, what intention they form, "
-"what action they take, and which experiences they carry into subsequent "
-"decisions."
-
-#: ../../agent_skills.rst:12
-msgid "Skill 遵循 **metadata-first、selected-only** 模型："
-msgstr "Skills follow a **metadata-first, selected-only** model:"
-
-#: ../../agent_skills.rst:14
-msgid "**选择阶段**：LLM 只看到 Skill 目录（``name`` + ``description``），据此决定激活哪些。"
-msgstr ""
-"**Selection stage**: the LLM only sees the skill catalog (``name`` + "
-"``description``) and decides which skills to activate from that metadata."
-
-#: ../../agent_skills.rst:15
-msgid "**执行阶段**：只有被 LLM 选中的 Skill 才会被加载、读取、执行（惰性加载）。"
-msgstr ""
-"**Execution stage**: only skills selected by the LLM are loaded, read, "
-"and executed (lazy loading)."
-
-#: ../../agent_skills.rst:17
-msgid ""
-"好处是提示词体积可控（未选中的 Skill 不进上下文），且 Skill 可独立演进、热加载。一个 Skill 是一个 自包含目录，至少含一个 "
-"``SKILL.md``，包含 YAML frontmatter 和行为文档；可选地含 ``scripts/`` 可执行脚本和 "
-"``references/`` 参考资料。"
-msgstr ""
-"This keeps prompt size under control because unselected skills do not "
-"enter the context, while skills can evolve independently and be hot-"
-"loaded. A skill is a self-contained directory with at least one "
-"``SKILL.md`` file (YAML frontmatter plus behavior documentation), and "
-"optionally ``scripts/`` for executable scripts and ``references/`` for "
-"reference material."
-
-#: ../../agent_skills.rst:23
-msgid ""
-"本页描述的是 **Ray 重构后** 的技能子系统。旧的内置 ``observation`` / ``cognition`` / ``plan``"
-" / ``memory`` 四技能已被移除；技能基础设施（registry / runtime）从 ``agent/skills/`` 下沉到 "
-":mod:`agentsociety2.agent.base`；Skill 脚本默认在 agent 进程内经 ``entrypoint`` "
-"执行，而不再是 每步 fork 子进程。当前唯一内置技能是 :ref:`daily-guidance`。最权威的工程说明见源码 "
-"``agentsociety2/agent/skills/README.md``。"
-msgstr ""
-"This page describes the **post-Ray-refactor** skill subsystem. The old "
-"built-in ``observation`` / ``cognition`` / ``plan`` / ``memory`` skills "
-"have been removed; skill infrastructure (registry / runtime) has moved "
-"from ``agent/skills/`` down into :mod:`agentsociety2.agent.base`; and "
-"skill scripts now execute by default in the agent process through "
-"``entrypoint`` instead of forking a subprocess on every step. The only "
-"current built-in skill is :ref:`daily-guidance`. The most authoritative "
-"engineering notes are in the source file "
-"``agentsociety2/agent/skills/README.md``."
-
-#: ../../agent_skills.rst:31
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:27
 msgid "设计目标"
 msgstr "Design Goals"
 
-#: ../../agent_skills.rst:33
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:29
 msgid "**按需加载**：降低每步不必要的上下文占用与执行开销。"
 msgstr ""
-"**On-demand loading**: Reduces unnecessary context usage and execution "
-"overhead at each step."
+"**On-demand loading**: Reduces unnecessary context usage and execution overhead at "
+"each step."
 
-#: ../../agent_skills.rst:34
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:30
 msgid "**可解释选择**：选择依据来自 catalog 中的简短描述，便于调试和复盘。"
 msgstr ""
-"**Interpretable selection**: Selection is based on short descriptions in "
-"the catalog, facilitating debugging and review."
+"**Interpretable selection**: Selection is based on short descriptions in the catalog,"
+" facilitating debugging and review."
 
-#: ../../agent_skills.rst:35
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:31
 msgid "**热更新友好**：支持运行时扫描、激活/停用与重载（自定义 skill 放进 ``custom/skills/`` 即被发现）。"
 msgstr ""
-"**Hot-update friendly**: supports runtime scanning, "
-"activation/deactivation, and reloading; custom skills are discovered when"
-" placed under ``custom/skills/``."
+"**Hot-update friendly**: supports runtime scanning, activation/deactivation, and "
+"reloading; custom skills are discovered when placed under ``custom/skills/``."
 
-#: ../../agent_skills.rst:36
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:32
 msgid "**文件约定解耦**：技能通过 workspace 文件交换状态，而不是互相直接调用。"
 msgstr ""
-"**File-convention decoupling**: Skills exchange state through workspace "
-"files rather than calling each other directly."
+"**File-convention decoupling**: Skills exchange state through workspace files rather "
+"than calling each other directly."
 
-#: ../../agent_skills.rst:37
-msgid "**进程内执行**：脚本默认走 ``entrypoint``，复用热解释器，毫秒级、完全并发安全。"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:33
+msgid ""
+"**分级执行**：内置技能的 ``entrypoint`` 进程内直调（避免子进程启动；脚本仍需满足并发安全约束）；自定义 / 环境技能经 "
+"``skill_worker.py`` 子进程隔离执行，隔离进程内状态；文件与环境工具的副作用仍需由技能自身管理。"
 msgstr ""
-"**In-process execution**: scripts use ``entrypoint`` by default, reuse a "
-"warm interpreter, run in milliseconds, and are fully concurrency-safe."
+"**Tiered execution**: built-in ``entrypoint`` functions run in-process and must "
+"follow concurrency constraints. Custom/environment skills run through "
+"``skill_worker.py`` subprocesses, isolating process-local state; skills still manage "
+"their own file and environment-tool effects."
 
-#: ../../agent_skills.rst:41
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:38
 msgid "Skill 目录结构"
 msgstr "Skill Directory Structure"
 
-#: ../../agent_skills.rst:43
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:36
 msgid ""
 "内置技能位于 ``agentsociety2/agent/skills/``，自定义技能位于工作区 "
-"``custom/skills/``，环境模块技能 由环境提供。``SkillRegistry`` 按目录扫描，用 "
-"``namespace@name`` 作为稳定 ``skill_id``。"
+"``custom/skills/``，环境模块技能由环境提供。``SkillRegistry`` 按目录扫描，用 ``namespace@name`` 作为稳定 ``skill_id``。"
 msgstr ""
-"Built-in skills live under ``agentsociety2/agent/skills/``; custom skills"
-" live under workspace ``custom/skills/``; environment-module skills are "
-"provided by the environment. ``SkillRegistry`` scans directories and uses"
-" ``namespace@name`` as the stable ``skill_id``."
+"Built-in skills live under ``agentsociety2/agent/skills/``; custom skills live under workspace "
+"``custom/skills/``; environment-module skills are provided by the environment. ``SkillRegistry`` "
+"scans directories and uses ``namespace@name`` as the stable ``skill_id``."
 
-#: ../../agent_skills.rst:68
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:38
+#, python-brace-format
 msgid ""
-"扫描规则：每个子目录必须含 ``SKILL.md``，否则跳过；以 ``.`` 或 ``_`` 开头的目录被忽略；同名（同 "
-"``skill_id``）先到先得。agent 启动时通过 ``default_activated_skill_ids`` 配置默认激活哪些 "
-"skill。"
+"# 内置技能（命名空间 built-in）\n"
+"agentsociety2/agent/skills/\n"
+"└── daily-guidance/\n"
+"    ├── SKILL.md            # frontmatter（name/description/script/hooks）+ 行为说明\n"
+"    ├── scripts/\n"
+"    │   └── daily_guidance.py\n"
+"    └── references/\n"
+"\n"
+"# 自定义技能（命名空间 custom，热加载）\n"
+"{workspace}/custom/skills/\n"
+"└── my-skill/\n"
+"    ├── SKILL.md\n"
+"    └── scripts/\n"
+"        └── my_skill.py\n"
+"\n"
+"# 环境模块技能（命名空间 env）\n"
+"{env_module}/skills/\n"
+"└── weather-query/\n"
+"    └── SKILL.md"
 msgstr ""
-"Scan rules: each subdirectory must contain ``SKILL.md`` or it is skipped;"
-" directories starting with ``.`` or ``_`` are ignored; duplicate names "
-"(same ``skill_id``) are first-wins. At agent startup, "
-"``default_activated_skill_ids`` configures which skills are activated by "
-"default."
+"# Built-in skills (built-in namespace)\n"
+"agentsociety2/agent/skills/\n"
+"└── daily-guidance/\n"
+"    ├── SKILL.md            # Frontmatter (name/description/script/hooks) and behavior "
+"instructions\n"
+"    ├── scripts/\n"
+"    │   └── daily_guidance.py\n"
+"    └── references/\n"
+"\n"
+"# Custom skills (custom namespace, hot-loaded)\n"
+"{workspace}/custom/skills/\n"
+"└── my-skill/\n"
+"    ├── SKILL.md\n"
+"    └── scripts/\n"
+"        └── my_skill.py\n"
+"\n"
+"# Environment module skills (env namespace)\n"
+"{env_module}/skills/\n"
+"└── weather-query/\n"
+"    └── SKILL.md"
 
-#: ../../agent_skills.rst:73
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:65
+msgid ""
+"扫描规则：每个子目录必须含 ``SKILL.md``，否则跳过；以 ``.`` 或 ``_`` 开头的目录被忽略；同名（同 ``skill_id``）先到先得。agent"
+" 启动时通过 ``default_activated_skill_ids`` 配置默认激活哪些 skill。"
+msgstr ""
+"Scan rules: each subdirectory must contain ``SKILL.md`` or it is skipped; directories"
+" starting with ``.`` or ``_`` are ignored; duplicate names (same ``skill_id``) are "
+"first-wins. At agent startup, ``default_activated_skill_ids`` configures which skills"
+" are activated by default."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:70
 msgid "SKILL.md 格式"
 msgstr "SKILL.md Format"
 
-#: ../../agent_skills.rst:75
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:72
 msgid "每个 skill 目录必须含 ``SKILL.md``，头部用 YAML frontmatter 描述元数据："
 msgstr ""
-"Each skill directory must contain a ``SKILL.md`` file. The file header "
-"uses YAML frontmatter to describe metadata:"
+"Each skill directory must contain a ``SKILL.md`` file. The file header uses YAML "
+"frontmatter to describe metadata:"
 
-#: ../../agent_skills.rst:91
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:69
+msgid ""
+"---\n"
+"name: daily-guidance\n"
+"description: 强制使用：凡是时间尺度在小时及以下的日常行为模拟，必须使用本 Skill ...\n"
+"script: scripts/daily_guidance.py\n"
+"hooks:\n"
+"  pre_step: scripts/daily_guidance.py\n"
+"---\n"
+"\n"
+"# Daily Guidance\n"
+"\n"
+"（激活后被注入 system prompt 的行为说明……）"
+msgstr ""
+"---\n"
+"name: daily-guidance\n"
+"description: Mandatory for daily behavior simulations with time scales of one hour or less ...\n"
+"script: scripts/daily_guidance.py\n"
+"hooks:\n"
+"  pre_step: scripts/daily_guidance.py\n"
+"---\n"
+"\n"
+"# Daily Guidance\n"
+"\n"
+"(Behavior instructions injected into the system prompt after activation...)"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:88
 msgid "frontmatter 字段："
 msgstr "Frontmatter fields:"
 
-#: ../../agent_skills.rst:97 ../../agent_skills.rst:187
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:94
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:206
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:261
 msgid "字段"
 msgstr "Field"
 
-#: ../../agent_skills.rst:98 ../../agent_skills.rst:188
-#: ../../agent_skills.rst:294
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:95
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:207
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:262
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:349
 msgid "说明"
 msgstr "Description"
 
-#: ../../agent_skills.rst:99
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:96
 msgid "``name``"
 msgstr "``name``"
 
-#: ../../agent_skills.rst:100
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:97
 msgid "显示名，与命名空间组合成 ``skill_id``（``namespace@name``）。"
-msgstr ""
-"Display name, combined with the namespace to form ``skill_id`` "
-"(``namespace@name``)."
+msgstr "Display name, combined with the namespace to form ``skill_id`` (``namespace@name``)."
 
-#: ../../agent_skills.rst:101
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:98
 msgid "``description``"
 msgstr "``description``"
 
-#: ../../agent_skills.rst:102
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:99
 msgid "**目录描述**——选择阶段 LLM 唯一可见的文本，决定是否激活。务必精炼、可操作。"
 msgstr ""
-"**Catalog description**: the only text visible to the LLM during "
-"selection, and what determines whether it activates the skill. Keep it "
-"concise and actionable."
+"**Catalog description**: the only text visible to the LLM during selection, and what "
+"determines whether it activates the skill. Keep it concise and actionable."
 
-#: ../../agent_skills.rst:103
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:100
 msgid "``script``"
 msgstr "``script``"
 
-#: ../../agent_skills.rst:104
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:101
 msgid "可选，默认脚本相对路径（如 ``scripts/daily_guidance.py``）。"
-msgstr ""
-"Optional default script relative path, such as "
-"``scripts/daily_guidance.py``."
+msgstr "Optional default script relative path, such as ``scripts/daily_guidance.py``."
 
-#: ../../agent_skills.rst:105
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:102
 msgid "``hooks``"
-msgstr ""
+msgstr "``hooks``"
 
-#: ../../agent_skills.rst:106
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:103
 msgid "可选，生命周期 hook 脚本映射，键为 hook 类型（``pre_step`` / ``post_step``），值为相对脚本路径。"
 msgstr ""
-"Optional lifecycle hook script mapping. Keys are hook types (``pre_step``"
-" / ``post_step``), and values are relative script paths."
+"Optional lifecycle hook script mapping. Keys are hook types (``pre_step`` / "
+"``post_step``), and values are relative script paths."
 
-#: ../../agent_skills.rst:110
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:107
 msgid ""
-"frontmatter 之后的 Markdown 正文，是 skill 被 **激活后** 注入 system prompt 的行为说明。未激活时"
-" 不进上下文。激活时支持 ``$ARGUMENTS`` / ``$1`` / ``$2`` 占位符替换与 ``!cmd`` 命令输出注入。"
+"frontmatter 之后的 Markdown 正文，是 skill 被 **激活后** 注入 system prompt 的行为说明（原样注入 "
+"``<skill_content>`` 块，不做任何占位符替换或命令注入）。未激活时不进上下文。"
 msgstr ""
-"The Markdown body after the frontmatter is the behavior instruction "
-"injected into the system prompt **after the skill is activated**. It does"
-" not enter context when inactive. When activated, it supports "
-"``$ARGUMENTS`` / ``$1`` / ``$2`` placeholder substitution and ``!cmd`` "
-"command-output injection."
+"The Markdown body after the frontmatter is the behavior description injected into the"
+" system prompt when the skill is **activated** (rendered verbatim into the "
+"``<skill_content>`` block, with no placeholder substitution or command injection). It"
+" never enters the context while inactive."
 
-#: ../../agent_skills.rst:115
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:112
 msgid "可见性与激活"
 msgstr "Visibility and Activation"
 
-#: ../../agent_skills.rst:117
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:114
 msgid "**可见（visible）**：skill 出现在目录里，LLM 能看到、能选择激活。"
 msgstr ""
-"**Visible**: the skill appears in the catalog, so the LLM can see it and "
-"choose to activate it."
+"**Visible**: the skill appears in the catalog, so the LLM can see it and choose to "
+"activate it."
 
-#: ../../agent_skills.rst:118
-msgid ""
-"**激活（activated）**：skill 的 ``SKILL.md`` 正文被注入 system prompt，其脚本 / hook "
-"可被调用。"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:115
+msgid "**激活（activated）**：skill 的 ``SKILL.md`` 正文被注入 system prompt，其脚本 / hook 可被调用。"
 msgstr ""
-"**Activated**: the body of the skill's ``SKILL.md`` is injected into the "
-"system prompt, and its scripts / hooks can be called."
+"**Activated**: the body of the skill's ``SKILL.md`` is injected into the system "
+"prompt, and its scripts / hooks can be called."
 
-#: ../../agent_skills.rst:120
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:117
 msgid "LLM 通过下列工具操作 skill："
 msgstr "The LLM operates on skills through these tools:"
 
-#: ../../agent_skills.rst:126
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:123
 msgid "工具"
 msgstr "Tool"
 
-#: ../../agent_skills.rst:127
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:124
 msgid "作用"
 msgstr "Purpose"
 
-#: ../../agent_skills.rst:128
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:125
 msgid "``activate_skill``"
 msgstr "``scripts/hello_skill.py``:"
 
-#: ../../agent_skills.rst:129
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:126
 msgid "加载某 skill 的 ``SKILL.md`` 进上下文。"
 msgstr "Load a skill's ``SKILL.md`` into context."
 
-#: ../../agent_skills.rst:130
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:127
 msgid "``deactivate_skill``"
-msgstr ""
+msgstr "``deactivate_skill``"
 
-#: ../../agent_skills.rst:131
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:128
 msgid "从上下文移除某 skill。"
 msgstr "Remove a skill from context."
 
-#: ../../agent_skills.rst:132
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:129
 msgid "``read_skill_file``"
 msgstr "``reload_skill(name)``"
 
-#: ../../agent_skills.rst:133
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:130
 msgid "读取 skill 内文件（渐进式披露）。"
 msgstr "Read files inside a skill for progressive disclosure."
 
-#: ../../agent_skills.rst:134
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:131
 msgid "``execute_skill_script``"
-msgstr ""
+msgstr "``execute_skill_script``"
 
-#: ../../agent_skills.rst:135
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:132
 msgid "执行 skill 脚本。"
 msgstr "Execute a skill script."
 
-#: ../../agent_skills.rst:137
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:134
 msgid "ReAct 主循环每个 ``step()`` 开始前会刷新可见 skill 集合；``ask`` 模式（外部问答）下只暴露只读工具子集。"
 msgstr ""
-"Before each ``step()``, the main ReAct loop refreshes the visible skill "
-"set. In ``ask`` mode for external Q&A, only the read-only tool subset is "
-"exposed."
+"Before each ``step()``, the main ReAct loop refreshes the visible skill set. In "
+"``ask`` mode for external Q&A, only the read-only tool subset is exposed."
 
-#: ../../agent_skills.rst:141
-msgid "脚本执行模型（进程内 entrypoint）⭐"
-msgstr "Script Execution Model: In-Process entrypoint"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:138
+msgid "脚本执行模型（按信任级分流）"
+msgstr "Script Execution by Trust Level"
 
-#: ../../agent_skills.rst:143
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:140
+msgid "内置技能使用进程内调用，自定义技能使用独立 worker 子进程。两条路径共用 ``entrypoint(argv, ctx)`` 契约："
+msgstr ""
+"Built-in skills run in-process; custom skills use a separate worker subprocess. Both "
+"paths share the ``entrypoint(argv, ctx)`` contract:"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:137
 msgid ""
-"这是当前实现的**核心**。历史上 skill 脚本以子进程方式执行（``python script.py <argv>``），每个 agent "
-"每步都 fork 一个新解释器，冷启动开销巨大。改版后 skill 脚本默认**在 agent 进程内执行**，分三档优先级："
+"built-in 技能（可信，进程内热路径）:\n"
+"  ① 原生 hook 函数              ← hook 脚本顶层定义同名无参函数（如 pre_step）时直接调用\n"
+"  ② entrypoint(argv, ctx)       ← 缓存 import 后进程内调用；实现需自行保证并发安全\n"
+"  ③ 子进程（python script.py）  ← 无 entrypoint 时的回退\n"
+"\n"
+"custom / env 技能（不可信，子进程隔离）:\n"
+"  ① skill_worker.py 单次子进程  ← 提供 entrypoint 或原生 hook 函数时，worker 导入并只调用该函数\n"
+"  ② 子进程（python script.py）  ← 无任何可调用函数时的回退，仅使用环境变量白名单"
 msgstr ""
-"This is the **core** of the current implementation. Historically, skill "
-"scripts executed as subprocesses (``python script.py <argv>``), forking a"
-" new interpreter for every agent on every step, with high cold-start "
-"cost. After the redesign, skill scripts execute **inside the agent "
-"process** by default, with three priority levels:"
+"built-in skills (trusted, in-process hot path):\n"
+"  ① Native hook function              <- Calls a top-level zero-argument hook such as pre_step\n"
+"  ② entrypoint(argv, ctx)             <- Cached import and in-process call; must be concurrency-"
+"safe\n"
+"  ③ Subprocess (python script.py)      <- Fallback when no entrypoint is defined\n"
+"\n"
+"custom / env skills (untrusted, isolated subprocesses):\n"
+"  ① Single skill_worker.py subprocess  <- Imports and invokes the supplied entrypoint or native "
+"hook\n"
+"  ② Subprocess (python script.py)      <- Fallback without a callable; uses an environment "
+"allowlist"
 
-#: ../../agent_skills.rst:153
-msgid "entrypoint 契约（推荐所有 skill 脚本遵循）"
-msgstr "entrypoint Contract: Recommended for All Skill Scripts"
-
-#: ../../agent_skills.rst:155
-msgid "Skill 脚本可在模块顶层定义一个 ``entrypoint``，runtime 会优先调用它："
-msgstr ""
-"A skill script can define an ``entrypoint`` at module top level; the "
-"runtime calls it first:"
-
-#: ../../agent_skills.rst:169
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:153
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:186
 msgid "要点："
 msgstr "Key points:"
 
-#: ../../agent_skills.rst:171
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:150
 msgid ""
-"**签名兼容**：runtime 检测形参数量，``entrypoint(argv)`` 与 ``entrypoint(argv, ctx)`` "
-"都支持， **强烈建议接受 ``ctx``**。"
+"``entrypoint`` / hook 函数契约不变：无论进程内还是 worker 子进程，``entrypoint(argv, ctx)`` 的签名与 "
+"``ctx.workspace_root`` 等上下文都保持一致，skill 作者按同一契约编写即可。"
 msgstr ""
-"**Signature compatibility**: the runtime detects arity, supporting both "
-"``entrypoint(argv)`` and ``entrypoint(argv, ctx)``. **Accepting ``ctx`` "
-"is strongly recommended**."
+"The ``entrypoint`` / hook-function contract is unchanged: whether in-process or in the worker "
+"subprocess, the ``entrypoint(argv, ctx)`` signature and context fields such as "
+"``ctx.workspace_root`` stay the same, so skill authors write against a single contract."
 
-#: ../../agent_skills.rst:173
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:152
+msgid ""
+"**隔离而非就地执行**：自定义 / 环境技能即使提供 ``entrypoint`` 或原生 hook 函数，也在 ``skill_worker.py`` "
+"启动的**单次子进程**中执行——每次调用独立导入模块，启动和导入计入超时；跨调用状态应写入 workspace，不要依赖模块全局变量。该子进程保留宿主 ``os.environ`` "
+"（SDK、代理等配置可用）并叠加技能上下文（``SKILL_ID`` / ``SKILL_NAME`` / ``SKILL_DIR`` / ``AGENT_WORK_DIR``）。"
+msgstr ""
+"**Isolation over in-place execution**: even when a custom / environment skill provides "
+"``entrypoint`` or a native hook function, it still runs in a **fresh subprocess** spawned by "
+"``skill_worker.py`` — each call imports the module anew, and startup plus import time counts "
+"toward the timeout; persist cross-call state to the workspace instead of relying on module "
+"globals. The subproces"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:162
+msgid "**结构化返回**：worker 把函数返回值按 stdout 约定结构化返回；技能自身的 ``print`` 输出转入 stderr，不会污染结果。"
+msgstr ""
+"**Structured returns**: the worker returns the function's return value over stdout "
+"following a structured convention; the skill's own ``print`` output is redirected to "
+"stderr and never pollutes the result."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:157
+msgid ""
+"旧的“动态包装器”（无 ``entrypoint`` 时以 ``__name__ == \"__main__\"`` 就地 ``exec`` 脚本）已在 v2.10.0 删除；无 "
+"``entrypoint`` 的脚本一律走子进程，超时后可终止且不改变父进程状态。"
+msgstr ""
+"The old \"dynamic wrapper\" (executing the script in place via ``__name__ == \"__main__\"`` when "
+"no ``entrypoint`` existed) was removed in v2.10.0; scripts without ``entrypoint`` always run as "
+"subprocesses, can be terminated on timeout, and never mutate parent-process state."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:169
+msgid "entrypoint 契约（推荐所有 skill 脚本遵循）"
+msgstr "entrypoint Contract: Recommended for All Skill Scripts"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:171
+msgid "Skill 脚本可在模块顶层定义一个 ``entrypoint``，runtime（内置进程内直调；自定义经 ``skill_worker.py``）会优先调用它："
+msgstr ""
+"A skill script may define an ``entrypoint`` at module top level; the runtime calls it"
+" first (in-process for built-ins, via ``skill_worker.py`` for custom skills):"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:166
+msgid ""
+"def entrypoint(argv: list[str], ctx) -> str:\n"
+"    \"\"\"技能入口。\n"
+"\n"
+"    Args:\n"
+"        argv: 命令行参数（去掉脚本名之后的部分），与子进程方式的 sys.argv[1:] 一致。\n"
+"        ctx:  SkillScriptContext，携带本 agent 的运行上下文。\n"
+"    Returns:\n"
+"        str: 脚本原本会打印到 stdout 的文本（通常是 YAML/JSON 结果块）。\n"
+"    \"\"\""
+msgstr ""
+"def entrypoint(argv: list[str], ctx) -> str:\n"
+"    \"\"\"Skill entry point.\n"
+"\n"
+"    Args:\n"
+"        argv: Command arguments without the script name, matching sys.argv[1:] in subprocess "
+"mode.\n"
+"        ctx:  SkillScriptContext carrying this agent's runtime context.\n"
+"    Returns:\n"
+"        str: Text normally printed to stdout, typically YAML or JSON.\n"
+"    \"\"\""
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:180
+msgid "**签名兼容**：runtime 检测形参数量，``entrypoint(argv)`` 与 ``entrypoint(argv, ctx)`` 都支持，强烈建议接受 ``ctx``。"
+msgstr ""
+"**Signature compatibility**: the runtime detects arity, supporting both ``entrypoint(argv)`` and "
+"``entrypoint(argv, ctx)``. Accepting ``ctx`` is strongly recommended."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:190
 msgid "**返回 stdout**：不要依赖 ``print`` 被 capture；直接 ``return`` 结果字符串。"
 msgstr ""
-"**Return stdout**: do not rely on captured ``print`` output; directly "
-"``return`` the result string."
+"**Return stdout**: do not rely on captured ``print`` output; directly ``return`` the "
+"result string."
 
-#: ../../agent_skills.rst:174
-msgid ""
-"**异常即失败**：``entrypoint`` 抛异常 → 记为失败（``exit_code=1``）。不要用 "
-"``sys.exit()``；逻辑 失败在返回文本里写 ``ok: false``。"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:182
+msgid "**异常即失败**：``entrypoint`` 抛异常 → 记为失败（``exit_code=1``）。不要用 ``sys.exit()``；逻辑失败在返回文本里写 ``ok: false``。"
 msgstr ""
-"**Exceptions mean failure**: if ``entrypoint`` raises, the call is "
-"recorded as failed (``exit_code=1``). Do not use ``sys.exit()``; "
-"represent logical failure in the returned text, for example ``ok: "
-"false``."
+"**Exceptions mean failure**: if ``entrypoint`` raises, the call is recorded as failed "
+"(``exit_code=1``). Do not use ``sys.exit()``; represent logical failure in the returned text, for"
+" example ``ok: false``."
 
-#: ../../agent_skills.rst:176
-msgid "**幂等加载**：runtime 按 ``(路径, mtime)`` 缓存模块，模块顶层代码只执行一次。"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:183
+msgid "**幂等加载（内置技能）**：内置技能的进程内路径按 ``(路径, mtime)`` 缓存模块，模块顶层代码只执行一次；``skill_worker.py`` 子进程每次调用重新导入。"
 msgstr ""
-"**Idempotent loading**: the runtime caches modules by ``(path, mtime)``, "
-"so module top-level code executes only once."
+"**Idempotent loading (built-in skills)**: the in-process path caches modules by ``(path, "
+"mtime)``, so module top-level code executes only once; the ``skill_worker.py`` subprocess re-"
+"imports on every call."
 
-#: ../../agent_skills.rst:179
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:197
 msgid "SkillScriptContext"
-msgstr ""
+msgstr "SkillScriptContext"
 
-#: ../../agent_skills.rst:181
-msgid "进程内执行时上下文通过 ``ctx`` 显式传入（定义在 ``agent/base/runtime.py``）："
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:188
+msgid ""
+"上下文通过 ``ctx`` 显式传入（定义在 ``agent/base/skill_script_context.py``；内置技能进程内直调时由 runtime 构造，自定义技能在 "
+"``skill_worker.py`` 子进程内构造）："
 msgstr ""
-"For in-process execution, context is passed explicitly through ``ctx`` "
-"(defined in ``agent/base/runtime.py``):"
+"The context is passed explicitly through ``ctx`` (defined in "
+"``agent/base/skill_script_context.py``; the runtime constructs it for in-process built-in calls, "
+"while ``skill_worker.py`` constructs it inside the subprocess for custom skills):"
 
-#: ../../agent_skills.rst:189
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:208
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:263
 msgid "``ctx.workspace_root``"
 msgstr "``workspace_root()``"
 
-#: ../../agent_skills.rst:190
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:209
 msgid "本 agent 的工作区根目录（子进程时代对应环境变量 ``AGENT_WORK_DIR``）。"
 msgstr ""
 "Workspace root for this agent, corresponding to the old subprocess-era "
 "``AGENT_WORK_DIR`` environment variable."
 
-#: ../../agent_skills.rst:191
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:210
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:265
 msgid "``ctx.skill_dir``"
 msgstr "``SKILL.md``:"
 
-#: ../../agent_skills.rst:192
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:211
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:266
 msgid "本 skill 的包根目录。"
 msgstr "Skill Directory Structure"
 
-#: ../../agent_skills.rst:193
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:212
 msgid "``ctx.skill_id`` / ``ctx.skill_name``"
-msgstr ""
+msgstr "``ctx.skill_id`` / ``ctx.skill_name``"
 
-#: ../../agent_skills.rst:194
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:213
 msgid "注册 id（``namespace@name``）/ 显示名。"
 msgstr "Registered id (``namespace@name``) / display name."
 
-#: ../../agent_skills.rst:195
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:214
 msgid "``ctx.env``"
-msgstr ""
+msgstr "``ctx.env``"
 
-#: ../../agent_skills.rst:196
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:215
 msgid "子进程方式本会设置的 env 快照（dict）。"
 msgstr "Environment snapshot (dict) that would have been set in subprocess mode."
 
-#: ../../agent_skills.rst:199
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:218
 msgid "并发安全要求（重要）"
 msgstr "Concurrency Safety Requirements (Important)"
 
-#: ../../agent_skills.rst:201
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:208
 msgid ""
-"一次模拟里多个 agent 在**同一个进程**内并发跑各自的 skill 脚本。下列进程级状态是**共享**的，绝不能在 entrypoint "
-"里直接读写，否则产生数据竞争："
+"一次模拟里多个 agent 在**同一个进程**内并发跑各自**内置技能**的 ``entrypoint`` （自定义技能已由 worker "
+"子进程按调用隔离）。下列进程级状态是**共享**的，绝不能在内置技能的 entrypoint 里直接读写，否则产生数据竞争："
 msgstr ""
-"In one simulation, multiple agents may run their skill scripts "
-"concurrently **inside the same process**. The following process-level "
-"state is **shared** and must not be read or written directly inside "
-"``entrypoint`` or data races can occur:"
+"In one simulation, multiple agents may run their skill scripts concurrently **inside the same "
+"process**. The following process-level state is **shared** and must not be read or written "
+"directly inside ``entrypoint`` or data races can occur:"
 
-#: ../../agent_skills.rst:208
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:228
 msgid "❌ 禁止"
 msgstr "Do not"
 
-#: ../../agent_skills.rst:209
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:229
 msgid "✅ 替代方案"
 msgstr "Use instead"
 
-#: ../../agent_skills.rst:210
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:230
 msgid "``os.environ[\"AGENT_WORK_DIR\"] = ...``"
-msgstr ""
+msgstr "``os.environ[\"AGENT_WORK_DIR\"] = ...``"
 
-#: ../../agent_skills.rst:211
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:231
 msgid "用 ``ctx.workspace_root``"
 msgstr "``workspace_root()``"
 
-#: ../../agent_skills.rst:212
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:232
 msgid "``os.chdir(workspace)``"
 msgstr "``workspace_root()``"
 
-#: ../../agent_skills.rst:213
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:233
 msgid "用绝对路径（``ctx.workspace_root / ...``）"
 msgstr "``workspace_root()``"
 
-#: ../../agent_skills.rst:214
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:234
 msgid "``print(...)`` 并依赖 stdout 捕获"
 msgstr "``print(...)`` while relying on stdout capture"
 
-#: ../../agent_skills.rst:215
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:235
 msgid "在 entrypoint 里 ``return`` 字符串"
 msgstr "``return`` a string from ``entrypoint``"
 
-#: ../../agent_skills.rst:216
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:236
 msgid "模块级可变全局当作“本次调用状态”"
 msgstr "Using mutable module-level globals as per-call state"
 
-#: ../../agent_skills.rst:217
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:237
 msgid "用 ``contextvars.ContextVar`` （任务级隔离）"
 msgstr "Use ``contextvars.ContextVar`` for task-level isolation"
 
-#: ../../agent_skills.rst:220
-msgid "动态包装器"
-msgstr "Dynamic Wrapper"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:240
+msgid "原生 hook 函数快速路径"
+msgstr "Native hook-function fast path"
 
-#: ../../agent_skills.rst:222
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:242
 msgid ""
-"无 ``entrypoint`` 的脚本由动态包装器就地执行：以 ``__name__ == \"__main__\"`` 在全新命名空间 "
-"``exec`` 脚本源码——语义等价子进程，但复用热解释器、无 fork。由于临时设置 ``os.environ`` / "
-"``os.chdir`` / 捕获 stdout 这些进程级状态，动态包装器由一把全局锁 **串行** 执行。因此推荐所有热路径脚本提供 "
-"``entrypoint``，享受完全并发。"
+"v2.10.0 起，hook 脚本可在模块顶层定义一个与 hook 同名的**无参函数**（``def`` 或 ``async def``）， runtime "
+"检测到后**直接调用该函数**——不打 argparse、不跑脚本其余部分、不阻塞事件循环："
 msgstr ""
-"Scripts without ``entrypoint`` are executed in-place by a dynamic "
-"wrapper: the source is ``exec``-ed in a fresh namespace with ``__name__ "
-"== \"__main__\"``. This is semantically equivalent to a subprocess, but "
-"reuses the warm interpreter and avoids fork. Because it temporarily "
-"mutates process-level state such as ``os.environ``, ``os.chdir``, and "
-"stdout capture, the dynamic wrapper runs **serially** behind a global "
-"lock. Therefore, all hot-path scripts should provide ``entrypoint`` for "
-"full concurrency."
+"Since v2.10.0, a hook script may define a **parameterless function** with the same "
+"name as the hook at module top level (``def`` or ``async def``); when the runtime "
+"detects it, it **calls the function directly** — no argparse, no running the rest of "
+"the script, no blocking the event loop:"
 
-#: ../../agent_skills.rst:230
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:232
+msgid ""
+"async def pre_step() -> str:\n"
+"    from agentsociety2.agent.base.skill_hook_context import get_hook_context\n"
+"\n"
+"    ctx = get_hook_context()  # HookContext，见下表\n"
+"    # ...按 ctx.payload[\"time\"] 推导当前状态...\n"
+"    return yaml_text"
+msgstr ""
+"async def pre_step() -> str:\n"
+"    from agentsociety2.agent.base.skill_hook_context import get_hook_context\n"
+"\n"
+"    ctx = get_hook_context()  # HookContext; see the table below\n"
+"    # ...derive the current state from ctx.payload[\"time\"]...\n"
+"    return yaml_text"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:254
+msgid ""
+"上下文不经过参数传入，而是经 contextvars 的 ``get_hook_context()`` 读取（定义在 "
+"``agent/base/skill_hook_context.py``）："
+msgstr ""
+"The context is not passed as an argument; it is read through the contextvars-based "
+"``get_hook_context()`` (defined in ``agent/base/skill_hook_context.py``):"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:264
+msgid "本 agent 的工作区根目录。"
+msgstr "The agent's workspace root directory."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:267
+msgid "``ctx.skill_id``"
+msgstr "``ctx.skill_id`` — the registered id."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:268
+msgid "注册 id（``namespace@name``）。"
+msgstr "The registered id (``namespace@name``)."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:269
+msgid "``ctx.hook_type``"
+msgstr "``ctx.hook_type``"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:270
+msgid "生命周期 hook 名（``pre_step`` / ``post_step``）。"
+msgstr "The lifecycle hook name (``pre_step`` / ``post_step``)."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:271
+msgid "``ctx.payload``"
+msgstr "``ctx.payload`` — the lifecycle payload dict."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:272
+msgid ""
+"生命周期 payload dict（``hook_type`` / ``tick`` / ``time`` / ``agent_id`` / "
+"``step_count``）。"
+msgstr ""
+"Lifecycle payload dict (``hook_type`` / ``tick`` / ``time`` / ``agent_id`` / "
+"``step_count``)."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:261
+msgid ""
+"内置技能的 hook 函数在 agent 进程内直调（异步函数用 ``asyncio.wait_for`` 加超时；同步函数保持内联热路径）；自定义技能的同名函数在 "
+"``skill_worker.py`` 子进程内以相同的 ``HookContext`` 契约执行。函数返回值即 hook 输出（非字符串会序列化为 JSON）。这是热路径 hook（如 "
+"daily-guidance 的 ``pre_step``）的推荐写法。"
+msgstr ""
+"Hook functions of built-in skills are called directly inside the agent process (async functions "
+"get a timeout via ``asyncio.wait_for``; sync functions stay on the inline hot path); the same-"
+"named functions of custom skills execute in the ``skill_worker.py`` subprocess under the "
+"identical ``HookContext`` contract. The function's return value is the hook output ("
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:282
 msgid "内置技能：daily-guidance"
 msgstr "Built-in Skill: daily-guidance"
 
-#: ../../agent_skills.rst:232
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:269
 msgid ""
-"当前唯一内置技能是 ``daily-guidance``（``built-in@daily-"
-"guidance``），面向**时间尺度在小时及以下**的 日常行为模拟。它让 agent 先形成一天的完整 "
-"Story（``state/daily_guidance/YYYY-MM-DD/story.yaml``）， 再按 Story "
-"指导每个仿真步的行为："
+"当前唯一内置技能是 ``daily-guidance``（``built-in@daily-guidance``），面向**时间尺度在小时及以下**的日常行为模拟。它让 agent "
+"先形成一天的完整 Story（``state/daily_guidance/YYYY-MM-DD/story.yaml``），再按 Story 指导每个仿真步的行为："
 msgstr ""
-"The only current built-in skill is ``daily-guidance`` (``built-in@daily-"
-"guidance``), designed for daily behavior simulation at hourly and sub-"
-"hourly time scales. It has the agent first form a complete Story for the "
-"day (``state/daily_guidance/YYYY-MM-DD/story.yaml``), then uses that "
-"Story to guide behavior on each simulation step:"
+"The only current built-in skill is ``daily-guidance`` (``built-in@daily-guidance``), designed for"
+" daily behavior simulation at hourly and sub-hourly time scales. It has the agent first form a "
+"complete Story for the day (``state/daily_guidance/YYYY-MM-DD/story.yaml``), then uses that Story"
+" to guide behavior on each simulation step:"
 
-#: ../../agent_skills.rst:236
-msgid "**用 ``plan --json`` 提交一天的安排**：脚本校验后写入 story.yaml。"
-msgstr ""
-"**Submit the day plan with ``plan --json``**: the script validates it and"
-" writes ``story.yaml``."
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:271
+msgid "用 ``plan --json`` 提交一天的安排：脚本校验后写入 story.yaml。"
+msgstr "Submit the day plan with ``plan --json``: the script validates it and writes ``story.yaml``."
 
-#: ../../agent_skills.rst:237
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:289
 msgid ""
-"**执行状态由时钟推导**：``completed_segments`` / ``current_segment_id`` 是 "
-"``(segments, 当前仿真时间)`` 的函数，由脚本在读取时计算。"
+"**执行状态由时钟推导**：``completed_segments`` / ``current_segment_id`` 是 ``(segments, "
+"当前仿真时间)`` 的函数，由脚本在读取时计算。"
 msgstr ""
 "**Execution state is derived from the clock**: ``completed_segments`` / "
-"``current_segment_id`` are functions of ``(segments, current simulation "
-"time)`` and are computed by the script when read."
+"``current_segment_id`` are functions of ``(segments, current simulation time)`` and "
+"are computed by the script when read."
 
-#: ../../agent_skills.rst:239
-msgid ""
-"**``pre_step`` hook 每步注入当前 segment**：含 ``activity`` 和 "
-"``location_policy``，agent 据此移动与 回答问卷。"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:274
+msgid "``pre_step`` hook 每步注入当前 segment：含 ``activity`` 和 ``location_policy``，agent 据此移动与回答问卷。"
 msgstr ""
-"**The ``pre_step`` hook injects the current segment on every step**: it "
-"includes ``activity`` and ``location_policy``, which the agent uses for "
-"movement and questionnaire answers."
+"The ``pre_step`` hook injects the current segment on every step: it includes ``activity`` and "
+"``location_policy``, which the agent uses for movement and questionnaire answers."
 
-#: ../../agent_skills.rst:241
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:293
 msgid "内含 needs-decay 模型与 story revision 能力，用于评估和修正每日安排。"
 msgstr ""
-"It includes a needs-decay model and story revision capability for "
-"evaluating and correcting daily schedules."
+"It includes a needs-decay model and story revision capability for evaluating and "
+"correcting daily schedules."
 
-#: ../../agent_skills.rst:243
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:277
 msgid ""
-"daily-mobility 等实验默认激活该 skill。它也是“进程内 entrypoint + pre_step hook 注入”的参考实现"
-" （见 ``agent/skills/daily-guidance/scripts/daily_guidance.py``）。"
+"daily-mobility 等实验默认激活该 skill。它也是“进程内 entrypoint + 原生 ``pre_step`` hook 函数（``async def "
+"pre_step()`` 快速路径）+ hook 注入”的参考实现（见 ``agent/skills/daily-guidance/scripts/daily_guidance.py``）。"
 msgstr ""
-"Experiments such as daily-mobility activate this skill by default. It is "
-"also the reference implementation for in-process ``entrypoint`` plus "
-"``pre_step`` hook injection (see ``agent/skills/daily-"
+"Experiments such as daily-mobility activate this skill by default. It is also the reference "
+"implementation of the \"in-process ``entrypoint`` + native ``pre_step`` hook function (``async "
+"def pre_step()`` fast path) + hook injection\" combination (see ``agent/skills/daily-"
 "guidance/scripts/daily_guidance.py``)."
 
-#: ../../agent_skills.rst:246
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:280
 msgid ""
-"旧的 ``observation`` / ``cognition`` / ``plan`` / ``memory`` "
-"四技能已被移除；这些认知/行为能力现在通过 自定义 skill + workspace 状态文件 + ``ask_env`` 组合实现。"
+"旧的 ``observation`` / ``cognition`` / ``plan`` / ``memory`` 四技能已被移除；这些认知/行为能力现在通过自定义 skill + "
+"workspace 状态文件 + ``ask_env`` 组合实现。"
 msgstr ""
-"The old ``observation`` / ``cognition`` / ``plan`` / ``memory`` skills "
-"have been removed. Those cognitive and behavioral capabilities are now "
-"implemented through custom skills, workspace state files, and "
-"``ask_env``."
+"The old ``observation`` / ``cognition`` / ``plan`` / ``memory`` skills have been removed. Those "
+"cognitive and behavioral capabilities are now implemented through custom skills, workspace state "
+"files, and ``ask_env``."
 
-#: ../../agent_skills.rst:251
-msgid "生命周期 Hook（pre_step / post_step）"
-msgstr "Lifecycle Hooks: pre_step / post_step"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:284
+msgid "生命周期 Hook（``pre_step`` / ``post_step``）"
+msgstr "Lifecycle Hooks: ``pre_step`` / ``post_step``"
 
-#: ../../agent_skills.rst:253
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:306
 msgid "在 ``SKILL.md`` 的 ``hooks:`` 里声明，每个仿真步自动触发："
 msgstr ""
-"Declare hooks under ``hooks:`` in ``SKILL.md``. They run automatically on"
-" every simulation step:"
+"Declare hooks under ``hooks:`` in ``SKILL.md``. They run automatically on every "
+"simulation step:"
 
-#: ../../agent_skills.rst:255
-msgid ""
-"``pre_step``：``agent.step()`` 开头、ReAct 循环之前运行。典型用途：根据仿真时钟推导当前状态， "
-"**注入到首轮上下文**。"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:288
+msgid "``pre_step``：``agent.step()`` 开头、ReAct 循环之前运行。典型用途：根据仿真时钟推导当前状态，**注入到首轮上下文**。"
 msgstr ""
-"``pre_step``: runs at the start of ``agent.step()``, before the ReAct "
-"loop. Typical use: derive current state from the simulation clock and "
-"**inject it into the first-turn context**."
+"``pre_step``: runs at the start of ``agent.step()``, before the ReAct loop. Typical use: derive "
+"current state from the simulation clock and **inject it into the first-turn context**."
 
-#: ../../agent_skills.rst:257
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:310
 msgid "``post_step``：ReAct 循环之后运行。典型用途：记录实际行为、收尾。"
 msgstr ""
-"``post_step``: runs after the ReAct loop. Typical use: record actual "
-"behavior and perform cleanup."
+"``post_step``: runs after the ReAct loop. Typical use: record actual behavior and "
+"perform cleanup."
 
-#: ../../agent_skills.rst:259
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:291
 msgid ""
-"hook 以 ``--args-json`` 形式接收 payload（含 ``hook_type`` / ``tick`` / ``time``"
-" / ``agent_id`` / ``step_count``）。**改版后**，``pre_step`` 的输出渲染为**专用的 "
-"``<skill_hooks>`` XML 分块**，出现在 ReAct 首条 user 消息中——而不是被塞进通用 observation "
-"dump（那容易被 LLM 忽略）。例如："
+"hook 脚本有两种形态：脚本形式以 ``--args-json`` 形式接收 payload（含 ``hook_type`` / ``tick`` / ``time`` / "
+"``agent_id`` / ``step_count``）；**推荐**的函数形式则是在顶层定义同名无参函数、经 ``get_hook_context()`` 读取 "
+"payload（见上文“原生 hook 函数快速路径”）。**改版后**，``pre_step`` 的输出渲染为专用的 ``<skill_hooks>`` XML 分块，出现在 ReAct 首条"
+" user 消息中——而不是被塞进通用 observation dump（那容易被 LLM 忽略）。例如："
 msgstr ""
-"Hooks receive their payload through ``--args-json`` (including "
-"``hook_type`` / ``tick`` / ``time`` / ``agent_id`` / ``step_count``). "
-"**After the redesign**, ``pre_step`` output is rendered as a **dedicated "
-"``<skill_hooks>`` XML block** in the first ReAct user message, rather "
-"than being buried in a generic observation dump that the LLM can easily "
-"ignore. For example:"
+"Hook scripts come in two forms: the script form receives its payload via ``--args-json`` "
+"(including ``hook_type`` / ``tick`` / ``time`` / ``agent_id`` / ``step_count``); the "
+"**recommended** function form defines a same-named parameterless function at top level and reads "
+"the payload through ``get_hook_context()`` (see \"Native hook-function fast path\" above). "
+"**After the redesign**, ``pre_step`` output is rendered as a dedicated ``<skill_hooks>`` XML "
+"block in the first ReAct user message, rather than being buried in a generic observation dump "
+"that the LLM can easily ignore. For example:"
 
-#: ../../agent_skills.rst:272
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:327
 msgid "这样 agent 不必再花一轮观察去“重新发现”状态。"
 msgstr ""
-"This prevents the agent from spending another observation round to "
-"rediscover its state."
+"This prevents the agent from spending another observation round to rediscover its "
+"state."
 
-#: ../../agent_skills.rst:276
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:331
 msgid "环境类 Skill（``env:`` 前缀）"
 msgstr "Environment Skills: ``env:`` Prefix"
 
-#: ../../agent_skills.rst:278
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:312
 msgid ""
-"以 ``env:`` 开头的 ``skill_id`` 会被 ``execute_skill_script`` 重定向到 "
-"``ask_env``（走环境路由 ``RouterBase``），而非执行脚本。用于把“查询/操作仿真环境”包装成 skill 暴露给 "
-"LLM。这类 skill 不需要 ``entrypoint``。"
+"以 ``env:`` 开头的 ``skill_id`` 会被 ``execute_skill_script`` 重定向到 ``ask_env``（走环境路由 "
+"``RouterBase``），而非执行脚本。用于把“查询/操作仿真环境”包装成 skill 暴露给 LLM。这类 skill 不需要 ``entrypoint``。"
 msgstr ""
-"A ``skill_id`` starting with ``env:`` is **redirected to ``ask_env``** by"
-" ``execute_skill_script`` and goes through the environment router "
-"(``RouterBase``) instead of executing a script. This wraps querying or "
-"operating on the simulation environment as a skill exposed to the LLM. "
-"These skills do not need ``entrypoint``."
+"A ``skill_id`` starting with ``env:`` is redirected to ``ask_env`` by ``execute_skill_script`` "
+"and goes through the environment router (``RouterBase``) instead of executing a script. This "
+"wraps querying or operating on the simulation environment as a skill exposed to the LLM. These "
+"skills do not need ``entrypoint``."
 
-#: ../../agent_skills.rst:284
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:339
 msgid "SkillRegistry API"
 msgstr "SkillRegistry API"
 
-#: ../../agent_skills.rst:286
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:320
 msgid ""
-"``SkillRegistry`` 是技能的发现中心（位于 "
-":mod:`agentsociety2.agent.base.skill_registry`）。在大规模仿真下 它是共享只读单例（不再每 "
-"agent 复制）。"
+"``SkillRegistry`` 是技能的发现中心（位于 :mod:`agentsociety2.agent.base.skill_registry`）。在大规模仿真下它是共享只读单例（不再每"
+" agent 复制）。"
 msgstr ""
 "``SkillRegistry`` is the skill discovery center, located in "
-":mod:`agentsociety2.agent.base.skill_registry`. In large-scale "
-"simulations it is a shared read-only singleton, no longer copied per "
-"agent."
+":mod:`agentsociety2.agent.base.skill_registry`. In large-scale simulations it is a shared read-"
+"only singleton, no longer copied per agent."
 
-#: ../../agent_skills.rst:293
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:348
 msgid "方法"
 msgstr "Method"
 
-#: ../../agent_skills.rst:295
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:350
 msgid "``scan_builtin(root=None)``"
 msgstr "``scan_builtin()``"
 
-#: ../../agent_skills.rst:296
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:351
 msgid "扫描内置技能。"
 msgstr "Scans built-in skills (executed only once)."
 
-#: ../../agent_skills.rst:297
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:352
 msgid "``scan_custom(skills_root, namespace=\"custom\")``"
 msgstr "``scan_custom(workspace_path)``"
 
-#: ../../agent_skills.rst:298
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:353
 msgid "扫描自定义技能。"
 msgstr "Scan custom skills."
 
-#: ../../agent_skills.rst:299
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:354
 msgid "``scan_env(skills_dir, env_name)``"
 msgstr "``scan_env_skills(skills_dir, env_name)``"
 
-#: ../../agent_skills.rst:300
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:355
 msgid "扫描环境模块提供的技能。"
 msgstr "Scans skills provided by environment modules."
 
-#: ../../agent_skills.rst:301
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:356
 msgid "``list_all()``"
 msgstr "``list_all()``"
 
-#: ../../agent_skills.rst:302
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:357
 msgid "返回所有 ``SkillDescriptor``。"
 msgstr "``description``"
 
-#: ../../agent_skills.rst:303
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:358
 msgid "``get(skill_id)`` / ``find_by_name(name)``"
-msgstr ""
+msgstr "``get(skill_id)`` / ``find_by_name(name)``"
 
-#: ../../agent_skills.rst:304
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:359
 msgid "按 id / 名称查询。"
 msgstr "Look up by id / name."
 
-#: ../../agent_skills.rst:305
-msgid ""
-"``read_skill_doc(skill_id)`` / ``read_skill_file(skill_id, "
-"relative_path)``"
-msgstr ""
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:360
+msgid "``read_skill_doc(skill_id)`` / ``read_skill_file(skill_id, relative_path)``"
+msgstr "``read_skill_doc(skill_id)`` / ``read_skill_file(skill_id, relative_path)``"
 
-#: ../../agent_skills.rst:306
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:361
 msgid "读取 ``SKILL.md`` 正文 / skill 内文件。"
 msgstr "Read the ``SKILL.md`` body / files inside a skill."
 
-#: ../../agent_skills.rst:307
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:362
 msgid "``list_hooks(hook_type)``"
-msgstr ""
+msgstr "``list_hooks(hook_type)``"
 
-#: ../../agent_skills.rst:308
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:363
 msgid "返回声明了某 hook 的技能。"
 msgstr "Return skills that declare a given hook."
 
-#: ../../agent_skills.rst:309
-msgid "``copy()``"
-msgstr "``script``"
-
-#: ../../agent_skills.rst:310
-msgid "复制一份 registry（一般无需调用）。"
-msgstr "Copy a registry, usually unnecessary."
-
-#: ../../agent_skills.rst:312
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:343
 msgid ""
-"``SkillDescriptor`` 是每个 skill 的元数据（``skill_id`` / ``name`` / "
-"``description`` / ``script`` / ``hooks`` / 来源路径等）。激活、脚本执行与 hook 调度由 "
-"``AgentSkillRuntime``（见 :doc:`/api/skills`） 负责，``AgentBase`` 持有其实例 "
-"``self.skill_runtime``。"
+"``SkillDescriptor`` 是每个 skill 的元数据（``skill_id`` / ``name`` / ``description`` / ``script`` / "
+"``hooks`` / 来源路径等）。激活、脚本执行与 hook 调度由 ``AgentSkillRuntime``（见 :doc:`/api/skills`）负责，``AgentBase`` "
+"持有其实例 ``self.skill_runtime``。"
 msgstr ""
-"``SkillDescriptor`` is the metadata for each skill: ``skill_id``, "
-"``name``, ``description``, ``script``, ``hooks``, source path, and so on."
-" Activation, script execution, and hook dispatch are handled by "
-"``AgentSkillRuntime``; ``AgentBase`` owns its instance as "
-"``self.skill_runtime``."
+"``SkillDescriptor`` is the metadata for each skill: ``skill_id``, ``name``, ``description``, "
+"``script``, ``hooks``, source path, and so on. Activation, script execution, and hook dispatch "
+"are handled by ``AgentSkillRuntime`` (see :doc:`/api/skills`); ``AgentBase`` owns its instance as"
+" ``self.skill_runtime``."
 
-#: ../../agent_skills.rst:318
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:371
 msgid "自定义 Skill 最小示例"
 msgstr "Minimal Custom Skill Example"
 
-#: ../../agent_skills.rst:320
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:373
 msgid "目录："
 msgstr "Directory:"
 
-#: ../../agent_skills.rst:329
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:352
+#, python-brace-format
+msgid ""
+"{workspace}/custom/skills/hello-skill/\n"
+"├── SKILL.md\n"
+"└── scripts/\n"
+"    └── hello_skill.py"
+msgstr ""
+"{workspace}/custom/skills/hello-skill/\n"
+"├── SKILL.md\n"
+"└── scripts/\n"
+"    └── hello_skill.py"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:382
 msgid "``SKILL.md``："
 msgstr "``SKILL.md``:"
 
-#: ../../agent_skills.rst:343
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:361
+msgid ""
+"---\n"
+"name: hello-skill\n"
+"description: Add a short greeting into the step log when greeting is relevant\n"
+"script: scripts/hello_skill.py\n"
+"---\n"
+"\n"
+"# Hello Skill\n"
+"\n"
+"Write a greeting to the workspace."
+msgstr ""
+"---\n"
+"name: hello-skill\n"
+"description: Add a short greeting into the step log when greeting is relevant\n"
+"script: scripts/hello_skill.py\n"
+"---\n"
+"\n"
+"# Hello Skill\n"
+"\n"
+"Write a greeting to the workspace."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:396
 msgid "``scripts/hello_skill.py``（``entrypoint`` + CLI 共用派发）："
 msgstr "``scripts/hello_skill.py``:"
 
-#: ../../agent_skills.rst:366
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:375
+#, python-brace-format
+msgid ""
+"import contextvars\n"
+"import json\n"
+"from pathlib import Path\n"
+"from typing import Any\n"
+"\n"
+"_WORKSPACE_ROOT: contextvars.ContextVar[Path | None] = contextvars.ContextVar(\n"
+"    \"hello_workspace_root\", default=None\n"
+")\n"
+"\n"
+"def entrypoint(argv: list[str], ctx: Any) -> str:\n"
+"    root = Path(str(getattr(ctx, \"workspace_root\"))).resolve()\n"
+"    _WORKSPACE_ROOT.set(root)\n"
+"    (root / \"hello.txt\").write_text(\"hello-skill: greeted\", encoding=\"utf-8\")\n"
+"    return json.dumps({\"ok\": True, \"summary\": \"greeted\"}, ensure_ascii=False)\n"
+"\n"
+"if __name__ == \"__main__\":\n"
+"    # 手动 CLI 运行仍可用（运行时经 skill_worker.py 调用 entrypoint）\n"
+"    raise SystemExit(0 if entrypoint([], type(\"C\", (), {\"workspace_root\": \".\"})()) else 1)"
+msgstr ""
+"import contextvars\n"
+"import json\n"
+"from pathlib import Path\n"
+"from typing import Any\n"
+"\n"
+"_WORKSPACE_ROOT: contextvars.ContextVar[Path | None] = contextvars.ContextVar(\n"
+"    \"hello_workspace_root\", default=None\n"
+")\n"
+"\n"
+"def entrypoint(argv: list[str], ctx: Any) -> str:\n"
+"    root = Path(str(getattr(ctx, \"workspace_root\"))).resolve()\n"
+"    _WORKSPACE_ROOT.set(root)\n"
+"    (root / \"hello.txt\").write_text(\"hello-skill: greeted\", encoding=\"utf-8\")\n"
+"    return json.dumps({\"ok\": True, \"summary\": \"greeted\"}, ensure_ascii=False)\n"
+"\n"
+"if __name__ == \"__main__\":\n"
+"    # Manual CLI execution remains available; the runtime calls entrypoint through "
+"skill_worker.py\n"
+"    raise SystemExit(0 if entrypoint([], type(\"C\", (), {\"workspace_root\": \".\"})()) else 1)"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:419
 msgid "放进 ``custom/skills/`` 即被热加载；激活后主 LLM 会在合适上下文选择它执行。"
 msgstr ""
-"Place it under ``custom/skills/`` to hot-load it. After activation, the "
-"main LLM can choose to execute it in the right context."
+"Place it under ``custom/skills/`` to hot-load it. After activation, the main LLM can "
+"choose to execute it in the right context."
 
-#: ../../agent_skills.rst:370
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:423
 msgid "编写 Skill 的检查清单"
 msgstr "Skill Authoring Checklist"
 
-#: ../../agent_skills.rst:372
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:425
 msgid "内置目录放在 ``agent/skills/<name>/``；自定义目录放在工作区 ``custom/skills/<name>/``。"
 msgstr ""
-"[ ] Put the directory under ``agent/skills/<name>/`` for built-ins or "
-"workspace ``custom/skills/<name>/`` for custom skills."
+"[ ] Put the directory under ``agent/skills/<name>/`` for built-ins or workspace "
+"``custom/skills/<name>/`` for custom skills."
 
-#: ../../agent_skills.rst:373
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:426
 msgid ""
-"有 ``SKILL.md``：frontmatter 含 ``name``、精炼可操作的 ``description``、可选 "
-"``script`` / ``hooks``。"
+"有 ``SKILL.md``：frontmatter 含 ``name``、精炼可操作的 ``description``、可选 ``script`` / "
+"``hooks``。"
 msgstr ""
-"Include ``SKILL.md`` with frontmatter containing ``name``, a concise "
-"actionable ``description``, and optional ``script`` / ``hooks``."
+"Include ``SKILL.md`` with frontmatter containing ``name``, a concise actionable "
+"``description``, and optional ``script`` / ``hooks``."
 
-#: ../../agent_skills.rst:374
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:427
 msgid ""
 "若有脚本：提供 ``def entrypoint(argv, ctx) -> str`` 并接受 ``ctx``；工作区根取自 "
-"``ctx.workspace_root``；结果用 ``return`` 返回；用 ``contextvars`` 承载调用状态；CLI 派发与"
-" ``entrypoint`` 共用同一函数。"
+"``ctx.workspace_root``；结果用 ``return`` 返回；用 ``contextvars`` 承载调用状态；CLI 派发与 "
+"``entrypoint`` 共用同一函数。"
 msgstr ""
-"If a script exists, provide ``def entrypoint(argv, ctx) -> str`` and "
-"accept ``ctx``; get the workspace root from ``ctx.workspace_root``; "
-"return results with ``return``; use ``contextvars`` for call state; share"
-" the same function between CLI dispatch and ``entrypoint``."
+"If a script exists, provide ``def entrypoint(argv, ctx) -> str`` and accept ``ctx``; "
+"get the workspace root from ``ctx.workspace_root``; return results with ``return``; "
+"use ``contextvars`` for call state; share the same function between CLI dispatch and "
+"``entrypoint``."
 
-#: ../../agent_skills.rst:377
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:430
 msgid "若声明 ``pre_step`` hook，输出要自包含、可直接作为 agent 指引（会被包进 ``<skill_hooks>``）。"
 msgstr ""
-"If declaring a ``pre_step`` hook, make its output self-contained and "
-"directly usable as agent guidance; it will be wrapped in "
-"``<skill_hooks>``."
+"If declaring a ``pre_step`` hook, make its output self-contained and directly usable "
+"as agent guidance; it will be wrapped in ``<skill_hooks>``."
 
-#: ../../agent_skills.rst:378
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:431
 msgid "参考资料放 ``references/``，``SKILL.md`` 里点名引用，按需被读取。"
 msgstr ""
-"[ ] Put reference material under ``references/`` and name it explicitly "
-"in ``SKILL.md`` so it can be read on demand."
+"[ ] Put reference material under ``references/`` and name it explicitly in "
+"``SKILL.md`` so it can be read on demand."
 
-#: ../../agent_skills.rst:382
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:435
 msgid "参考"
 msgstr "References"
 
-#: ../../agent_skills.rst:384
-msgid ":doc:`agents` - ``PersonAgent`` 使用说明"
-msgstr ":doc:`agents` - PersonAgent usage guide"
-
-#: ../../agent_skills.rst:385
-msgid ":doc:`architecture` - Ray 执行模型与 ``ServiceProxy``"
-msgstr ":doc:`architecture` - Ray execution model and ``ServiceProxy``"
-
-#: ../../agent_skills.rst:386
-msgid ":doc:`api/skills` - ``SkillRegistry`` / ``AgentSkillRuntime`` API"
-msgstr ":doc:`api/skills` - SkillRegistry API"
-
-#: ../../agent_skills.rst:387
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:440
 msgid "源码 ``agentsociety2/agent/skills/README.md`` - 技能子系统最权威说明"
 msgstr ""
-"Source ``agentsociety2/agent/skills/README.md`` - the authoritative skill"
-" subsystem notes"
+"Source ``agentsociety2/agent/skills/README.md`` - the authoritative skill subsystem "
+"notes"
 
-#: ../../agent_skills.rst:388
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:441
 msgid "ReAct: Yao et al. (2022), https://arxiv.org/abs/2210.03629"
 msgstr ""
-"ReAct: Synergizing Reasoning and Acting in Language Models, Yao et al. "
-"(2022): https://arxiv.org/abs/2210.03629"
+"ReAct: Synergizing Reasoning and Acting in Language Models, Yao et al. (2022): "
+"https://arxiv.org/abs/2210.03629"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:4
+msgid "Agent Skills 为仿真参与者组织行为能力。模型先查看技能的名称与描述，再按需激活正文、读取参考资料或执行脚本。目录可见、已激活和已执行是三个不同阶段。"
+msgstr ""
+"Agent Skills organize behavior capabilities for simulation participants. The model first sees "
+"skill names and descriptions, then activates instructions, reads references or executes scripts "
+"as needed. Discovery, activation and execution are separate stages."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:6
+msgid ""
+"当前内置技能是 :ref:`daily-guidance`，用于小时及以下时间尺度的日常行为。自定义技能放在研究工作区的 ``custom/skills/``；从零开始编写时先读 "
+":doc:`/skill_guide`。研究助手用于文献、假设和实验的技能见 :doc:`/skills`。"
+msgstr ""
+"The current built-in skill is :ref:`daily-guidance`, for daily behavior at time scales of an hour"
+" or less. Place custom skills in ``custom/skills/`` in the research workspace; start with "
+":doc:`/skill_guide` when writing a skill. For the research assistant skills used for literature, "
+"hypotheses and experiments, see :doc:`/skills`."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:11
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills/usage.rst:2
+msgid "技能发现、激活与内置技能"
+msgstr "Skill discovery, activation and built-in skills"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:15
+msgid "区分发现、激活与执行，了解目录格式和内置 daily-guidance。"
+msgstr ""
+"Distinguish discovery, activation and execution; learn the directory format and built-in daily-"
+"guidance skill."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:17
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills/execution.rst:2
+msgid "技能脚本与生命周期"
+msgstr "Skill scripts and lifecycle"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:21
+msgid "理解脚本上下文、执行隔离、并发约束与生命周期 hook。"
+msgstr "Understand script context, execution isolation, concurrency requirements and lifecycle hooks."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:23
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills/authoring.rst:2
+msgid "技能扩展与调试"
+msgstr "Extending and debugging skills"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills.rst:27
+msgid "参考脚本示例、注册表接口和检查清单，扩展智能体行为。"
+msgstr "Use script examples, registry interfaces and an authoring checklist to extend agent behavior."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills/authoring.rst:119
+msgid ":doc:`/agents` - ``PersonAgent`` 使用说明"
+msgstr ":doc:`/agents` - PersonAgent usage guide"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills/authoring.rst:120
+msgid ":doc:`/architecture` - Ray 执行模型与 ``ServiceProxy``"
+msgstr ":doc:`/architecture` - Ray execution model and ``ServiceProxy``"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills/authoring.rst:121
+msgid ":doc:`/api/skills` - ``SkillRegistry`` / ``AgentSkillRuntime`` API"
+msgstr ":doc:`/api/skills` - SkillRegistry API"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agent_skills/execution.rst:162
+msgid ""
+"<skill_hooks>\n"
+"<skill_hook skill=\"built-in@daily-guidance\" hook=\"pre_step\" ok=\"true\">\n"
+"active_segment:\n"
+"  activity: sleep\n"
+"  location_policy: home_aoi\n"
+"</skill_hook>\n"
+"</skill_hooks>"
+msgstr ""
+"<skill_hooks>\n"
+"<skill_hook skill=\"built-in@daily-guidance\" hook=\"pre_step\" ok=\"true\">\n"
+"active_segment:\n"
+"  activity: sleep\n"
+"  location_policy: home_aoi\n"
+"</skill_hook>\n"
+"</skill_hooks>"

@@ -1,6 +1,6 @@
 """历史 agent 回放表的兼容模型（SQLModel）。
 
-该模块保留 ``agent_profile``、``agent_status``、``agent_dialog`` 三张旧表的 ORM
+该模块保留 ``agent_profile`` 、``agent_status`` 、``agent_dialog`` 三张旧表的 ORM
 定义，供后端读取历史 SQLite 数据库时使用。
 
 当前 :class:`~agentsociety2.storage.ReplayWriter` 不再初始化或写入这些表。

@@ -1,15 +1,13 @@
-"""Serializable replay proxy + per-process sink builder.
+"""可序列化的回放代理与每进程 sink 构建器。
 
-Replay writes used to funnel through a single Ray actor wrapping SQLite. That
-central write path is gone.
+回放写入过去经由单个封装 SQLite 的 Ray actor 汇聚；该中心化写入路径已被移除。
 
-:class:`ReplayProxy` is now a serializable config dataclass carrying only the
-output directory (+ an enable flag). Each consumer — the env router actor, the
-society, each agent Ray task — builds its own process-local
-:class:`~agentsociety2.storage.replay_sink.ReplaySink` from ``replay_dir`` and
-appends directly. No central actor, no Ray round-trip on the write path, no
-deadlock. ``enabled=False`` short-circuits to a no-op (the escape hatch for
-extreme scale, where replay can be skipped entirely).
+:class:`ReplayProxy` 现在是一个可序列化的配置 dataclass，仅携带输出目录
+（外加启用标志）。每个消费方——env router actor、society、每个 agent Ray
+task——都从 ``replay_dir`` 自行构建进程本地的
+:class:`~agentsociety2.storage.replay_sink.ReplaySink` 并直接追加写入。没有
+中心 actor，写入路径上没有 Ray 往返，也就没有死锁。``enabled=False`` 直接
+短路为 no-op（超大规模下的逃生通道，可整体跳过回放）。
 """
 
 from __future__ import annotations
@@ -22,14 +20,12 @@ from agentsociety2.storage.replay_sink import ReplaySink, build_replay_sink
 
 @dataclass
 class ReplayProxy:
-    """Serializable config for distributed replay writing.
+    """分布式回放写入的可序列化配置。
 
-    Carries only the replay output directory and an enable flag — no Ray actor
-    handle. Methods lazily build+cache a process-local
-    :class:`ReplaySink` (from ``replay_dir``) on first use and delegate, so each
-    agent Ray task / env actor that receives a deserialized copy gets its own
-    sink and its own file descriptors. ``enabled=False`` makes every method a
-    no-op.
+    仅携带回放输出目录与启用标志——不含 Ray actor 句柄。各方法在首次使用时
+    懒构建并缓存进程本地的 :class:`ReplaySink` （由 ``replay_dir`` 构建）并委托
+    其执行，因此每个收到反序列化副本的 agent Ray task / env actor 都获得自己
+    的 sink 与自己的文件描述符。``enabled=False`` 使所有方法成为 no-op。
     """
 
     replay_dir: str | None = None

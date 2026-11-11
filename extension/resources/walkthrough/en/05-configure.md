@@ -1,20 +1,22 @@
 ## Configure LLM and Backend
 
-**Open a project folder first.** API keys are written to that folder’s `.env`; settings cannot be saved without a folder.
+**Open a project folder first.** API keys are written to that folder's `.env`; settings cannot be saved without a folder.
 
 Suggested order: **open folder → save Simulation LLM → initialize workspace → start backend**.
 
 Open the config page and follow the **setup wizard** on first use:
 
-1. **Simulation LLM** — API base, key, and model; optional reasoning (thinking) on/off  
-2. **Save** — write workspace `.env`  
-3. **Start backend** — save and start the local service  
-4. **Literature MCP** (optional)  
-5. **CLI gateway** (optional) — Claude Code / Codex  
+1. **Web import** (optional) — one-click import of the API key, default model, and related settings from AgentSociety Web
+2. **Simulation LLM** — API base, key, and model; optional reasoning (thinking) on/off
+3. **Save** — write workspace `.env`
+4. **Start backend** — save and start the local service
+5. **Literature MCP** (optional)
+6. **EasyPaper** (optional) — LLM and optional VLM for paper generation
+7. **CLI gateway** (optional) — Claude Code / Codex
 
 Use **All settings** for the full tabbed view.
 
-The simulation LLM reasoning dropdown writes `AGENTSOCIETY_LLM_THINKING` (`on` / `off`); leave it empty to omit that parameter (same behavior as older builds). In full settings, the **Coder** tab can set `AGENTSOCIETY_CODER_LLM_THINKING` separately.
+The simulation LLM reasoning dropdown writes `AGENTSOCIETY_LLM_THINKING` (`on` / `off`); leave it empty to omit that parameter (same behavior as older builds). The advanced section next to it also selects the API protocol (OpenAI Chat Completions / Anthropic Messages, `AGENTSOCIETY_LLM_API_TYPE`) and the reasoning control field (`AGENTSOCIETY_LLM_THINKING_FORMAT`); the exact parameter sent depends on the protocol. In full settings, the **Coder** tab can set `AGENTSOCIETY_CODER_LLM_THINKING` and these options independently.
 
 ### Required fields
 
@@ -37,13 +39,14 @@ The outbound proxy is not the local Gateway. With Codex Gateway routing **off**,
 
 ### Backend
 
-The backend is a local FastAPI service used by skill management, module discovery, replay APIs, and docs. Without it you can still edit config, browse the tree, or run experiments via CLI / Claude Code.
+The backend is a local FastAPI service used by skill management, module discovery, replay APIs, and docs. Without it, you can still edit config, browse the tree, or run experiments via CLI / Claude Code.
 
 | Entry | Action |
 |-------|--------|
 | Status bar | AI Social Scientist status → Start / Restart / Show Logs |
+| Config page | The **Save and Start Backend** button in the page header |
 | Command Palette | `Start Backend` |
-| Setup wizard | Step 3 |
+| Setup wizard | Step 4 |
 
 Default port is usually `localhost:8001`. Restart after changing `.env`.
 

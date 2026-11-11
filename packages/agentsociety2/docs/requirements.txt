@@ -1,7 +1,12 @@
 # Sphinx documentation requirements (AgentSociety 2 / RTD)
-sphinx>=8.0.0
+# Sphinx 9.1.1 fixes Chinese search; the 8.2 line retains Python 3.11 support.
+sphinx>=9.1.1,<9.2; python_version >= "3.12"
+sphinx>=8.2.3,<9; python_version < "3.12"
+jieba>=0.42.1
 sphinx-autobuild>=2024.9.19
 furo>=2024.8.6
+sphinx-design>=0.7,<0.8
+sphinx-copybutton>=0.5.2,<0.6
 myst-parser>=5.0.0
 sphinx-intl>=2.4.0
 linkify-it-py>=2.0.0

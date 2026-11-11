@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: AgentSociety 2 2.6.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-18 22:50+0800\n"
+"POT-Creation-Date: 2026-11-10 12:10+0800\n"
 "PO-Revision-Date: 2026-03-20 00:00+0800\n"
 "Last-Translator: AgentSociety Team\n"
 "Language: en\n"
@@ -18,876 +18,964 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: ../../skills.rst:2
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:2
 msgid "研究技能"
 msgstr "Research Skills"
 
-#: ../../skills.rst:4
-msgid "AgentSociety 2 包含一组 LLM 原生的研究技能，用于自动化科学研究工作流。"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:24
+msgid "选择技能入口"
+msgstr "Choose a skill entry point"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:26
+msgid "**推进文献、假设、实验和分析**：在插件技能管理的 **Claude** 标签页，将研究助手技能同步到工作区，再交给 Claude Code / Codex 使用。"
 msgstr ""
-"AgentSociety 2 includes a set of LLM-native research skills for "
-"automating scientific research workflows."
+"**Work on literature, hypotheses, experiments, and analysis**: Sync research "
+"assistant skills to the workspace from the **Claude** tab in the extension, then use "
+"them with Claude Code / Codex."
 
-#: ../../skills.rst:7
-msgid "概述"
-msgstr "Overview"
-
-#: ../../skills.rst:9
-msgid "研究技能模块提供以下功能："
-msgstr "The research skills module provides the following capabilities:"
-
-#: ../../skills.rst:11
-msgid "**学术文献检索**: 通过 MCP 网关搜索和管理学术论文"
-msgstr "**Literature Search**: Search and manage academic papers"
-
-#: ../../skills.rst:12
-msgid "**假设生成**: 从研究问题生成可测试的假设"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:28
+msgid "**连接外部工具或安装第三方技能**：使用 **MCP**、**市场** 标签页，配置对应的服务与来源。"
 msgstr ""
-"**Hypothesis Generation**: Generate testable hypotheses from research "
-"questions"
+"**Connect external tools or install third-party skills**: Configure services and "
+"sources in the **MCP** and **Marketplace** tabs."
 
-#: ../../skills.rst:13
-msgid "**实验设计**: 设计完整的实验配置"
-msgstr "**Experiment Design**: Design complete experiment configurations"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:31
+msgid "研究助手技能"
+msgstr "Research assistant skills"
 
-#: ../../skills.rst:14
-msgid "**论文撰写**: 通过独立 paper-toolkit 工作流完成，不再由 ``agentsociety2.skills`` 包内模块提供"
-msgstr ""
-
-#: ../../skills.rst:15
-msgid "**数据分析**: 分析实验数据并生成报告"
-msgstr "**Data Analysis**: Analyze experiment data and generate reports"
-
-#: ../../skills.rst:17
-msgid ""
-"当前 Python 包内公开的 research skills 模块为 "
-"``agentsociety2.skills.literature``、``agentsociety2.skills.hypothesis``、 "
-"``agentsociety2.skills.experiment``、``agentsociety2.skills.analysis``。"
-msgstr ""
-"The research skill modules publicly exposed in the current Python package"
-" are ``agentsociety2.skills.literature``, "
-"``agentsociety2.skills.hypothesis``, ``agentsociety2.skills.experiment``,"
-" and ``agentsociety2.skills.analysis``."
-
-#: ../../skills.rst:22
-msgid "Claude Code Skills"
-msgstr "Claude Code Skills"
-
-#: ../../skills.rst:24
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:33
 msgid "研究工作流主要通过 Claude Code 的“skills-first”方式提供："
 msgstr ""
-"Research workflows are primarily provided through Claude Code’s “skills-"
-"first” approach:"
+"Research workflows are primarily provided through Claude Code’s “skills-first” "
+"approach:"
 
-#: ../../skills.rst:26
-msgid "AgentSociety 内置研究 skills：随 VSCode 插件打包，可在插件树视图中浏览（只读）。"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:35
+msgid "AgentSociety 内置研究 skills：随 VSCode 插件打包，在技能管理页查看并同步到工作区。"
 msgstr ""
-"AgentSociety built-in research skills: packaged with the VSCode plugin "
-"and can be browsed in the plugin tree view (read-only)."
+"Built-in AgentSociety research skills are bundled with the VS Code extension. Browse "
+"and sync them to the workspace from the skill management page."
 
-#: ../../skills.rst:27
-msgid "Agent(Person) 扩展 skills：由后端 `/api/v1/agent-skills/*` 管理，支持扫描/导入/热重载。"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:36
+msgid "Agent 运行时技能：由后端 ``/api/v1/agent-skills/*`` 发现、扫描和导入，供仿真参与者按需激活；不是研究助手的 Claude 技能。"
 msgstr ""
-"Agent (Person) extended skills: managed by the backend `/api/v1/agent-"
-"skills/*`, supporting scanning/import/hot reload."
+"Agent runtime skills are discovered, scanned and imported through ``/api/v1/agent-"
+"skills/*`` for simulation participants to activate as needed. They are separate from "
+"the research assistant's Claude skills."
 
-#: ../../skills.rst:29
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:38
 msgid "**agentsociety-literature-search** - 学术文献检索"
 msgstr "**agentsociety-literature-search** - Literature search"
 
-#: ../../skills.rst:30
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:39
 msgid "**agentsociety-hypothesis** - 假设管理（add, get, list, delete）"
-msgstr ""
-"**agentsociety-hypothesis** - Assumption management (add, get, list, "
-"delete)"
+msgstr "**agentsociety-hypothesis** - Assumption management (add, get, list, delete)"
 
-#: ../../skills.rst:31
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:40
 msgid "**agentsociety-experiment-config** - 实验配置生成与验证"
 msgstr ""
-"**agentsociety-experiment-config** - Experimental configuration "
-"generation and verification"
+"**agentsociety-experiment-config** - Experimental configuration generation and "
+"verification"
 
-#: ../../skills.rst:32
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:41
 msgid "**agentsociety-run-experiment** - 实验执行与监控"
 msgstr "**agentsociety-run-experiment** - Experiment execution and monitoring"
 
-#: ../../skills.rst:33
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:42
 msgid "**agentsociety-analysis** - 数据分析与跨实验综合"
 msgstr "**agentsociety-analysis** - Data analysis and cross-experimental synthesis"
 
-#: ../../skills.rst:34
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:43
 msgid "**agentsociety-create-agent** - 自定义 Agent 生成与校验"
 msgstr "**agentsociety-create-agent** - Custom Agent generation and verification"
 
-#: ../../skills.rst:35
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:44
+msgid "**agentsociety-create-env-module** - 自定义环境模块生成与校验"
+msgstr "**agentsociety-create-env-module** - Generate and validate custom environment modules"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:45
+msgid "**agentsociety-use-dataset / agentsociety-create-dataset** - 使用或整理研究数据集"
+msgstr ""
+"**agentsociety-use-dataset / agentsociety-create-dataset** - Use or prepare research "
+"datasets"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:46
+msgid "**agentsociety-research-pipeline** - 按研究阶段组织任务与产物"
+msgstr "**agentsociety-research-pipeline** - Organize tasks and artifacts by research phase"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:47
 msgid "**paper-toolkit** - 独立论文写作工具链入口"
-msgstr ""
+msgstr "**paper-toolkit** - entry point of the standalone paper writing toolchain"
 
-#: ../../skills.rst:39
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:51
 msgid ""
-"本页中的 ``.agentsociety/bin/ags.py`` 命令面向**已初始化的工作区**。 如果当前目录尚未生成 "
-"``.agentsociety/``，请先执行："
+"本页中的 ``.agentsociety/bin/ags.py`` 命令面向**已初始化的工作区**。运行这些命令还需要将对应研究技能同步到 ``.claude/skills/``，并使用已安装"
+" SDK 的 Python 环境。如果当前目录尚未生成 ``.agentsociety/``，请先执行："
 msgstr ""
-"The ``.agentsociety/bin/ags.py`` commands shown on this page are intended"
-" for an **initialized workspace**. If the current directory does not yet "
-"contain ``.agentsociety/``, run the following first:"
+"The ``.agentsociety/bin/ags.py`` commands on this page require an **initialized workspace**. Sync"
+" the corresponding research skills to ``.claude/skills/`` and use a Python environment containing"
+" the SDK. If the current directory does not yet contain ``.agentsociety/``, run:"
 
-#: ../../skills.rst:46
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:53
+msgid "agentsociety-workspace init --target-dir ."
+msgstr "agentsociety-workspace init --target-dir ."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:58
 msgid "等价入口是 ``python -m agentsociety2.society.workspace init --target-dir .``。"
 msgstr ""
-"An equivalent entry point is ``python -m agentsociety2.society.workspace "
-"init --target-dir .``."
+"An equivalent entry point is ``python -m agentsociety2.society.workspace init "
+"--target-dir .``."
 
-#: ../../skills.rst:49
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:61
 msgid "create-agent 技能"
 msgstr "create-agent skill"
 
-#: ../../skills.rst:51
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:63
 msgid ""
 "``agentsociety-create-agent`` 用于创建或修订工作区里的自定义 Agent 类型。它不是 PersonAgent "
-"内置认知技能，而是研究工作流中的开发辅助 skill：当实验需要一个当前不存在的 Agent class 时，通常由 "
-"``agentsociety-experiment-config`` 分支调用。"
+"内置认知技能，而是研究工作流中的开发辅助 skill：当实验需要一个当前不存在的 Agent class 时，通常由 ``agentsociety-experiment-"
+"config`` 分支调用。"
 msgstr ""
-"``agentsociety-create-agent`` Used to create or revise custom Agent types"
-" in the workspace. It is not a built-in cognitive skill of PersonAgent, "
-"but a development auxiliary skill in the research workflow: when the "
-"experiment requires an Agent class that does not currently exist, it is "
-"usually called by the ``agentsociety-experiment-config`` branch."
+"``agentsociety-create-agent`` Used to create or revise custom Agent types in the "
+"workspace. It is not a built-in cognitive skill of PersonAgent, but a development "
+"auxiliary skill in the research workflow: when the experiment requires an Agent class"
+" that does not currently exist, it is usually called by the ``agentsociety-"
+"experiment-config`` branch."
 
-#: ../../skills.rst:53
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:65
 msgid "**文件位置与扫描规则**:"
 msgstr "**File location and scan rules**:"
 
-#: ../../skills.rst:55
-msgid ""
-"新 Agent 模块应放在 ``custom/agents/`` 下，例如 "
-"``custom/agents/research/lab_agent.py``。"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:67
+msgid "新 Agent 模块应放在 ``custom/agents/`` 下，例如 ``custom/agents/research/lab_agent.py``。"
 msgstr ""
 "New Agent modules should be placed under ``custom/agents/``, for example "
 "``custom/agents/research/lab_agent.py``."
 
-#: ../../skills.rst:56
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:68
 msgid "扫描器会读取该目录下的 ``*.py``，但跳过路径片段包含 ``examples/`` 的文件。"
 msgstr ""
-"The scanner reads ``*.py`` in this directory, but skips files whose path "
-"fragment contains ``examples/``."
+"The scanner reads ``*.py`` in this directory, but skips files whose path fragment "
+"contains ``examples/``."
 
-#: ../../skills.rst:57
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:69
 msgid "推荐一个文件一个主要 Agent class；一个文件中存在多个 ``AgentBase`` 子类时，扫描器也能发现。"
 msgstr ""
-"It is recommended to have one main Agent class per file; when there are "
-"multiple ``AgentBase`` subclasses in a file, the scanner can also find "
-"it."
+"It is recommended to have one main Agent class per file; when there are multiple "
+"``AgentBase`` subclasses in a file, the scanner can also find it."
 
-#: ../../skills.rst:59
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:71
 msgid "**基类选择**:"
 msgstr "**Base class selection**:"
 
-#: ../../skills.rst:65
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:77
 msgid "基类"
 msgstr "Base class"
 
-#: ../../skills.rst:66
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:78
 msgid "适用场景"
 msgstr "Applicable scenarios"
 
-#: ../../skills.rst:67
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:79
 msgid "``AgentBase``"
 msgstr "``AgentBase``"
 
-#: ../../skills.rst:68
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:80
 msgid "简单实验、博弈/基准场景，开发者自行管理状态。"
 msgstr ""
-"Simple experiments, games/benchmark scenarios, developers manage the "
-"status by themselves."
+"Simple experiments, games/benchmark scenarios, developers manage the status by "
+"themselves."
 
-#: ../../skills.rst:69
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:81
 msgid "``PersonAgent``"
 msgstr "``PersonAgent``"
 
-#: ../../skills.rst:70
-msgid "需要 skills-first 工具循环、workspace、checkpoint/WAL 与持久化记忆。"
-msgstr ""
-"Requires skills-first tool loops, workspace, checkpoint/WAL and "
-"persistent memory."
-
-#: ../../skills.rst:72
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:84
 msgid "**本地校验**:"
 msgstr "**Local validation**:"
 
-#: ../../skills.rst:82
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:85
 msgid ""
-"校验器会检查：目标文件为 Python 文件、至少有一个直接继承 ``AgentBase`` 或 ``PersonAgent`` "
-"的类、``ask`` / ``step`` / ``to_workspace`` 均为 ``async "
-"def``（另需实现 ``create`` / ``from_workspace`` 工作区契约）、模块可动态导入、目标类不是 abstract "
-"class。创建完成后，在 VS Code 扩展中执行 **Scan Custom Modules** 让后端重新发现模块。"
+"agentsociety-workspace init --target-dir .\n"
+"python .agentsociety/bin/ags.py create-agent --file custom/agents/my_agent.py\n"
+"python .agentsociety/bin/ags.py create-agent --file custom/agents/my_agent.py --json"
 msgstr ""
-"The validator will check: the target file is a Python file, there is at "
-"least one class that directly inherits ``AgentBase`` or ``PersonAgent``, "
-"``ask`` / ``step`` / ``to_workspace`` are all ``async def`` (plus the "
-"``create`` / ``from_workspace`` workspace contract), the module can be "
-"imported dynamically, and the target class is not abstract. After creation, "
-"execute **Scan Custom Modules** in the VS Code extension to let the backend "
-"rediscover the module."
+"agentsociety-workspace init --target-dir .\n"
+"python .agentsociety/bin/ags.py create-agent --file custom/agents/my_agent.py\n"
+"python .agentsociety/bin/ags.py create-agent --file custom/agents/my_agent.py --json"
 
-#: ../../skills.rst:86
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:92
+msgid "以下命令使用已安装 ``agentsociety2`` 的 Python 环境；若工作区配置了独立解释器，请用该解释器替换 ``python``。"
+msgstr ""
+"Use a Python environment with ``agentsociety2`` installed. Replace ``python`` with "
+"the workspace interpreter when using a separate environment."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:98
 msgid "实验工作流"
 msgstr "Experiment workflow"
 
-#: ../../skills.rst:88
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:100
 msgid "研究 pipeline 的主干是："
 msgstr "The backbone of the research pipeline is:"
 
-#: ../../skills.rst:90
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:102
 msgid ""
-"``literature-search → hypothesis → experiment-config → run-experiment → "
-"analysis → paper-toolkit``"
+"``literature-search → hypothesis → experiment-config → run-experiment → analysis → "
+"paper-toolkit``"
 msgstr ""
-"``literature-search → hypothesis → experiment-config → run-experiment → "
-"analysis → paper-toolkit``"
+"``literature-search → hypothesis → experiment-config → run-experiment → analysis → "
+"paper-toolkit``"
 
-#: ../../skills.rst:92
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:104
 msgid "实验相关的两个核心 skill 是："
 msgstr "The two core skills related to experiments are:"
 
-#: ../../skills.rst:98
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:110
 msgid "Skill"
 msgstr "Skill"
 
-#: ../../skills.rst:99
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:111
 msgid "主要输入"
 msgstr "Main input"
 
-#: ../../skills.rst:100
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:112
 msgid "主要输出"
 msgstr "Main output"
 
-#: ../../skills.rst:101
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:113
 msgid "``agentsociety-experiment-config``"
 msgstr "``agentsociety-experiment-config``"
 
-#: ../../skills.rst:102
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:114
 msgid "``SIM_SETTINGS.json``、已有 Agent/Env/Dataset 信息"
 msgstr "``SIM_SETTINGS.json``, existing Agent/Env/Dataset information"
 
-#: ../../skills.rst:103
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:115
 msgid "``init_config.json``、``steps.yaml``、``config_params.py``"
 msgstr "``init_config.json``、``steps.yaml``、``config_params.py``"
 
-#: ../../skills.rst:104
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:116
 msgid "``agentsociety-run-experiment``"
 msgstr "``agentsociety-run-experiment``"
 
-#: ../../skills.rst:105
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:117
 msgid "``init_config.json`` + ``steps.yaml``"
 msgstr "``init_config.json`` + ``steps.yaml``"
 
-#: ../../skills.rst:106
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:118
 msgid "``run/replay/``、日志、artifacts、``pid.json``"
 msgstr "``run/replay/``, logs, artifacts, and ``pid.json``"
 
-#: ../../skills.rst:108 ../../skills.rst:124
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:120
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:136
 msgid "推荐流程："
 msgstr "Recommended process:"
 
-#: ../../skills.rst:110
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:122
 msgid "先确认工作区中已经具备 ``init_config.json``、``steps.yaml`` 与所需模块信息。"
 msgstr ""
 "First confirm that the workspace already contains ``init_config.json``, "
 "``steps.yaml``, and the required module information."
 
-#: ../../skills.rst:111
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:123
 msgid "在 ``experiment-config`` 阶段先扫描模块；如果缺少 Agent 或 Env，先补充对应自定义模块，再重新扫描。"
 msgstr ""
-"During the ``experiment-config`` stage, scan modules first. If an Agent "
-"or environment module is missing, add the corresponding custom module and"
-" then scan again."
+"During the ``experiment-config`` stage, scan modules first. If an Agent or "
+"environment module is missing, add the corresponding custom module and then scan "
+"again."
 
-#: ../../skills.rst:112
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:124
 msgid "运行 ``experiment-config check`` 或等价校验，确认配置和步骤文件可用。"
 msgstr ""
-"Run ``experiment-config check`` or equivalent verification to confirm "
-"that the configuration and step files are available."
+"Run ``experiment-config check`` or equivalent verification to confirm that the "
+"configuration and step files are available."
 
-#: ../../skills.rst:113
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:125
 msgid "启动实验时使用 ``run-experiment``；后台执行必须指定日志文件，避免丢失 verbose 输出。"
 msgstr ""
-"Use ``run-experiment`` when starting the experiment; a log file must be "
-"specified for background execution to avoid losing verbose output."
+"Use ``run-experiment`` when starting the experiment; a log file must be specified for"
+" background execution to avoid losing verbose output."
 
-#: ../../skills.rst:114
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:126
 msgid "实验完成后检查 ``run/replay/_schema.json``、日志与 artifacts，再进入分析阶段。"
 msgstr ""
-"After the experiment is completed, check ``run/replay/_schema.json``, "
-"logs, and artifacts before entering the analysis phase."
+"After the experiment is completed, check ``run/replay/_schema.json``, logs, and "
+"artifacts before entering the analysis phase."
 
-#: ../../skills.rst:118
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:130
 msgid "分析工作流"
 msgstr "Analysis workflow"
 
-#: ../../skills.rst:120
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:131
 msgid ""
-"``agentsociety-analysis`` 面向已完成实验的数据解释、图表和报告生成。当前 replay 数据位于 "
-"``run/replay/``，可通过 ``ReplayReader`` / DuckDB 读取；如果 ``_schema.json`` 不存在，"
-" 应回到 ``run-experiment`` 或配置修复阶段。"
+"``agentsociety-analysis`` 面向已完成实验的数据解释、图表和报告生成。当前 replay 数据位于 ``run/replay/``，可通过 "
+"``ReplayReader`` / DuckDB 读取；如果 ``_schema.json`` 不存在，应回到 ``run-experiment`` 或配置修复阶段。"
 msgstr ""
-"``agentsociety-analysis`` handles data interpretation, charts, and report"
-" generation for completed experiments. Replay data lives in "
-"``run/replay/`` and can be read through ``ReplayReader`` / DuckDB. If "
-"``_schema.json`` does not exist, return to ``run-experiment`` or the "
-"configuration repair phase."
+"``agentsociety-analysis`` handles data interpretation, charts, and report generation for "
+"completed experiments. Replay data lives in ``run/replay/`` and can be read through "
+"``ReplayReader`` / DuckDB. If ``_schema.json`` does not exist, return to ``run-experiment`` or "
+"the configuration repair phase."
 
-#: ../../skills.rst:126
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:138
 msgid "**加载上下文**：读取 hypothesis、experiment config、steps 和 run 元数据。"
-msgstr ""
-"**Load context**: Read hypothesis, experiment config, steps, and run "
-"metadata."
+msgstr "**Load context**: Read hypothesis, experiment config, steps, and run metadata."
 
-#: ../../skills.rst:127
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:139
 msgid "**确认问题**：明确本次分析是验证假设、解释异常、比较组间差异，还是生成报告。"
 msgstr ""
-"**Clarify the question**: Clarify whether this analysis is to test "
-"hypotheses, explain anomalies, compare differences between groups, or "
-"generate a report."
+"**Clarify the question**: Clarify whether this analysis is to test hypotheses, "
+"explain anomalies, compare differences between groups, or generate a report."
 
-#: ../../skills.rst:128
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:140
 msgid "**探索数据**：列出 replay dataset，查看 schema、行数、关键字段和缺失情况。"
 msgstr ""
-"**Explore data**: List replay datasets and view the schema, number of "
-"rows, key fields, and missing values."
+"**Explore data**: List replay datasets and view the schema, number of rows, key "
+"fields, and missing values."
 
-#: ../../skills.rst:129
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:141
 msgid "**提出发现**：先给出可检验发现，再决定需要哪些图表。"
 msgstr ""
-"**Propose findings**: Present testable findings first, then decide which "
-"charts are needed."
+"**Propose findings**: Present testable findings first, then decide which charts are "
+"needed."
 
-#: ../../skills.rst:130
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:142
 msgid "**生成图表**：单实验默认最多 5 张图；每张图在报告中必须有一句说明。"
 msgstr ""
-"**Generate charts**: A single experiment can have up to 5 charts by "
-"default; each chart must have a corresponding explanation in the report."
+"**Generate charts**: A single experiment can have up to 5 charts by default; each "
+"chart must have a corresponding explanation in the report."
 
-#: ../../skills.rst:131
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:143
 #, python-brace-format
 msgid "**写报告**：单实验输出到 ``presentation/hypothesis_{id}/``，跨实验综合输出到 ``synthesis/``。"
 msgstr ""
-"**Write report**: Single-experiment output goes to "
-"``presentation/hypothesis_{id}/``, and cross-experiment synthesis output "
-"goes to ``synthesis/``."
+"**Write report**: Single-experiment output goes to ``presentation/hypothesis_{id}/``,"
+" and cross-experiment synthesis output goes to ``synthesis/``."
 
-#: ../../skills.rst
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:145
 msgid ""
 "报告与状态目录约定：用户可见报告写在 ``presentation/`` 与 ``synthesis/``；harness 机器状态在 "
 "``.agentsociety/analysis/``；不要在 ``presentation/`` 下再建旧式 ``analysis/`` 目录。"
 msgstr ""
 "Report and state paths: user-facing reports go under ``presentation/`` and "
-"``synthesis/``; harness machine state lives under ``.agentsociety/analysis/``; "
-"do not recreate a legacy ``analysis/`` tree under ``presentation/``."
+"``synthesis/``; harness machine state lives under ``.agentsociety/analysis/``; do not"
+" recreate a legacy ``analysis/`` tree under ``presentation/``."
 
-#: ../../skills.rst:133
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:147
 msgid "常用命令："
 msgstr "Commonly used commands:"
 
-#: ../../skills.rst:148
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:147
+msgid ""
+"python .agentsociety/bin/ags.py analysis load-context --workspace . --hypothesis-id 1 "
+"--experiment-id 1\n"
+"python - <<'PY'\n"
+"from agentsociety2.storage import ReplayReader\n"
+"reader = ReplayReader(\"hypothesis_1/experiment_1/run/replay\")\n"
+"for dataset in reader.load_dataset_catalog():\n"
+"    print(dataset[\"dataset_id\"], dataset[\"table_name\"])\n"
+"reader.close()\n"
+"PY"
+msgstr ""
+"python .agentsociety/bin/ags.py analysis load-context --workspace . --hypothesis-id 1 "
+"--experiment-id 1\n"
+"python - <<'PY'\n"
+"from agentsociety2.storage import ReplayReader\n"
+"reader = ReplayReader(\"hypothesis_1/experiment_1/run/replay\")\n"
+"for dataset in reader.load_dataset_catalog():\n"
+"    print(dataset[\"dataset_id\"], dataset[\"table_name\"])\n"
+"reader.close()\n"
+"PY"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:162
 msgid "学术文献检索"
 msgstr "Literature search service"
 
-#: ../../skills.rst:150
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:164
 msgid ""
-"``agentsociety-literature-search`` 通过统一的远程检索服务收集学术文献，并把结果保存到工作区 "
-"``papers/`` "
+"``agentsociety-literature-search`` 通过统一的远程检索服务收集学术文献，并把结果保存到工作区 ``papers/`` "
 "目录。默认检索所有已配置数据源：``local``、``arxiv``、``crossref``、``openalex``。"
 msgstr ""
-"``agentsociety-literature-search`` Collect academic literature through a "
-"unified remote search service and save the results to the workspace "
-"``papers/`` directory. All configured data sources are retrieved by "
-"default: ``local``, ``arxiv``, ``crossref``, ``openalex``."
+"``agentsociety-literature-search`` Collect academic literature through a unified "
+"remote search service and save the results to the workspace ``papers/`` directory. "
+"All configured data sources are retrieved by default: ``local``, ``arxiv``, "
+"``crossref``, ``openalex``."
 
-#: ../../skills.rst:152
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:166
 msgid "配置项："
 msgstr "Configuration:"
 
-#: ../../skills.rst:159
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:166
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:271
+msgid ""
+"LITERATURE_SEARCH_MCP_URL=https://llmapi.fiblab.net/mcp/\n"
+"LITERATURE_SEARCH_API_KEY=your-literature-search-key"
+msgstr ""
+"LITERATURE_SEARCH_MCP_URL=https://llmapi.fiblab.net/mcp/\n"
+"LITERATURE_SEARCH_API_KEY=your-literature-search-key"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:173
 msgid "搜索命令示例："
 msgstr "Search command example:"
 
-#: ../../skills.rst:166
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:173
+msgid ""
+"python .agentsociety/bin/ags.py literature-search \"agent-based modeling social networks\"\n"
+"python .agentsociety/bin/ags.py literature-search \"urban mobility simulation LLM agents\" "
+"--year-from 2020 --year-to 2026 --multi-query"
+msgstr ""
+"python .agentsociety/bin/ags.py literature-search \"agent-based modeling social networks\"\n"
+"python .agentsociety/bin/ags.py literature-search \"urban mobility simulation LLM agents\" "
+"--year-from 2020 --year-to 2026 --multi-query"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:180
 msgid "输出约定："
 msgstr "Output convention:"
 
-#: ../../skills.rst:168
-msgid ""
-"``papers/literature_index.json`` 是稳定索引，记录标题、作者、年份、来源、query、分数和本地 "
-"``file_path``。"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:182
+msgid "``papers/literature_index.json`` 是稳定索引，记录标题、作者、年份、来源、query、分数和本地 ``file_path``。"
 msgstr ""
-"``papers/literature_index.json`` is a stable index, recording title, "
-"author, year, source, query, score and local ``file_path``."
+"``papers/literature_index.json`` is a stable index, recording title, author, year, "
+"source, query, score and local ``file_path``."
 
-#: ../../skills.rst:169
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:183
 msgid ""
-"每篇文献保存为 ``papers/<title>_<timestamp>.md``，这是后续 hypothesis、analysis 与外部 "
-"``paper-toolkit`` 写作流程引用的主要本地笔记。"
+"每篇文献保存为 ``papers/<title>_<timestamp>.md``，这是后续 hypothesis、analysis 与外部 ``paper-"
+"toolkit`` 写作流程引用的主要本地笔记。"
 msgstr ""
-"Each document is saved as ``papers/<title>_<timestamp>.md``, which is the"
-" main local note cited by subsequent hypothesis, analysis, and the "
-"external ``paper-toolkit`` writing workflow."
+"Each document is saved as ``papers/<title>_<timestamp>.md``, which is the main local "
+"note cited by subsequent hypothesis, analysis, and the external ``paper-toolkit`` "
+"writing workflow."
 
-#: ../../skills.rst:170
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:184
 msgid ""
 "检索完成后会自动尝试下载开放获取 PDF 到 ``papers/full_texts/``，路径写入 "
-"``extra_fields.full_text.file_path``；不要把索引中的 ``file_path`` 从 Markdown "
-"笔记替换成 PDF。"
+"``extra_fields.full_text.file_path``；不要把索引中的 ``file_path`` 从 Markdown 笔记替换成 PDF。"
 msgstr ""
 "If the original PDF is to be downloaded, it should be placed in "
-"``papers/full_texts/`` and recorded in "
-"``extra_fields.full_text.file_path``; do not replace ``file_path`` in the"
-" index from Markdown notes to PDF."
+"``papers/full_texts/`` and recorded in ``extra_fields.full_text.file_path``; do not "
+"replace ``file_path`` in the index from Markdown notes to PDF."
 
-#: ../../skills.rst:171
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:185
 msgid "文献检索不会自动绕过出版商权限。PDF 下载只处理开放获取或用户授权的文件；没有开放 PDF 时，可以补充本地 Markdown 笔记并记录来源。"
 msgstr ""
-"Literature search does not bypass publisher access controls. PDF "
-"downloads only process open-access or user-authorized files. If no open "
-"PDF is available, local Markdown notes may be added together with the "
-"recorded source."
+"Literature search does not bypass publisher access controls. PDF downloads only "
+"process open-access or user-authorized files. If no open PDF is available, local "
+"Markdown notes may be added together with the recorded source."
 
-#: ../../skills.rst:174
-msgid "Python API"
-msgstr "Python API"
-
-#: ../../skills.rst:176
-msgid "研究技能也可以通过 Python API 直接调用。"
-msgstr "Research skills can also be called directly through the Python API."
-
-#: ../../skills.rst:179
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:193
 msgid "文献技能 (literature)"
 msgstr "Literature Skill"
 
-#: ../../skills.rst:181
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:193
 msgid ""
-"文献技能通过 **MCP 协议** 连接学术文献检索网关，使用工作区 ``.env`` 中的 "
-"``LITERATURE_SEARCH_MCP_URL`` 和 ``LITERATURE_SEARCH_API_KEY``（无需单独配置 "
-"Claude ``mcp.json``）。网关上的其他 MCP 工具不会被文献技能调用。推荐优先使用 "
-"``search_literature_and_save``，而不是直接调用底层 ``search_literature``： "
-"前者会把检索结果落到工作区中，确保后续 Agent、Claude Code 和论文写作技能 都能通过本地文件继续引用这些文献。"
+"文献技能通过 **MCP 协议** 连接学术文献检索网关，使用工作区 ``.env`` 中的 ``LITERATURE_SEARCH_MCP_URL`` 和 "
+"``LITERATURE_SEARCH_API_KEY``（无需单独配置 Claude ``mcp.json``）。网关上的其他 MCP 工具不会被文献技能调用。推荐优先使用 "
+"``search_literature_and_save``，而不是直接调用底层 ``search_literature``：前者会把检索结果落到工作区中，确保后续 Agent、Claude "
+"Code 和论文写作技能都能通过本地文件继续引用这些文献。"
 msgstr ""
-"By default, the literature skill uses the configured "
-"``LITERATURE_SEARCH_API_URL`` and ``LITERATURE_SEARCH_API_KEY`` to call "
-"the unified search service. It is recommended to use "
-"``search_literature_and_save`` instead of calling the underlying "
-"``search_literature`` directly: the former will drop the search results "
-"into the workspace, ensuring that subsequent Agent, Claude Code and paper"
-" writing skills can continue to reference these documents through local "
+"The literature skill connects to the academic literature search gateway through the **MCP "
+"protocol**, using ``LITERATURE_SEARCH_MCP_URL`` and ``LITERATURE_SEARCH_API_KEY`` from the "
+"workspace ``.env`` (no separate Claude ``mcp.json`` configuration needed). Other MCP tools on the"
+" gateway are not called by the literature skill. It is recommended to use "
+"``search_literature_and_save`` instead of calling the underlying ``search_literature`` directly: "
+"the former will drop the search results into the workspace, ensuring that subsequent Agents, "
+"Claude Code and paper writing skills can continue to reference these documents through local "
 "files."
 
-#: ../../skills.rst:211
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:198
+msgid ""
+"from pathlib import Path\n"
+"from agentsociety2.skills.literature import search_literature_and_save, load_literature_index\n"
+"\n"
+"# 搜索并保存文献（默认 10 篇、已配置数据源，并更新 papers/literature_index.json）\n"
+"result = await search_literature_and_save(\n"
+"    workspace_path=Path(\"./workspace\"),\n"
+"    query=\"agent-based modeling social networks\",\n"
+"    year_from=2020,      # 可选：年份筛选\n"
+"    year_to=2024,\n"
+"    enable_multi_query=True,  # 可选：启用多查询模式\n"
+")\n"
+"\n"
+"# 指定数据源搜索\n"
+"await search_literature_and_save(\n"
+"    workspace_path=Path(\"./workspace\"),\n"
+"    query=\"machine learning\",\n"
+"    sources=[\"local\", \"arxiv\"],  # 可选：指定数据源\n"
+")\n"
+"\n"
+"# 加载文献索引\n"
+"index = load_literature_index(workspace_path=Path(\"./workspace\"))"
+msgstr ""
+"from pathlib import Path\n"
+"from agentsociety2.skills.literature import search_literature_and_save, load_literature_index\n"
+"\n"
+"# Search and save literature: defaults to 10 papers, configured sources, and updates "
+"papers/literature_index.json\n"
+"result = await search_literature_and_save(\n"
+"    workspace_path=Path(\"./workspace\"),\n"
+"    query=\"agent-based modeling social networks\",\n"
+"    year_from=2020,      # Optional: filter by publication year\n"
+"    year_to=2024,\n"
+"    enable_multi_query=True,  # Optional: enable multiple search queries\n"
+")\n"
+"\n"
+"# Search selected data sources\n"
+"await search_literature_and_save(\n"
+"    workspace_path=Path(\"./workspace\"),\n"
+"    query=\"machine learning\",\n"
+"    sources=[\"local\", \"arxiv\"],  # Optional: select data sources\n"
+")\n"
+"\n"
+"# Load the literature index\n"
+"index = load_literature_index(workspace_path=Path(\"./workspace\"))"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:226
 msgid "**保存结果**:"
 msgstr "**Save results**:"
 
-#: ../../skills.rst:213
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:224
 msgid ""
-"每篇检索结果都会保存为 ``papers/<title>_<timestamp>.md``。 这个 Markdown "
-"文件是稳定的本地文献笔记，包含标题、检索词、年份、期刊、 DOI/URL、摘要、作者和相关内容片段。"
+"每篇检索结果都会保存为 ``papers/<title>_<timestamp>.md``。这个 Markdown 文件是稳定的本地文献笔记，包含标题、检索词、年份、期刊、 "
+"DOI/URL、摘要、作者和相关内容片段。"
 msgstr ""
-"Each search result will be saved as ``papers/<title>_<timestamp>.md``. "
-"This Markdown file is a stable local literature note that contains title,"
-" search terms, year, journal, DOI/URL, abstract, author, and related "
-"content fragments."
+"Each search result will be saved as ``papers/<title>_<timestamp>.md``. This Markdown file is a "
+"stable local literature note that contains title, search terms, year, journal, DOI/URL, abstract,"
+" author, and related content fragments."
 
-#: ../../skills.rst:216
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:231
 msgid ""
-"``papers/literature_index.json`` 会同步更新。索引中的 ``file_path`` 指向本地 Markdown "
-"文献笔记，因此插件中的 ``@引用`` 可以复制为 ``@papers/<title>_<timestamp>.md``，供 Claude "
-"Code 或 Agent 读取。"
+"``papers/literature_index.json`` 会同步更新。索引中的 ``file_path`` 指向本地 Markdown 文献笔记，因此插件中的 "
+"``@引用`` 可以复制为 ``@papers/<title>_<timestamp>.md``，供 Claude Code 或 Agent 读取。"
 msgstr ""
-"``papers/literature_index.json`` will be updated simultaneously. "
-"``file_path`` in the index points to the local Markdown literature note, "
-"so the ``@cite`` button in the plug-in can be copied as "
-"``@papers/<title>_<timestamp>.md`` for Claude Code or Agent to read."
+"``papers/literature_index.json`` will be updated simultaneously. ``file_path`` in the"
+" index points to the local Markdown literature note, so the ``@cite`` button in the "
+"plug-in can be copied as ``@papers/<title>_<timestamp>.md`` for Claude Code or Agent "
+"to read."
 
-#: ../../skills.rst:219
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:234
 msgid "重复运行检索时会生成新的本地文献笔记，并追加到索引中，便于保留不同检索轮次的上下文。"
 msgstr ""
-"When a search is run repeatedly, new local literature notes are generated"
-" and appended to the index, allowing context to be retained across "
-"different search rounds."
+"When a search is run repeatedly, new local literature notes are generated and "
+"appended to the index, allowing context to be retained across different search "
+"rounds."
 
-#: ../../skills.rst:221
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:236
 msgid "**原文下载（由 Claude/Agent 按需执行）**:"
 msgstr "**Full-text download (on demand by Claude/Agent)**:"
 
-#: ../../skills.rst:223
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:238
 msgid ""
-"文献技能不会在 Python API 中硬编码下载策略。检索结果会尽量保留 "
+"``search_literature_and_save`` 默认会尝试下载开放获取的原文，可用 ``download_full_text=False`` "
+"关闭；下载失败不会把元数据笔记替换成错误文件。检索结果会尽量保留 "
 "``doi``、``url``、``pdf_url``、``full_text_url``、``download_url``、 "
-"``open_access``、``best_oa_location`` 等元信息；Claude Code 或 Agent "
-"可以基于这些线索按需下载开放获取原文。"
+"``open_access``、``best_oa_location`` 等元信息；Claude Code 或 Agent 可以基于这些线索按需下载开放获取原文。"
 msgstr ""
-"The literature skill does not hardcode download policies in the Python "
-"API. The search results will try to retain meta-information such as "
-"``doi``, ``url``, ``pdf_url``, ``full_text_url``, ``download_url``, "
-"``open_access``, ``best_oa_location``; Claude Code or Agent can download "
-"the open access original text on demand based on these clues."
+"``search_literature_and_save`` attempts open-access downloads by default; set "
+"``download_full_text=False`` to disable them. Failed downloads do not replace "
+"metadata notes with error files. Results retain metadata such as ``doi``, ``url``, "
+"``pdf_url``, ``full_text_url``, ``download_url``, ``open_access`` and "
+"``best_oa_location``; Claude Code or an agent can use these to obtain open-access "
+"full text as needed."
 
-#: ../../skills.rst:228
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:243
 msgid "建议的下载约定："
 msgstr "Recommended download conventions:"
 
-#: ../../skills.rst:230
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:245
 msgid "原文 PDF 放在 ``papers/full_texts/*.pdf``。"
 msgstr "The original PDF is located at ``papers/full_texts/*.pdf``."
 
-#: ../../skills.rst:231
-msgid ""
-"优先使用 API 返回的 PDF 直链；arXiv 论文可从 ``/abs/<id>`` 转为 "
-"``https://arxiv.org/pdf/<id>.pdf``。"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:246
+msgid "优先使用 API 返回的 PDF 直链；arXiv 论文可从 ``/abs/<id>`` 转为 ``https://arxiv.org/pdf/<id>.pdf``。"
 msgstr ""
-"Priority is given to PDF direct links returned by the API; arXiv papers "
-"can be converted from ``/abs/<id>`` to "
-"``https://arxiv.org/pdf/<id>.pdf``."
+"Priority is given to PDF direct links returned by the API; arXiv papers can be "
+"converted from ``/abs/<id>`` to ``https://arxiv.org/pdf/<id>.pdf``."
 
-#: ../../skills.rst:233
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:248
 msgid "DOI 仅作为落地页线索，不保证能直接得到 PDF；如果需要下载，应确认最终响应确实是 PDF。"
 msgstr ""
-"The DOI is only used as a landing page clue, and there is no guarantee "
-"that the PDF will be obtained directly; if you need to download it, you "
-"should confirm that the final response is indeed a PDF."
+"The DOI is only used as a landing page clue, and there is no guarantee that the PDF "
+"will be obtained directly; if you need to download it, you should confirm that the "
+"final response is indeed a PDF."
 
-#: ../../skills.rst:234
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:249
 msgid "下载完成后，可在对应索引条目的 ``extra_fields[\"full_text\"]`` 中记录:"
 msgstr ""
 "After the download is completed, it can be recorded in "
 "``extra_fields[\"full_text\"]`` of the corresponding index entry:"
 
-#: ../../skills.rst:244
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:246
 #, python-brace-format
 msgid ""
-"如果没有找到开放原文，也可以记录 ``{\"status\": \"no_candidate\"}`` 或 ``{\"status\": "
-"\"failed\", \"reason\": \"...\"}``，便于插件页面显示状态。"
+"{\n"
+"  \"status\": \"downloaded\",\n"
+"  \"file_path\": \"papers/full_texts/example.pdf\",\n"
+"  \"source_url\": \"https://arxiv.org/pdf/2401.01234.pdf\"\n"
+"}"
 msgstr ""
-"If the open original text is not found, you can also record "
-"``{\"status\": \"no_candidate\"}`` or ``{\"status\": \"failed\", "
-"\"reason\": \"...\"}`` to facilitate the plug-in page to display the "
-"status."
+"{\n"
+"  \"status\": \"downloaded\",\n"
+"  \"file_path\": \"papers/full_texts/example.pdf\",\n"
+"  \"source_url\": \"https://arxiv.org/pdf/2401.01234.pdf\"\n"
+"}"
 
-#: ../../skills.rst:249
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:259
+#, python-brace-format
 msgid ""
-"许多 CrossRef/OpenAlex 结果只提供 DOI 或落地页，不一定有开放 PDF。 Claude/Agent "
-"不应绕过出版商权限，也不应把 HTML 落地页当作 PDF 保存。"
+"如果没有找到开放原文，也可以记录 ``{\"status\": \"no_candidate\"}`` 或 ``{\"status\": \"failed\", "
+"\"reason\": \"...\"}``，便于插件页面显示状态。"
 msgstr ""
-"Many CrossRef/OpenAlex results only offer a DOI or landing page, not "
-"necessarily an open PDF. Claude/Agent should not bypass publisher "
-"permissions or save HTML landing pages as PDFs."
+"If the open original text is not found, you can also record ``{\"status\": "
+"\"no_candidate\"}`` or ``{\"status\": \"failed\", \"reason\": \"...\"}`` to "
+"facilitate the plug-in page to display the status."
 
-#: ../../skills.rst:252
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:264
 msgid ""
-"**数据源**: - ``local``: RAGFlow 本地知识库 - ``arxiv``: arXiv 预印本平台 - "
-"``crossref``: CrossRef DOI 元数据库 - ``openalex``: OpenAlex 学术图谱 (2.5亿+ 论文)"
+"许多 CrossRef/OpenAlex 结果只提供 DOI 或落地页，不一定有开放 PDF。 Claude/Agent 不应绕过出版商权限，也不应把 HTML "
+"落地页当作 PDF 保存。"
 msgstr ""
-"**Data sources**: - ``local``: RAGFlow local knowledge base - ``arxiv``: "
-"arXiv preprint platform - ``crossref``: CrossRef DOI metadata repository "
-"- ``openalex``: OpenAlex scholarly graph (250 million+ papers)"
+"Many CrossRef/OpenAlex results only offer a DOI or landing page, not necessarily an "
+"open PDF. Claude/Agent should not bypass publisher permissions or save HTML landing "
+"pages as PDFs."
 
-#: ../../skills.rst:258
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:267
 msgid ""
-"**配置**: 在 workspace ``.env`` 中配置 MCP（无需 Claude ``mcp.json``，除非要让 Claude "
-"独立连接同一网关）:"
+"**数据源**: - ``local``: RAGFlow 本地知识库 - ``arxiv``: arXiv 预印本平台 - ``crossref``: CrossRef"
+" DOI 元数据库 - ``openalex``: OpenAlex 学术图谱"
 msgstr ""
-"**Configuration**: configure MCP in workspace ``.env``. Claude "
-"``mcp.json`` is not needed unless Claude should independently connect to "
-"the same gateway:"
+"**Data sources**: - ``local``: RAGFlow knowledge base - ``arxiv``: arXiv preprints - "
+"``crossref``: CrossRef DOI metadata - ``openalex``: OpenAlex scholarly graph"
 
-#: ../../skills.rst:267
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:273
+msgid "**配置**: 在 workspace ``.env`` 中配置 MCP（无需 Claude ``mcp.json``，除非要让 Claude 独立连接同一网关）:"
+msgstr ""
+"**Configuration**: configure MCP in workspace ``.env``. Claude ``mcp.json`` is not "
+"needed unless Claude should independently connect to the same gateway:"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:282
 msgid "假设技能 (hypothesis)"
 msgstr "Hypothesis Skill"
 
-#: ../../skills.rst:283
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:284
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:290
+msgid "从文献证据到可检验假设"
+msgstr "From Literature Evidence to a Testable Hypothesis"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:292
+msgid "检索文献后整理依据，生成假设并写入 ``HYPOTHESIS.md``，再进入实验设计。"
+msgstr ""
+"Collect literature, organize the rationale and write the hypothesis to "
+"``HYPOTHESIS.md``, then proceed to experiment design."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:289
+msgid ""
+"from pathlib import Path\n"
+"from agentsociety2.skills.hypothesis import add_hypothesis, get_hypothesis, list_hypotheses\n"
+"\n"
+"# 添加假设\n"
+"add_hypothesis(\n"
+"    workspace_path=Path(\"./workspace\"),\n"
+"    hypothesis=\"网络密度越高，信息传播速度越快\"\n"
+")\n"
+"\n"
+"# 列出假设\n"
+"hypotheses = list_hypotheses(workspace_path=Path(\"./workspace\"))"
+msgstr ""
+"from pathlib import Path\n"
+"from agentsociety2.skills.hypothesis import add_hypothesis, get_hypothesis, list_hypotheses\n"
+"\n"
+"# Add a hypothesis\n"
+"add_hypothesis(\n"
+"    workspace_path=Path(\"./workspace\"),\n"
+"    hypothesis=\"Higher network density leads to faster information propagation\"\n"
+")\n"
+"\n"
+"# List hypotheses\n"
+"hypotheses = list_hypotheses(workspace_path=Path(\"./workspace\"))"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:309
 msgid "实验技能 (experiment)"
 msgstr "Experiment Skill"
 
-#: ../../skills.rst:304
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:311
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:317
+msgid "实验设计、配置与执行：工作区文件到运行产物"
+msgstr "Experiment Design, Configuration and Execution: Files to Run Artifacts"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:316
+msgid ""
+"from pathlib import Path\n"
+"from agentsociety2.skills.experiment import (\n"
+"    start_experiment, get_experiment_status,\n"
+"    get_available_env_modules, get_available_agent_modules\n"
+")\n"
+"\n"
+"# 获取可用模块\n"
+"env_modules = get_available_env_modules()\n"
+"agent_modules = get_available_agent_modules()\n"
+"\n"
+"# 启动实验\n"
+"await start_experiment(\n"
+"    workspace_path=Path(\"./workspace\"),\n"
+"    hypothesis_id=\"1\",\n"
+"    experiment_id=\"1\"\n"
+")"
+msgstr ""
+"from pathlib import Path\n"
+"from agentsociety2.skills.experiment import (\n"
+"    start_experiment, get_experiment_status,\n"
+"    get_available_env_modules, get_available_agent_modules\n"
+")\n"
+"\n"
+"# Discover available modules\n"
+"env_modules = get_available_env_modules()\n"
+"agent_modules = get_available_agent_modules()\n"
+"\n"
+"# Start an experiment\n"
+"await start_experiment(\n"
+"    workspace_path=Path(\"./workspace\"),\n"
+"    hypothesis_id=\"1\",\n"
+"    experiment_id=\"1\"\n"
+")"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:341
 msgid "分析技能 (analysis)"
 msgstr "Analysis Skill"
 
-#: ../../skills.rst:323
-msgid ""
-"跨实验对比不再使用独立综合 skill，而是作为 ``agentsociety-analysis`` 的 Stage 5 在 Claude "
-"Code 中完成。"
-msgstr ""
-"The cross-experiment comparison no longer uses independent comprehensive "
-"skills, but is completed in Claude Code as Stage 5 of ``agentsociety-"
-"analysis``."
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:343
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:349
+msgid "分析工作流：数据核验、发现、资源与报告"
+msgstr "Analysis Workflow: Data Checks, Findings, Assets and Reports"
 
-#: ../../skills.rst:327
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:351
+msgid ""
+"从 replay 读取数据并生成图表，报告写入 ``presentation/``，跨实验综合写入 ``synthesis/``；harness 状态保存在 "
+"``.agentsociety/analysis/``。"
+msgstr ""
+"Read replay data and create charts. Reports go to ``presentation/``, cross-experiment"
+" synthesis to ``synthesis/``, and harness state to ``.agentsociety/analysis/``."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:348
+msgid ""
+"from pathlib import Path\n"
+"\n"
+"from agentsociety2.storage import ReplayReader\n"
+"from agentsociety2.skills.analysis import ContextLoader\n"
+"\n"
+"workspace = Path(\"./workspace\")\n"
+"context = ContextLoader(workspace).load_context(\"1\", \"1\")\n"
+"reader = ReplayReader(workspace / \"hypothesis_1\" / \"experiment_1\" / \"run\" / \"replay\")\n"
+"datasets = reader.load_dataset_catalog()\n"
+"rows = reader.fetch_dataset_rows(\n"
+"    reader.get_dataset_by_id(\"core.agent_profile\"),\n"
+"    limit=5,\n"
+")\n"
+"reader.close()"
+msgstr ""
+"from pathlib import Path\n"
+"\n"
+"from agentsociety2.storage import ReplayReader\n"
+"from agentsociety2.skills.analysis import ContextLoader\n"
+"\n"
+"workspace = Path(\"./workspace\")\n"
+"context = ContextLoader(workspace).load_context(\"1\", \"1\")\n"
+"reader = ReplayReader(workspace / \"hypothesis_1\" / \"experiment_1\" / \"run\" / \"replay\")\n"
+"datasets = reader.load_dataset_catalog()\n"
+"rows = reader.fetch_dataset_rows(\n"
+"    reader.get_dataset_by_id(\"core.agent_profile\"),\n"
+"    limit=5,\n"
+")\n"
+"reader.close()"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:370
+msgid "跨实验对比不再使用独立综合 skill，而是作为 ``agentsociety-analysis`` 的 Stage 5 在 Claude Code 中完成。"
+msgstr ""
+"The cross-experiment comparison no longer uses independent comprehensive skills, but "
+"is completed in Claude Code as Stage 5 of ``agentsociety-analysis``."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:374
 msgid "论文写作"
-msgstr ""
+msgstr "Paper Writing"
 
-#: ../../skills.rst:329
-msgid ""
-"论文写作已从 ``agentsociety2.skills`` 包内移出，后续通过独立 ``paper-toolkit`` "
-"工作流承载。核心模拟、实验、分析链路仍由本页上方的 research skills 提供；需要论文交付时，在完成分析报告和图表审计后进入 "
-"外部论文工具链。"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:371
+msgid "完成分析报告、核对图表与证据后，可通过 ``paper-toolkit`` 继续论文写作。研究技能负责文献、假设、实验与分析，各阶段的产物可供写作流程继续使用。"
 msgstr ""
+"After completing the analysis report and checking figures and evidence, continue manuscript "
+"writing with ``paper-toolkit``. Research skills handle literature, hypotheses, experiments, and "
+"analysis; artifacts from each stage can be reused in the writing workflow."
 
-#: ../../skills.rst:335
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:382
 msgid "完整工作流示例"
 msgstr "Complete Workflow Example"
 
-#: ../../skills.rst:337
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:384
 msgid "下面是一个使用 Claude Code Skills 的典型研究工作流："
 msgstr "Here's a typical research workflow using Claude Code Skills:"
 
-#: ../../skills.rst:339
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:386
 msgid "**定义研究话题** - 编辑 ``TOPIC.md``"
 msgstr "**Define research topic** - Edit ``TOPIC.md``"
 
-#: ../../skills.rst:340
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:387
 msgid "**文献检索** - 使用 ``/agentsociety-literature-search``"
 msgstr "**Literature search** - Use ``/agentsociety-literature-search``"
 
-#: ../../skills.rst:341
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:388
 msgid "**创建假设** - 使用 ``/agentsociety-hypothesis add``"
 msgstr "**Create hypothesis** - Use ``/agentsociety-hypothesis add``"
 
-#: ../../skills.rst:342
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:389
 msgid "**配置实验** - 使用 ``/agentsociety-experiment-config validate/prepare/run``"
 msgstr ""
 "**Configure experiment** - Use ``/agentsociety-experiment-config "
 "validate/prepare/run``"
 
-#: ../../skills.rst:343
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:390
 msgid "**执行实验** - 使用 ``/agentsociety-run-experiment start``"
 msgstr "**Run experiment** - Use ``/agentsociety-run-experiment start``"
 
-#: ../../skills.rst:344
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:391
 msgid "**分析结果** - 使用 ``/agentsociety-analysis``"
 msgstr "**Analyze results** - Use ``/agentsociety-analysis``"
 
-#: ../../skills.rst:345
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:392
 msgid "**生成论文** - 使用独立 ``paper-toolkit`` 工作流"
-msgstr ""
+msgstr "**Generate paper** - Use the standalone ``paper-toolkit`` workflow"
 
-#: ../../skills.rst:348
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:395
 msgid "配置"
 msgstr "Configuration"
 
-#: ../../skills.rst:350
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:397
 msgid "研究技能使用相同的 LLM 配置。可以通过环境变量为特定技能配置不同的模型："
 msgstr ""
-"Research skills use the same LLM configuration. Different models can be "
-"configured for specific skills via environment variables:"
+"Research skills use the same LLM configuration. Different models can be configured "
+"for specific skills via environment variables:"
 
-#: ../../skills.rst:364
-msgid "Agent Skills"
-msgstr "Agent Skills"
-
-#: ../../skills.rst:366
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:393
 msgid ""
-"AgentSociety 2 还支持 Agent Skills。当前 ``PersonAgent`` 使用 metadata-first"
-"、selected-only 模型：LLM 先看到 skill 的 name / description，只有被选择的 skill "
-"才会被激活和读取。 唯一内置 skill 是 ``daily-guidance``；旧的 ``observation`` / "
-"``cognition`` / ``plan`` / ``memory`` 四技能已经移除。自定义 skill 放在 "
-"``custom/skills/``，脚本默认通过进程内 ``entrypoint(argv, ctx)`` 执行。"
+"# 默认 LLM\n"
+"export AGENTSOCIETY_LLM_MODEL=\"gpt-5.5\"\n"
+"\n"
+"# 代码生成（实验设计、分析）\n"
+"export AGENTSOCIETY_CODER_LLM_MODEL=\"gpt-5.5\""
 msgstr ""
-"AgentSociety 2 also supports Agent Skills. The current ``PersonAgent`` "
-"uses a metadata-first, selected-only model: the LLM first sees each skill"
-" name / description, and only selected skills are activated and read. The"
-" only built-in skill is ``daily-guidance``; the old ``observation`` / "
-"``cognition`` / ``plan`` / ``memory`` skills have been removed. Custom "
-"skills live under ``custom/skills/``, and scripts execute by default "
-"through the in-process ``entrypoint(argv, ctx)``."
+"# Default LLM\n"
+"export AGENTSOCIETY_LLM_MODEL=\"gpt-5.5\"\n"
+"\n"
+"# Code generation for experiment design and analysis\n"
+"export AGENTSOCIETY_CODER_LLM_MODEL=\"gpt-5.5\""
 
-#: ../../skills.rst:372
-msgid "**daily-guidance** - 日常行为、需求衰减与短时程行动指导"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:4
+msgid "研究技能帮助工作台中的研究助手推进文献检索、假设管理、实验设计、执行和分析。它们通过工作区文件衔接各阶段，便于研究者检查依据、修改配置并复用结果。"
 msgstr ""
-"**daily-guidance** - daily behavior, needs decay, and short-horizon "
-"action guidance"
+"Research skills help the workbench assistant search literature, manage hypotheses, design "
+"experiments, execute runs and analyze results. They connect stages through workspace files so "
+"researchers can inspect evidence, revise configuration and reuse results."
 
-#: ../../skills.rst:373
-msgid "**custom skills** - 工作区级自定义能力，按需激活并可访问 agent workspace"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:6
+msgid ""
+"研究助手技能由扩展同步到工作区，供 Claude Code / Codex 使用；仿真参与者的行为技能则由 :doc:`/agent_skills` 中的运行时管理。首次研究的完整路径见 "
+":doc:`/research_workflow`，输入数据准备见 :doc:`/datasets`。"
 msgstr ""
-"**custom skills** - workspace-level custom capabilities, activated on "
-"demand and able to access the agent workspace"
+"The extension synchronizes research assistant skills into the workspace for Claude Code / Codex. "
+"Simulation participant behavior skills are managed by the runtime described in "
+":doc:`/agent_skills`. For the complete research path, see :doc:`/research_workflow`; for input "
+"data, see :doc:`/datasets`."
 
-#: ../../skills.rst:375
-msgid "详见 :doc:`agent_skills`。"
-msgstr "See :doc:`agent_skills` for details."
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:11
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills/workspace.rst:2
+msgid "安装与使用研究助手技能"
+msgstr "Installing and using research assistant skills"
 
-#: ../../skills.rst:378
-msgid "参考"
-msgstr "References"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:15
+msgid "同步研究助手技能，初始化工作区，并按需生成自定义模块。"
+msgstr ""
+"Synchronize research assistant skills, initialize the workspace and generate custom modules when "
+"needed."
 
-#: ../../skills.rst:380
-msgid ":doc:`cli` - 使用 CLI 运行实验"
-msgstr ":doc:`cli` - Run an experiment using the CLI"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:17
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills/literature.rst:2
+msgid "文献检索与假设"
+msgstr "Literature search and hypotheses"
 
-#: ../../skills.rst:381
-msgid ":doc:`agent_skills` - Agent Skills 详解"
-msgstr ":doc:`agent_skills` - Detailed explanation of Agent Skills"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:21
+msgid "配置检索服务，保存文献依据，并组织可检验的假设。"
+msgstr "Configure search services, save supporting literature and organize testable hypotheses."
 
-#: ../../skills.rst:382
-msgid ":doc:`custom_modules` - 创建自定义模块"
-msgstr ":doc:`custom_modules` - Create custom modules"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:23
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills/experiments-analysis.rst:2
+msgid "实验执行与分析"
+msgstr "Experiment execution and analysis"
 
-#: ../../skills.rst:383
-msgid ":doc:`development` - 开发指南"
-msgstr ":doc:`development` - Development Guide"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills.rst:27
+msgid "准备配置、执行与监控实验，读取结果并生成分析报告。"
+msgstr ""
+"Prepare configuration, execute and monitor experiments, read results and generate analysis "
+"reports."
 
-#~ msgid "**论文撰写**: 通过 paper-orchestrator skill 套件（重写中）生成 Nature 风格学术论文 PDF"
-#~ msgstr ""
-#~ "**Paper writing**: Generate Nature-style "
-#~ "academic paper PDF through the paper-"
-#~ "orchestrator skill suite (under rewriting)"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills/experiments-analysis.rst:83
+msgid "左侧是研究设计，中间是可执行配置，右侧是运行产物。新实验的时序数据写入 JSONL replay，恢复状态写入 checkpoint；二者用途不同，具体布局见 :doc:`/storage`。"
+msgstr ""
+"The left column is research design, the middle is executable configuration, and the right is run "
+"output. New experiments write time-series data to JSONL replay and recovery state to checkpoints;"
+" see :doc:`/storage` for layouts."
 
-#~ msgid "**agentsociety-paper-orchestrator** - Nature/Science 级论文生成（6-skill 状态机）"
-#~ msgstr ""
-#~ "**agentsociety-paper-orchestrator** - "
-#~ "Nature/Science level paper generation (6-skill"
-#~ " state machine)"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills/workspace.rst:10
+msgid "**扩展仿真参与者的行为**：在 **运行时** 标签页管理 Agent 技能，原理与编写方法见 :doc:`/agent_skills`、:doc:`/skill_guide`。"
+msgstr ""
+"**Extend simulation participants’ behavior**: Manage Agent skills in the **Runtime** tab. See "
+":doc:`/agent_skills` and :doc:`/skill_guide` for concepts and authoring."
 
-#~ msgid "论文技能 (paper)"
-#~ msgstr "Paper Skill"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills/workspace.rst:28
+msgid "**agentsociety-scan-modules** - 查找可用模块、查看参数并校验自定义模块是否可加载"
+msgstr ""
+"**agentsociety-scan-modules** - Find available modules, inspect parameters and validate that "
+"custom modules can be loaded"
 
-#~ msgid ""
-#~ "论文生成由 6 个 plugin skill 组成的状态机驱动，通过 "
-#~ "``paper-orchestrator`` 作为唯一入口点调度。Python 包 "
-#~ "``agentsociety2.skills.paper`` 提供非 LLM 逻辑（状态管理、适配器、"
-#~ " LaTeX 编译）。"
-#~ msgstr ""
-#~ "Paper generation is driven by a "
-#~ "state machine composed of 6 plugin "
-#~ "skills, scheduled through ``paper-"
-#~ "orchestrator`` as the sole entry point."
-#~ " The Python package "
-#~ "``agentsociety2.skills.paper`` provides non-LLM "
-#~ "logic (state management, adapters, LaTeX "
-#~ "compilation)."
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills/workspace.rst:29
+msgid "**agentsociety-paper-review** - 对已有稿件进行内部模拟评审，给出证据与研究阶段回访建议"
+msgstr ""
+"**agentsociety-paper-review** - Perform an internal mock review of an existing manuscript with "
+"evidence and suggested research-stage follow-ups"
 
-#~ msgid "**Skill 套件：**"
-#~ msgstr "**Skill suite:**"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills/workspace.rst:70
+msgid "需要现有工具决策循环、技能运行时与持久化记忆。"
+msgstr "Needs the existing tool-decision loop, skill runtime and persistent memory."
 
-#~ msgid ""
-#~ "``agentsociety-paper-orchestrator`` — 状态机内核，读取"
-#~ " ``paper_state.yaml``，调度 Task subagent，持久化产出"
-#~ msgstr ""
-#~ "``agentsociety-paper-orchestrator`` — State"
-#~ " machine kernel, read ``paper_state.yaml``, "
-#~ "schedule Task subagent, persist output"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills/workspace.rst:82
+msgid ""
+"校验器会检查：目标文件为 Python 文件、至少有一个直接继承 ``AgentBase`` 或 ``PersonAgent`` 的类、``ask`` / ``step`` / "
+"``to_workspace`` 均为 ``async def``（同时保持继承的 ``create`` / ``from_workspace`` 工作区契约可用）、模块可动态导入、目标类不是 "
+"abstract class。创建完成后，在 VS Code 扩展中执行 **Scan Custom Modules** 让后端重新发现模块。"
+msgstr ""
+"The validator checks that the target is a Python file containing at least one direct "
+"``AgentBase`` or ``PersonAgent`` subclass, that ``ask`` / ``step`` / ``to_workspace`` are ``async"
+" def`` methods, that the inherited ``create`` / ``from_workspace`` workspace contract remains "
+"usable, that the module imports dynamically, and that the class is concrete. Then run **Scan "
+"Custom Modules** in the VS Code extension to rediscover the module."
 
-#~ msgid "``agentsociety-paper-adapter`` — workspace → ResearchPack 标准化"
-#~ msgstr ""
-#~ "``agentsociety-paper-adapter`` — workspace "
-#~ "→ ResearchPack Standardization"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills/workspace.rst:85
+msgid "按任务选择辅助技能"
+msgstr "Choosing supporting skills by task"
 
-#~ msgid "``agentsociety-paper-framing`` — storyline_map 生成（问题、角度、贡献类型）"
-#~ msgstr ""
-#~ "``agentsociety-paper-framing`` — storyline_map"
-#~ " generation (issue, angle, contribution "
-#~ "type)"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills/workspace.rst:87
+msgid ""
+"不知道可用的类名或参数时，先用 ``agentsociety-scan-modules``；已有合适模块时直接配置实验。只有模块能力不足，才进入 ``agentsociety-create-"
+"agent`` 或 ``agentsociety-create-env-module``，生成后再扫描与验证。"
+msgstr ""
+"Use ``agentsociety-scan-modules`` first when class names or parameters are unknown. If a suitable"
+" module exists, configure the experiment directly. Use ``agentsociety-create-agent`` or "
+"``agentsociety-create-env-module`` only when more capability is needed, then scan and validate "
+"the generated module."
 
-#~ msgid "``agentsociety-paper-evidence-expansion`` — 证据缺口审计与补全"
-#~ msgstr ""
-#~ "``agentsociety-paper-evidence-expansion`` —"
-#~ " Audit and completion of evidence "
-#~ "gaps"
-
-#~ msgid ""
-#~ "``agentsociety-paper-architecture`` — claim"
-#~ " tree + figure-argument map + "
-#~ "章节大纲 + manuscript 草稿"
-#~ msgstr ""
-#~ "``agentsociety-paper-architecture`` — claim"
-#~ " tree + figure-argument map + "
-#~ "chapter outline + manuscript draft"
-
-#~ msgid ""
-#~ "``agentsociety-paper-skeptical-review`` — "
-#~ "3 审稿人评审轮次（significance-calibrator / "
-#~ "precision-editor / evidence-skeptic）"
-#~ msgstr ""
-#~ "``agentsociety-paper-skeptical-review`` — "
-#~ "3 reviewer review rounds (significance-"
-#~ "calibrator / precision-editor / "
-#~ "evidence-skeptic)"
-
-#~ msgid "**状态机阶段：**"
-#~ msgstr "**State machine stages:**"
-
-#~ msgid ""
-#~ "``intake → framing → evidence-audit "
-#~ "→ expansion-plan → manuscript-build "
-#~ "→ skeptical-review → revision-router "
-#~ "→ release-gate``"
-#~ msgstr ""
-#~ "``intake → framing → evidence-audit "
-#~ "→ expansion-plan → manuscript-build "
-#~ "→ skeptical-review → revision-router "
-#~ "→ release-gate``"
-
-#~ msgid "**持久化布局：**"
-#~ msgstr "**Persistence layout:**"
-
-#~ msgid "所有论文状态持久化在 ``<workspace>/paper/`` 下："
-#~ msgstr "The status of all papers is persisted under ``<workspace>/paper/``:"
-
-#~ msgid "``paper_meta.yaml`` — 标题、作者、机构"
-#~ msgstr "``paper_meta.yaml`` — Title, Author, Institution"
-
-#~ msgid ""
-#~ "``state/`` — "
-#~ "``paper_state.yaml``、``research_pack.json``、``human_gates.yaml``"
-#~ msgstr ""
-#~ "``state/`` — "
-#~ "``paper_state.yaml``、``research_pack.json``、``human_gates.yaml``"
-
-#~ msgid ""
-#~ "``artifacts/`` — "
-#~ "``storyline_map.json``、``claim_ledger.json``、 "
-#~ "``evidence_backlog.json``、``figure_argument_map.json``、 "
-#~ "``manuscript/``（``abstract.md``、``main.md``、``results/``、``discussion.md``）"
-#~ msgstr ""
-#~ "``artifacts/`` — "
-#~ "``storyline_map.json``、``claim_ledger.json``、 "
-#~ "``evidence_backlog.json``、``figure_argument_map.json``、 "
-#~ "``manuscript/``（``abstract.md``、``main.md``、``results/``、``discussion.md``）"
-
-#~ msgid "``reviews/`` — ``review_round_NNN.yaml``"
-#~ msgstr "``reviews/`` — ``review_round_NNN.yaml``"
-
-#~ msgid "``runs/<TS>/compose/out/paper.pdf`` — 最终交付物"
-#~ msgstr "``runs/<TS>/compose/out/paper.pdf`` — Final deliverable"
-
-#~ msgid "**CLI 入口：**"
-#~ msgstr "**CLI entry point:**"
-
-#~ msgid ""
-#~ "``$PYTHON_PATH .agentsociety/bin/ags.py paper-"
-#~ "orchestrator <subcommand>``"
-#~ msgstr ""
-#~ "``$PYTHON_PATH .agentsociety/bin/ags.py paper-"
-#~ "orchestrator <subcommand>``"
-
-#~ msgid ""
-#~ "子命令：init-meta, intake, build-pack, "
-#~ "framing, evidence, architecture, review, "
-#~ "compile, run-loop, status。别名 ``paper"
-#~ "``、``generate-paper``、 ``generate_paper`` "
-#~ "均路由至此。执行前提同上：需要位于已初始化工作区内， 且 ``.agentsociety/bin/ags.py``"
-#~ " 已可用。"
-#~ msgstr ""
-#~ "Subcommands: init-meta, intake, build-"
-#~ "pack, framing, evidence, architecture, review,"
-#~ " compile, run-loop, status. The "
-#~ "aliases ``paper``, ``generate-paper``, and "
-#~ "``generate_paper`` all route here. The "
-#~ "same prerequisites apply: the command "
-#~ "must run inside an initialized "
-#~ "workspace, and ``.agentsociety/bin/ags.py`` must "
-#~ "already be available."
-
-#~ msgid "**生成论文** - 使用 ``/agentsociety-paper-orchestrator``（别名 ``/paper``）"
-#~ msgstr ""
-#~ "**Generate paper** - Use ``/agentsociety-"
-#~ "paper-orchestrator`` (alias ``/paper``)"
-
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skills/workspace.rst:89
+msgid ""
+"已有稿件时，可用 ``agentsociety-paper-review`` "
+"检查论点、证据与呈现方式，输出内部模拟评审和建议。它不会自动改稿、重跑实验或更新研究进度；研究者确认后，再由相应研究技能处理需要回访的阶段。写作与排版继续通过独立的 ``paper-"
+"toolkit`` 完成。"
+msgstr ""
+"For an existing manuscript, ``agentsociety-paper-review`` checks arguments, evidence and "
+"presentation, producing an internal mock review and recommendations. It does not revise the "
+"manuscript, rerun experiments or update research progress automatically. After researcher "
+"approval, the relevant research skill handles any earlier stage that needs revisiting. Writing "
+"and typesetting continue through the separate ``paper-toolkit``."

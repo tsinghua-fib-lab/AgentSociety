@@ -1,7 +1,9 @@
 存储模块
 ========
 
-本模块提供实验数据的存储与回放功能。
+先用 ``ReplayReader`` 查看 dataset catalog，再按 dataset 查询数据。目录布局与 JSONL 示例见 :doc:`/storage`；下方历史 SQLModel 只用于兼容读取旧数据库。
+
+.. py:module:: agentsociety2.storage
 
 ReplayWriter
 ------------
@@ -61,6 +63,8 @@ ReplayProxy
    :undoc-members:
 
 .. autofunction:: agentsociety2.storage.build_replay_sink
+
+.. autofunction:: agentsociety2.storage.workspace_state.atomic_write_text
 
 兼容数据模型
 -------------

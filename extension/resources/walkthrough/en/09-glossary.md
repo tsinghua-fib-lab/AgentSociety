@@ -14,7 +14,7 @@ Quick index: [A](#a) · [B-C](#b-c) · [D-E](#d-e) · [F-I](#f-i) · [L-M](#l-m)
 | **AGENTS.md** | Project instructions for general coding assistants, including structure, commands, and collaboration conventions. |
 | **AI Chat** | The extension's chat entry point for asking research questions, generating configs, checking results, or operating on the project. |
 | **AI CLI Gateway** | A built-in local proxy gateway that routes Claude Code and Codex CLI requests through third-party providers. |
-| **AI Social Scientist** | The VS Code extension and research workbench for project management, configuration, skills, replay, and help pages. |
+| **AI Social Scientist** | The VS Code extension and research workbench for project management, configuration, skills, replay, and help pages; also the agentic research role that coordinates literature, hypotheses, experiment design, simulation, analysis, and manuscript drafting (earlier material may call the role a Silicon Scientist). |
 | **API Base** | The service endpoint for model calls, such as `https://api.openai.com/v1`. |
 | **API Key** | The secret key used to call a model provider. Keep it local and do not commit it to a public repository. |
 
@@ -28,22 +28,18 @@ Quick index: [A](#a) · [B-C](#b-c) · [D-E](#d-e) · [F-I](#f-i) · [L-M](#l-m)
 | **CLAUDE.md** | Project instructions for Claude Code, used to explain how the coding assistant should understand and work with this project. |
 | **Codex CLI** | OpenAI's command-line coding assistant. Can be routed through the local gateway to third-party providers. |
 | **Command Palette** | VS Code's quick command launcher, opened with `Ctrl+Shift+P` or `Cmd+Shift+P`. |
-| **Computational paradigm** | Instantiating mechanisms with agents, environments, and rules, then testing them through simulation. |
-| **Context Preset** | Agent context window preset, either `standard-200k` or `long-1m`, controlling the available context length. |
 | **Custom Module** | User-provided extension code for adding environment mechanisms, tools, or experiment logic. |
 
 ### D-E
 
 | Term | Meaning |
 |------|---------|
-| **Data-intensive paradigm** | Understanding large-scale data through retrieval, processing, statistics, visualization, and pattern discovery. |
 | **Embedding Model** | A model that converts text into vectors, often used for semantic search and literature retrieval. |
-| **Empirical paradigm** | Obtaining evidence through observations, surveys, experiments, or behavioral data. |
 | **Environment** | The simulated setting in which agents act, such as space, resources, economic rules, social relations, or custom mechanisms. |
 | **Evidence Graph** | A visualization of evidence relationships in analysis results, viewable by right-clicking in the project tree. |
 | **`.env`** | A local workspace configuration file commonly used for API endpoints, keys, model names, and runtime settings. |
 | **Experiment Config** | The configuration files that define how an experiment is initialized, executed, and saved. |
-| **External Question** | An external survey or interview handled by `answer_external_question`. PersonAgent truncates context before responding. |
+| **External Question** | An external survey or interview dispatched by the questionnaire runner; PersonAgent answers it in ask mode and returns the complete answer through a restricted `finish` tool. |
 
 ### F-I
 
@@ -76,13 +72,11 @@ Quick index: [A](#a) · [B-C](#b-c) · [D-E](#d-e) · [F-I](#f-i) · [L-M](#l-m)
 
 | Term | Meaning |
 |------|---------|
-| **AI Social Scientist** | The agentic research role that coordinates literature, hypotheses, experiment design, simulation, analysis, and manuscript drafting; earlier material may call it a Silicon Scientist. |
+| **Share package** | An archive created with Export Workspace so you can send a research project to someone else. Secrets, `.env`, venvs, Git history, and local IDE state are omitted; the recipient opens it with Import Workspace. |
 | **Silicon Participant** | A simulated participant that generates behavioral responses, receives interventions, and is measured in a configurable social environment; also called a Silicon Subject. |
 | **Skill** | An installable capability module that tells an agent or coding assistant when to use a capability, what files to read, and what outputs to produce. |
-| **Skill Marketplace** | The extension page for browsing, installing, enabling, archiving, or deleting skills. |
-| **Share package** | An archive created with Export Workspace so you can send a research project to someone else. Secrets, `.env`, venvs, Git history, and local IDE state are omitted; the recipient opens it with Import Workspace. |
+| **Skill management** | Runtime, Claude, Market and MCP tabs. Runtime skills are activated as needed; Claude synchronization and loading controls belong to the corresponding client. |
 | **Steps Config** | A configuration file that describes what an experiment should do, such as ask, intervene, run simulation steps, and save artifacts. |
-| **Theoretical paradigm** | Developing concepts, hypotheses, mechanisms, and explanatory frames. |
 | **Token** | The unit of text processed by a model, often used for pricing and context limits. |
 
 ### V-W

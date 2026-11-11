@@ -78,9 +78,7 @@ _SHORT_CLOCK_RE = re.compile(r"^(?P<hour>[01]?\d|2[0-3]):(?P<minute>[0-5]\d)$")
 def _brief_memories_summary(memories: Any) -> str:
     """由内联 finish memories 推导一行 step 结果。
 
-    step 模式的 ``finish`` 只携带 ``memories``(无 ``final`` 文本);本函数
-    从首个记录的 episode 生成简短摘要,使 step 结果/trace 保持可读。无可
-    摘要内容时返回 ``""``。
+    step 模式的 ``finish`` 只携带 ``memories``(无 ``final`` 文本);本函数从首个记录的 episode 生成简短摘要,使 step 结果/trace 保持可读。无可摘要内容时返回 ``""`` 。
 
     :param memories: finish 工具调用的 ``memories`` 列表(或 None)。
     :returns: 简短摘要字符串(无可用 memory 文本时为空)。
@@ -140,8 +138,7 @@ def _decisions_assistant_message(
     """由实际将要执行的 decisions 构建 assistant 轮次。
 
     必须重建而非回显原始响应:当响应包含 ``finish`` 调用时,
-    ``_build_react_decisions`` 会丢弃其余调用,回显出的 id 无人应答会让
-    下一个请求失效。
+    ``_build_react_decisions`` 会丢弃其余调用,回显出的 id 无人应答会让下一个请求失效。
     """
     return {
         "role": "assistant",
@@ -169,9 +166,7 @@ def _react_tool_replies(
     - **native**(每个 decision 都携带 ``call_id``)——每个调用一条
       ``role: "tool"`` 消息,以 id 为键。失败的调用带 ``ERROR: `` 前缀:
       native 编码没有 ``ok`` 字段,文本是模型得知调用失败的唯一途径。
-    - **text-parsed**(无 id)——单条 user 消息,携带与旧的重渲染布局下
-      模型所见相同的 ``<recent_observations>`` JSON 块,文本回退模型因此
-      不损失信息。
+    - **text-parsed**(无 id)——单条 user 消息,携带与旧的重渲染布局下模型所见相同的 ``<recent_observations>`` JSON 块,文本回退模型因此不损失信息。
     """
     if decisions and all(decision.call_id for decision in decisions):
         return [
@@ -302,8 +297,7 @@ _CONFIG_SCHEMA: dict[str, tuple] = {
 class AgentBase(ABC):
     """所有 agent 的抽象基类。
 
-    直接持有通用 agent 运行时(workspace 绑定、skill runtime、ReAct 工具
-    分发),外加 identity、service 槽位与抽象契约。构造经由
+    直接持有通用 agent 运行时(workspace 绑定、skill runtime、ReAct 工具分发),外加 identity、service 槽位与抽象契约。构造经由
     ``create`` / ``from_workspace``;``__init__`` 无参。
 
     子类必须实现(强制抽象方法):
@@ -319,7 +313,7 @@ class AgentBase(ABC):
         """初始化一个未绑定的 agent(无参)。
 
         只设置空槽位;不解析 profile,也不要求 id。真正的初始化发生在
-        :meth:`restore`(由 :meth:`from_workspace` 调用)中。
+        :meth:`restore` 中（由 :meth:`from_workspace` 调用）。
         """
         # Identity slots — populated by restore.
         self._id: int | None = None
@@ -389,7 +383,7 @@ class AgentBase(ABC):
         """注入运行时共享服务(由 ``from_workspace`` 调用)。
 
         将 ``service_proxy`` 及其 env 与 default-LLM dispatcher 绑定到
-        ``self._env`` / ``self._dispatcher`` / ``self._model_name``。
+        ``self._env`` / ``self._dispatcher`` / ``self._model_name`` 。
 
         :param service_proxy: 共享服务容器(env / llm / trace / replay)。
         """
@@ -407,8 +401,7 @@ class AgentBase(ABC):
     def create(cls, workspace_path: Path, profile: dict, config: dict) -> None:
         """创建初始 agent workspace(静态、一次写定的 config)。
 
-        写入 ``config.json``(静态、永不重写)+ 初始 ``AGENT.json`` + 标准
-        空目录。不返回 agent 实例;重建请使用 :meth:`from_workspace`。
+        写入 ``config.json``(静态、永不重写)+ 初始 ``AGENT.json`` + 标准空目录。不返回 agent 实例;重建请使用 :meth:`from_workspace` 。
 
         :param workspace_path: agent workspace 根目录(缺失时创建)。
         :param profile: agent profile dict(必须含 ``id``)。
@@ -461,8 +454,7 @@ class AgentBase(ABC):
     ) -> AgentBase:
         """由 workspace 重建一个就绪的 agent。
 
-        ``agent = cls()``(无参);``await agent.restore(ws, proxy)``;返回
-        该 agent。
+        ``agent = cls()``(无参);``await agent.restore(ws, proxy)``;返回该 agent。
 
         :param workspace_path: agent workspace 根目录。
         :param service_proxy: 共享服务容器(env / llm / trace / replay)。
@@ -646,8 +638,8 @@ class AgentBase(ABC):
         :param readonly: 是否为只读请求。
         :param template_mode: 是否启用 template 模式。
         :param trace_id: 用于跨 agent/env 关联的 OTel trace ID。
-        :param parent_span_id: OTel parent span ID。
-        :returns: 元组 ``(ctx, answer)``。
+        :param parent_span_id: 父追踪片段的 ID。
+        :returns: 元组 ``(ctx, answer)`` 。
         """
         assert self._env is not None, "Environment is not initialized"
         # Framework-provided identity keys, independent of any skill.
@@ -668,7 +660,7 @@ class AgentBase(ABC):
         """扫描 ``text`` 中的首个 JSON 数组并返回。
 
         :param text: 可能内嵌 JSON 数组的自由文本。
-        :returns: 首个解码出的 list;未找到时为 ``[]``。
+        :returns: 首个解码出的 list;未找到时为 ``[]`` 。
         """
         decoder = json.JSONDecoder()
         for idx, ch in enumerate(text):
@@ -690,8 +682,7 @@ class AgentBase(ABC):
     ) -> list[Any]:
         """从 ``ask_env`` 返回值中抽取 list 载荷。
 
-        优先取直接的 list,其次 ``env_result[key]``,最后取 ``answer`` 中
-        内嵌的首个 JSON 数组。
+        优先取直接的 list,其次 ``env_result[key]``,最后取 ``answer`` 中内嵌的首个 JSON 数组。
 
         :param env_result: ``ask_env`` 的第一个元素(通常是 ``results``)。
         :param answer: ``ask_env`` 的第二个元素(打印的摘要文本)。
@@ -744,10 +735,7 @@ class AgentBase(ABC):
         供需要一次性 LLM 调用的子类使用的便捷入口(完整的多轮工具循环见
         :meth:`run_react_loop`)。使用 agent 绑定的 dispatcher + model。
 
-        截断兜底:思考型模型的推理偶尔远超网关默认输出上限——思考链耗尽
-        全部预算,``finish_reason`` 返回 ``"length"`` 且 ``content`` 为空。
-        恰好命中该签名时,以宽裕的显式 ``max_tokens`` 重试一次(保留
-        思考——故障在上限而非推理本身);其余空内容形态留给调用方处理。
+        截断兜底:思考型模型的推理偶尔远超网关默认输出上限——思考链耗尽全部预算,``finish_reason`` 返回 ``"length"`` 且 ``content`` 为空。恰好命中该签名时,以宽裕的显式 ``max_tokens`` 重试一次(保留思考——故障在上限而非推理本身);其余空内容形态留给调用方处理。
 
         :param messages: 聊天消息列表。
         :param stream: 流式开关(恒为 False;本地调度器不支持流式)。
@@ -802,10 +790,8 @@ class AgentBase(ABC):
     ) -> str:
         """Return nonempty completion text with bounded empty-response retries.
 
-        中文:返回非空补全文文本,空响应按 ``empty_attempts`` 有界重试。
-        与 :meth:`acompletion` 的截断兜底叠加:``finish_reason=length``
-        的空内容在 ``acompletion`` 层已加大 ``max_tokens`` 重试,其余
-        空形态在本层重试,连续 ``empty_attempts`` 次为空则抛
+        中文:返回非空补全文文本,空响应按 ``empty_attempts`` 有界重试。与 :meth:`acompletion` 的截断兜底叠加:``finish_reason=length``
+        的空内容在 ``acompletion`` 层已加大 ``max_tokens`` 重试,其余空形态在本层重试,连续 ``empty_attempts`` 次为空则抛
         ``RuntimeError`` 交调用方处置。
 
         :param messages: 聊天消息列表。
@@ -841,7 +827,7 @@ class AgentBase(ABC):
     def get_profile(self) -> dict[str, Any]:
         """以 dict 形式返回 agent profile。
 
-        :returns: profile dict(原始 dict、model_dump 或 ``{"raw": str}``)。
+        :returns: profile dict(原始 dict、``model_dump`` 或 ``{"raw": str}``)。
         """
         if isinstance(self._profile, dict):
             return self._profile
@@ -919,8 +905,7 @@ The constructor ``__init__`` is arg-less.
 
         trace 写入经由本地的 :class:`ShardedAppendSink`
         (``service_proxy.trace`` 只携带输出目录)——没有 per-workspace 的
-        event 文件,没有中央 trace actor。未绑定 proxy trace 时,span 仍会
-        创建(span API 可用)但不记录(no-op)。
+        event 文件,没有中央 trace actor。未绑定 proxy trace 时,span 仍会创建(span API 可用)但不记录(no-op)。
 
         :param workspace_path: 已存在的 agent workspace 根目录。
         """
@@ -944,9 +929,7 @@ The constructor ``__init__`` is arg-less.
     def _maybe_proxy_sharded_writer(self):
         """当绑定的 proxy 启用了 trace 时,返回一个本地 sharded sink。
 
-        查看 ``self._service_proxy.trace``;若其携带 ``trace_dir``,则构建
-        本 agent 自己的 :class:`ShardedAppendSink`(分布式、append-only、
-        无中央 actor)。否则返回 ``None``(no-op)。
+        查看 ``self._service_proxy.trace``;若其携带 ``trace_dir``,则构建本 agent 自己的 :class:`ShardedAppendSink`(分布式、append-only、无中央 actor)。否则返回 ``None``(no-op)。
         """
         proxy = getattr(self, "_service_proxy", None)
         if proxy is None:
@@ -1075,8 +1058,7 @@ The constructor ``__init__`` is arg-less.
     ) -> dict[str, Any]:
         """把 AGENT.json 投影为其运行稳定、prompt 安全的子集。
 
-        :meth:`build_agent_json` 是持久化的 AGENT.json 载荷——由 resume 路径
-        读回,且被文档化为子类扩展点,因此保持原样。本投影剔除不应进入
+        :meth:`build_agent_json` 是持久化的 AGENT.json 载荷——由 resume 路径读回,且被文档化为子类扩展点,因此保持原样。本投影剔除不应进入
         prompt 的部分:
 
         - ``initialized_at`` —— 挂钟时间,逐 agent、逐运行地不同。
@@ -1208,16 +1190,14 @@ The constructor ``__init__`` is arg-less.
         """发现 custom 与环境提供的技能来源。
 
         先扫描默认的 ``<root>/custom/skills`` 位置(``env.run_dir`` 与本
-        agent 的 workspace 根目录),再扫描由两个来源合并出的额外技能
-        目录:
+        agent 的 workspace 根目录),再扫描由两个来源合并出的额外技能目录:
 
         - 声明式:``config.json`` 中的 ``extra_skill_paths`` (在
           :meth:`restore` 中解析);
         - 程序式:此处的 ``extra_skill_paths`` 参数。
 
         每个额外条目都是一个包含技能子目录的目录(与 ``custom/skills``
-        布局相同)。相对条目以 workspace 根目录解析。两者都未给出时默认
-        扫描不变,agent 可经任一入口加载存放在任意位置的 custom skills。
+        布局相同)。相对条目以 workspace 根目录解析。两者都未给出时默认扫描不变,agent 可经任一入口加载存放在任意位置的 custom skills。
 
         :param env: 用于定位 run 目录与模块的环境 router。
         :param extra_skill_paths: 现在即要扫描的额外技能目录(每个都是
@@ -1316,7 +1296,7 @@ The constructor ``__init__`` is arg-less.
         return discovered
 
     def _resolve_skill_id_from_args(self, args: Mapping[str, Any]) -> str:
-        """把以 skill_name 优先的工具参数解析为 registry skill id。
+        """把以 ``skill_name`` 优先的工具参数解析为 技能注册表中的技能 ID。
 
         :param args: 含 ``skill_name`` 的工具参数 mapping。
         :returns: 匹配到的 visible skill ID;否则为空字符串。
@@ -1341,7 +1321,7 @@ The constructor ``__init__`` is arg-less.
     ) -> list[dict[str, Any]]:
         """为当前已激活的技能运行生命周期 hook。
 
-        :param hook_type: 生命周期 hook 名,如 ``pre_step`` 或 ``post_step``。
+        :param hook_type: 生命周期 hook 名,如 ``pre_step`` 或 ``post_step`` 。
         :param tick: 当前仿真 tick。
         :param t: 当前仿真时间。
         :returns: hook 执行摘要。
@@ -1420,7 +1400,7 @@ The constructor ``__init__`` is arg-less.
         """受校验的配置自改工具(2.5 正式化通道)。
 
         流程:白名单校验 → 写前快照备份 → 应用变更 → 变更日志
-        (config_changes.jsonl 追加旧值/新值/step/时间)→ 提示下次
+        (``config_changes.jsonl`` 追加旧值/新值/step/时间)→ 提示下次
         restore 生效。坏 JSON、未知键或非法值被逐键拒绝,原配置不动。
 
         :param changes_json: 待应用的 ``{键: 值}`` JSON 字符串。
@@ -1609,8 +1589,8 @@ The constructor ``__init__`` is arg-less.
     ) -> ReactToolResult:
         """分发一个 ReAct 工具调用。
 
-        处理 workspace 文件工具、skill 工具与 ask_env。person 专属工具
-        (memory_*、todo_*)在到达本方法之前由子类处理(或经子类覆写)。
+        处理 workspace 文件工具、skill 工具与 ``ask_env``。person 专属工具
+        (``memory_*``、``todo_*``)在到达本方法之前由子类处理(或经子类覆写)。
 
         :param action: 工具名。
         :param args: 工具参数 dict。
@@ -1991,7 +1971,7 @@ The constructor ``__init__`` is arg-less.
 
         :param path: 模型尝试读取的路径(绝对或相对)。
         :returns: 路径命中 visible skill 根内文件时返回
-            ``(skill_id, relative_path, content)``,否则为 ``None``。
+            ``(skill_id, relative_path, content)``,否则为 ``None`` 。
         """
         resolved = self.skill_runtime.resolve_skill_path(path)
         if resolved is None:
@@ -2003,9 +1983,9 @@ The constructor ``__init__`` is arg-less.
         return skill_id, rel_path, content
 
     def _build_env_tool_context(self, args: dict[str, Any]) -> dict[str, Any]:
-        """由工具参数构建 ask_env 上下文。
+        """由工具参数构建 ``ask_env`` 上下文。
 
-        :param args: ask_env 工具参数。
+        :param args: ``ask_env`` 工具参数。
         :returns: 传给 RouterBase.ask 的上下文 dict。
         """
         raw_ctx = args.get("ctx")
@@ -2023,7 +2003,7 @@ The constructor ``__init__`` is arg-less.
         args: Mapping[str, Any],
         argv: list[str],
     ) -> str:
-        """为送往脚本执行的 env skill 调用构建 ask_env instruction。
+        """为送往脚本执行的 env skill 调用构建 ``ask_env`` instruction。
 
         :param args: 原始工具参数。
         :param argv: 模型提供的类命令行参数。
@@ -2063,7 +2043,7 @@ The constructor ``__init__`` is arg-less.
         :param observations: 初始 observation 列表(就地追加)。
         :param question: 可选的外部问题(ask 模式)。
         :param readonly: 是否阻止变更类工具。
-        :param skill_hooks: 可选的供 prompt 使用的 pre_step hook 输出。
+        :param skill_hooks: 可选的供 prompt 使用的 ``pre_step`` hook 输出。
         :returns: 循环的最终结果字符串。
         """
         if observations is None:
@@ -2256,13 +2236,11 @@ The constructor ``__init__`` is arg-less.
     ) -> ReactTurn:
         """调用 LLM,工具参数非法时重试一次。
 
-        ``messages`` 会**就地**追加本轮的 assistant 消息,出错时还会追加
-        纠错回复——因此下一个请求是本请求的前缀扩展,prompt-prefix 缓存
-        得以持续增长。
+        ``messages`` 会**就地**追加本轮的 assistant 消息,出错时还会追加纠错回复——因此下一个请求是本请求的前缀扩展,prompt-prefix 缓存得以持续增长。
 
         :param messages: OpenAI 风格聊天消息(就地修改)。
         :param readonly: 是否阻止变更类工具。
-        :returns: 最终一次尝试解析出的 :class:`ReactTurn`。
+        :returns: 最终一次尝试解析出的 :class:`ReactTurn` 。
         """
         with self.trace_span(
             "llm.completion",
@@ -2318,8 +2296,7 @@ The constructor ``__init__`` is arg-less.
         """运行一次补全,必要时追加纠错回复。
 
         成功时这里刻意**不**追加 assistant 消息;由 :meth:`run_react_loop`
-        将其与工具回复一并追加,这样即使某个工具抛异常也能产出回复,不会
-        留下无人应答的 tool-call id。
+        将其与工具回复一并追加,这样即使某个工具抛异常也能产出回复,不会留下无人应答的 tool-call id。
 
         :param messages: 聊天消息(就地修改)。
         :param readonly: 是否阻止变更类工具。
@@ -2360,10 +2337,7 @@ The constructor ``__init__`` is arg-less.
     def _record_llm_usage(self, span: Any, response: Any) -> None:
         """把一次响应的 token 用量复制到 ``llm.completion`` span 上。
 
-        在 trace JSONL 中暴露逐轮次、逐 agent 的 prompt-cache 命中。据此可
-        把低命中率定位到三种情形之一——共享 system 前缀未命中、逐轮窗口
-        被失效、或该轮为 ask 模式轮次;run 汇总中的聚合计数器无法区分
-        这些。
+        在 trace JSONL 中暴露逐轮次、逐 agent 的 prompt-cache 命中。据此可把低命中率定位到三种情形之一——共享 system 前缀未命中、逐轮窗口被失效、或该轮为 ask 模式轮次;run 汇总中的聚合计数器无法区分这些。
 
         span 属性会跨轮内重试累加,因此重试过的轮次报告两次补全的总和。
 
@@ -2467,8 +2441,7 @@ The constructor ``__init__`` is arg-less.
         """未发生有效 finish 时,返回 ask 模式的最后兜底答案。
 
         优先取模型最近发出的自由文本答案(响应解析期间暂存于
-        ``self._last_raw_answer_text``);仅当模型完全没有产出可用文本时
-        才回退为 ``"done"``。
+        ``self._last_raw_answer_text``);仅当模型完全没有产出可用文本时才回退为 ``"done"`` 。
 
         :returns: 兜底答案字符串。
         """
@@ -2478,16 +2451,13 @@ The constructor ``__init__`` is arg-less.
     def _parse_react_turn(self, response: Any, *, readonly: bool = False) -> ReactTurn:
         """把一次 LLM 响应解析为 decisions 及待追加的 assistant 轮次。
 
-        一些 OpenAI 兼容端点从不发出原生 ``tool_calls``,而是把每个工具
-        调用渲染为 ``message.content`` 中的文本(如
-        ``ask_env(instruction="...", readonly=false)``)。为使 agent 在此类
-        模型下仍可用,当没有原生工具调用时,回退到
+        一些 OpenAI 兼容端点从不发出原生 ``tool_calls``,而是把每个工具调用渲染为 ``message.content`` 中的文本(如
+        ``ask_env(instruction="...", readonly=false)``)。为使 agent 在此类模型下仍可用,当没有原生工具调用时,回退到
         :meth:`_parse_text_tool_calls`;它理解常见的文本编码(Python-kwarg
         调用、``name({...})`` JSON 调用、Hermes/Qwen ``<tool_call>``/``<tool_input>``
         块、裸 JSON 对象,以及 ``<invoke>`` XML)。
 
-        ask 模式(``readonly=True``)下,当模型返回的自由文本答案不含可
-        识别的工具调用时,先做一次保守的答案抽取(带类 ``answer`` 键的
+        ask 模式(``readonly=True``)下,当模型返回的自由文本答案不含可识别的工具调用时,先做一次保守的答案抽取(带类 ``answer`` 键的
         JSON 对象,或裸 JSON 标量)并合成一个 ``finish(answer=...)``;
         无法确信匹配的一切都以错误拒绝,使循环把失败反馈给模型并重试
         (主要的纠正机制)。原始自由文本会被暂存,供循环结束时的兜底使用。
@@ -2499,11 +2469,9 @@ The constructor ``__init__`` is arg-less.
         - **native**(响应携带了 ``tool_calls``)——消息携带从*存活的*
           decisions 重建的 ``tool_calls``,而非从原始响应回显。
           ``_build_react_decisions`` 在存在 ``finish`` 决策时只保留它,
-          回显原始调用列表会留下无人应答的 tool-call id,下一个请求会被
-          拒绝。
+          回显原始调用列表会留下无人应答的 tool-call id,下一个请求会被拒绝。
         - **text**(无原生调用)——纯 assistant 文本消息;结果由循环以
-          ``<recent_observations>`` user 块追加,与模型已见过的形态完全
-          一致。
+          ``<recent_observations>`` user 块追加,与模型已见过的形态完全一致。
 
         出错且带原生调用时,消息回显*原始*调用(id 与 ``arguments``
         原样),使循环能用错误文本应答每个 id。
@@ -2625,7 +2593,7 @@ The constructor ``__init__`` is arg-less.
         那些经由重试反馈纠正。
 
         :param content: 原始 ``message.content`` 文本。
-        :returns: 抽取出的答案字符串;无可确信匹配时为 ``""``。
+        :returns: 抽取出的答案字符串;无可确信匹配时为 ``""`` 。
         """
         from agentsociety2.agent.json_utils import jr_or_json
 
@@ -2678,7 +2646,7 @@ The constructor ``__init__`` is arg-less.
         :param readonly: 循环是否处于 readonly(ask)模式。
         :param call_ids: 可选的 provider tool-call id,与 ``calls`` 位置
             对应。文本解析回退没有 id,会省略;所得 decisions 因此携带
-            ``call_id=""``。
+            ``call_id=""`` 。
         :returns: (decisions, error) 元组。
         """
         decisions: list[ReactDecision] = []
@@ -2738,15 +2706,14 @@ The constructor ``__init__`` is arg-less.
 
         - Python-kwarg 风格:``ask_env(instruction="...", readonly=false)``
           (此类模型最常见的形态)。
-        - JSON 函数调用:``finish({"answer": "..."})`` 或 ``name({...})``。
+        - JSON 函数调用:``finish({"answer": "..."})`` 或 ``name({...})`` 。
         - Hermes / Qwen 块:``<tool_call>name</tool_call><tool_input>{...}
           </tool_input>``(以及 JSON 装在 ``<tool_call>`` 里的变体)。
-        - 裸 JSON 对象:``{"name"/"tool": ..., "arguments"/...: {...}}``。
+        - 裸 JSON 对象:``{"name"/"tool": ..., "arguments"/...: {...}}`` 。
         - XML invoke:``<invoke name="...">...</invoke>``(带
           ``<parameters>`` JSON 体)。
 
-        未找到可识别的工具调用时返回空列表(调用方随后把内容当作自由
-        文本处理)。解析尽力而为:畸形片段被跳过而非抛出。
+        未找到可识别的工具调用时返回空列表(调用方随后把内容当作自由文本处理)。解析尽力而为:畸形片段被跳过而非抛出。
 
         :param content: 原始 ``message.content`` 文本。
         :returns: 有序的 ``(tool_name, args)`` 对(可能为空)。
@@ -2958,16 +2925,15 @@ The constructor ``__init__`` is arg-less.
     ) -> list[dict[str, str]]:
         """构建 ReAct prompt 消息(子类 prompt hook)。
 
-        基类实现抛出 :class:`NotImplementedError`。子类(如 PersonAgent)
-        覆写本方法,组装各自的 agent 专属 prompt 并返回 OpenAI 风格聊天
-        消息。
+        基类实现抛出 :class:`NotImplementedError` 。子类(如 PersonAgent)
+        覆写本方法,组装各自的 agent 专属 prompt 并返回 OpenAI 风格聊天消息。
 
         :param tick: 当前仿真 tick。
         :param t: 当前仿真时间。
         :param observations: 近期 observation 列表。
         :param question: 可选的外部问题(ask 模式)。
         :param readonly: 是否阻止变更类工具。
-        :param skill_hooks: 可选的供 prompt 使用的 pre_step hook 输出。
+        :param skill_hooks: 可选的供 prompt 使用的 ``pre_step`` hook 输出。
         :returns: OpenAI 风格聊天消息。
         :raises NotImplementedError: 基类中恒为如此。
         """
@@ -2985,17 +2951,14 @@ The constructor ``__init__`` is arg-less.
     ) -> dict[str, Any] | None:
         """当某个工具使线程头部的块失效时,返回待追加的消息。
 
-        线程在每次循环调用时只构建一次,因此位于首个 user 消息中的
-        逐 agent 块(``<todo_context>``、``<skill_content>``)不再每轮
-        重渲染。重渲染会重建 prompt、丢弃已缓存的 prefix;追加一个刷新
-        块则保持 prefix 完整。子类 hook(默认:不刷新)。
+        线程在每次循环调用时只构建一次,因此位于首个 user 消息中的逐 agent 块(``<todo_context>`` 、``<skill_content>``)不再每轮重渲染。重渲染会重建 prompt、丢弃已缓存的 prefix;追加一个刷新块则保持 prefix 完整。子类 hook(默认:不刷新)。
 
         只传入**成功**的动作;即使多个动作触发,每轮至多追加一条消息。
 
         :param actions: 本轮成功的工具动作名。
         :param tick: 当前仿真 tick。
         :param t: 当前仿真时间。
-        :returns: 待追加的聊天消息;无需刷新时为 ``None``。
+        :returns: 待追加的聊天消息;无需刷新时为 ``None`` 。
         """
         return None
 
@@ -3059,7 +3022,7 @@ The constructor ``__init__`` is arg-less.
     def _current_simulation_time(self) -> datetime | None:
         """返回供工具规范化使用的最可信仿真时间。
 
-        :returns: 当前仿真时间;不可用时为 ``None``。
+        :returns: 当前仿真时间;不可用时为 ``None`` 。
         """
         if self._current_time is not None:
             return self._current_time

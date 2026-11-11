@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: AgentSociety 2 2.6.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-23 12:38+0800\n"
+"POT-Creation-Date: 2026-11-09 19:44+0800\n"
 "PO-Revision-Date: 2026-03-06 00:15+0800\n"
 "Last-Translator: AgentSociety Team\n"
 "Language: en\n"
@@ -19,240 +19,351 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: ../../concepts.rst:2
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:2
 msgid "核心概念"
 msgstr "Core Concepts"
 
-#: ../../concepts.rst:4
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:4
 msgid ""
 "本部分说明 AgentSociety 2 的系统结构与术语；首页 :doc:`index` "
 "中的「研究背景与平台定位」从范式与协作角度概括了平台动机，此处侧重实现层面的组件关系。"
 msgstr ""
-"This section describes the system structure and terminology of "
-"AgentSociety 2. The :doc:`index` section \"Research Background and "
-"Platform Positioning\" covers motivation from paradigms and "
-"collaboration; here the focus is implementation-level component "
-"relationships."
+"This section describes the system structure and terminology of AgentSociety 2. The "
+":doc:`index` section \"Research Background and Platform Positioning\" covers "
+"motivation from paradigms and collaboration; here the focus is implementation-level "
+"component relationships."
 
-#: ../../concepts.rst:7
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:7
 msgid "架构概述"
 msgstr "Architecture Overview"
 
-#: ../../concepts.rst:9
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:9
 msgid "AgentSociety 2 围绕三个主要组件构建："
 msgstr "AgentSociety 2 is built around three main components:"
 
-#: ../../concepts.rst:11
-msgid ""
-"**智能体 (Agents)**: 使用 LLM 与环境交互的自主实体（workspace 绑定的无状态 record，由 Ray Task "
-"流式驱动）"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:11
+msgid "**智能体 (Agents)**: 使用 LLM 与环境交互的自主实体（workspace 绑定的无状态 record，由 Ray Task 流式驱动）"
 msgstr ""
-"**Agents**: Autonomous entities that use LLMs to interact with "
-"environments"
+"**Agents**: Autonomous entities that use LLMs to interact with environments "
+"(workspace-bound stateless records driven by Ray Tasks in a streaming fashion)"
 
-#: ../../concepts.rst:12
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:12
 msgid "**环境模块 (Environment Modules)**: 定义模拟规则的可组合组件"
-msgstr ""
-"**Environment Modules**: Composable components that define simulation "
-"rules"
+msgstr "**Environment Modules**: Composable components that define simulation rules"
 
-#: ../../concepts.rst:13
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:13
 msgid "**AgentSociety**: 管理智能体和环境的协调器"
 msgstr "**AgentSociety**: Coordinator that manages agents and environments"
 
-#: ../../concepts.rst:15
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:15
 msgid ""
-"智能体不直接持有 env / LLM / trace / replay 等运行时对象，而是经一个 ``ServiceProxy`` 容器接收共享 "
-"服务句柄；环境路由跑在专用 Ray actor 里。详见 :doc:`architecture`。"
+"智能体不直接持有 env / LLM / trace / replay 等运行时对象，而是经一个 ``ServiceProxy`` 容器接收共享服务句柄；环境路由跑在专用 Ray actor "
+"里。详见 :doc:`architecture`。"
 msgstr ""
-"Agents do not directly own runtime objects such as env, LLM, trace, or "
-"replay. Instead, they receive shared service handles through a "
-"``ServiceProxy`` container; environment routing runs in a dedicated Ray "
-"actor. See :doc:`architecture`."
+"Agents do not directly own runtime objects such as env, LLM, trace, or replay. Instead, they "
+"receive shared service handles through a ``ServiceProxy`` container; environment routing runs in "
+"a dedicated Ray actor. See :doc:`architecture`."
 
-#: ../../concepts.rst:18
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:17
 msgid ""
-"**中断恢复**：agent、env 模块和 society 三层都会把恢复所需的状态原子写入 workspace。agent 使用 "
-"``AGENT.json``，env 模块通常使用 ``state/ENV_STATE.json``，society 使用不可变的 "
-"``SOCIETY.json`` 和每步更新的 ``SOCIETY_STEP.json``。CLI 的 ``--resume`` "
-"可以从中断处继续运行 实验（详见 :doc:`cli`）。这一机制与 replay 相互独立；replay 是面向分析的 append-only "
-"时序数据 （见 :doc:`storage`）。"
+"**中断恢复**：agent、env 模块和 society 三层都会把恢复所需的状态原子写入 workspace。agent 使用 ``AGENT.json``，env 模块通常使用 "
+"``state/ENV_STATE.json``，society 使用不可变的 ``SOCIETY.json`` 和每步更新的 ``SOCIETY_STEP.json``。CLI 的 "
+"``--resume`` 可以从中断处继续运行实验（详见 :doc:`cli`）。这一机制与 replay 相互独立；replay 是面向分析的 append-only 时序数据（见 "
+":doc:`storage`）。"
 msgstr ""
-"**Interrupt recovery**: agent, env-module, and society state needed for "
-"recovery is written atomically into the workspace. Agents use "
-"``AGENT.json``; env modules usually use ``state/ENV_STATE.json``; society"
-" uses immutable ``SOCIETY.json`` plus the per-step ``SOCIETY_STEP.json``."
-" The CLI ``--resume`` option can continue an experiment from the "
-"interruption point; see :doc:`cli`. This mechanism is independent from "
-"replay. Replay is append-only time-series data for analysis; see "
-":doc:`storage`."
+"**Interrupt recovery**: agent, env-module, and society state needed for recovery is written "
+"atomically into the workspace. Agents use ``AGENT.json``; env modules usually use "
+"``state/ENV_STATE.json``; society uses immutable ``SOCIETY.json`` plus the per-step "
+"``SOCIETY_STEP.json``. The CLI ``--resume`` option can continue an experiment from the "
+"interruption point; see :doc:`cli`. This mechanism is independent from replay. Replay is append-"
+"only time-series data for analysis; see :doc:`storage`."
 
-#: ../../concepts.rst:41
+msgid "研究问题通过实验配置进入仿真，产生行为轨迹与结果，再回到证据比较与机制评估。下面的调用图展示智能体、路由器与环境工具的连接："
+msgstr "Research questions enter simulations through experiment configurations, producing behavioral traces and results for evidence comparison and mechanism evaluation. The following diagram shows the connections between agents, routers, and environment tools:"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:35
+msgid "智能体通过路由器调用环境工具"
+msgstr "Agents call environment tools through the router"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:57
 msgid "完整系统架构"
 msgstr "Full System Architecture"
 
-#: ../../concepts.rst:121
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:59
+msgid "编排器、共享服务、智能体与环境模块的连接"
+msgstr "Connections between the orchestrator, shared services, agents and environments"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:142
+msgid "Agent Skills 与研究技能"
+msgstr "Agent Skills and Research Skills"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:144
+msgid "平台上的「技能」分两层："
+msgstr "\"Skills\" on the platform come in two layers:"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:134
+msgid ""
+"**Agent Skills** （见 :doc:`agent_skills` ）——``PersonAgent`` 的能力组织方式，遵循 **metadata-first、selected-"
+"only** 模型——LLM 先只看技能目录（``name`` / ``description``），仅被选中的技能才会加载执行。技能是自包含目录（``SKILL.md`` 与可选的 "
+"``scripts/``、 ``references/``），内置技能脚本在 agent 进程内经 ``entrypoint`` 执行，自定义技能经 ``skill_worker.py`` "
+"隔离子进程执行；内置技能只有 ``daily-guidance``，自定义技能放入 ``custom/skills/`` 即可被发现与热加载。"
+msgstr ""
+"**Agent Skills** (:doc:`agent_skills`): how ``PersonAgent`` organizes its capabilities, following"
+" the **metadata-first, selected-only** model — the LLM first sees only the skill catalog "
+"(``name`` / ``description``), and only selected skills are loaded and executed. Skills are self-"
+"contained directories (``SKILL.md`` plus optional ``scripts/`` and ``references/``), with built-"
+"in scripts executing in the agent process via ``entrypoint`` and custom scripts executing in "
+"isolated ``skill_worker.py`` subprocesses. The only built-in skill is ``daily-guidance``; custom "
+"skills placed in ``custom/skills/`` are discovered and hot-loaded."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:152
+msgid ""
+"**研究技能** （见 :doc:`skills` ）——``agentsociety2.skills`` 下 LLM 原生的科研工作流模块， "
+"``literature``（文献检索）、``hypothesis``（假设管理）、``experiment``（实验配置与执行）、 "
+"``analysis``（数据分析）；论文撰写由外部 ``paper-toolkit`` 承担。它们与 **AgentSociety** "
+"编排器一起构成从文献、假设、实验到分析与文稿准备的闭环流水线。"
+msgstr ""
+"**Research skills** (:doc:`skills`): LLM-native research workflow modules under "
+"``agentsociety2.skills`` — ``literature`` (literature search), ``hypothesis`` "
+"(hypothesis management), ``experiment`` (experiment configuration and execution), and"
+" ``analysis`` (data analysis); paper writing is handled by the external ``paper-"
+"toolkit``. Together with the **AgentSociety** orchestrator they form a closed-loop "
+"pipeline from literature and hypotheses through experiments to analysis and "
+"manuscript preparation."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:158
 msgid "智能体-环境接口"
 msgstr "Agent-Environment Interface"
 
-#: ../../concepts.rst:123
-msgid "智能体通过两个主要方法与环境交互："
-msgstr "Agents interact with environments through two main methods:"
-
-#: ../../concepts.rst:125
-msgid "**ask()**: 查询或观察环境状态"
-msgstr "**ask()**: Query or observe environment state"
-
-#: ../../concepts.rst:126
-msgid "**intervene()**: 修改环境状态"
-msgstr "**intervene()**: Modify environment state"
-
-#: ../../concepts.rst:128
-msgid "这个统一接口允许智能体与任何环境模块自然通信。"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:160
+msgid ""
+"对外部调用者（society / driver），``AgentSociety`` 提供 ``ask()``（只读查询）与 ``intervene()`` "
+"（可写干预）两个入口。智能体内部则经 ``ask_env()`` 访问环境：``ask_env`` 把请求交给环境 router 的 "
+"``ask(readonly=...)``，由路由器映射到环境模块的 ``@tool`` 方法。ReAct 工具循环的细节见 :doc:`architecture` 与 "
+":doc:`agents`。"
 msgstr ""
-"This unified interface allows agents to communicate naturally with any "
-"environment module."
+"For external callers (society / driver), ``AgentSociety`` exposes two entry points: "
+"``ask()`` (read-only queries) and ``intervene()`` (writable interventions). Inside an"
+" agent, the environment is reached through ``ask_env()``: ``ask_env`` hands the "
+"request to the environment router's ``ask(readonly=...)``, which maps it onto "
+"``@tool`` methods of environment modules. See :doc:`architecture` and :doc:`agents` "
+"for details of the ReAct tool loop."
 
-#: ../../concepts.rst:131
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:166
 msgid "@tool 装饰器"
 msgstr "The @tool Decorator"
 
-#: ../../concepts.rst:133
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:168
 msgid "环境模块通过 ``@tool`` 装饰器公开其功能："
-msgstr ""
-"Environment modules expose their functionality through the ``@tool`` "
-"decorator:"
+msgstr "Environment modules expose their functionality through the ``@tool`` decorator:"
 
-#: ../../concepts.rst:151
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:157
+#, python-brace-format
+msgid ""
+"from agentsociety2.env import EnvBase, tool\n"
+"\n"
+"class MyEnvironment(EnvBase):\n"
+"    @tool(readonly=True, kind=\"observe\")\n"
+"    def get_weather(self, agent_id: int) -> str:\n"
+"        \"\"\"Get current weather for agent.\"\"\"\n"
+"        return f\"Weather for agent {agent_id}\"\n"
+"\n"
+"    @tool(readonly=False)\n"
+"    def set_temperature(self, temp: int) -> str:\n"
+"        \"\"\"Set temperature.\"\"\"\n"
+"        self._temperature = temp\n"
+"        return f\"Temperature set to {temp}\""
+msgstr ""
+"from agentsociety2.env import EnvBase, tool\n"
+"\n"
+"class MyEnvironment(EnvBase):\n"
+"    @tool(readonly=True, kind=\"observe\")\n"
+"    def get_weather(self, agent_id: int) -> str:\n"
+"        \"\"\"Get current weather for agent.\"\"\"\n"
+"        return f\"Weather for agent {agent_id}\"\n"
+"\n"
+"    @tool(readonly=False)\n"
+"    def set_temperature(self, temp: int) -> str:\n"
+"        \"\"\"Set temperature.\"\"\"\n"
+"        self._temperature = temp\n"
+"        return f\"Temperature set to {temp}\""
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:186
 msgid "**参数：**"
 msgstr "**Parameters:**"
 
-#: ../../concepts.rst:153
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:188
 msgid "``readonly`` (bool): 函数是否修改状态 * ``True`` = 只读观察 * ``False`` = 修改环境"
 msgstr ""
-"``readonly`` (bool): Whether the function modifies state * ``True`` = "
-"read-only, can be used in queries * ``False`` = modifies state, can be "
-"used in interventions"
+"``readonly`` (bool): Whether the function modifies state * ``True`` = read-only "
+"observation * ``False`` = modifies the environment"
 
-#: ../../concepts.rst:157
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:192
 msgid ""
-"``kind`` (str): 用于优化的函数类别 * ``\"observe\"``: 单参数观察 * ``\"statistics\"``: "
-"聚合查询（无参数） * ``None``: 常规工具"
+"``kind`` (str): 用于优化的函数类别 * ``\"observe\"``: 单参数观察 * ``\"statistics\"``: 聚合查询（无参数） * "
+"``None``: 常规工具"
 msgstr ""
-"``kind`` (str): The type of tool * ``\"observe\"``: Single-parameter "
-"observations (requires readonly=True) * ``\"statistics\"``: Aggregate "
-"queries (no parameters, requires readonly=True) * ``None`` or omitted: "
-"Regular tool (any signature, any readonly value)"
+"``kind`` (str): The function category used for optimization * ``\"observe\"``: "
+"single-parameter observation * ``\"statistics\"``: aggregate query (no parameters) * "
+"``None``: regular tool"
 
-#: ../../concepts.rst:163
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:198
 msgid "CodeGenRouter"
 msgstr "CodeGenRouter"
 
-#: ../../concepts.rst:165
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:200
 msgid "CodeGenRouter 通过以下方式将智能体连接到环境模块："
 msgstr "CodeGenRouter connects agents to environment modules by:"
 
-#: ../../concepts.rst:167
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:202
 msgid "从环境模块中提取工具签名"
 msgstr "Extracting tool signatures from environment modules"
 
-#: ../../concepts.rst:168
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:203
 msgid "根据智能体输入生成调用适当工具的代码"
 msgstr "Generating code to call appropriate tools based on agent input"
 
-#: ../../concepts.rst:169
-msgid "在沙盒环境中安全执行代码"
-msgstr "Safely executing code in a sandboxed environment"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:204
+msgid "静态验证后，在配置的执行后端运行代码"
+msgstr "After static validation, execute code in the configured backend"
 
-#: ../../concepts.rst:170
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:205
 msgid "将结果返回给智能体"
 msgstr "Returning results to the agent"
 
-#: ../../concepts.rst:172
-msgid "这种方法允许智能体与任何环境模块组合交互，而无需更改代码。"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:207
+msgid "路由器只能调用已挂载模块公开的工具。执行权限、期限与写操作失败后的处理见 :doc:`codegen_execution`。"
 msgstr ""
-"This approach allows agents to interact with any combination of "
-"environment modules without code changes."
+"Routers can only call tools exposed by mounted modules. Execution permissions, "
+"deadlines and write-failure behavior are covered in :doc:`codegen_execution`."
 
-#: ../../concepts.rst:175
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:210
 msgid "路由器选择"
 msgstr "Router Selection"
 
-#: ../../concepts.rst:177
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:212
 msgid "``RouterBase`` 有多个实现，可按需替换："
 msgstr "``RouterBase`` has multiple implementations that can be swapped as needed:"
 
-#: ../../concepts.rst:179
-msgid "``CodeGenRouter`` （默认）：生成调用代码并在沙盒执行，带 AST 守卫与缓存。"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:201
+msgid ""
+"``CodeGenRouter`` （默认）：生成调用代码，经静态验证与 AST 守卫后执行； FAISS 指令模板缓存**仅在** ``ask(..., "
+"template_mode=True)`` 时生效；若模块未声明 observe/statistics 工具，init 会跳过对应 LLM 代码生成。"
 msgstr ""
-"``CodeGenRouter`` (default): generates call code and executes it in a "
-"sandbox, with AST guards and caching."
+"``CodeGenRouter`` (default): generates call code, then executes it after static validation and "
+"AST guards. FAISS instruction caching applies **only** with ``ask(..., template_mode=True)``. "
+"Initialization skips observe/statistics code generation when modules expose no such tools."
 
-#: ../../concepts.rst:180
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:217
 msgid "``ReActRouter``：ReAct 式工具选择。"
 msgstr "``ReActRouter``: ReAct-style tool selection."
 
-#: ../../concepts.rst:181
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:218
 msgid "``PlanExecuteRouter``：先规划再执行。"
 msgstr "``PlanExecuteRouter``: plan first, then execute."
 
-#: ../../concepts.rst:182
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:219
 msgid "``TwoTierReActRouter`` / ``TwoTierPlanExecuteRouter``：两级路由，适合大工具集。"
 msgstr ""
-"``TwoTierReActRouter`` / ``TwoTierPlanExecuteRouter``: two-tier routing "
-"for large tool sets."
+"``TwoTierReActRouter`` / ``TwoTierPlanExecuteRouter``: two-tier routing for large "
+"tool sets."
 
-#: ../../concepts.rst:183
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:220
 msgid "``SearchToolRouter``：以检索方式选择工具。"
 msgstr "``SearchToolRouter``: selects tools through retrieval."
 
-#: ../../concepts.rst:185
-msgid "生产环境下路由跑在专用 Ray actor（``EnvRouterProxy``）里，详见 :doc:`architecture`。"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:222
+msgid ""
+"生产环境下路由跑在专用 Ray actor（``EnvRouterProxy``）里；actor 并发由模块 ``is_concurrency_safe()`` "
+"决定，详见 :doc:`architecture` 与 :doc:`env_modules`。"
 msgstr ""
-"In production, routing runs in a dedicated Ray actor "
-"(``EnvRouterProxy``); see :doc:`architecture`."
+"In production, routing runs in a dedicated Ray actor (``EnvRouterProxy``); actor "
+"concurrency is determined by the module's ``is_concurrency_safe()``. See "
+":doc:`architecture` and :doc:`env_modules`."
 
-#: ../../concepts.rst:188
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:226
 msgid "工具类别"
 msgstr "Tool Categories"
 
-#: ../../concepts.rst:190
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:228
 msgid "**观察工具** (``readonly=True``, ``kind=\"observe\"``)"
 msgstr "**Observation Tools** (``readonly=True``, ``kind=\"observe\"``)"
 
-#: ../../concepts.rst:192
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:230
 msgid "具有单个 ``agent_id`` 参数的智能体特定观察："
 msgstr "Agent-specific observations with a single ``agent_id`` parameter:"
 
-#: ../../concepts.rst:201
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:218
+#, python-brace-format
+msgid ""
+"@tool(readonly=True, kind=\"observe\")\n"
+"def get_agent_location(self, agent_id: int) -> str:\n"
+"    \"\"\"Get current location of agent.\"\"\"\n"
+"    return f\"Agent {agent_id} is at location X\""
+msgstr ""
+"@tool(readonly=True, kind=\"observe\")\n"
+"def get_agent_location(self, agent_id: int) -> str:\n"
+"    \"\"\"Get current location of agent.\"\"\"\n"
+"    return f\"Agent {agent_id} is at location X\""
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:239
 msgid "**统计工具** (``readonly=True``, ``kind=\"statistics\"``)"
 msgstr "**Statistics Tools** (``readonly=True``, ``kind=\"statistics\"``)"
 
-#: ../../concepts.rst:203
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:241
 msgid "没有参数的聚合查询（除了 ``self``）："
 msgstr "Aggregate queries with no parameters (except ``self``):"
 
-#: ../../concepts.rst:213
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:229
+#, python-brace-format
+msgid ""
+"@tool(readonly=True, kind=\"statistics\")\n"
+"def get_average_happiness(self) -> str:\n"
+"    \"\"\"Get average happiness of all agents.\"\"\"\n"
+"    avg = sum(self.happiness.values()) / len(self.happiness)\n"
+"    return f\"Average happiness: {avg}\""
+msgstr ""
+"@tool(readonly=True, kind=\"statistics\")\n"
+"def get_average_happiness(self) -> str:\n"
+"    \"\"\"Get average happiness of all agents.\"\"\"\n"
+"    avg = sum(self.happiness.values()) / len(self.happiness)\n"
+"    return f\"Average happiness: {avg}\""
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:251
 msgid "**常规工具**"
 msgstr "**Regular Tools**"
 
-#: ../../concepts.rst:215
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:253
 msgid "具有任何签名的通用工具："
 msgstr "General-purpose tools with any signature:"
 
-#: ../../concepts.rst:226
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:241
+#, python-brace-format
+msgid ""
+"@tool(readonly=False)\n"
+"def set_happiness(self, agent_id: int, value: float) -> str:\n"
+"    \"\"\"Set happiness level for agent.\"\"\"\n"
+"    self.happiness[agent_id] = value\n"
+"    return f\"Set agent {agent_id}'s happiness to {value}\""
+msgstr ""
+"@tool(readonly=False)\n"
+"def set_happiness(self, agent_id: int, value: float) -> str:\n"
+"    \"\"\"Set happiness level for agent.\"\"\"\n"
+"    self.happiness[agent_id] = value\n"
+"    return f\"Set agent {agent_id}'s happiness to {value}\""
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:264
 msgid "工具类别层次结构"
 msgstr "Tool Category Hierarchy"
 
-#: ../../concepts.rst:252
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:266
+msgid "工具的只读属性与类别分别约束用途"
+msgstr "Tool read-only flags and kinds constrain different aspects of use"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:297
 msgid "智能体-环境交互流程"
 msgstr "Agent-Environment Interaction Flow"
 
-#~ msgid ""
-#~ "**中断恢复**：agent（``AGENT.json``）、env "
-#~ "模块（``state/ENV_STATE.json``）、society （``SOCIETY.json`` "
-#~ "不可变全量 + ``SOCIETY_STEP.json`` 每步标量）三层都把动态状态原子写入 "
-#~ "workspace， CLI ``--resume`` 可从中断处续跑（详见 "
-#~ ":doc:`cli`）。这与 replay（面向分析的 append-only 时序，见"
-#~ " :doc:`storage`）相互独立。"
-#~ msgstr ""
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/concepts.rst:299
+msgid "一次环境请求的工具调用与响应路径"
+msgstr "Tool calls and responses for one environment request"

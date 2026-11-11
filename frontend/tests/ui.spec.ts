@@ -141,3 +141,76 @@ test('selecting a map agent opens the lazily loaded survey preview', async ({ pa
     await expect(page.getByRole('dialog').getByText('Original question', { exact: true })).toBeVisible();
     expect(errors).toEqual([]);
 });
+
+test('skills use namespaced IDs and expose only operations supported by the backend', async ({ page }) => {
+    await mockApi(page);
+    const requests: string[] = [];
+    const script = 'scripts/' + 'long-skill-path-'.repeat(12) + 'main.py';
+    const skills = [
+        { skill_id: 'built-in@shared', name: 'shared', source: 'built-in', description: 'Built-in fixture', script },
+        { skill_id: 'custom@shared', name: 'shared', source: 'custom', description: 'Custom fixture', script: '' },
+    ];
+    await page.route('**/api/v1/agent-skills/**', async route => {
+        const request = route.request();
+        const path = decodeURIComponent(new URL(request.url()).pathname);
+        requests.push(`${request.method()} ${path}`);
+        if (path.endsWith('/list')) return route.fulfill({ json: { success: true, skills, total: skills.length } });
+        if (path.endsWith('/custom@shared/info')) return route.fulfill({ json: { success: true, name: 'shared', skill_id: 'custom@shared', skill_md: '# Custom skill details' } });
+        if (path.endsWith('/scan')) return route.fulfill({ json: { success: true, new_skills: [], total: 2, message: 'Scan complete' } });
+        return route.fulfill({ status: 404, json: { detail: 'Unsupported endpoint' } });
+    });
+    await page.goto('/skills');
+    await expect(page.getByRole('cell', { name: 'shared', exact: true })).toHaveCount(2);
+    await expect(page.getByRole('switch')).toHaveCount(0);
+    await expect(page.getByRole('row').filter({ hasText: 'Custom fixture' }).getByRole('button', { name: /Reload/ })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Remove/ })).toHaveCount(0);
+    const customRow = page.getByRole('row').filter({ hasText: 'Custom fixture' });
+    await customRow.getByRole('button', { name: /View/ }).click();
+    await expect(page.getByRole('dialog')).toContainText('# Custom skill details');
+    await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click();
+    await page.getByRole('button', { name: /Scan/ }).click();
+    await expect.poll(() => requests.filter(r => r === 'GET /api/v1/agent-skills/list').length).toBe(2);
+    expect(requests).toContain('GET /api/v1/agent-skills/custom@shared/info');
+    expect(requests).toContain('POST /api/v1/agent-skills/scan');
+    expect(requests.some(r => /\/(enable|disable|reload|remove)$/.test(r))).toBe(false);
+});
+
+test('skill creation keeps drafts on server errors and explains validation without a failure toast', async ({ page }) => {
+    await mockApi(page);
+    let calls = 0;
+    let releaseFirst!: () => void;
+    const firstPending = new Promise<void>(resolve => { releaseFirst = resolve; });
+    await page.route('**/api/v1/agent-skills/create', async route => {
+        calls++;
+        expect(route.request().postDataJSON().name).toBe('my-skill');
+        if (calls === 1) {
+            await firstPending;
+            return route.fulfill({ status: 409, json: { detail: 'A skill with this name already exists' } });
+        }
+        await route.fulfill({ json: { success: true, name: 'my-skill' } });
+    });
+    await page.goto('/skills');
+    await page.getByRole('button', { name: /Create Skill$/ }).click();
+    const dialog = page.getByRole('dialog');
+    const submit = dialog.getByRole('button', { name: /(?:^|\s)(OK|确定)$/ });
+    await submit.click();
+    await expect(dialog.getByText('Please enter a skill name')).toBeVisible();
+    await expect(page.getByText('Operation failed', { exact: true })).toHaveCount(0);
+    expect(calls).toBe(0);
+    await dialog.getByLabel('Skill Name').fill('  my-skill  ');
+    await dialog.getByLabel('SKILL.md Body').fill('Keep my draft instructions');
+    await submit.click();
+    await expect.poll(() => calls).toBe(1);
+    await expect(submit).toHaveClass(/ant-btn-loading/);
+    await expect(dialog.getByRole('button', { name: /^(Cancel|取消)$/ })).toBeDisabled();
+    releaseFirst();
+    await expect(page.getByText('A skill with this name already exists')).toBeVisible();
+    await expect(dialog.getByLabel('SKILL.md Body')).toHaveValue('Keep my draft instructions');
+    await expect(submit).not.toHaveClass(/ant-btn-loading/);
+    await submit.click();
+    await expect(dialog).toHaveCount(0);
+    expect(calls).toBe(2);
+    await page.getByRole('button', { name: /Create Skill$/ }).click();
+    await expect(page.getByRole('dialog').getByLabel('Skill Name')).toBeEmpty();
+    await expect(page.getByRole('dialog').getByLabel('SKILL.md Body')).toBeEmpty();
+});

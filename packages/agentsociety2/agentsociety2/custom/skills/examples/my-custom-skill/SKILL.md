@@ -21,10 +21,10 @@ This is the **primary extension mechanism** — like Claude Code's slash command
 
 ### Pattern B: Script
 
-Add `script: scripts/my-script.py` to frontmatter. The script is executed as a
-cached in-process module via `entrypoint(argv, ctx)` when available, with dynamic
-wrapper/subprocess fallback. It should communicate via the returned stdout string
-and file I/O under `ctx.workspace_root`. Scripts **cannot** access the LLM or
+Add `script: scripts/my-script.py` to frontmatter. The script runs in an isolated
+`skill_worker.py` subprocess via `entrypoint(argv, ctx)` when available (scripts
+without a callable run as a plain subprocess). It should communicate via the
+returned stdout string and file I/O under `ctx.workspace_root`. Scripts **cannot** access the LLM or
 environment router directly — use this only for deterministic computation.
 
 ## Behavioral Guidelines (Edit for Your Skill)

@@ -12,62 +12,71 @@ AgentSociety 2 围绕三个主要组件构建：
 * **环境模块 (Environment Modules)**: 定义模拟规则的可组合组件
 * **AgentSociety**: 管理智能体和环境的协调器
 
-智能体不直接持有 env / LLM / trace / replay 等运行时对象，而是经一个 ``ServiceProxy`` 容器接收共享
-服务句柄；环境路由跑在专用 Ray actor 里。详见 :doc:`architecture`。
+智能体不直接持有 env / LLM / trace / replay 等运行时对象，而是经一个 ``ServiceProxy`` 容器接收共享服务句柄；环境路由跑在专用 Ray actor 里。详见 :doc:`architecture`。
 
 **中断恢复**：agent、env 模块和 society 三层都会把恢复所需的状态原子写入 workspace。agent 使用
 ``AGENT.json``，env 模块通常使用 ``state/ENV_STATE.json``，society 使用不可变的
-``SOCIETY.json`` 和每步更新的 ``SOCIETY_STEP.json``。CLI 的 ``--resume`` 可以从中断处继续运行
-实验（详见 :doc:`cli`）。这一机制与 replay 相互独立；replay 是面向分析的 append-only 时序数据
-（见 :doc:`storage`）。
+``SOCIETY.json`` 和每步更新的 ``SOCIETY_STEP.json``。CLI 的 ``--resume`` 可以从中断处继续运行实验（详见 :doc:`cli`）。这一机制与 replay 相互独立；replay 是面向分析的 append-only 时序数据（见 :doc:`storage`）。
+
+研究问题通过实验配置进入仿真，产生行为轨迹与结果，再回到证据比较与机制评估。下面的调用图展示智能体、路由器与环境工具的连接：
 
 .. graphviz::
+   :caption: 智能体通过路由器调用环境工具
+   :alt: 智能体通过路由器调用环境工具
+   :class: doc-figure
 
    digraph agentsociety2 {
        rankdir=TB;
-       node [shape=box, style=rounded];
+       graph [bgcolor="#ffffff", pad="0.2"];
+       node [shape=box, style="rounded,filled", fillcolor="#f4f7fc", color="#9dafc9", fontname="Arial"];
+       edge [color="#64748b", fontname="Arial", fontsize=10];
 
        Agent [label="Agent"];
        CodeGenRouter [label="CodeGenRouter"];
        EnvModule [label="Env Module"];
        Tool [label="@tool()"];
 
-       Agent -> CodeGenRouter [label="ask/intervene"];
+       Agent -> CodeGenRouter [label="ask_env"];
        CodeGenRouter -> EnvModule [label="calls tools"];
-       EnvModule -> Tool [label="decorated with"];
+       EnvModule -> Tool [label="exposes methods"];
    }
 
 完整系统架构
 ~~~~~~~~~~~~~~~~~
 
 .. graphviz::
+   :caption: 编排器、共享服务、智能体与环境模块的连接
+   :alt: 编排器、共享服务、智能体与环境模块的连接
+   :class: doc-figure
 
    digraph full_architecture {
        rankdir=TB;
-       node [shape=box, style=rounded];
+       graph [bgcolor="#ffffff", pad="0.2"];
+       node [shape=box, style="rounded,filled", fillcolor="#f4f7fc", color="#9dafc9", fontname="Arial"];
+       edge [color="#64748b", fontname="Arial", fontsize=10];
        edge [fontsize=10];
 
        subgraph cluster_ui {
-           label = "用户界面层";
+           label = "User interfaces";
            style=filled;
            color=lightgrey;
-           CLI [label="CLI 命令行"];
-           WebUI [label="Web 前端"];
+           CLI [label="CLI"];
+           WebUI [label="Web dashboard"];
            API [label="REST API"];
        }
 
        subgraph cluster_core {
-           label = "核心模拟层";
+           label = "Simulation runtime";
            style=filled;
            color=lightblue;
-           Society [label="AgentSociety\n协调器 (driver)"];
+           Society [label="AgentSociety\nCoordinator (driver)"];
            Router [label="Router\n(EnvRouterActor)"];
-           Storage [label="ReplayWriter (Actor)\n/ Workspace 存储"];
-           Trace [label="Trace Actor\n(sharded writer)"];
+           Storage [label="ReplaySink (JSONL)\n/ Workspace state"];
+           Trace [label="Sharded Trace Writer\n(per-process append)"];
        }
 
        subgraph cluster_agents {
-           label = "智能体层 (无状态 record, Ray Task 流式)";
+           label = "Agents rebuilt in Ray tasks";
            style=filled;
            color=lightgreen;
            Proxy [label="ServiceProxy\n(env/llm/trace/replay)", shape=note];
@@ -77,16 +86,16 @@ AgentSociety 2 围绕三个主要组件构建：
        }
 
        subgraph cluster_env {
-           label = "环境层";
+           label = "Environment modules";
            style=filled;
            color=lightyellow;
            Env1 [label="SocialSpace"];
            Env2 [label="EconomySpace"];
-           EnvN [label="... 自定义模块"];
+           EnvN [label="... Custom modules"];
        }
 
        subgraph cluster_external {
-           label = "外部服务";
+           label = "Model access";
            style=filled;
            color=lavender;
            LLM [label="LLM Client\n(per-process dispatcher)"];
@@ -117,15 +126,28 @@ AgentSociety 2 围绕三个主要组件构建：
        Society -> LLM;
    }
 
+Agent Skills 与研究技能
+-------------------------------
+
+平台上的「技能」分两层：
+
+* **Agent Skills** （见 :doc:`agent_skills` ）——``PersonAgent`` 的能力组织方式，遵循
+  **metadata-first、selected-only** 模型——LLM 先只看技能目录（``name`` / ``description``），仅被选中的技能才会加载执行。技能是自包含目录（``SKILL.md`` 与可选的 ``scripts/``、
+  ``references/``），内置技能脚本在 agent 进程内经 ``entrypoint`` 执行，自定义技能经
+  ``skill_worker.py`` 隔离子进程执行；内置技能只有
+  ``daily-guidance``，自定义技能放入 ``custom/skills/`` 即可被发现与热加载。
+* **研究技能** （见 :doc:`skills` ）——``agentsociety2.skills`` 下 LLM 原生的科研工作流模块，
+  ``literature``（文献检索）、``hypothesis``（假设管理）、``experiment``（实验配置与执行）、
+  ``analysis``（数据分析）；论文撰写由外部 ``paper-toolkit`` 承担。它们与 **AgentSociety**
+  编排器一起构成从文献、假设、实验到分析与文稿准备的闭环流水线。
+
 智能体-环境接口
 ----------------------------
 
-智能体通过两个主要方法与环境交互：
-
-* **ask()**: 查询或观察环境状态
-* **intervene()**: 修改环境状态
-
-这个统一接口允许智能体与任何环境模块自然通信。
+对外部调用者（society / driver），``AgentSociety`` 提供 ``ask()``（只读查询）与 ``intervene()``
+（可写干预）两个入口。智能体内部则经 ``ask_env()`` 访问环境：``ask_env`` 把请求交给环境 router 的
+``ask(readonly=...)``，由路由器映射到环境模块的 ``@tool`` 方法。ReAct 工具循环的细节见
+:doc:`architecture` 与 :doc:`agents`。
 
 @tool 装饰器
 -------------------
@@ -166,19 +188,18 @@ CodeGenRouter 通过以下方式将智能体连接到环境模块：
 
 1. 从环境模块中提取工具签名
 2. 根据智能体输入生成调用适当工具的代码
-3. 在沙盒环境中安全执行代码
+3. 静态验证后，在配置的执行后端运行代码
 4. 将结果返回给智能体
 
-这种方法允许智能体与任何环境模块组合交互，而无需更改代码。
+路由器只能调用已挂载模块公开的工具。执行权限、期限与写操作失败后的处理见 :doc:`codegen_execution`。
 
 路由器选择
 ~~~~~~~~~~~~
 
 ``RouterBase`` 有多个实现，可按需替换：
 
-* ``CodeGenRouter`` （默认）：生成调用代码并在沙盒执行，带 AST 守卫；
-  FAISS 指令模板缓存**仅在** ``ask(..., template_mode=True)`` 时生效；
-  若模块未声明 observe/statistics 工具，init 会跳过对应 LLM 代码生成。
+* ``CodeGenRouter`` （默认）：生成调用代码，经静态验证与 AST 守卫后执行；
+  FAISS 指令模板缓存**仅在** ``ask(..., template_mode=True)`` 时生效；若模块未声明 observe/statistics 工具，init 会跳过对应 LLM 代码生成。
 * ``ReActRouter``：ReAct 式工具选择。
 * ``PlanExecuteRouter``：先规划再执行。
 * ``TwoTierReActRouter`` / ``TwoTierPlanExecuteRouter``：两级路由，适合大工具集。
@@ -229,25 +250,32 @@ CodeGenRouter 通过以下方式将智能体连接到环境模块：
 ~~~~~~~~~~~~~~~~~
 
 .. graphviz::
+   :caption: 工具的只读属性与类别分别约束用途
+   :alt: 工具的只读属性与类别分别约束用途
+   :class: doc-figure
 
    digraph tool_hierarchy {
        rankdir=TB;
-       node [shape=box, style=rounded];
+       graph [bgcolor="#ffffff", pad="0.2"];
+       node [shape=box, style="rounded,filled", fillcolor="#f4f7fc", color="#9dafc9", fontname="Arial"];
+       edge [color="#64748b", fontname="Arial", fontsize=10];
 
-       Root [label="@tool 装饰器", shape=ellipse];
+       Root [label="@tool", shape=ellipse];
 
        Readonly [label="readonly=True", shape=diamond];
        Readwrite [label="readonly=False", shape=diamond];
 
-       Observe [label="观察工具（kind=observe）\n单参数 agent_id"];
-       Statistics [label="统计工具（kind=statistics）\n除 self 外无参数"];
-       Regular [label="常规工具（readonly=False）\n任意签名"];
+       Observe [label="Observation (kind=observe)\nOne agent_id argument"];
+       Statistics [label="Statistics (kind=statistics)\nNo arguments except self"];
+       RegularRead [label="Regular read-only tool\nkind=None"] ;
+       Regular [label="Regular write tool\nkind=None"];
 
        Root -> Readonly;
        Root -> Readwrite;
 
        Readonly -> Observe;
        Readonly -> Statistics;
+       Readonly -> RegularRead;
        Readwrite -> Regular;
    }
 
@@ -255,24 +283,28 @@ CodeGenRouter 通过以下方式将智能体连接到环境模块：
 ~~~~~~~~~~~~~~~~~~~~
 
 .. graphviz::
+   :caption: 一次环境请求的工具调用与响应路径
+   :alt: 一次环境请求的工具调用与响应路径
+   :class: doc-figure
 
    digraph interaction_flow {
        rankdir=TB;
-       node [shape=box, style=rounded];
+       graph [bgcolor="#ffffff", pad="0.2"];
+       node [shape=box, style="rounded,filled", fillcolor="#f4f7fc", color="#9dafc9", fontname="Arial"];
+       edge [color="#64748b", fontname="Arial", fontsize=10];
 
-       Agent [label="智能体"];
-       Ask [label="ask/intervene()"];
+       Agent [label="Agent"];
+       Ask [label="ask_env()"];
        Router [label="Router"];
-       Tools [label="@tool 方法"];
-       Env [label="环境状态"];
-       Response [label="响应"];
+       Tools [label="Registered @tool methods"];
+       Env [label="Environment state"];
+       Response [label="Response"];
 
        Agent -> Ask;
        Ask -> Router;
-       Router -> Tools [label="提取工具签名"];
-       Router -> Tools [label="生成调用代码"];
-       Tools -> Env [label="执行工具"];
-       Env -> Tools [label="返回结果"];
+       Router -> Tools [label="Select and call tools"];
+       Tools -> Env [label="Apply tool"];
+       Env -> Tools [label="Return result"];
        Tools -> Router;
        Router -> Response;
        Response -> Agent;

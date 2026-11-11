@@ -1,0 +1,6 @@
+{
+  "version": "2.27.4",
+  "url": "https://github.com/github/codeql-action/releases/download/codeql-bundle-v2.27.4/codeql-bundle-linux64.tar.gz",
+  "sha256": "89ed56c8ec6bfccef6a0d2e7fe86da0469ca24b4db08b88016ec134b942c17a4",
+  "api_url": "https://api.github.com/repos/github/codeql-action/releases/assets/692235003"
+}

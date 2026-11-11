@@ -5,8 +5,13 @@ paths:
   - extension/src
   - frontend/src
   - packages/agentsociety2/agentsociety2
+  - .github/workflows
+  - scripts/ci
 
 paths-ignore:
+  - .github/workflows/agentsociety-publish.yml
+  - .github/workflows/agentsociety-community-publish.yml
+  - .github/workflows/agentsociety-benchmark-publish.yml
   - frontend/public/monaco-editor
   - packages/agentsociety
   - packages/agentsociety-community

@@ -10,6 +10,7 @@
 paths:
   python:
     - packages/agentsociety2
+    - scripts/ci
     - pyproject.toml
     - uv.lock
   extension:
@@ -20,6 +21,7 @@ paths:
     - .github/workflows/ci.yml
     - .github/workflows/extension-ci.yml
     - .github/workflows/frontend-ci.yml
+    - .github/workflows/docs-ci.yml
     - .github/workflows/agentsociety2-publish.yml
     - .github/workflows/dependency-review.yml
     - .github/workflows/codeql.yml

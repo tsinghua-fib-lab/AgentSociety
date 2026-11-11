@@ -1,6 +1,5 @@
 # Build-context exclusions only. Each section matches what Dockerfile stages actually COPY.
-# Nothing here removes runtime capabilities from the final image unless the Dockerfile
-# never installed it in the first place.
+# Keep SDK runtime resources and examples; documentation and tests build separately.
 
 .dockerignore
 
@@ -28,7 +27,9 @@ benchmark_results/
 optimization/
 packages/agentsociety2/benchmarks/
 packages/agentsociety2/run_*/
-packages/agentsociety2/docs/_build/
+packages/agentsociety2/docs/
+packages/agentsociety2/tests/
+packages/agentsociety2/scripts/
 packages/agentsociety2/dist/
 
 # Generic build / log output at repo root
@@ -49,12 +50,14 @@ packages/agentsociety/
 packages/agentsociety-community/
 packages/agentsociety-benchmark/
 
-# Frontend is not referenced by Dockerfile today; skip its node_modules + dist only
-frontend/node_modules/
-frontend/dist/
+# Frontend is built and tested separately from the runtime image.
+frontend/
 
 # Extension: sources are COPY'd explicitly; skip generated / installed artefacts
 extension/node_modules/
 extension/out/
 extension/*.vsix
 extension/.vscode-test/
+
+# Hosted legacy recordings are excluded from VSIX packaging.
+extension/resources/walkthrough/images/gif/init-0*.gif

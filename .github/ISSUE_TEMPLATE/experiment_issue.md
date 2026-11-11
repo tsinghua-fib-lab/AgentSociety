@@ -75,8 +75,9 @@ For long logs, only include the portion around the error.
 - [ ] Agent Skill (daily-guidance / custom)
 - [ ] Environment Router (ReAct / PlanExecute / CodeGen / TwoTier)
 - [ ] Environment Module
-- [ ] Research Skill (literature / experiment / hypothesis / paper / analysis / agent)
-- [ ] Storage / ReplayWriter
+- [ ] Research Skill (literature / experiment / hypothesis / analysis)
+- [ ] External paper-toolkit integration
+- [ ] Storage / replay
 - [ ] LLM / Embedding call failure
 - [ ] Not sure
 

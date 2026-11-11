@@ -24,12 +24,16 @@ export default defineConfig({
         assetsDir: 'assets',
         sourcemap: false,
         rolldownOptions: {
+            preserveEntrySignatures: false,
             output: {
                 strictExecutionOrder: true,
                 codeSplitting: {
+                    // Keep route-only dependencies out of shared startup chunks.
+                    includeDependenciesRecursively: false,
                     groups: [{
                         name: 'vendor',
                         test: /node_modules/,
+                        entriesAware: true,
                         minSize: 100_000,
                         maxSize: 250_000,
                     }],

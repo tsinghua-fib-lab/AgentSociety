@@ -1,5 +1,6 @@
 import * as https from 'https';
 import * as http from 'http';
+import { createHmac } from 'crypto';
 import { URL } from 'url';
 import { readCodexSubscriptionSession } from './codexSettings';
 import { applyUpstreamAuthHeaders, type AiCliAuthHeaderMode } from '../aiCli/upstreamAuthHeaders';
@@ -11,6 +12,12 @@ export type { ProviderUsagePlan, ProviderUsageResult } from '../shared/providerU
 type UsageFetcher = (url: string, headers: Record<string, string>) => Promise<unknown>;
 
 const USAGE_TIMEOUT_MS = 12_000;
+
+/** Opaque, process-local cache identity; credentials key the MAC, metadata is its message. */
+export function providerUsageCacheKey(secret: Buffer, credentials: unknown, metadata: unknown): string {
+  const key = JSON.stringify([secret.toString('hex'), credentials]);
+  return createHmac('sha256', key).update(JSON.stringify(metadata)).digest('hex');
+}
 
 function fetchJson(url: string, headers: Record<string, string>, proxy?: OutboundProxyConfig | null): Promise<unknown> {
   return new Promise((resolve, reject) => {

@@ -45,7 +45,7 @@ def _truncate_text(text: str, max_len: int = 4000) -> str:
 
 
 class PlanStep(BaseModel):
-    """A single step in the execution plan."""
+    """执行计划中的单个步骤。"""
 
     description: str
     tool: str
@@ -61,8 +61,8 @@ class _ToolDef:
 
 class AgentSocietyHelper:
     """
-    Plan-and-Execute helper that answers external questions or executes interventions
-    by first creating a plan, then executing steps, with support for dynamic replanning.
+    Plan-and-Execute 辅助器：先创建计划再逐步执行，用于回答外部问题或执行
+    干预操作，并支持动态重规划。
     """
 
     def __init__(
@@ -73,21 +73,20 @@ class AgentSocietyHelper:
         max_replans: int = 2,
         max_llm_call_retry: int = 10,
     ):
-        """Create a plan-and-execute helper bound to a record-based society.
+        """创建绑定到 record 型 society 的 plan-and-execute 辅助器。
 
-        The helper holds the :class:`AgentSociety` handle and reconstructs
-        target agents on demand via ``society._reconstruct_agent`` /
-        ``society._reconstruct_agents`` (low-volume external queries; workspaces
-        are on local disk). Filter-by-profile over the full population works on
-        the society's **specs** (no reconstruction) when the profile field is
-        directly readable from the spec.
+        辅助器持有 :class:`AgentSociety` 句柄，并按需通过
+        ``society._reconstruct_agent`` / ``society._reconstruct_agents``
+        重建目标 agent（外部查询量小；workspace 都在本地磁盘）。当 profile
+        字段可直接从 spec 读取时，对全体 agent 的按 profile 过滤在
+        society 的 **specs** 上完成（无需重建）。
 
-        :param env_router: Environment router (in-process or ``EnvRouterProxy``).
-        :param society: The record-based :class:`AgentSociety` (holds specs/ids +
-            reconstruction callbacks). Required.
-        :param max_steps: Max plan steps per ask/intervene.
-        :param max_replans: Max replan attempts on failure.
-        :param max_llm_call_retry: Max LLM retries per planning/summary call.
+        :param env_router: 环境路由器（进程内实例或 ``EnvRouterProxy`` ）。
+        :param society: record 型 :class:`AgentSociety` （持有 specs/ids 与
+            重建回调）。必填。
+        :param max_steps: 每次 ask/intervene 的最大计划步数。
+        :param max_replans: 失败时的最大重规划次数。
+        :param max_llm_call_retry: 每次规划/总结调用的最大 LLM 重试次数。
         """
         self._dispatcher = build_client_for_role("coder")
         self._model_name = get_model_name("coder")
@@ -109,7 +108,7 @@ class AgentSocietyHelper:
         )
 
     def _parse_plan_payload(self, response: str) -> dict[str, Any]:
-        """Parse a ``<plan>...</plan>`` XML payload from the model."""
+        """解析模型返回的 ``<plan>...</plan>`` XML 载荷。"""
         data = parse_xml_object(response, root_tag="plan")
         raw_steps = normalize_steps(data.get("steps"))
         steps: list[dict[str, Any]] = []
@@ -126,7 +125,7 @@ class AgentSocietyHelper:
         return data
 
     def _parse_answer_payload(self, response: str) -> dict[str, Any]:
-        """Parse final-answer XML: ``<result><answer>...</answer></result>`` or bare ``<answer>``."""
+        """解析最终答案 XML：``<result><answer>...</answer></result>`` 或裸 ``<answer>`` 。"""
         from agentsociety2.society.llm_xml import element_to_value, parse_xml_root
 
         root = parse_xml_root(response)
@@ -242,7 +241,7 @@ class AgentSocietyHelper:
         return final_answer
 
     async def _create_plan(self, task: str, readonly: bool) -> str | list[PlanStep]:
-        """Create an execution plan for the given task."""
+        """为给定任务创建执行计划。"""
         planning_prompt = self._build_planning_prompt(task, readonly)
 
         error_history = []
@@ -337,7 +336,7 @@ class AgentSocietyHelper:
     async def _execute_step(
         self, step: PlanStep, history: list[dict[str, Any]]
     ) -> dict[str, Any]:
-        """Execute a single step from the plan."""
+        """执行计划中的单个步骤。"""
         tool_name = step.tool
         args = dict(step.args or {})
 
@@ -353,7 +352,7 @@ class AgentSocietyHelper:
     def _enrich_ask_agents_args(
         self, args: dict[str, Any], history: list[dict[str, Any]]
     ) -> dict[str, Any]:
-        """Fill missing ``agent_ids`` from prior list/filter step results."""
+        """从前序 list/filter 步骤的结果中补全缺失的 ``agent_ids`` 。"""
         ids = self._coerce_agent_ids(args.get("agent_ids"))
         if ids:
             args["agent_ids"] = ids
@@ -382,7 +381,7 @@ class AgentSocietyHelper:
         execution_history: list[dict[str, Any]],
         readonly: bool,
     ) -> list[PlanStep] | None:
-        """Create a new plan based on execution history and failures."""
+        """根据执行历史与失败情况创建新计划。"""
         replanning_prompt = self._build_replanning_prompt(
             original_task, current_plan, execution_history, readonly
         )
@@ -479,7 +478,7 @@ class AgentSocietyHelper:
         execution_history: list[dict[str, Any]],
         readonly: bool,
     ) -> str:
-        """Generate the final answer based on execution history."""
+        """基于执行历史生成最终答案。"""
         summary_prompt = self._build_summary_prompt(
             task, plan, execution_history, readonly
         )
@@ -578,7 +577,7 @@ class AgentSocietyHelper:
 
     # ---- Prompt builders ----
     def _build_planning_prompt(self, task: str, readonly: bool) -> str:
-        """Build the planning prompt with structured format."""
+        """构建结构化格式的规划提示词。"""
         mode = "information retrieval" if readonly else "intervention and modification"
         restriction = (
             "You MUST NOT modify the environment or agent states. Only use read-only operations."
@@ -668,7 +667,7 @@ Now create the plan as XML:"""
         execution_history: list[dict[str, Any]],
         readonly: bool,
     ) -> str:
-        """Build the replanning prompt."""
+        """构建重规划提示词。"""
         history_text = []
         for i, entry in enumerate(execution_history, 1):
             step = entry.get("step")
@@ -755,7 +754,7 @@ Create the updated plan as XML:"""
         execution_history: list[dict[str, Any]],
         readonly: bool,
     ) -> str:
-        """Build the summary prompt to generate final answer."""
+        """构建用于生成最终答案的总结提示词。"""
         history_text = []
         for i, entry in enumerate(execution_history, 1):
             step = entry.get("step")
@@ -924,7 +923,7 @@ Generate the final answer as XML:"""
         return {"current_time": self._society.current_time.isoformat()}
 
     async def _tool_list_agents(self) -> dict[str, Any]:
-        """Return the agent roster from society specs (no env / reconstruction)."""
+        """从 society specs 返回 agent 名册（不访问 env / 不重建）。"""
         agents = []
         for spec in self._society.agent_specs:
             profile = spec.get("profile") or {}
@@ -940,7 +939,7 @@ Generate the final answer as XML:"""
         agent_id: Any = None,
         name: str | None = None,
     ) -> dict[str, Any]:
-        """Return a single agent's profile from specs (deterministic, no agent LLM)."""
+        """从 specs 返回单个 agent 的 profile（确定性结果，不调用 agent LLM）。"""
         ids = self._coerce_agent_ids(agent_id) if agent_id is not None else []
         name_norm = str(name).strip().lower() if name else ""
         for spec in self._society.agent_specs:
@@ -961,7 +960,7 @@ Generate the final answer as XML:"""
 
     @staticmethod
     def _coerce_agent_ids(raw: Any) -> list[int]:
-        """Normalize LLM tool args for ``agent_ids`` into a list of ints."""
+        """把 LLM 工具参数中的 ``agent_ids`` 归一化为 int 列表。"""
         if raw is None:
             return []
         if isinstance(raw, (int, float)):
@@ -994,12 +993,11 @@ Generate the final answer as XML:"""
     async def _tool_filter_agents_by_profile(
         self, field: str, value: Any
     ) -> dict[str, Any]:
-        """Filter agents by a profile field.
+        """按 profile 字段过滤 agent。
 
-        Operates on the society's **specs** first (cheap, no reconstruction).
-        If every spec exposes the field directly in its ``profile`` dict, no
-        agent is reconstructed. Only when the field is absent from all profiles
-        do we reconstruct and ask each agent (expensive, rare).
+        先在 society 的 **specs** 上操作（廉价，无需重建）。若每个 spec 都在
+        其 ``profile`` 字典中直接暴露该字段，则不重建任何 agent。仅当该字段
+        在所有 profile 中都缺失时，才重建并逐个询问 agent（昂贵，罕见）。
         """
         specs = self._society.agent_specs
         target_norm = str(value).strip().lower()
@@ -1059,10 +1057,10 @@ Generate the final answer as XML:"""
     async def _tool_ask_agents(
         self, agent_ids: list[int], question: str, readonly: bool | None = None
     ) -> dict[str, Any]:
-        """Ask specific agents a question.
+        """向指定 agent 提问。
 
-        Reconstructs ONLY the requested agents (by id) on demand. The society
-        holds no agent objects; reconstruction is via ``from_workspace``.
+        仅按需重建（按 id）被请求的 agent。society 不持有 agent 对象；
+        重建通过 ``from_workspace`` 完成。
         """
         known_ids = set(self._society.agent_ids)
         valid_ids = [i for i in self._coerce_agent_ids(agent_ids) if i in known_ids]

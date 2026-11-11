@@ -13,7 +13,7 @@ workspace-root/
 
 | 使用方式 | 配置建议 |
 |----------|----------|
-| **官方 Claude / Codex 账号** | 保持对应的本地代理开关关闭，在 CLI 中完成官方登录 |
+| **官方 Claude / Codex 账户** | 保持对应的本地代理开关关闭，在 CLI 中完成官方登录，或在配置页用 **「登录 Codex 官方账户」** 设备登录面板直接登录 |
 | **第三方 API 直连** | 在配置页添加带 API Key 的供应商并设为对应默认项 |
 | **第三方 API 经 Gateway** | 添加供应商后开启 Claude / Codex 路由，用于协议转换、故障转移和用量统计 |
 
@@ -24,34 +24,26 @@ workspace-root/
 - **切到官方模式：** 自动关闭 Codex Gateway 路由，并删除 AgentSociety 管理的供应商字段；已有官方凭据继续保留。
 - **开启 Gateway 路由：** 实时 `config.toml` 指向本地 Gateway，同时用受保护的恢复快照记录直连配置。
 - **路由中切换供应商：** 本地路由保持工作，恢复目标会同步为新选中的供应商。
-- **关闭路由或扩展卸载：** 恢复一份可直接使用的配置；若路由状态仍为开启，下次扩展激活会启动 Gateway 并重新应用本地路由。
+- **关闭路由或卸载扩展：** 恢复一份可直接使用的配置；若路由状态仍为开启，下次扩展激活会启动 Gateway 并重新应用本地路由。
 - **Gateway 启动失败：** Codex 回退到直连配置，不会停留在不可用的 localhost 地址。
 
 Codex 会在启动时读取供应商与模型目录等设置。修改供应商、模型、目录或出站代理后，应从配置页重启 Codex。只有仿真 `.env` 发生变化时，才需要重启 AgentSociety 后端。
 
 ### 推荐配置路径
 
-1. **配置页** — 仿真 LLM、可选 CLI Gateway、供应商与出站代理  
-2. **技能管理 → MCP 集成** — 同步文献 MCP 等到 Claude / Codex  
-3. 终端启动 `claude` 或 `codex`，用 `/status`、`/mcp` 检查连接  
+1. **配置页** — 仿真 LLM、可选 CLI Gateway、供应商与出站代理
+2. **技能管理 → MCP** — 同步文献 MCP 到 Claude / Codex
+3. 在终端启动 `claude` 或 `codex`，用 `/status`、`/mcp` 检查连接
 
 [打开配置页](command:aiSocialScientist.openConfigPage) · [打开技能管理](command:aiSocialScientist.openSkillMarketplace) · [Claude 技能源设置](command:aiSocialScientist.openClaudeSkillSourcesSettings)
-
-### Bypass 权限模式（高级）
-
-在已信任的工作区里，可将 Claude Code 权限模式设为 **bypassPermissions**，减少反复确认：
-
-![开启 bypass 模式](../images/gif/enable-bypass-mode.gif)
-
-> ⚠️ Bypass 会跳过部分工具调用确认，只适合你完全信任的项目。它与 VS Code 的 Workspace Trust 不是一回事，也不要在陌生仓库上开启。
 
 ### 接下来还可以做什么
 
 | 功能 | 入口 |
 |------|------|
-| 模拟回放 | 侧边栏实验目录右键 |
+| 仿真回放 | 在侧边栏右键实验目录 |
 | 论文 / 分析结果 | `paper/`、`presentation/`、`synthesis/` |
-| 使用指南 | 侧边栏 📖 |
+| 使用指南 | 命令面板：`AI Social Scientist: 使用指南` |
 | 术语附录 | 本快速入门最后一步 |
 
 文档：[agentsociety2.readthedocs.io](https://agentsociety2.readthedocs.io/) · 论文：[arXiv:2607.11895](https://arxiv.org/abs/2607.11895) · 反馈：[GitHub Issues](https://github.com/tsinghua-fib-lab/agentsociety/issues)

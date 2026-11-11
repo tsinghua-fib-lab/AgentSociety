@@ -33,7 +33,7 @@
 
 ---
 
-AgentSociety 是用于构建 LLM 驱动智能体仿真、城市环境实验与科研工作流的开源框架。本仓库同时维护推荐使用的 **AgentSociety 2** 与旧版 **AgentSociety 1.x**。
+AgentSociety 是面向 LLM 驱动智能体仿真与可执行社会科学研究的框架系列。研究者可以把研究问题、假设与干预转化为可运行的实验：AI Social Scientist 编排研究流程，Silicon Participants 则在仿真中生活。本仓库同时维护推荐使用的 **AgentSociety 2** 与旧版 **AgentSociety 1.x**。
 
 **论文：**
 
@@ -58,7 +58,7 @@ AgentSociety 是用于构建 LLM 驱动智能体仿真、城市环境实验与�
 
 [![PyPI Version](https://img.shields.io/pypi/v/agentsociety2.svg)](https://pypi.org/project/agentsociety2/)
 
-AgentSociety 2 是现代化的 LLM 原生智能体仿真与科研平台：
+AgentSociety 2 是 LLM 原生的一体化科研环境：AI Social Scientist 与 Silicon Participants 协作——科研技能覆盖从文献检索到数据分析的闭环，仿真则运行在可扩展的 Ray 运行时之上。
 
 ```bash
 pip install agentsociety2
@@ -70,9 +70,13 @@ pip install agentsociety2
 - **灵活的环境系统**：模块化环境组件，支持热插拔工具
 - **多种推理模式**：CodeGen（默认）、ReAct、Plan-Execute、Two-Tier 和 Search 路由器
 - **可扩展执行**：智能体为 workspace 绑定的无状态 record，由 Ray Task 驱动，通过单一 `ServiceProxy` 注入 env / LLM clients / trace / replay 句柄
-- **科研技能**：文献检索、假设生成、实验设计、论文写作
+- **科研技能**：文献检索、假设生成、实验设计与数据分析（论文写作由外部 `paper-toolkit` 插件承担）
 - **实验回放**：Catalog-driven JSONL 回放，DuckDB 读侧 + 分布式 trace
 - **MCP 支持**：Model Context Protocol 集成，扩展工具能力
+
+**架构** —— 从 AgentSociety 1 的社会仿真平台，到 AgentSociety 2 的双角色一体化科研环境：AI Social Scientist 负责实施实验并提供反馈，Silicon Participants 在仿真中生活（[论文](https://arxiv.org/abs/2607.11895) 图 2）：
+
+![AgentSociety 2 双角色一体化科研环境](extension/resources/walkthrough/images/agentsociety2-dual-role.png)
 
 **文档：** [agentsociety2.readthedocs.io](https://agentsociety2.readthedocs.io/)
 
@@ -103,19 +107,25 @@ pip install agentsociety
 - **[agentsociety-community](./packages/agentsociety-community/)**：社区贡献的自定义智能体与 Block
 - **[agentsociety-benchmark](./packages/agentsociety-benchmark/)**：智能体评估基准工具
 
+## 工具
+
+- **AI Social Scientist**（[extension/](./extension/)）：AgentSociety 2 的 VS Code 科研工作台——基于工作区的对话式研究助手、实验配置与运行、回放、技能市场与 MCP 工具配置，详见[使用指南](https://agentsociety2.readthedocs.io/en/latest/user_guide.html)。
+- **[frontend/](./frontend/)**：React Web 控制台。部分页面仍使用旧版接口；AgentSociety 2 的科研工作台由 VS Code 扩展提供。
+
 ## 仓库目录
 
 ```
 AgentSociety/
 ├── packages/
 │   ├── agentsociety2/      # v2.x，当前推荐包
+│   │   └── examples/       # AS2 入门示例（basics / games / advanced）
 │   ├── agentsociety/       # v1.x，旧版城市仿真
+│   │   └── docs/           # v1 文档（legacy）
 │   ├── agentsociety-community/
 │   └── agentsociety-benchmark/
-├── frontend/               # React 前端
-├── extension/              # VS Code 扩展
-├── packages/agentsociety/docs/                # v1 文档
-└── examples/               # 示例实验
+├── frontend/               # React Web 控制台
+├── extension/              # AI Social Scientist VS Code 扩展（AS2 工作台）
+└── examples/               # 示例实验（v1 经典实验 + v2/daily_mobility）
 ```
 
 ## 快速开始
@@ -164,14 +174,14 @@ asyncio.run(main())
 ### AgentSociety 1.x
 
 ```python
-from agentsociety import AgentSociety
+from agentsociety.simulation import AgentSociety
 
 # 详见 packages/agentsociety/README.md
 ```
 
 ## 环境要求
 
-- Python >= 3.11
+- Python 3.11 – 3.13
 - LLM API Key（OpenAI、Anthropic 或任意 litellm 支持的供应商）
 
 ## 贡献者
@@ -184,7 +194,7 @@ from agentsociety import AgentSociety
 
 ## 许可证
 
-AgentSociety 采用 Apache License 2.0，`packages/agentsociety/commercial` 目录除外。详见 [LICENSE](./LICENSE)。
+AgentSociety 采用 Apache License 2.0，`packages/agentsociety/agentsociety/commercial` 目录除外。详见 [LICENSE](./LICENSE)。
 
 ## 引用
 

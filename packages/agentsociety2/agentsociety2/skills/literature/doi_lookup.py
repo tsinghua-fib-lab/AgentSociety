@@ -1,7 +1,7 @@
-"""DOI / arXiv identifier lookup via public metadata APIs.
+"""通过公共元数据 API 查询 DOI / arXiv 标识符。
 
-Shared library for extension “paste DOI” ingest. Independent of the literature
-MCP topic-search path (``core`` / ``mcp_client``).
+供扩展端“粘贴 DOI”入库流程共用的库，独立于文献 MCP 主题检索路径
+（``core`` / ``mcp_client`` ）。
 """
 
 from __future__ import annotations
@@ -37,10 +37,10 @@ def extract_identifier_from_pdf(
     *,
     max_bytes: int = 512_000,
 ) -> str | None:
-    """Scan the start of a PDF for a DOI or arXiv id embedded as plain bytes.
+    """扫描 PDF 开头以明文字节形式内嵌的 DOI 或 arXiv 编号。
 
-    Academic PDFs often contain these strings uncompressed. Returns the first
-    plausible identifier, or ``None`` if none is found. Does not require a PDF library.
+    学术 PDF 中这类字符串通常未经压缩。返回第一个可信的标识符；
+    未找到时返回 ``None`` 。无需依赖 PDF 解析库。
     """
     data = Path(path).read_bytes()[:max_bytes]
     for match in _PDF_DOI_RE.finditer(data):
@@ -60,7 +60,7 @@ def extract_identifier_from_pdf(
 
 @dataclass(frozen=True)
 class BibliographicRecord:
-    """Normalized bibliographic fields from a public lookup."""
+    """公共元数据查询返回的规范化书目字段。"""
 
     identifier: str
     id_type: str
@@ -75,7 +75,7 @@ class BibliographicRecord:
 
 
 def normalize_doi(raw: str) -> str:
-    """Strip URL/doi: prefixes and return a bare DOI string."""
+    """去除 URL/doi: 前缀，返回裸 DOI 字符串。"""
     text = raw.strip()
     match = _DOI_URL_RE.match(text)
     if not match:
@@ -84,7 +84,7 @@ def normalize_doi(raw: str) -> str:
 
 
 def normalize_arxiv_id(raw: str) -> str:
-    """Strip arXiv URL/prefix and return ``YYYY.NNNNN`` (no version)."""
+    """去除 arXiv URL/前缀，返回 ``YYYY.NNNNN`` （不含版本号）。"""
     text = raw.strip()
     match = _ARXIV_RE.match(text)
     if not match:
@@ -93,7 +93,7 @@ def normalize_arxiv_id(raw: str) -> str:
 
 
 def classify_identifier(raw: str) -> tuple[str, str]:
-    """Return ``(id_type, normalized_id)`` for ``doi`` or ``arxiv``."""
+    """识别标识符类型，返回 ``(id_type, normalized_id)`` ，类型为 ``doi`` 或 ``arxiv`` 。"""
     text = raw.strip()
     if not text:
         raise ValueError("Empty identifier")
@@ -167,7 +167,7 @@ def _year_from_crossref(message: dict[str, Any]) -> int | None:
 
 
 def lookup_doi_crossref(doi: str, *, timeout: float = 20.0) -> BibliographicRecord:
-    """Fetch metadata from Crossref ``/works/{doi}`` (journal DOIs; not all DataCite)."""
+    """从 Crossref ``/works/{doi}`` 获取元数据（期刊 DOI；并非覆盖所有 DataCite DOI）。"""
     bare = normalize_doi(doi)
     url = f"https://api.crossref.org/works/{quote(bare, safe='/')}"
     try:
@@ -214,7 +214,7 @@ def lookup_doi_crossref(doi: str, *, timeout: float = 20.0) -> BibliographicReco
 def lookup_doi_content_negotiation(
     doi: str, *, timeout: float = 20.0
 ) -> BibliographicRecord:
-    """Fetch CSL-JSON via DOI content negotiation (``doi.org``)."""
+    """通过 DOI 内容协商（``doi.org`` ）获取 CSL-JSON。"""
     bare = normalize_doi(doi)
     url = f"https://doi.org/{quote(bare, safe='/')}"
     try:
@@ -279,7 +279,7 @@ _ARXIV_NS = {
 
 
 def lookup_arxiv(arxiv_id: str, *, timeout: float = 20.0) -> BibliographicRecord:
-    """Fetch metadata from the arXiv Atom API."""
+    """从 arXiv Atom API 获取元数据。"""
     bare = normalize_arxiv_id(arxiv_id)
     url = f"https://export.arxiv.org/api/query?id_list={quote(bare)}"
     xml_text = _http_get_text(url, accept="application/atom+xml", timeout=timeout)
@@ -328,12 +328,12 @@ def lookup_arxiv(arxiv_id: str, *, timeout: float = 20.0) -> BibliographicRecord
 
 
 def lookup_doi(doi: str, *, timeout: float = 20.0) -> BibliographicRecord:
-    """Fetch DOI metadata via content negotiation (Crossref, DataCite, …)."""
+    """通过内容协商获取 DOI 元数据（Crossref、DataCite 等）。"""
     return lookup_doi_content_negotiation(doi, timeout=timeout)
 
 
 def lookup_identifier(raw: str, *, timeout: float = 20.0) -> BibliographicRecord:
-    """Classify ``raw`` and look it up via DOI negotiation or arXiv."""
+    """对 ``raw`` 进行分类，并通过 DOI 内容协商或 arXiv 完成查询。"""
     id_type, normalized = classify_identifier(raw)
     if id_type == "doi":
         return lookup_doi(normalized, timeout=timeout)
@@ -341,7 +341,7 @@ def lookup_identifier(raw: str, *, timeout: float = 20.0) -> BibliographicRecord
 
 
 def record_to_bibtex(record: BibliographicRecord) -> str:
-    """Render a minimal BibTeX ``@article`` / ``@misc`` entry."""
+    """渲染一个最小化的 BibTeX ``@article`` / ``@misc`` 条目。"""
     entry_type = "article" if record.id_type == "doi" and record.venue else "misc"
     authors = " and ".join(record.authors) if record.authors else "Unknown"
 

@@ -1,7 +1,7 @@
 命令行界面
 ========================================
 
-AgentSociety 2 提供了一个强大的命令行界面（CLI）用于运行实验。
+CLI 从配置文件启动实验，记录进度与日志，并支持从 checkpoint 恢复。首次运行可从下方最小配置开始，再根据实验规模调整批大小与回放设置。
 
 概述
 ------------
@@ -30,7 +30,7 @@ CLI 是运行 AgentSociety 2 实验的主要方式。它提供：
    * - 参数
      - 说明
    * - ``--config`` <PATH>
-     - 初始化配置文件路径（init_config.json）
+     - 初始化配置文件路径（``init_config.json``）
    * - ``--steps`` <PATH>
      - 步骤配置文件路径（steps.yaml）
 
@@ -60,7 +60,7 @@ CLI 是运行 AgentSociety 2 实验的主要方式。它提供：
      - 每个 ``step_agent_batch`` Ray Task 处理的 agent 数
    * - ``--replay-disable``
      - false
-     - 禁用回放写入（百万级 agent 场景适用）
+     - 禁用回放写入；需要后续回放或时序分析时应保留回放数据
    * - ``--resume``
      - false
      - 从 ``run_dir/SOCIETY.json`` 和 ``SOCIETY_STEP.json`` 恢复中断的实验。CLI 会恢复
@@ -84,7 +84,7 @@ CLI 是运行 AgentSociety 2 实验的主要方式。它提供：
 
 日志输出到控制台。
 
-后台运行（生产模式）
+后台运行
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **重要**: 后台运行时必须指定 ``--log-file`` 以捕获日志。
@@ -119,7 +119,7 @@ CLI 是运行 AgentSociety 2 实验的主要方式。它提供：
    pid=$(jq -r '.pid' hypothesis_1/experiment_1/run/pid.json)
 
    # 发送 SIGTERM 信号
-   kill $pid
+   kill -TERM "$pid"
 
 恢复中断的实验
 ~~~~~~~~~~~~~~~~~~~~~
@@ -142,8 +142,7 @@ CLI 是运行 AgentSociety 2 实验的主要方式。它提供：
        --resume \
        --log-file hypothesis_1/experiment_1/run/output.log &
 
-恢复时以 checkpoint 中的 env 模块类型和 kwargs、时钟、步数为准，而不是重新读取 config 文件中的
-这些值，这可以避免配置漂移。``RunStep`` 会根据游标跳过已完成的部分；``Ask``、``Intervene`` 和
+恢复时以 checkpoint 中的 env 模块类型和 kwargs、时钟、步数为准，而不是重新读取 config 文件中的这些值，这可以避免配置漂移。``RunStep`` 会根据游标跳过已完成的部分；``Ask``、``Intervene`` 和
 ``Questionnaire`` 会重新执行。如果 ``steps.yaml`` 的 hash 与 checkpoint 不一致，CLI 会输出
 WARNING。可以用下面的命令校验恢复点：
 
@@ -153,13 +152,12 @@ WARNING。可以用下面的命令校验恢复点：
 
 .. note::
 
-   只有覆盖了 ``to_workspace()`` 和 ``restore()`` 的 env 模块才能在 resume 时恢复动态状态
-   （见 :doc:`env_modules`）。未覆盖的模块 resume 后会回到 fresh 态。
+   只有覆盖了 ``to_workspace()`` 和 ``restore()`` 的 env 模块才能在 resume 时恢复动态状态（见 :doc:`env_modules`）。未覆盖的模块 resume 后会回到 fresh 态。
 
 配置文件
 ------------
 
-init_config.json
+``init_config.json``
 ~~~~~~~~~~~~~~~~~~~~
 
 初始化配置文件定义实验的基本设置：
@@ -173,8 +171,7 @@ init_config.json
                "agent_type": "PersonAgent",
                "kwargs": {
                    "id": 1,
-                   "name": "Alice",
-                   "personality": "friendly"
+                   "profile": {"name": "Alice", "personality": "friendly"}
                }
            }
        ],
@@ -187,9 +184,12 @@ init_config.json
            }
        ],
        "codegen_router": {
-           "final_summary_enabled": true
+           "final_summary_enabled": false
        }
    }
+
+``codegen_router`` 块可选。``final_summary_enabled`` 自 v2.10.0 起**默认关闭**：关闭时 env
+``ask`` 的最终应答由确定性拼装生成；开启后每次 ask 额外产生一次 LLM summary 调用，会增加调用开销；是否开启取决于是否需要自然语言总结。
 
 steps.yaml
 ~~~~~~~~~~~~~
@@ -218,12 +218,15 @@ steps.yaml
 
    * - 类型
      - 说明
+   * - ``run``
+     - 运行 ``num_steps`` 个模拟步，每步时长 ``tick`` 秒
    * - ``ask``
      - 只读查询，不修改环境
    * - ``intervene``
      - 读写操作，可以修改环境
-   * - ``step``
-     - 执行一个模拟步骤（指定 tick 时长）
+   * - ``questionnaire``
+     - 向目标 agent 发放问卷（``questionnaire_id``、``questions`` 题目列表，可选
+       ``target_agent_ids``），收集结构化回答
 
 输出文件
 ------------
@@ -237,10 +240,13 @@ steps.yaml
    ├── output.log            # 日志文件（如果指定了 --log-file）
    ├── replay/               # _schema.json + sharded JSONL replay datasets
    ├── trace/                # sharded JSONL trace spans
+   ├── SOCIETY.json          # 初始化配置 checkpoint
+   ├── SOCIETY_STEP.json     # 最近完成步骤 checkpoint
+   ├── env/                  # 环境模块状态
    ├── agents/               # agent workspaces
-   └── artifacts/            # 步骤产物（如果启用了 save_artifact）
-       ├── step_1_ask.json
-       ├── step_2_intervene.json
+   └── artifacts/            # ask / intervene / questionnaire 产物
+       ├── ask_step_0_<timestamp>.md
+       ├── intervene_step_2_<timestamp>.md
        └── ...
 
 pid.json 格式
@@ -250,13 +256,15 @@ pid.json 格式
 
    {
        "pid": 12345,
-       "start_time": "2026-03-20T10:30:00",
        "status": "running",
-       "config": {
-           "config_path": "/path/to/init_config.json",
-           "steps_path": "/path/to/steps.yaml"
-       }
+       "start_time": "2026-03-20T10:30:00",
+       "experiment_id": "1_1",
+       "simulation_time": "2026-01-01T02:00:00",
+       "step_count": 2
    }
+
+``status`` 为 ``running`` / ``completed`` / ``completed_with_errors`` / ``failed``；每个步骤结束时会更新进度字段（``simulation_time`` / ``step_count``），完成或失败时追加 ``end_time``，失败时附带
+``error``；``--resume`` 续跑时附带 ``resumed`` / ``resumed_from_step``。
 
 日志级别
 ------------

@@ -1,8 +1,7 @@
-"""Shared helpers for adding literature entries from DOI/arXiv or local files.
+"""从 DOI/arXiv 或本地文件添加文献条目的共享辅助函数。
 
-Used by the VS Code extension UI (upload / paste DOI). Not part of the
-Claude literature-search skill surface — topic search and OA full-text stay
-in ``search`` / ``full_text`` / MCP.
+供 VS Code 扩展 UI（上传 / 粘贴 DOI）使用，不属于 Claude 文献检索技能的
+对外接口——主题检索与 OA 全文仍走 ``search`` / ``full_text`` / MCP。
 """
 
 from __future__ import annotations
@@ -31,7 +30,7 @@ FileType = Literal["markdown", "pdf", "docx", "txt", "md"]
 
 @dataclass(frozen=True)
 class IngestResult:
-    """Outcome of a single ingest operation."""
+    """单次入库操作的结果。"""
 
     added: bool
     duplicate: bool
@@ -46,7 +45,7 @@ def _now_iso() -> str:
 
 
 def load_or_create_index(workspace: Path) -> tuple[Path, LiteratureIndex]:
-    """Load ``papers/literature_index.json``, creating an empty index if missing."""
+    """加载 ``papers/literature_index.json`` ，缺失时创建空索引。"""
     papers_dir = workspace / "papers"
     papers_dir.mkdir(parents=True, exist_ok=True)
     index_path = papers_dir / "literature_index.json"
@@ -64,7 +63,7 @@ def load_or_create_index(workspace: Path) -> tuple[Path, LiteratureIndex]:
 
 
 def save_index(index_path: Path, index: LiteratureIndex) -> None:
-    """Persist the literature index with an updated timestamp."""
+    """持久化文献索引并刷新更新时间。"""
     index.updated_at = _now_iso()
     index_path.write_text(
         json.dumps(index.model_dump(), ensure_ascii=False, indent=2) + "\n",
@@ -78,7 +77,7 @@ def find_duplicate_index(
     title: str | None,
     doi: str | None,
 ) -> int | None:
-    """Return the index of a duplicate entry by DOI or title, else ``None``."""
+    """按 DOI 或标题查找重复条目的下标，找不到时返回 ``None`` 。"""
     doi_key = doi.strip().lower() if doi else ""
     title_key = title.strip().lower() if title else ""
     for idx, entry in enumerate(index.entries):
@@ -177,7 +176,7 @@ def add_from_identifier(
     *,
     timeout: float = 20.0,
 ) -> IngestResult:
-    """Look up a DOI or arXiv id and add a Markdown note + index entry."""
+    """查询 DOI 或 arXiv 编号，并添加 Markdown 笔记与索引条目。"""
     workspace = workspace.resolve()
     record = lookup_identifier(raw_identifier, timeout=timeout)
     index_path, index = load_or_create_index(workspace)
@@ -228,15 +227,15 @@ def add_from_local_file(
     *,
     title: str | None = None,
 ) -> IngestResult:
-    """Add a local Markdown note or PDF into the literature index.
+    """将本地 Markdown 笔记或 PDF 添加到文献索引。
 
-    Markdown/txt are stored under ``papers/`` as the entry ``file_path``.
-    PDFs follow the same contract as full-text helpers: a stub Markdown note
-    is ``file_path``, and the PDF is copied to ``papers/full_texts/`` under
-    ``extra_fields.full_text``.
+    Markdown/txt 直接存放在 ``papers/`` 下作为条目的 ``file_path`` 。
+    PDF 遵循与全文辅助工具相同的约定：条目的 ``file_path`` 是一份占位
+    Markdown 笔记，PDF 本体复制到 ``papers/full_texts/`` 并记录在
+    ``extra_fields.full_text`` 下。
 
-    This creates a **new** entry. To attach a PDF to an existing entry, use
-    ``literature-full-text register`` instead.
+    此操作会创建**新**条目；要为已有条目挂接 PDF，请改用
+    ``literature-full-text register`` 。
     """
     workspace = workspace.resolve()
     src = file_path if file_path.is_absolute() else (workspace / file_path)

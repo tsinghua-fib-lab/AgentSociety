@@ -1,7 +1,7 @@
 """命令行入口：按 ``steps.yaml`` 驱动 :class:`~agentsociety2.society.society.AgentSociety` 实验。
 
 启动前会校验 ``AGENTSOCIETY_LLM_API_KEY`` 以及可供 CodeGenRouter 使用的 coder
-相关密钥（可与主密钥相同）。环境与模块发现见 :mod:`agentsociety2.registry`。
+相关密钥（可与主密钥相同）。环境与模块发现见 :mod:`agentsociety2.registry` 。
 """
 
 import argparse
@@ -217,7 +217,7 @@ class ExperimentRunner:
 
         :param agent_args: 逐 agent 配置 dict(``agent_id`` / ``agent_type`` /
             ``kwargs``)。
-        :returns: ``(agent_specs, agent_class_name)``。
+        :returns: ``(agent_specs, agent_class_name)`` 。
         """
         agent_type_map = {
             agent_type: agent_class
@@ -333,7 +333,7 @@ class ExperimentRunner:
         :param experiment_id: 实验ID（可选）
         :param replay_disable: 为 True 时构造一个禁用的 ``ReplayProxy`` （无 replay JSONL 写）。
         :param batch_size: 每个 ``step_agent_batch`` Ray Task 处理的 agent 数；
-            ``None`` 时回落 ``Config.BATCH_SIZE`` （环境变量 ``AGENTSOCIETY_BATCH_SIZE``，缺省 256）。
+            ``None`` 时回落 ``Config.BATCH_SIZE`` （环境变量 ``AGENTSOCIETY_BATCH_SIZE`` ，缺省 256）。
         :param resume: 为 True 时从 ``run_dir/SOCIETY.json`` 恢复 env 模块状态与 society
             时钟/步数，跳过已完成的 ``RunStep`` （Ask/Intervene/Questionnaire 会重跑）。
         """

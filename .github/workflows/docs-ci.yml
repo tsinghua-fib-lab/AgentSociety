@@ -1,0 +1,157 @@
+name: Documentation CI
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 3 * * 1"
+  push:
+    branches: [main, develop]
+    paths:
+      - "scripts/ci/**"
+      - "Makefile"
+      - ".gitlab-ci.yml"
+      - "packages/agentsociety2/docs/**"
+      - "packages/agentsociety2/agentsociety2/**"
+      - "packages/agentsociety2/examples/**"
+      - "packages/agentsociety2/scripts/**"
+      - "packages/agentsociety2/pyproject.toml"
+      - "packages/agentsociety2/.readthedocs.yaml"
+      - "packages/agentsociety2/README*.md"
+      - "extension/resources/walkthrough/**"
+      - "extension/README.md"
+      - "extension/scripts/check-doc-assets.mjs"
+      - "README*.md"
+      - "READTHEDOCS.md"
+      - "pyproject.toml"
+      - "uv.lock"
+      - "frontend/tests/docs/**"
+      - "frontend/playwright.docs.config.ts"
+      - "frontend/package*.json"
+      - ".github/workflows/*.yml"
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "scripts/ci/**"
+      - "Makefile"
+      - ".gitlab-ci.yml"
+      - "packages/agentsociety2/docs/**"
+      - "packages/agentsociety2/agentsociety2/**"
+      - "packages/agentsociety2/examples/**"
+      - "packages/agentsociety2/scripts/**"
+      - "packages/agentsociety2/pyproject.toml"
+      - "packages/agentsociety2/.readthedocs.yaml"
+      - "packages/agentsociety2/README*.md"
+      - "extension/resources/walkthrough/**"
+      - "extension/README.md"
+      - "extension/scripts/check-doc-assets.mjs"
+      - "README*.md"
+      - "READTHEDOCS.md"
+      - "pyproject.toml"
+      - "uv.lock"
+      - "frontend/tests/docs/**"
+      - "frontend/playwright.docs.config.ts"
+      - "frontend/package*.json"
+      - ".github/workflows/*.yml"
+
+concurrency:
+  group: documentation-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MEM0_TELEMETRY: "False"
+  ANONYMIZED_TELEMETRY: "False"
+  UV_DEFAULT_INDEX: https://pypi.org/simple
+
+jobs:
+  docs:
+    if: github.event_name != 'schedule'
+    name: Documentation checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.3.3
+        with:
+          version: "0.13.6"
+          enable-cache: true
+          cache-suffix: docs-3.12
+
+      - name: Install documentation dependencies
+        run: uv sync --frozen --package agentsociety2 --no-default-groups --extra docs
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: extension/.nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build, validate translations, links and offline examples
+        run: make ci-config ci-docs-build
+
+      - name: Install browser test dependencies
+        working-directory: frontend
+        run: |
+          npm ci --workspace tests/docs --include-workspace-root=false --prefer-offline --no-audit --fund=false
+          npx --no-install playwright install --with-deps --only-shell chromium
+
+      - name: Test search, navigation, API pages and markup
+        run: npm --prefix frontend run test:docs
+
+      - name: Upload browser failure traces
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: documentation-browser-traces
+          path: frontend/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Upload documentation preview
+        uses: actions/upload-artifact@v7
+        with:
+          name: documentation-preview
+          path: docs-preview/
+          retention-days: 7
+
+  maintenance:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    name: External links and API documentation report
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v10.3.3
+        with:
+          version: "0.13.6"
+          enable-cache: true
+          cache-suffix: docs-3.12
+      - run: uv sync --frozen --package agentsociety2 --no-default-groups --extra docs
+
+      - name: Report API documentation coverage
+        run: .venv/bin/sphinx-build -b coverage packages/agentsociety2/docs docs-reports/coverage
+
+      - name: Check external links
+        run: .venv/bin/sphinx-build -b linkcheck packages/agentsociety2/docs docs-reports/links
+
+      - name: Upload reports even when links fail
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: documentation-maintenance-reports
+          path: docs-reports/
+          retention-days: 30

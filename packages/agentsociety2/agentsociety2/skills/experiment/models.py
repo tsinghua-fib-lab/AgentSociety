@@ -1,6 +1,6 @@
-"""Experiment data models
+"""实验数据模型
 
-Pydantic models for experiment configuration and execution.
+用于实验配置与执行的 Pydantic 模型。
 """
 
 from __future__ import annotations
@@ -9,9 +9,9 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class ExperimentConfig(BaseModel):
-    """Experiment configuration model
+    """实验配置模型
 
-    Basic configuration for an experiment run.
+    单次实验运行的基础配置。
     """
 
     model_config = ConfigDict(extra="allow")
@@ -33,9 +33,9 @@ class ExperimentConfig(BaseModel):
 
 
 class ExperimentStatus(BaseModel):
-    """Experiment execution status model
+    """实验执行状态模型
 
-    Represents the current status of a running or completed experiment.
+    表示一次运行中或已完成实验的当前状态。
     """
 
     model_config = ConfigDict(extra="allow")
@@ -61,9 +61,9 @@ class ExperimentStatus(BaseModel):
 
 
 class ExperimentInfo(BaseModel):
-    """Information about an experiment
+    """实验信息
 
-    Summary of an experiment's configuration and status.
+    实验配置与状态的摘要。
     """
 
     model_config = ConfigDict(extra="allow")

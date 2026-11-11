@@ -25,7 +25,7 @@
 在本地重建目标 agent(更简单,工作区在同一磁盘上)。
 
 实现说明:Ray(2.x)不允许在普通 ``async def`` 任务上直接使用
-``@ray.remote``。因此每个公开任务都是一个薄的同步包装,通过
+``@ray.remote`` 。因此每个公开任务都是一个薄的同步包装,通过
 ``asyncio.run`` 驱动内部异步协程。异步核心保持 agent 契约
 (``from_workspace`` / ``step`` / ``to_workspace`` 均为协程)不变。
 """
@@ -106,7 +106,7 @@ def _workspace_for(workspace_root: str, agent_id: int) -> Path:
     """返回每个 agent 的规范工作区路径。
 
     与 ``AgentSociety`` 和 ``PersonAgent`` 使用的方案一致:
-    ``<workspace_root>/agent_<id:04d>``。
+    ``<workspace_root>/agent_<id:04d>`` 。
     """
     return Path(workspace_root) / f"agent_{int(agent_id):04d}"
 
@@ -275,9 +275,9 @@ def step_agent_batch(
     t: datetime,
     service_proxy: ServiceProxy,
 ) -> list[dict]:
-    """为批内每个 agent id 运行一次 ``step``。
+    """为批内每个 agent id 运行一次 ``step`` 。
 
-    对每个 id:``from_workspace`` → ``step`` → ``to_workspace``。批内 agent
+    对每个 id:``from_workspace`` → ``step`` → ``to_workspace`` 。批内 agent
     通过 ``asyncio.gather`` 并发运行,每个都受 LLM 限制(一串被 await 的
     LLM/工具调用),重叠执行可让共享的 AdaptiveSemaphore 将 LLM 请求扇出
     到 API。全局 LLM 并发由 dispatcher 的信号量控制。跨群体的额外并行来自
@@ -344,7 +344,7 @@ def questionnaire_agent_batch(
 
     与 ``step_agent_batch`` 平行,但服务于外部问卷而非仿真 tick。对每个
     id:``from_workspace`` → 运行整个问卷(所有问题、readonly asks)→
-    ``to_workspace``。批内 agent 通过 ``asyncio.gather`` 并发运行(每个
+    ``to_workspace`` 。批内 agent 通过 ``asyncio.gather`` 并发运行(每个
     ``ask`` 受 LLM 限制)。跨群体的并行来自驱动端提交多个此类任务,与
     ``step`` 完全一致。
 

@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="230" viewBox="0 0 1040 230" role="img" aria-labelledby="title desc">
+  <title id="title">Analysis workflow</title>
+  <desc id="desc">Data → Analyze → Charts → Report.</desc>
+  <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="m0 0 10 5-10 5" fill="#91a1b2"/></marker></defs>
+  <rect width="1040" height="230" rx="14" fill="#f7f9fc"/>
+  <path d="M182 91H324.667" stroke="#b2bfcc" stroke-width="2" marker-end="url(#arrow)"/>
+  <path d="M448.667 91H591.333" stroke="#b2bfcc" stroke-width="2" marker-end="url(#arrow)"/>
+  <path d="M715.333 91H858" stroke="#b2bfcc" stroke-width="2" marker-end="url(#arrow)"/>
+  <g transform="translate(120 91)" color="#1a66ad">
+    <circle r="46" fill="white" stroke="#d5dfe9" stroke-width="1.5"/>
+    <g transform="translate(-24 -24)" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="24" cy="11" rx="15" ry="6"/><path d="M9 11v25c0 8 30 8 30 0V11M9 23c0 8 30 8 30 0"/></g>
+    <text y="87" text-anchor="middle" fill="#25374c" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="600">Data</text>
+  </g>
+  <g transform="translate(386.667 91)" color="#168276">
+    <circle r="46" fill="white" stroke="#d5dfe9" stroke-width="1.5"/>
+    <g transform="translate(-24 -24)" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="20" cy="20" r="12"/><path d="m29 29 12 12M13 24l5-7 5 4 4-5"/></g>
+    <text y="87" text-anchor="middle" fill="#25374c" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="600">Analyze</text>
+  </g>
+  <g transform="translate(653.333 91)" color="#6958a2">
+    <circle r="46" fill="white" stroke="#d5dfe9" stroke-width="1.5"/>
+    <g transform="translate(-24 -24)" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M8 8v32h34M16 31v-9M25 31V15M34 31V9" stroke-width="3"/></g>
+    <text y="87" text-anchor="middle" fill="#25374c" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="600">Charts</text>
+  </g>
+  <g transform="translate(920 91)" color="#9b713d">
+    <circle r="46" fill="white" stroke="#d5dfe9" stroke-width="1.5"/>
+    <g transform="translate(-24 -24)" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="11" y="6" width="26" height="36" rx="3"/><path d="M17 17h14M17 24h14M17 31h10"/></g>
+    <text y="87" text-anchor="middle" fill="#25374c" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="600">Report</text>
+  </g>
+</svg>

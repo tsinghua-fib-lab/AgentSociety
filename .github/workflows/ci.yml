@@ -7,21 +7,35 @@ on:
   push:
     branches: [main, develop]
     paths:
-      - "packages/agentsociety2/**"
-      - "!packages/agentsociety2/docs/**"
-      - "!packages/agentsociety2/**/*.md"
+      - "scripts/ci/**"
+      - "Makefile"
+      - "CHANGELOG.md"
+      - "cliff.toml"
+      - ".gitlab-ci.yml"
+      - "packages/agentsociety2/agentsociety2/**"
+      - "packages/agentsociety2/tests/**"
+      - "packages/agentsociety2/examples/**"
+      - "packages/agentsociety2/scripts/**"
+      - "packages/agentsociety2/pyproject.toml"
       - "pyproject.toml"
       - "uv.lock"
-      - ".github/workflows/ci.yml"
+      - ".github/workflows/*.yml"
   pull_request:
     branches: [main, develop]
     paths:
-      - "packages/agentsociety2/**"
-      - "!packages/agentsociety2/docs/**"
-      - "!packages/agentsociety2/**/*.md"
+      - "scripts/ci/**"
+      - "Makefile"
+      - "CHANGELOG.md"
+      - "cliff.toml"
+      - ".gitlab-ci.yml"
+      - "packages/agentsociety2/agentsociety2/**"
+      - "packages/agentsociety2/tests/**"
+      - "packages/agentsociety2/examples/**"
+      - "packages/agentsociety2/scripts/**"
+      - "packages/agentsociety2/pyproject.toml"
       - "pyproject.toml"
       - "uv.lock"
-      - ".github/workflows/ci.yml"
+      - ".github/workflows/*.yml"
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -30,6 +44,7 @@ concurrency:
 env:
   MEM0_TELEMETRY: "False"
   ANONYMIZED_TELEMETRY: "False"
+  UV_DEFAULT_INDEX: https://pypi.org/simple
 
 jobs:
   lint:
@@ -47,18 +62,20 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@v10.3.3
+        with:
+          version: "0.13.6"
+          enable-cache: true
+          cache-suffix: sdk-3.12
 
       - name: Install dependencies
         working-directory: packages/agentsociety2
-        run: uv sync --extra dev
+        run: uv sync --frozen --package agentsociety2 --no-default-groups --extra dev
 
-      - name: Lint with ruff
-        working-directory: packages/agentsociety2
-        run: uv run ruff check .
+      - name: Check CI configuration parity
+        run: make ci-config
 
-      - name: Type check with mypy
-        working-directory: packages/agentsociety2
-        run: uv run mypy tests/ --follow-imports=skip
+      - name: Lint and type check
+        run: make ci-python-lint
 
   test:
     name: Test (Python ${{ matrix.python-version }})
@@ -80,22 +97,23 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@v10.3.3
+        with:
+          version: "0.13.6"
+          enable-cache: true
+          cache-suffix: sdk-${{ matrix.python-version }}
 
       - name: Install dependencies
         working-directory: packages/agentsociety2
-        run: uv sync --extra dev
+        run: uv sync --frozen --package agentsociety2 --no-default-groups --extra dev
 
       - name: Run tests
         working-directory: packages/agentsociety2
         run: |
-          uv run pytest -v \
-            --junitxml=junit.xml \
-            -o junit_family=xunit2 \
-            -o junit_suite_name="agentsociety2-py${{ matrix.python-version }}"
+          make -C ../.. ci-python-test AS2_PYTEST_ARGS="-v --junitxml=junit.xml -o junit_family=xunit2 -o junit_suite_name=agentsociety2-py${{ matrix.python-version }}"
         env:
-          AGENTSOCIETY_LLM_API_KEY: ${{ secrets.AGENTSOCIETY_LLM_API_KEY }}
-          AGENTSOCIETY_LLM_API_BASE: ${{ secrets.AGENTSOCIETY_LLM_API_BASE }}
-          AGENTSOCIETY_LLM_MODEL: glm-5
+          AGENTSOCIETY_LLM_API_KEY: test-key
+          AGENTSOCIETY_LLM_API_BASE: https://api.openai.com/v1
+          AGENTSOCIETY_LLM_MODEL: gpt-5.5
 
       - name: Upload test report
         if: always()
@@ -108,7 +126,7 @@ jobs:
   build:
     name: Build package
     runs-on: ubuntu-latest
-    needs: test
+    needs: lint
 
     steps:
       - name: Checkout
@@ -116,13 +134,10 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@v10.3.3
+        with:
+          version: "0.13.6"
+          enable-cache: true
+          cache-suffix: build-3.12
 
       - name: Build package
-        run: |
-          cd packages/agentsociety2
-          uv build --out-dir dist
-
-      - name: Check distribution
-        run: |
-          cd packages/agentsociety2
-          uv run --with twine twine check dist/*
+        run: make ci-package

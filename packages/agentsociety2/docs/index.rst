@@ -3,49 +3,88 @@ AgentSociety 2
 
 **AgentSociety 2** 是面向计算社会科学的现代化、LLM 原生智能体模拟与科研平台：在统一的异步框架中创建与管理智能体、环境模块与研究技能，并支持从 CLI、REST API 到集成研究环境的多入口协作。
 
-.. image:: https://img.shields.io/pypi/v/agentsociety2.svg
-   :target: https://pypi.org/project/agentsociety2/
-   :alt: PyPI Version
+.. container:: project-links
 
-.. image:: https://img.shields.io/pypi/pyversions/agentsociety2.svg
-   :target: https://pypi.org/project/agentsociety2/
-   :alt: Python Versions
+   * `PyPI <https://pypi.org/project/agentsociety2/>`_
 
-.. image:: https://img.shields.io/badge/License-Apache%202.0-blue.svg
-   :target: LICENSE
-   :alt: License
+   * Python 3.11–3.13
 
-研究背景与平台定位
+   * `Apache 2.0 <https://github.com/tsinghua-fib-lab/AgentSociety/blob/main/LICENSE>`_
+
+从这里开始
+----------
+
+.. grid:: 1 1 2 2
+   :gutter: 3
+   :class-container: start-links
+
+   .. grid-item-card:: 使用科研工作台
+      :link: user_guide
+      :link-type: doc
+      :class-card: doc-card
+
+      配置工作区、模型与后端，开始交互式研究。
+
+   .. grid-item-card:: 运行 Python 示例
+      :link: quickstart
+      :link-type: doc
+      :class-card: doc-card
+
+      从最小仿真开始，了解智能体与环境的交互。
+
+   .. grid-item-card:: 创建环境模块
+      :link: custom_modules
+      :link-type: doc
+      :class-card: doc-card
+
+      定义实验规则与工具，扩展自己的仿真环境。
+
+   .. grid-item-card:: 理解运行架构
+      :link: architecture
+      :link-type: doc
+      :class-card: doc-card
+
+      查看执行、恢复、追踪与存储的工作方式。
+
+研究工作区
 ------------------
 
-科学探究在历史上依托 :strong:`经验、理论、计算与数据密集型` 等范式不断扩展问题的范围、规模与深度；数字时代以来，大语言模型与自主智能体正在系统性地重塑知识生产与协作方式。对社会科学而言，智能体至少可以承担两类互补角色：其一，作为 :strong:`智能体科学家`，参与文献整合、想法产生与实验编排等认知劳动；其二，作为可规模化、可重复的 :strong:`硅基被试`，在可控仿真环境中开展问卷、访谈与干预的试点研究，从而在成本与伦理约束下探索反事实与机制。
+平台把两类智能体放进同一个研究工作区：AI Social Scientist 协调文献、假设、实验和分析，硅基参与者在可配置环境中产生行为反馈。研究者负责明确问题、审阅设计并判断证据能支持哪些结论。
 
-**AgentSociety 2** 将上述思路落实为 :strong:`端到端的智能体科研编排框架`：围绕四类范式组织协同工作的能力——面向经验范式的实验设计、执行与结果分析；面向理论范式的文献整合与假设构建（并可对接跨学科文献与结构化工作流）；面向计算范式的通用智能体–环境仿真（在 AgentSociety 1 的模拟传统上扩展为更灵活的模块化架构）；以及面向数据密集型范式的数据获取、整合与统计推断支持。多类研究技能与 **AgentSociety** 编排器共同构成从文献与假设、到数据与计算实验、再到分析与文稿准备的 :strong:`闭环流水线`。
+工作从 ``TOPIC.md`` 开始，逐步形成假设、可执行配置、运行记录和报告。CLI、Python API 与工作台共享核心仿真能力；运行架构见 :doc:`architecture`，智能体与技能见 :doc:`agents`、:doc:`agent_skills`。论文撰写通过外部 ``paper-toolkit`` 接续分析结果。
 
-与此同时，平台强调 :strong:`有意义的科学洞见仍源于人类研究者`；挑战在于如何在降低工程负担的同时，使人与智能体能力对齐、协作可控。**AgentSociety 2** 通过 **IDE 式集成研究环境（IRE）** 与可视化/扩展入口（如后端 API、CLI、前端与扩展）提供结构化工作区，支持研究者与多智能体团队持续协同，在透明可控的前提下将初步想法落实为可复现的仿真实验。系统架构、路由与存储等实现细节见 :doc:`concepts`；智能体与技能见 :doc:`agents` 与 :doc:`agent_skills`。
+完整步骤见 :doc:`research_workflow`；准备输入数据见 :doc:`datasets`；查看回放与研究产物见 :doc:`results`。
 
 ----
 
-核心特性
+功能与文档
 ------------
 
-* **LLM 驱动的智能体**: 创建具有个性、记忆和推理能力的智能体，由大语言模型驱动。
+.. list-table::
+   :widths: 30 45 25
+   :header-rows: 1
 
-* **灵活的环境模块**: 使用可组合的工具和状态管理构建自定义模拟环境。
-
-* **异步优先设计**: 高性能异步架构，实现高效的多智能体模拟。
-
-* **回放与分析**: append-only JSONL replay、``_schema.json`` catalog 与 DuckDB 读侧，用于实验跟踪和分析。
-
-* **中断恢复**: agent、env 和 society 三层状态都会原子持久化，CLI ``--resume`` 可从中断处继续运行实验（见 :doc:`cli`）。
-
-* **研究技能**: 内置文献检索、假设生成、实验设计与数据分析等 LLM 原生工作流；论文撰写由外部 ``paper-toolkit`` 承担。
-
-* **REST API**: 基于 FastAPI 的独立后端服务，支持外部集成。
-
-* **CLI 工具**: 强大的命令行界面，支持实验运行和进度跟踪。
-
-* **可扩展**: 轻松扩展自定义智能体、环境和工具。
+   * - 想做什么
+     - 功能
+     - 阅读入口
+   * - 使用研究工作台
+     - 配置模型、管理文献与数据、组织假设和实验、分享工作区
+     - :doc:`user_guide`
+   * - 配置参与者与环境
+     - 人物画像、行为技能、环境工具与自定义模块
+     - :doc:`agents`、:doc:`env_modules`
+   * - 执行与干预实验
+     - Python 交互、CLI 执行、进度日志与中断恢复
+     - :doc:`interaction`、:doc:`cli`
+   * - 检查数据与结果
+     - 时间步回放、数据集读取、分析与图表报告
+     - :doc:`storage`、:doc:`skills`
+   * - 扩展研究能力
+     - 研究助手技能、Agent 技能与自定义环境
+     - :doc:`agent_skills`、:doc:`custom_modules`
+   * - 集成自己的工具
+     - Python 接口、独立后端与配置模型
+     - :doc:`api/index`
 
 安装
 ------------
@@ -65,43 +104,47 @@ AgentSociety 2
 -------------
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: 入门指南:
 
    user_guide
+   research_workflow
    installation
    quickstart
-   cli
+   examples
+
+.. toctree::
+   :maxdepth: 1
+   :caption: 仿真与数据:
+
    concepts
-   architecture
-   interaction
-
-.. toctree::
-   :maxdepth: 2
-   :caption: 用户指南:
-
    agents
-   agent_skills
    env_modules
-   codegen_execution
+   interaction
+   cli
+   results
    storage
-   custom_modules
-   skills
+   codegen_execution
 
 .. toctree::
-   :maxdepth: 2
-   :caption: 开发者指南:
+   :maxdepth: 1
+   :caption: 研究与扩展:
 
+   skills
+   datasets
+   agent_skills
+   skill_guide
+   custom_modules
+
+.. toctree::
+   :maxdepth: 1
+   :caption: 开发与参考:
+
+   architecture
    development
    module_and_parameter_management
    contributing
-
-.. toctree::
-   :maxdepth: 2
-   :caption: 参考:
-
    api/index
-   examples
 
 引用
 ----

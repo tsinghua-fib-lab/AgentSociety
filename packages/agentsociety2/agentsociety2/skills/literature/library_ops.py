@@ -1,7 +1,7 @@
-"""Extension helpers for literature library sync, PDF download, and BibTeX I/O.
+"""文献库同步、PDF 下载与 BibTeX 导入导出的扩展端辅助函数。
 
-Plugin-side only: public metadata APIs + local files. Does **not** call the
-literature MCP gateway (topic search stays in the paid skill path).
+仅插件侧使用：公共元数据 API + 本地文件，**不**调用文献 MCP 网关
+（主题检索仍走付费技能路径）。
 """
 
 from __future__ import annotations
@@ -43,7 +43,7 @@ from agentsociety2.skills.literature.models import LiteratureEntry
 
 @dataclass(frozen=True)
 class SyncStats:
-    """Counts from a sync / download pass."""
+    """一次同步 / 下载过程的计数统计。"""
 
     metadata_updated: int = 0
     metadata_skipped: int = 0
@@ -86,7 +86,7 @@ def _year_of(entry: dict[str, Any]) -> int | None:
 
 
 def _needs_metadata(entry: dict[str, Any]) -> bool:
-    """True when core bibliographic fields are incomplete."""
+    """核心书目字段不完整时返回 True。"""
     if not (entry.get("title") or "").strip():
         return True
     if not _authors_of(entry):
@@ -99,7 +99,7 @@ def _needs_metadata(entry: dict[str, Any]) -> bool:
 
 
 def _lookup_raw(entry: dict[str, Any]) -> str | None:
-    """Pick a DOI / arXiv identifier string suitable for lookup_identifier."""
+    """挑选适合传给 lookup_identifier 的 DOI / arXiv 标识符字符串。"""
     extra = _extra(entry)
     for key in ("doi",):
         value = entry.get(key) or extra.get(key)
@@ -138,7 +138,7 @@ def _lookup_raw(entry: dict[str, Any]) -> str | None:
 
 
 def _resolve_under_workspace(workspace: Path, relative: str) -> Path | None:
-    """Resolve ``relative`` under ``workspace``; return None on path escape."""
+    """在 ``workspace`` 下解析 ``relative`` ；路径越界时返回 None。"""
     root = workspace.resolve()
     candidate = (workspace / relative).resolve()
     try:
@@ -158,7 +158,7 @@ def _resolve_lookup_raw(workspace: Path, raw: str) -> str | None:
 
 
 def _apply_record(entry: dict[str, Any], record: BibliographicRecord) -> bool:
-    """Fill empty metadata fields from ``record``. Returns True if anything changed."""
+    """用 ``record`` 填充缺失的元数据字段；有任何字段被更新时返回 True。"""
     changed = False
     extra = _extra(entry)
 
@@ -227,7 +227,7 @@ def enrich_metadata(
     entry_ids: list[int] | None = None,
     timeout: float = 20.0,
 ) -> SyncStats:
-    """Fill missing metadata via DOI / arXiv public lookup when an id is known."""
+    """在已知标识符时，通过 DOI / arXiv 公共查询补全缺失元数据。"""
     workspace = workspace.resolve()
     index_path, data = load_literature_index_dict(workspace)
     updated = skipped = failed = 0
@@ -268,7 +268,7 @@ def download_missing_pdfs(
     entry_ids: list[int] | None = None,
     force: bool = False,
 ) -> SyncStats:
-    """Try open-access PDF download for entries that still lack a local PDF."""
+    """为仍缺少本地 PDF 的条目尝试下载开放获取的 PDF。"""
     workspace = workspace.resolve()
     index_path, data = load_literature_index_dict(workspace)
     downloaded = skipped = failed = no_candidate = 0
@@ -307,7 +307,7 @@ def sync_library(
     timeout: float = 20.0,
     download_pdfs: bool = True,
 ) -> SyncStats:
-    """Enrich incomplete metadata, then attempt OA PDF download for gaps."""
+    """先补全不完整的元数据，再为缺口尝试下载 OA PDF。"""
     meta = enrich_metadata(workspace, entry_ids=entry_ids, timeout=timeout)
     if not download_pdfs:
         return meta
@@ -339,7 +339,7 @@ def _cite_key_for_entry(entry: dict[str, Any], fallback: str) -> str:
 
 
 def entry_to_bibtex(entry: dict[str, Any], *, index: int = 0) -> str:
-    """Render one literature index entry as a BibTeX ``@article`` / ``@misc`` block."""
+    """将一个文献索引条目渲染为 BibTeX ``@article`` / ``@misc`` 块。"""
     extra = _extra(entry)
     title = (entry.get("title") or "Untitled").strip()
     authors = _authors_of(entry)
@@ -380,7 +380,7 @@ def export_bibtex(
     entry_ids: list[int] | None = None,
     write_library_bib: bool = True,
 ) -> dict[str, Any]:
-    """Export selected (or all) entries as BibTeX text; optionally write ``papers/library.bib``."""
+    """将选中（或全部）条目导出为 BibTeX 文本；可选写入 ``papers/library.bib`` 。"""
     workspace = workspace.resolve()
     _, data = load_literature_index_dict(workspace)
     blocks: list[str] = []
@@ -427,7 +427,7 @@ def _parse_bibtex(text: str) -> list[dict[str, str]]:
 
 
 def import_bibtex(workspace: Path, bib_path: Path) -> dict[str, Any]:
-    """Import a ``.bib`` file into the literature index (new Markdown notes)."""
+    """将 ``.bib`` 文件导入文献索引（生成新的 Markdown 笔记）。"""
     workspace = workspace.resolve()
     src = bib_path if bib_path.is_absolute() else (workspace / bib_path)
     src = src.resolve()

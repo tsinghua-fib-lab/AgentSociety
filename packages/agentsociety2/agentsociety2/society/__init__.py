@@ -3,16 +3,19 @@
 本模块包含：
 
 **AgentSociety** — 主模拟编排器：
+
 - 管理 Agent 和 Environment 的生命周期
 - 执行模拟步骤（tick-by-tick）
 - 协调 Agent 与环境的交互
 - 管理环境 replay writer，并协调 agent workspace 生命周期
 
 **AgentSocietyHelper** — 计划执行助手：
+
 - 处理外部问题和干预
 - 提供便捷的 ask/intervene 接口
 
 **配置模型**：
+
 - ``InitConfig``: 初始化配置（Agent、Env、LLM 配置等）
 - ``StepsConfig``: 步骤配置（Ask/Intervene/Run 操作序列）
 - ``AgentConfig``: Agent 配置

@@ -14,260 +14,104 @@ msgstr ""
 "Language-Team: en <LL@li.org>\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.17.0\n"
+"Generated-By: Babel 2.18.0\n"
 
-#: ../../contributing.rst:2
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/contributing.rst:2
 msgid "为 AgentSociety 2 贡献"
 msgstr "Contributing to AgentSociety 2"
 
-#: ../../contributing.rst:4
-msgid "感谢您对贡献 AgentSociety 2 的兴趣！"
-msgstr "Thank you for your interest in contributing to AgentSociety 2!"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/contributing.rst:4
+msgid "问题报告应尽量让维护者能复现；改文档时，请同时说明适用版本、实际操作入口与验证方式。"
+msgstr ""
+"Make issue reports reproducible. Documentation changes should identify the applicable"
+" version, actual entry points and validation performed."
 
-#: ../../contributing.rst:7
-msgid "贡献方式"
-msgstr "Ways to Contribute"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/contributing.rst:6
+msgid ""
+"本页提供贡献入口；安装、检查与构建命令统一维护在 :doc:`development`，完整 PR 与发布约定见仓库的 `CONTRIBUTING.md "
+"<https://github.com/tsinghua-fib-lab/agentsociety/blob/main/CONTRIBUTING.md>`_。"
+msgstr ""
+"This page provides contribution entry points. Installation, checks and build commands"
+" are maintained in :doc:`development`; full PR and release conventions are in the "
+"repository `CONTRIBUTING.md <https://github.com/tsinghua-fib-"
+"lab/agentsociety/blob/main/CONTRIBUTING.md>`_."
 
-#: ../../contributing.rst:9
-msgid "**报告错误**: 使用可重现的示例提交问题"
-msgstr "**Report bugs**: Submit issues with reproducible examples"
-
-#: ../../contributing.rst:10
-msgid "**建议功能**: 分享您的改进想法"
-msgstr "**Suggest features**: Share your ideas for improvements"
-
-#: ../../contributing.rst:11
-msgid "**提交代码**: 使用您的更改提交拉取请求"
-msgstr "**Submit code**: Submit pull requests with your changes"
-
-#: ../../contributing.rst:12
-msgid "**改进文档**: 帮助使文档更清晰"
-msgstr "**Improve documentation**: Help make documentation clearer"
-
-#: ../../contributing.rst:13
-msgid "**分享示例**: 向集合添加有用的示例"
-msgstr "**Share examples**: Add useful examples to the collection"
-
-#: ../../contributing.rst:16
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/contributing.rst:9
 msgid "报告错误"
 msgstr "Report Bugs"
 
-#: ../../contributing.rst:18
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/contributing.rst:11
 msgid "报告错误时，请包括："
 msgstr "When reporting bugs, please include:"
 
-#: ../../contributing.rst:20
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/contributing.rst:13
 msgid "Python 版本"
 msgstr "Python version"
 
-#: ../../contributing.rst:21
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/contributing.rst:14
 msgid "AgentSociety 2 版本"
 msgstr "AgentSociety 2 version"
 
-#: ../../contributing.rst:22
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/contributing.rst:15
 msgid "最小的可重现示例"
 msgstr "Minimal reproducible example"
 
-#: ../../contributing.rst:23
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/contributing.rst:16
 msgid "预期行为与实际行为"
 msgstr "Expected vs actual behavior"
 
-#: ../../contributing.rst:24
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/contributing.rst:17
 msgid "任何错误消息或回溯"
 msgstr "Any error messages or tracebacks"
 
-#: ../../contributing.rst:26
-msgid "有关详情，请参阅错误报告模板。"
-msgstr "See the bug report template for details."
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/contributing.rst:20
+msgid "提交更改"
+msgstr "Submit Changes"
 
-#: ../../contributing.rst:29
-msgid "建议功能"
-msgstr "Suggest Features"
-
-#: ../../contributing.rst:31
-msgid "欢迎功能建议！请："
-msgstr "Feature suggestions are welcome! Please:"
-
-#: ../../contributing.rst:33
-msgid "清楚地描述用例"
-msgstr "Clearly describe the use case"
-
-#: ../../contributing.rst:34
-msgid "解释为什么它有用"
-msgstr "Explain why it would be useful"
-
-#: ../../contributing.rst:35
-msgid "考虑它是否适合项目范围"
-msgstr "Consider if it fits the project scope"
-
-#: ../../contributing.rst:36
-msgid "愿意接受讨论"
-msgstr "Be open to discussion"
-
-#: ../../contributing.rst:39
-#: ../../contributing.rst:48
-msgid "提交拉取请求"
-msgstr "Submit Pull Requests"
-
-#: ../../contributing.rst:41
-msgid "提交 PR 之前："
-msgstr "Before submitting a PR:"
-
-#: ../../contributing.rst:43
-msgid "检查现有问题以获取相关讨论"
-msgstr "Check existing issues for related discussions"
-
-#: ../../contributing.rst:44
-msgid "Fork 仓库"
-msgstr "Fork the repository"
-
-#: ../../contributing.rst:45
-msgid "为您的工作创建分支"
-msgstr "Create a branch for your work"
-
-#: ../../contributing.rst:46
-msgid "使用清晰的提交消息进行更改"
-msgstr "Make changes with clear commit messages"
-
-#: ../../contributing.rst:47
-msgid "如需要，更新文档"
-msgstr "Update documentation as needed"
-
-#: ../../contributing.rst:51
-msgid "PR 指南"
-msgstr "PR Guidelines"
-
-#: ../../contributing.rst:53
-msgid "保持更改专注和原子化"
-msgstr "Keep changes focused and atomic"
-
-#: ../../contributing.rst:54
-msgid "遵循现有代码风格"
-msgstr "Follow existing code style"
-
-#: ../../contributing.rst:55
-msgid "为新函数/类添加文档字符串"
-msgstr "Add docstrings for new functions/classes"
-
-#: ../../contributing.rst:56
-msgid "更新相关文档"
-msgstr "Update relevant documentation"
-
-#: ../../contributing.rst:57
-msgid "确保 CI 通过"
-msgstr "Ensure CI passes"
-
-#: ../../contributing.rst:60
-msgid "代码审查流程"
-msgstr "Code Review Process"
-
-#: ../../contributing.rst:62
-msgid "所有 PR 都会经过代码审查："
-msgstr "All PRs go through code review:"
-
-#: ../../contributing.rst:64
-msgid "维护者将审查您的更改"
-msgstr "Maintainers will review your changes"
-
-#: ../../contributing.rst:65
-msgid "解决任何反馈或请求"
-msgstr "Address any feedback or requests"
-
-#: ../../contributing.rst:66
-msgid "批准后，PR 将被合并"
-msgstr "After approval, PR will be merged"
-
-#: ../../contributing.rst:67
-msgid "大型更改可能需要多次迭代"
-msgstr "Large changes may require multiple iterations"
-
-#: ../../contributing.rst:70
-msgid "开发设置"
-msgstr "Development Setup"
-
-#: ../../contributing.rst:87
-msgid "添加新功能"
-msgstr "Adding New Features"
-
-#: ../../contributing.rst:89
-msgid "添加新功能时："
-msgstr "When adding new features:"
-
-#: ../../contributing.rst:91
-msgid "首先打开一个问题进行讨论"
-msgstr "Open an issue for discussion first"
-
-#: ../../contributing.rst:92
-msgid "实现功能"
-msgstr "Implement the feature"
-
-#: ../../contributing.rst:93
-msgid "更新文档"
-msgstr "Update documentation"
-
-#: ../../contributing.rst:94
-msgid "如有帮助，添加示例"
-msgstr "Add examples if helpful"
-
-#: ../../contributing.rst:97
-msgid "示例结构"
-msgstr "Example Structure"
-
-#: ../../contributing.rst:116
-msgid "文档标准"
-msgstr "Documentation Standards"
-
-#: ../../contributing.rst:118
-msgid ""
-"Python 文档字符串统一采用 Sphinx/reST 写法（``:param:``、``:returns:``、``:raises:``、``:ivar:`` "
-"等），与 autodoc 生成的 API 参考保持一致；新增或修改代码时请沿用同一约定。"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/contributing.rst:22
+msgid "修改应说明具体问题、预期行为与验证结果。行为变更补充相应测试，文档和界面变更同步检查示例、翻译与图片引用。"
 msgstr ""
-"Python docstrings use Sphinx/reST consistently (``:param:``, ``:returns:``, "
-"``:raises:``, ``:ivar:``, etc.) so autodoc API reference stays aligned; "
-"follow the same convention when adding or changing code."
+"Describe the concrete problem, expected behavior and validation results. Add "
+"appropriate tests for behavior changes, and check examples, translations and image "
+"references when changing documentation or UI."
 
-#: ../../contributing.rst:140
-msgid "社区指南"
-msgstr "Community Guidelines"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/contributing.rst:24
+msgid "新增环境或智能体：参阅 :doc:`custom_modules`。"
+msgstr "New environments or agents: see :doc:`custom_modules`."
 
-#: ../../contributing.rst:142
-msgid "尊重和建设性"
-msgstr "Be respectful and constructive"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/contributing.rst:25
+msgid "新增智能体技能：参阅 :doc:`skill_guide`。"
+msgstr "New agent skills: see :doc:`skill_guide`."
 
-#: ../../contributing.rst:143
-msgid "欢迎新的贡献者"
-msgstr "Welcome new contributors"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/contributing.rst:26
+msgid "运行测试、检查与构建文档：参阅 :doc:`development`。"
+msgstr "Tests, checks and documentation builds: see :doc:`development`."
 
-#: ../../contributing.rst:144
-msgid "关注对社区最有利的事情"
-msgstr "Focus on what's best for the community"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/contributing.rst:27
+msgid "公开 Python 接口应提供文档字符串，说明参数、返回值、异常与必要的使用条件。同一模块保持一种格式；现有 reST 字段与 NumPy 风格都可由文档构建解析。"
+msgstr ""
+"Public Python interfaces should document parameters, return values, exceptions, and relevant "
+"usage conditions. Keep a consistent style within a module; the documentation builder supports "
+"both reST fields and NumPy-style docstrings."
 
-#: ../../contributing.rst:145
-msgid "对其他社区成员表现出同理心"
-msgstr "Show empathy toward other community members"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/contributing.rst:29
+msgid ""
+"格式参考 `PEP 257 <https://peps.python.org/pep-0257/>`_ 与 `NumPy 文档字符串指南 "
+"<https://numpydoc.readthedocs.io/en/latest/format.html>`_。函数名、参数名与示例必须与代码一致，说明文字随文档语言提供翻译。"
+msgstr ""
+"See `PEP 257 <https://peps.python.org/pep-0257/>`_ and the `NumPy docstring guide "
+"<https://numpydoc.readthedocs.io/en/latest/format.html>`_. Function names, parameter names, and "
+"examples must match the code. Provide translations of explanatory text for each documentation "
+"language."
 
-#: ../../contributing.rst:148
-msgid "获取帮助"
-msgstr "Getting Help"
-
-#: ../../contributing.rst:150
-msgid "**GitHub Issues**: 用于错误和功能请求"
-msgstr "**GitHub Issues**: For bugs and feature requests"
-
-#: ../../contributing.rst:151
-msgid "**GitHub Discussions**: 用于问题和想法"
-msgstr "**GitHub Discussions**: For questions and ideas"
-
-#: ../../contributing.rst:152
-msgid "**Documentation**: 首先查看文档"
-msgstr "**Documentation**: Check documentation first"
-
-#: ../../contributing.rst:155
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/contributing.rst:30
 msgid "许可证"
 msgstr "License"
 
-#: ../../contributing.rst:157
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/contributing.rst:32
 msgid "通过贡献 AgentSociety 2，您同意您的贡献将根据 Apache License 2.0 获得许可。"
-msgstr "By contributing to AgentSociety 2, you agree that your contributions will be licensed under the Apache License 2.0."
+msgstr ""
+"By contributing to AgentSociety 2, you agree that your contributions will be licensed"
+" under the Apache License 2.0."

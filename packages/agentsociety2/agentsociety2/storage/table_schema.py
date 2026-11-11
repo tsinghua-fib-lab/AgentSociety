@@ -22,18 +22,18 @@ class ColumnDef:
 
     字段说明：
 
-    - ``name``：列名。
-    - ``type``：SQLite 列类型字符串，取值见 ``ColumnType``。
-    - ``nullable``：是否允许 NULL。
-    - ``default``：默认值表达式，例如 ``CURRENT_TIMESTAMP``。
-    - ``title``：可选，人类可读的列标题。
-    - ``description``：可选，语义描述，供回放、导出与分析使用。
-    - ``logical_type``：可选，逻辑类型，例如 ``geo.lng``、``money``。
-    - ``analysis_role``：可选，分析角色，例如 ``measure``。
-    - ``unit``：可选，单位字符串，供分析与报告使用。
-    - ``enum_values``：可选，离散列的枚举值列表。
-    - ``example``：可选，示例值。
-    - ``tags``：可选，自由标签列表。
+    - ``name`` ：列名。
+    - ``type`` ：SQLite 列类型字符串，取值见 ``ColumnType`` 。
+    - ``nullable`` ：是否允许 NULL。
+    - ``default`` ：默认值表达式，例如 ``CURRENT_TIMESTAMP`` 。
+    - ``title`` ：可选，人类可读的列标题。
+    - ``description`` ：可选，语义描述，供回放、导出与分析使用。
+    - ``logical_type`` ：可选，逻辑类型，例如 ``geo.lng`` 、``money`` 。
+    - ``analysis_role`` ：可选，分析角色，例如 ``measure`` 。
+    - ``unit`` ：可选，单位字符串，供分析与报告使用。
+    - ``enum_values`` ：可选，离散列的枚举值列表。
+    - ``example`` ：可选，示例值。
+    - ``tags`` ：可选，自由标签列表。
     """
 
     name: str

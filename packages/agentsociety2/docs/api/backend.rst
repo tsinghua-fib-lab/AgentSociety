@@ -1,7 +1,7 @@
 Backend API 模块
 ================
 
-本模块提供 FastAPI 后端服务。
+本页介绍后端模块与请求模型的 Python 接口。HTTP 接口的访问、Swagger 调试与请求示例见 :doc:`http`；工作区与跨域配置见 :doc:`/installation`。
 
 FastAPI 应用
 ------------
@@ -9,6 +9,12 @@ FastAPI 应用
 .. automodule:: agentsociety2.backend.app
    :members:
    :undoc-members:
+
+服务启动
+--------
+
+.. automodule:: agentsociety2.backend.run
+   :members:
 
 路由模块
 --------

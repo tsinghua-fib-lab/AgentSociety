@@ -1,10 +1,10 @@
 ## Welcome to AI Social Scientist
 
-**AgentSociety²** is more than a multi-agent simulator. It is an Integrated Research Environment (IRE) for executable social science: research questions, theories, silicon participants, environments, interventions, measurements, and claims live in one inspectable, revisable, and reproducible workspace.
+**AgentSociety²** is an Integrated Research Environment (IRE) for executable social science: research questions, theories, silicon participants, environments, interventions, measurements, and claims live in one inspectable, revisable, and reproducible workspace.
 
 ![AgentSociety 2 dual-role research environment](../images/agentsociety2-dual-role.png)
 
-*Figure: AgentSociety² couples AI Social Scientists and Silicon Participants in one closed loop. Original figure from the [AgentSociety 2 paper](https://arxiv.org/abs/2607.11895).*
+*Figure: AgentSociety² couples AI Social Scientists and Silicon Participants in one closed loop. The upper role organizes experiments; the lower role returns behavioral feedback. Researchers review design and interpretation. Original figure from the [AgentSociety 2 paper](https://arxiv.org/abs/2607.11895).*
 
 ### Three collaborating roles
 
@@ -20,9 +20,9 @@ The AI Social Scientist is the research-orchestration role at the center of the 
 
 ![Seven-stage AI Social Scientist workflow](../images/ai-social-scientist-workflow.png)
 
-*Figure: the seven AI Social Scientist stages from the [AgentSociety 2 paper](https://arxiv.org/abs/2607.11895).*
+*Figure: the seven AI Social Scientist stages from the [AgentSociety 2 paper](https://arxiv.org/abs/2607.11895). Each stage should leave reviewable artifacts; check that the next stage has the inputs it needs.*
 
-“Executable” matters: an idea does not remain only in chat. It becomes inspectable artifacts such as `TOPIC.md`, hypothesis packages, experiment configs, run records, analysis reports, and manuscript material. You can review intermediate outputs, change parameters, revisit stages, and rerun the study.
+“Executable” matters: an idea does not stay confined to a conversation. It becomes inspectable artifacts such as `TOPIC.md`, hypothesis packages, experiment configs, run records, analysis reports, and manuscript material. You can review intermediate outputs, change parameters, revisit stages, and rerun the study.
 
 ### What you can do
 
@@ -38,8 +38,8 @@ The AI Social Scientist is the research-orchestration role at the center of the 
 
 1. **Enter the workspace**: trust the folder and change the display language if needed.
 2. **Learn the layout**: find the project tree, editor, AI Chat, and status bar.
-3. **Initialize a project**: create the research structure and `TOPIC.md`.
-4. **Configure the runtime**: set the simulation LLM, validate it, and start the backend.
+3. **Save model settings**: enter the Simulation LLM endpoint, key and model, then validate and save.
+4. **Initialize and start**: create the research structure and `TOPIC.md`, then start the backend as needed.
 5. **Run a research loop**: begin with a concrete question and ask the AI Social Scientist for the next reviewable artifact.
 
-The following steps follow this path. Use the glossary appendix whenever a term is unfamiliar.
+The remaining steps follow this path. Use the glossary appendix whenever a term is unfamiliar.

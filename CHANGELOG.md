@@ -1,6 +1,6 @@
 # Changelog
 
-本文件遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 格式，记录 **AgentSociety 2** 相关组件的可见变更。
+本文件遵循 [Keep a Changelog](https://keepachangelog.com/en/2.0.0/) 格式，记录 **AgentSociety 2** 相关组件的可见变更。
 
 | 组件         | 标识                    | 说明                                        |
 | ------------ | ----------------------- | ------------------------------------------- |
@@ -8,34 +8,67 @@
 | VS Code 扩展 | `ai-social-scientist`   | `extension/package.json` 中的版本号         |
 | 分析技能     | `agentsociety-analysis` | 随扩展同步至工作区 `.claude/skills/`        |
 
-Git 发版标签：`agentsociety2-v{major}.{minor}.{patch}`（见 `CONTRIBUTING.md`）。
+SDK 与扩展各自遵循 [语义化版本](https://semver.org/spec/v2.0.0.html)，不要求版本号相同。稳定版 Git 标签为 `agentsociety2-v{major}.{minor}.{patch}`，对应 SDK 版本；每次发布列出所打包的扩展版本。未发布变更维护在 `Unreleased`，发版时填入 `YYYY-MM-DD` 日期，见 `CONTRIBUTING.md`。
 
 ---
 
 ## [Unreleased]
 
-### Fixed
+## [2.11.0] - 2026-11-11
 
-- **agentsociety2 / mobility**：路由请求使用正确的驾车/步行 RouteType，拒绝未知交通方式；ETA 按实际仿真速度返回，并以一微米距离容差处理终点浮点残差。
-- **agentsociety2**：写工具开始执行后，程序失败会停止单次 ask 内的整段纠错重试，返回写入尝试标记；只读限制在工具调用端执行。
-- **agentsociety2 / security**：完整 Python 与 NumPy 函数调用可显式选择带硬执行期限和地址空间限制的 Linux 工作进程；拒绝执行帧、代码对象及生成器/协程 frame/code 内省。
+- **agentsociety2** `2.11.0` · **extension** `1.9.0` · 标签 `agentsociety2-v2.11.0`
 
-- **agentsociety2**：技能元数据按实际读取内容生成指纹，修复等长编辑且文件时间戳相同时复用旧内容的问题。
-- **agentsociety2**：统一 Python 代码围栏解析，提取说明文字后的代码并保留合法字符串中的 Markdown；按分支检查终态赋值，并在执行后核验实际分类，允许分类后的正常打印。
-- **agentsociety2 / security**：限制生成代码访问 NumPy 文件、反序列化与原生接口，校验公开模块别名，并拒绝直接改写宿主对象属性。
-- **agentsociety2**：编译准备异常统一在入口返回，临时资源错误可在后续请求重新准备。
-- **agentsociety2**：执行工具前拒绝重绑定结果容器，修复结果丢失后纠错重试重复产生副作用的问题。
+### Added
 
-- **agentsociety2 / agent**：创建、保存和恢复统一使用 `skills` 字段；环境技能发现后恢复已有激活状态，减少跨步重复激活。DailyMobility 初始化补充结构化 home/work AOI 并预激活移动技能。
+- **docs**：引入 sphinx-design 导航卡片与 sphinx-copybutton 复制按钮；增加公开记忆 API、离线配置与回放示例验证，以及定期外链和 API 文档覆盖报告。
+- **extension**：支持 Codex 官方账户设备登录——通过设备认证接口获取验证码与登录地址，支持复制、取消与重试，令牌由官方 CLI 保存并复用出站代理；每个 CLI 以单选方式选择主供应商，前后端统一协议与订阅兼容性判断。
+- **extension**：供应商卡片展示余额、已用额度、剩余比例与重置时间，区分账户余额、套餐额度、API Key 额度与本地调用统计；支持自动识别与自定义查询接口（同源 GET、JSON 字段路径、数值除数），查询结果缓存一分钟并随连接与凭据变化失效。
+- **extension**：接入 MCP 官方 Registry API（自定义兼容地址、按名称搜索、游标翻页），按注册源元数据生成 HTTP / SSE / npm / PyPI / OCI 配置并先进入编辑器供核对；MCP 配置支持从 Claude Code、Codex、JSON / TOML 文件或粘贴内容预览导入，区分新增、相同、冲突与无效条目。
+- **extension**：技能市场统一卡片布局（标题单行、标签摘要、三行描述与底部操作区）；MCP 市场提供官方与 GitHub 注册源，统一使用 Registry v0.1 查询、搜索及分页接口；HTTP 服务增加按客户端选择的 OAuth 授权入口，远程环境使用 `--no-browser` 回填流程。
+- **发布维护**：增加 SDK、运行时、锁文件、插件和发版标签的一致性检查；GitLab 与 GitHub 从同一份 CHANGELOG 提取对应版本的发布说明。
 
-### Performance
+### Changed
+
+- **CI**：按改动触发质量检查，精简 SDK 与文档安装依赖，复用浏览器和镜像缓存；镜像发布等待完整相关检查，并串行更新正式镜像标签。
+- **docs**：按任务组织研究助手、智能体、环境和技能指南，补充输入数据、回放、结果、API 及排错说明，统一中英文内容与内联格式并保留旧章节链接。
+- **docs**：完善深浅色主题、手机导航、容器自适应卡片、长名称索引与键盘滚动；升级兼容的 Sphinx、修复中文搜索，增加真实示例、翻译、链接和页面回归检查。
+- **backend**：完善 Swagger / ReDoc 的分组与参数说明，增加 Swagger 主题切换、分组导航及窄屏布局。
+- **frontend**：按页面依赖拆分共享资源，避免首页预加载问卷等大型模块；保留地图与问卷的完整功能。
+- **extension**：统一 Webview 按钮、输入框、卡片与弹窗的圆角、尺寸与间距，使用编辑器主题配色，支持高对比度主题与减少动态效果；状态卡片支持 Enter、空格及键盘焦点提示，修复窄窗口溢出。
+- **extension**：MCP 管理支持编辑现有服务、按名称 / 地址 / 工具检索与工具列表探测（会话 ID、协议版本、分页工具列表、持续 SSE）；技能市场搜索覆盖中文描述、仓库、作者和标签并增加未安装 / 已安装 / 可更新筛选；文献库增加关键词 / 原文 / 笔记筛选、跨页选择与批量导出，CSV 全字段转义。
+- **agentsociety2 / extension**：统一 LLM 推理控制——新增 `AGENTSOCIETY_LLM_THINKING_FORMAT` 按接口声明选择 reasoning_effort / thinking / enable_thinking / chat_template_kwargs / reasoning 字段；默认与 Coder 角色可独立配置协议和控制格式，设置随 LLMClient 序列化进入 Ray worker；配置页常用区只展示推理模式，协议与控制格式移入高级折叠区。
+
+#### 性能记录
 
 - **agentsociety2 / mobility**：附近 POI 观察共用一次空间查询并批量计算候选距离；路径请求复用 HTTP 会话。
 - **agentsociety2 / codegen**：默认使用 `inprocess` 在环境进程内计算，保留代码许可和工具权限约束；设为 `process` 可开启独立计算进程、硬执行期限与内存限制。
-
 - **agentsociety2**：短工具程序预先编译为受限操作计划，复用原事件循环的异步工具并发；数值进程复用策略绑定，准备结果缓存序列化程序。
-
 - **agentsociety2**：缓存最多 128 项静态校验与编译结果；每次执行独立创建上下文、结果、运行时检查与期限，策略变化使准备缓存失效。
+
+### Removed
+
+- **依赖**：移除未启用的 autodoc2 及其 astroid 依赖，合并重复的开发和文档工具声明；清理前端未使用的直接依赖，将 Plotly 类型声明归入开发依赖。
+
+### Fixed
+
+- **docs**：修复中文搜索的词干器脚本引用与分词缺失，补充领域词典；增加中英文搜索、手机导航及主题交互的浏览器回归。
+- **extension**：工作区已有 `custom/skills/` 时，初始化仍会补齐 Agent 与环境模块目录并保留用户文件；实验配置页兼容从 `profile.name` 显示人物姓名。
+- **frontend**：技能页使用后端支持的扫描、创建、导入和查看接口，按带命名空间的技能 ID 查询，提交失败时保留草稿并说明错误。
+- **agentsociety2 / mobility**：路由请求使用正确的驾车/步行 RouteType，拒绝未知交通方式；ETA 按实际仿真速度返回，并以一微米距离容差处理终点浮点残差。
+- **agentsociety2**：写工具开始执行后，程序失败会停止单次 ask 内的整段纠错重试，返回写入尝试标记；只读限制在工具调用端执行。
+- **agentsociety2**：技能元数据按实际读取内容生成指纹，修复等长编辑且文件时间戳相同时复用旧内容的问题。
+- **agentsociety2**：统一 Python 代码围栏解析，提取说明文字后的代码并保留合法字符串中的 Markdown；按分支检查终态赋值，并在执行后核验实际分类，允许分类后的正常打印。
+- **agentsociety2**：编译准备异常统一在入口返回，临时资源错误可在后续请求重新准备。
+- **agentsociety2**：执行工具前拒绝重绑定结果容器，修复结果丢失后纠错重试重复产生副作用的问题。
+- **agentsociety2 / agent**：创建、保存和恢复统一使用 `skills` 字段；环境技能发现后恢复已有激活状态，减少跨步重复激活。DailyMobility 初始化补充结构化 home/work AOI 并预激活移动技能。
+- **extension**：仿真、CLI 与 EasyPaper 共用供应商模型目录服务，目录接口 404 不再误报成功，删除内置模型清单并保留手填模型 ID；EasyPaper 的 LLM 与 VLM 模型分别获取，复制 LLM 配置不再覆盖 VLM，新配置文件采用随插件发布的模板并原子保存（权限 0600）。
+- **extension**：设备登录入口收归 Codex 配置页签，以弹窗展示启动、验证码、等待授权与完成状态；错误信息保留失败阶段、HTTP 状态与 Codex 错误码，区分请求拒绝、网络故障、证书、限流与验证码过期，403 提供网络设置入口。
+- **extension**：文献库命令支持直接打开当前工作区索引，有工作区时显示于命令面板，保留项目树入口。
+
+### Security
+
+- **agentsociety2 / security**：完整 Python 与 NumPy 函数调用可显式选择带硬执行期限和地址空间限制的 Linux 工作进程；拒绝执行帧、代码对象及生成器/协程 frame/code 内省。
+- **agentsociety2 / security**：限制生成代码访问 NumPy 文件、反序列化与原生接口，校验公开模块别名，并拒绝直接改写宿主对象属性。
 
 ## [2.10.1] - 2026-11-02
 
@@ -101,6 +134,11 @@ Git 发版标签：`agentsociety2-v{major}.{minor}.{patch}`（见 `CONTRIBUTING.
 
 - **agentsociety2** `2.9.1` · **extension** `1.7.1` · 标签 `agentsociety2-v2.9.1`
 
+#### Known issues
+
+- **agentsociety2**：`exec` 仍同步阻塞事件循环（asyncio 单线程下生成代码无法真并行）；受 env
+  模块线程安全约束，本版未改为线程池执行。
+
 ### Added
 
 - **agentsociety2**：环境模块 `is_concurrency_safe()`；全部安全时 Env Ray actor 使用
@@ -139,7 +177,7 @@ Git 发版标签：`agentsociety2-v{major}.{minor}.{patch}`（见 `CONTRIBUTING.
 - **agentsociety2**：examples onboarding 改为 `EnvRouterProxy` + contrib 模块路径。
 - **agentsociety2**：`agentsociety2.__version__` 修正为随版本发布同步（此前停留在 2.8.3）。
 
-### Performance（同条件 A/B，`deepseek-v4-flash`，2026-09-22）
+#### 性能记录
 
 | 场景 | Before | After | 收益 |
 | ---- | ------ | ----- | ---- |
@@ -159,11 +197,6 @@ exec print 并发隔离（`test_exec_print_capture_isolated_between_concurrent_a
 
 正确性抽检（2026-09-22 实跑）：`SpecialistAgent` onboarding SUCCESS（~30s）；
 囚徒困境 2 轮 SUCCESS（~68s）；`PersonAgent` `step`+`ask` SUCCESS（~377s，`AGENT.json` 写出）。
-
-### Known issues
-
-- **agentsociety2**：`exec` 仍同步阻塞事件循环（asyncio 单线程下生成代码无法真并行）；受 env
-  模块线程安全约束，本版未改为线程池执行。
 
 ## [2.9.0] - 2026-09-17
 
@@ -216,14 +249,14 @@ exec print 并发隔离（`test_exec_print_capture_isolated_between_concurrent_a
 
 - **agentsociety2** `2.8.6` · **extension** `1.6.6` · 标签 `agentsociety2-v2.8.6`
 
+### Changed
+
+- **CI**：npm audit 告警（传递依赖）不再阻断 extension lint job 与 `agentsociety2-v*` 发版流水线（GitLab 与 GitHub workflow 两侧对齐）。
+
 ### Fixed
 
 - **extension** `1.6.6`：修复 AgentSociety Web 一键导入后 Claude Code 聊天报「There's an issue with the selected model (glm-5.2)」——直连模式写入 `~/.claude/settings.json` 的 `ANTHROPIC_BASE_URL` 带有 `/v1` 后缀，Claude Code 追加路径后实际请求 `/v1/v1/messages`（404）；现在写回退直连前统一剥离末尾 `/v1`，Codex 与网关链路不受影响。
 - **extension** `1.6.5`：Codex 一键导入改用独立推荐模型并增加对已有 Codex / Claude Code 配置的覆盖保护。
-
-### Changed
-
-- **CI**：npm audit 告警（传递依赖）不再阻断 extension lint job 与 `agentsociety2-v*` 发版流水线（GitLab 与 GitHub workflow 两侧对齐）。
 
 ## [2.8.3] - 2026-07-20
 
@@ -373,19 +406,6 @@ exec print 并发隔离（`test_exec_print_capture_isolated_between_concurrent_a
 - **extension**：后端配置错误时按钮直接打开配置页（而非手动编辑 `.env` 文件）。
 - **deps**：刷新根 `uv.lock`、`agentsociety-community/uv.lock`、`package-lock.json` 等全部 lock 文件。
 
-### Fixed
-
-- **extension**：`git clone` 操作现在检查返回状态码，失败时抛出明确错误。
-- **extension**：`autoCommit` 的 git 操作改为返回 `boolean`，失败时提前终止并记录日志。
-- **extension**：`autoCommit` 中 `git config user.name` 空字符串检测修复。
-- **extension**：ZIP 导出本地文件时改为流式 `copyFile`，不再将整个 ZIP 读入内存。
-- **extension**：ZIP 导出增加系统 `zip` 命令作为 Python 的后备方案。
-- **extension**：导出扫描中的 `readdirSync` 增加 try-catch 保护。
-- **extension**：孤立后端进程健康检查增加一次 2 秒延迟重试，避免误杀启动中的后端。
-- **extension**：临时目录改用 `fs.mkdtempSync()`，消除竞态条件风险。
-
-### Changed (from previous Unreleased)
-
 - **docs**：新增根目录与 `packages/agentsociety2` 的中英文 README（`README_zh.md`），同步 Sphinx 贡献指南与 API 示例。
 - **docs**：将 `AGENTS.md` 从 `CLAUDE.md` 软链拆为独立 Cursor Agent 入口；修正 `cliff.toml` 对 `docs(...)` commit 的匹配。
 - **docs**：更新 `README.md`、`CONTRIBUTING.md`、`SECURITY.md`，补充发版流程与 CI 范围说明。
@@ -397,7 +417,16 @@ exec print 并发隔离（`test_exec_print_capture_isolated_between_concurrent_a
 - **ci**：发版前增加 validate 门禁；GitHub Release 说明改用 git-cliff。
 - **deps**：刷新根 `uv.lock`（`sphinx-intl`、`urllib3`、`pytest` 等）；extension 升级 `ajv`、`@types/vscode`；frontend 升级 `typescript-eslint`、`@types/react-plotly.js`；GitHub Actions 升级 `dependency-review-action` v5、`download-artifact` v8。
 
----
+### Fixed
+
+- **extension**：`git clone` 操作现在检查返回状态码，失败时抛出明确错误。
+- **extension**：`autoCommit` 的 git 操作改为返回 `boolean`，失败时提前终止并记录日志。
+- **extension**：`autoCommit` 中 `git config user.name` 空字符串检测修复。
+- **extension**：ZIP 导出本地文件时改为流式 `copyFile`，不再将整个 ZIP 读入内存。
+- **extension**：ZIP 导出增加系统 `zip` 命令作为 Python 的后备方案。
+- **extension**：导出扫描中的 `readdirSync` 增加 try-catch 保护。
+- **extension**：孤立后端进程健康检查增加一次 2 秒延迟重试，避免误杀启动中的后端。
+- **extension**：临时目录改用 `fs.mkdtempSync()`，消除竞态条件风险。
 
 ## [2.5.2] - 2026-05-29
 
@@ -405,14 +434,14 @@ exec print 并发隔离（`test_exec_print_capture_isolated_between_concurrent_a
 
 本版本在 [2.5.1] 基础上完成 **paper 技能外迁**、**安全加固** 与 **依赖漏洞修复**；Python 安装：`pip install agentsociety2==2.5.2`。
 
+### Changed
+
+- **docs**：根 `CLAUDE.md`、`workspace/CLAUDE.md`、`workspace/AGENTS.md` 指引由 `agentsociety-paper-orchestrator` 更新为引用外部 `paper-toolkit` plugin（确定性 CLI + companion Claude Code 写作 / 审阅 skill）。
+
 ### Removed
 
 - **agentsociety2**：内置 `paper` 研究技能套件（`agentsociety-paper-adapter` / `agentsociety-paper-architecture` / `agentsociety-paper-evidence-architect`），论文生成迁移至独立的 `paper-toolkit` plugin。
 - **extension**：移除 legacy paper skill 注册条目；`ags.py` 中已无 paper 子命令入口。
-
-### Changed
-
-- **docs**：根 `CLAUDE.md`、`workspace/CLAUDE.md`、`workspace/AGENTS.md` 指引由 `agentsociety-paper-orchestrator` 更新为引用外部 `paper-toolkit` plugin（确定性 CLI + companion Claude Code 写作 / 审阅 skill）。
 
 ### Fixed
 
@@ -423,8 +452,6 @@ exec print 并发隔离（`test_exec_print_capture_isolated_between_concurrent_a
 - **frontend**：升级 `fast-uri`、`fast-xml-builder`，并通过 `path-to-regexp` override 修复高危 npm 审计项。
 - **deps**：根 `uv.lock` 升级 `urllib3`、`idna`、`pytest`（仍使用清华 tuna 镜像源）。
 - **ci**：新增 CodeQL 配置，排除 `frontend/public/monaco-editor` 第三方 vendor 扫描误报。
-
----
 
 ## [2.5.1] - 2026-05-21
 
@@ -454,13 +481,16 @@ exec print 并发隔离（`test_exec_print_capture_isolated_between_concurrent_a
 - **agentsociety2**：mobility_space 缺少 `json` 和 `Path` 导入。
 - **agentsociety2**：CodeGenRouter 沙箱加固与安全基准测试。
 
----
-
 ## [2.4.1] - 2026-05-20
 
 - **agentsociety2** `2.4.1` · **extension** `1.4.1` · 标签 `agentsociety2-v2.4.1`
 
 本版本在 [2.4.0] 基础上交付**分阶段分析 Harness**、**双语报告（MD + HTML）门禁**及扩展侧配套体验；Python 安装：`pip install agentsociety2==2.4.1`（或贵司私有源等价版本）。
+
+#### 升级说明
+
+- 若工作区仍存在 `presentation/hypothesis_*/analysis/`，执行 `ags.py analysis intake --workspace . --hypothesis-id <ID> --experiment-id <ID>` 可将 harness 状态迁移至 `.agentsociety/analysis/`。
+- 报告插图仅使用 `assets/` 路径；作图后运行 `sync-report-assets` 或 `collect-assets`，再执行 `validate-release`。
 
 ### Added
 
@@ -499,13 +529,6 @@ exec print 并发隔离（`test_exec_print_capture_isolated_between_concurrent_a
 - **agentsociety2**：CodeQL 静态分析问题；分析 harness 与后端相关 ruff 项。
 - **extension / literature**：文献技能 lint 与 MCP 路径问题。
 
-### 升级说明
-
-- 若工作区仍存在 `presentation/hypothesis_*/analysis/`，执行 `ags.py analysis intake --workspace . --hypothesis-id <ID> --experiment-id <ID>` 可将 harness 状态迁移至 `.agentsociety/analysis/`。
-- 报告插图仅使用 `assets/` 路径；作图后运行 `sync-report-assets` 或 `collect-assets`，再执行 `validate-release`。
-
----
-
 ## [2.4.0] - 2026-05-19
 
 - **agentsociety2** `2.4.0` · **extension** `1.4.0`
@@ -527,8 +550,6 @@ exec print 并发隔离（`test_exec_print_capture_isolated_between_concurrent_a
 - **agentsociety2**：Agent 运行兜底，降低实验异常中断影响。
 - **ci**：npm audit 阈值调整为 `high`，恢复流水线通过。
 
----
-
 ## [2.3.0] - 2026-05-08
 
 - **agentsociety2** `2.3.0` · **extension** `1.2.0`
@@ -549,8 +570,6 @@ exec print 并发隔离（`test_exec_print_capture_isolated_between_concurrent_a
 - **paper / literature**：技能与流水线若干缺陷修复。
 - **ci**：MR 与主分支流水线稳定性改进。
 
----
-
 ## [2.2.0] - 2026-04-19
 
 - **agentsociety2** `2.2.0` · **extension** `1.0.0`
@@ -569,8 +588,6 @@ exec print 并发隔离（`test_exec_print_capture_isolated_between_concurrent_a
 
 - **extension**：分析报告展示问题。
 - **agentsociety2**：速率限制与 JSON 工具类重复定义等 Agent 层问题。
-
----
 
 ## [2.1.5] - 2026-04-15
 
@@ -591,8 +608,6 @@ exec print 并发隔离（`test_exec_print_capture_isolated_between_concurrent_a
 
 - **ci**：MR 流水线仅做构建验证，避免多余 registry 登录。
 
----
-
 ## [2.1.0] - 2026-03-20
 
 - **agentsociety2** `2.1.0`
@@ -611,8 +626,6 @@ exec print 并发隔离（`test_exec_print_capture_isolated_between_concurrent_a
 
 - **agentsociety2**：实验启动流程；自定义模块测试脚本缩进与错误回传；`agent.init()` 调用方式。
 
----
-
 ## [2.0.2] - 2026-03-06
 
 - **agentsociety2** `2.0.2`
@@ -625,8 +638,6 @@ exec print 并发隔离（`test_exec_print_capture_isolated_between_concurrent_a
 ### Fixed
 
 - **extension**：预填充参数树图标；自定义模块集成测试错误字段。
-
----
 
 ## [2.0.1] - 2026-03-05
 
@@ -644,8 +655,6 @@ exec print 并发隔离（`test_exec_print_capture_isolated_between_concurrent_a
 
 - **agentsociety2**：线程与重试相关边缘问题。
 - **docs**：RTD 依赖路径与构建配置。
-
----
 
 ## [2.0.0] - 2026-03-05
 
@@ -1413,3 +1422,31 @@ See [Version 1.3](https://agentsociety.readthedocs.io/en/latest/02-version-1.3/0
 
 ### Security
 - N/A
+
+[Unreleased]: https://github.com/tsinghua-fib-lab/AgentSociety/compare/agentsociety2-v2.11.0...HEAD
+[2.11.0]: https://github.com/tsinghua-fib-lab/AgentSociety/compare/agentsociety2-v2.10.1...agentsociety2-v2.11.0
+[2.10.1]: https://github.com/tsinghua-fib-lab/AgentSociety/compare/agentsociety2-v2.10.0...agentsociety2-v2.10.1
+[2.10.0]: https://github.com/tsinghua-fib-lab/AgentSociety/compare/agentsociety2-v2.9.3...agentsociety2-v2.10.0
+[2.9.3]: https://github.com/tsinghua-fib-lab/AgentSociety/compare/agentsociety2-v2.9.2...agentsociety2-v2.9.3
+[2.9.2]: https://github.com/tsinghua-fib-lab/AgentSociety/compare/agentsociety2-v2.9.1...agentsociety2-v2.9.2
+[2.9.1]: https://github.com/tsinghua-fib-lab/AgentSociety/compare/agentsociety2-v2.9.0...agentsociety2-v2.9.1
+[2.9.0]: https://github.com/tsinghua-fib-lab/AgentSociety/compare/agentsociety2-v2.8.7...agentsociety2-v2.9.0
+[2.8.7]: https://github.com/tsinghua-fib-lab/AgentSociety/compare/agentsociety2-v2.8.6...agentsociety2-v2.8.7
+[2.8.6]: https://github.com/tsinghua-fib-lab/AgentSociety/compare/agentsociety2-v2.8.5...agentsociety2-v2.8.6
+[2.8.3]: https://github.com/tsinghua-fib-lab/AgentSociety/compare/agentsociety2-v2.8.2...agentsociety2-v2.8.3
+[2.8.1]: https://github.com/tsinghua-fib-lab/AgentSociety/compare/agentsociety2-v2.8.0...agentsociety2-v2.8.1
+[2.8.0]: https://github.com/tsinghua-fib-lab/AgentSociety/compare/agentsociety2-v2.7.0...agentsociety2-v2.8.0
+[2.6.1]: https://github.com/tsinghua-fib-lab/AgentSociety/compare/agentsociety2-v2.6.0...agentsociety2-v2.6.1
+[2.5.4]: https://github.com/tsinghua-fib-lab/AgentSociety/compare/agentsociety2-v2.5.3...agentsociety2-v2.5.4
+[2.5.3]: https://github.com/tsinghua-fib-lab/AgentSociety/compare/agentsociety2-v2.5.2...agentsociety2-v2.5.3
+[2.5.2]: https://github.com/tsinghua-fib-lab/AgentSociety/compare/agentsociety2-v2.5.1...agentsociety2-v2.5.2
+[2.5.1]: https://github.com/tsinghua-fib-lab/AgentSociety/compare/agentsociety2-v2.5.0...agentsociety2-v2.5.1
+[2.4.1]: https://github.com/tsinghua-fib-lab/AgentSociety/compare/agentsociety2-v2.4.0...agentsociety2-v2.4.1
+[2.4.0]: https://github.com/tsinghua-fib-lab/AgentSociety/compare/agentsociety2-v2.3.0...agentsociety2-v2.4.0
+[2.3.0]: https://github.com/tsinghua-fib-lab/AgentSociety/compare/agentsociety2-v2.2.0...agentsociety2-v2.3.0
+[2.2.0]: https://github.com/tsinghua-fib-lab/AgentSociety/compare/agentsociety2-v2.1.5...agentsociety2-v2.2.0
+[2.1.5]: https://github.com/tsinghua-fib-lab/AgentSociety/compare/agentsociety2-v2.1.4...agentsociety2-v2.1.5
+[2.1.0]: https://github.com/tsinghua-fib-lab/AgentSociety/compare/agentsociety2-v2.0.2...agentsociety2-v2.1.0
+[2.0.2]: https://github.com/tsinghua-fib-lab/AgentSociety/compare/agentsociety2-v2.0.1...agentsociety2-v2.0.2
+[2.0.1]: https://github.com/tsinghua-fib-lab/AgentSociety/compare/agentsociety2-v2.0.0...agentsociety2-v2.0.1
+[2.0.0]: https://github.com/tsinghua-fib-lab/AgentSociety/releases/tag/agentsociety2-v2.0.0

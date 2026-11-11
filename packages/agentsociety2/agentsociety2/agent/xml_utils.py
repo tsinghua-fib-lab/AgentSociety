@@ -22,14 +22,14 @@ def extract_xml_tag_value(
     供 LLM 输出的结构化 XML 标签解析复用(如博弈 agent 的
     ``<action>`` / ``<extraction>`` / ``<explanation>``),替代各 agent
     手写同构正则。标签名大小写不敏感;值可为多行文本时传
-    ``dotall=True``。
+    ``dotall=True`` 。
 
     :param text: 待解析的原始文本,通常是一段 LLM 输出。
-    :param tag: 标签名,不含尖括号,如 ``"action"``。
+    :param tag: 标签名,不含尖括号,如 ``"action"`` 。
     :param value_pattern: 值的正则片段,整组捕获。默认 ``".*?"`` 匹配
-        任意非贪婪内容(含空串);枚举值场景传形如 ``"Yes|No"``。
+        任意非贪婪内容(含空串);枚举值场景传形如 ``"Yes|No"`` 。
     :param dotall: 是否允许值跨行(``re.DOTALL``)。解释类长文本应为
-        ``True``。
+        ``True`` 。
     :returns: 首个匹配的值(已去除首尾空白);未命中返回 ``None``,
         由调用方决定回退策略。
     """

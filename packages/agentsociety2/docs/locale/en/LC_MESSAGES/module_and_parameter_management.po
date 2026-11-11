@@ -8,419 +8,176 @@ msgid ""
 msgstr ""
 "Project-Id-Version: AgentSociety 2 2.6.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-02 22:32+0800\n"
+"POT-Creation-Date: 2026-11-09 11:56+0800\n"
 "PO-Revision-Date: 2026-05-19 00:00+0800\n"
 "Last-Translator: AgentSociety Team\n"
-"Language-Team: en <LL@li.org>\n"
 "Language: en\n"
+"Language-Team: en <LL@li.org>\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: ../../module_and_parameter_management.md:1
-msgid "AgentSociety2 模块与参数管理文档"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/module_and_parameter_management.md:1
+msgid "模块与参数管理"
 msgstr "Module and Parameter Management"
 
-#: ../../module_and_parameter_management.md:3
-msgid "概述"
-msgstr "Overview"
-
-#: ../../module_and_parameter_management.md:5
-msgid "AgentSociety2 提供了一个完整的模块注册和参数管理系统，支持内置模块和自定义模块的发现、注册、查询和验证。"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/module_and_parameter_management.md:3
+msgid "先查询当前环境中的真实模块，再配置参数；这页不列固定模块数量，避免安装版本不同导致照抄失败。"
 msgstr ""
-"AgentSociety2 provides a complete module registration and parameter "
-"management system, supporting the discovery, registration, query and "
-"verification of built-in modules and custom modules."
-
-#: ../../module_and_parameter_management.md:7
-msgid "一、模块管理"
-msgstr "1. Module management"
-
-#: ../../module_and_parameter_management.md:9
-msgid "1.1 模块类型"
-msgstr "1.1 Module type"
-
-#: ../../module_and_parameter_management.md:11
-msgid "AgentSociety2 支持两种类型的模块："
-msgstr "AgentSociety2 supports two types of modules:"
-
-#: ../../module_and_parameter_management.md:13
-msgid "**内置模块 (Built-in Modules)**：位于 `agentsociety2/contrib/` 目录下"
-msgstr "**Built-in Modules**: located under `agentsociety2/contrib/`"
-
-#: ../../module_and_parameter_management.md:14
-msgid "环境模块：`contrib/env/` 目录"
-msgstr "Environment module: `contrib/env/` Directory"
-
-#: ../../module_and_parameter_management.md:15
-msgid "Agent 模块：`contrib/agent/` 目录"
-msgstr "Agent module: `contrib/agent/` Directory"
-
-#: ../../module_and_parameter_management.md:16
-msgid "核心 Agent：`agent/person.py` 中的 `PersonAgent`"
-msgstr "Core Agent: `PersonAgent` out of `agent/person.py`"
-
-#: ../../module_and_parameter_management.md:18
-msgid "**自定义模块 (Custom Modules)**：位于工作区的 `custom/` 目录下"
-msgstr "**Custom Modules**: located under workspace `custom/`"
-
-#: ../../module_and_parameter_management.md:19
-msgid "Agent：`custom/agents/` 目录"
-msgstr "Agent:`custom/agents/` Directory"
-
-#: ../../module_and_parameter_management.md:20
-msgid "环境模块：`custom/envs/` 目录"
-msgstr "Environment module: `custom/envs/` Directory"
-
-#: ../../module_and_parameter_management.md:22
-msgid "1.2 模块注册系统"
-msgstr "1.2 Module registration system"
-
-#: ../../module_and_parameter_management.md:24
-msgid "核心组件"
-msgstr "Core components"
-
-#: ../../module_and_parameter_management.md:34
-msgid "ModuleRegistry (单例模式)"
-msgstr "ModuleRegistry (singleton mode)"
-
-#: ../../module_and_parameter_management.md:36
-msgid "`ModuleRegistry` 是模块注册的核心，采用单例模式："
-msgstr ""
-"`ModuleRegistry` is the core of module registration, using singleton mode:"
-
-#: ../../module_and_parameter_management.md:44
-msgid "**主要方法：**"
-msgstr "**Main methods:**"
-
-#: ../../module_and_parameter_management.md
-msgid "方法"
-msgstr "Method"
-
-#: ../../module_and_parameter_management.md
-msgid "说明"
-msgstr "Description"
-
-#: ../../module_and_parameter_management.md
-msgid "`register_env_module(module_type, module_class, is_custom)`"
-msgstr "`register_env_module(module_type, module_class, is_custom)`"
-
-#: ../../module_and_parameter_management.md
-msgid "注册环境模块"
-msgstr "Register environment module"
-
-#: ../../module_and_parameter_management.md
-msgid "`register_agent_module(agent_type, agent_class, is_custom)`"
-msgstr "`register_agent_module(agent_type, agent_class, is_custom)`"
-
-#: ../../module_and_parameter_management.md
-msgid "注册 Agent"
-msgstr "Register Agent"
-
-#: ../../module_and_parameter_management.md
-msgid "`get_env_module(module_type)`"
-msgstr "`get_env_module(module_type)`"
-
-#: ../../module_and_parameter_management.md
-msgid "获取环境模块类"
-msgstr "Get environment module class"
-
-#: ../../module_and_parameter_management.md
-msgid "`get_agent_module(agent_type)`"
-msgstr "`get_agent_module(agent_type)`"
-
-#: ../../module_and_parameter_management.md
-msgid "获取 Agent 类"
-msgstr "Get Agent class"
-
-#: ../../module_and_parameter_management.md
-msgid "`list_env_modules()`"
-msgstr "`list_env_modules()`"
-
-#: ../../module_and_parameter_management.md
-msgid "列出所有环境模块"
-msgstr "List all environment modules"
-
-#: ../../module_and_parameter_management.md
-msgid "`list_agent_modules()`"
-msgstr "`list_agent_modules()`"
-
-#: ../../module_and_parameter_management.md
-msgid "列出所有 Agent"
-msgstr "List all Agents"
-
-#: ../../module_and_parameter_management.md
-msgid "`clear_custom_modules()`"
-msgstr "`clear_custom_modules()`"
-
-#: ../../module_and_parameter_management.md
-msgid "清除所有自定义模块"
-msgstr "Clear all custom modules"
-
-#: ../../module_and_parameter_management.md
-msgid "`get_module_info(module_type, kind)`"
-msgstr "`get_module_info(module_type, kind)`"
-
-#: ../../module_and_parameter_management.md
-msgid "获取模块详细信息"
-msgstr "Get module details"
-
-#: ../../module_and_parameter_management.md:57
-msgid "1.3 自动发现机制"
-msgstr "1.3 Automatic discovery mechanism"
-
-#: ../../module_and_parameter_management.md:59
-msgid "内置模块自动发现"
-msgstr "Built-in module automatic discovery"
-
-#: ../../module_and_parameter_management.md:61
-msgid "系统在导入 `agentsociety2.registry` 时会自动发现并注册内置模块："
-msgstr ""
-"The system will automatically discover and register the built-in module when"
-" importing `agentsociety2.registry`:"
-
-#: ../../module_and_parameter_management.md:75
-msgid "自定义模块扫描"
-msgstr "Custom module scan"
-
-#: ../../module_and_parameter_management.md:88
-msgid "**扫描规则：**"
-msgstr "**Scanning rules:**"
-
-#: ../../module_and_parameter_management.md:89
-msgid "扫描 `custom/agents/` 和 `custom/envs/` 目录"
-msgstr "Scan `custom/agents/` and `custom/envs/` directories"
-
-#: ../../module_and_parameter_management.md:90
-msgid "跳过 `examples/` 子目录和 `__` 开头的文件"
-msgstr "Skip `examples/` subdirectories and files starting with `__`"
-
-#: ../../module_and_parameter_management.md:91
-msgid "自动导入并注册发现的类"
-msgstr "Automatically import and register discovered classes"
-
-#: ../../module_and_parameter_management.md:92
-msgid "自定义模块标记 `_is_custom = True`"
-msgstr "Custom module tag `_is_custom = True`"
-
-#: ../../module_and_parameter_management.md:94
-msgid "1.4 模块命名规则"
-msgstr "1.4 Module naming rules"
-
-#: ../../module_and_parameter_management.md
-msgid "类名"
-msgstr "Class name"
-
-#: ../../module_and_parameter_management.md
-msgid "模块类型标识"
-msgstr "Module type identification"
-
-#: ../../module_and_parameter_management.md
-msgid "`SimpleSocialSpace`"
-msgstr "`SimpleSocialSpace`"
-
-#: ../../module_and_parameter_management.md
-msgid "`simple_social_space`"
-msgstr "`simple_social_space`"
-
-#: ../../module_and_parameter_management.md
-msgid "`PersonAgent`"
-msgstr "`PersonAgent`"
-
-#: ../../module_and_parameter_management.md
-msgid "`person_agent`"
-msgstr "`person_agent`"
-
-#: ../../module_and_parameter_management.md
-msgid "`LLMDonorAgent`"
-msgstr "`LLMDonorAgent`"
-
-#: ../../module_and_parameter_management.md
-msgid "`llm_donor_agent`"
-msgstr "`llm_donor_agent`"
-
-#: ../../module_and_parameter_management.md
-msgid "`ReputationGameEnv`"
-msgstr "`ReputationGameEnv`"
-
-#: ../../module_and_parameter_management.md
-msgid "`reputation_game_env`"
-msgstr "`reputation_game_env`"
-
-#: ../../module_and_parameter_management.md:103
-msgid "1.5 模块查询接口"
-msgstr "1.5 Module query interface"
-
-#: ../../module_and_parameter_management.md:105
-#: ../../module_and_parameter_management.md:219
-msgid "API 接口"
-msgstr "API interface"
-
-#: ../../module_and_parameter_management.md:111
-msgid "返回示例："
-msgstr "Return example:"
-
-#: ../../module_and_parameter_management.md:138
-msgid "二、参数管理"
-msgstr "2. Parameter management"
-
-#: ../../module_and_parameter_management.md:140
-msgid "2.1 参数来源"
-msgstr "2.1 Parameter sources"
-
-#: ../../module_and_parameter_management.md:142
-msgid "AgentSociety2 中的参数有三个来源："
-msgstr "Parameters in AgentSociety2 come from three sources:"
-
-#: ../../module_and_parameter_management.md:144
-msgid "**类定义参数**：从模块类的 `__init__` 方法签名中提取"
-msgstr "**Class definition parameters**: extracted from the module class `__init__` signature"
-
-#: ../../module_and_parameter_management.md:145
-msgid "**生成参数**：通过代码生成过程创建的配置"
-msgstr "**Generated parameters**: configuration created by the code generation process"
-
-#: ../../module_and_parameter_management.md:146
-msgid "**预填充参数 (Prefill Params)**：用户预先定义的默认参数"
-msgstr "**Prefill Params**: user-defined default parameters"
-
-#: ../../module_and_parameter_management.md:148
-msgid "2.2 参数获取流程"
-msgstr "2.2 Parameter acquisition process"
-
-#: ../../module_and_parameter_management.md:180
-msgid "2.3 预填充参数 (Prefill Params)"
-msgstr "2.3 Prefill Params"
-
-#: ../../module_and_parameter_management.md:182
-msgid "文件位置"
-msgstr "File location"
-
-#: ../../module_and_parameter_management.md:188
-msgid "文件结构"
-msgstr "File structure"
-
-#: ../../module_and_parameter_management.md:230
-msgid "2.4 参数验证"
-msgstr "2.4 Parameter verification"
-
-#: ../../module_and_parameter_management.md:232
-msgid "验证脚本"
-msgstr "Validation script"
-
-#: ../../module_and_parameter_management.md:234
+"Query modules in the current environment before configuring parameters. This page "
+"avoids a fixed module count that can differ between installed versions."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/module_and_parameter_management.md:5
+#, python-brace-format
 msgid ""
-"``ags experiment-config validate``（技能脚本 "
-"``agentsociety-experiment-config/.../scripts/config.py``）用于对生成的配置做端到端校验。"
+"本页说明注册表、工作区自定义模块与预填充参数的关系。模块实现教程见 {doc}`custom_modules`，方法签名和返回结构以 "
+"{doc}`api/registry` 为准。"
 msgstr ""
-"``ags experiment-config validate`` (skill script "
-"``agentsociety-experiment-config/.../scripts/config.py``) is used for "
-"end-to-end verification of the generated configuration."
+"This page connects the registry, workspace custom modules and prefill parameters. See"
+" {doc}`custom_modules` for implementation tutorials and {doc}`api/registry` for "
+"method signatures and return structures."
 
-#: ../../module_and_parameter_management.md:236
-msgid "**验证内容：**"
-msgstr "**Validation content:**"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/module_and_parameter_management.md:7
+msgid "查询已注册模块"
+msgstr "Query Registered Modules"
 
-#: ../../module_and_parameter_management.md:237
-msgid "加载 `init_config.json`"
-msgstr "Loading `init_config.json`"
-
-#: ../../module_and_parameter_management.md:238
-msgid "解析 `SIM_SETTINGS.json`"
-msgstr "Parse `SIM_SETTINGS.json`"
-
-#: ../../module_and_parameter_management.md:239
-msgid "实例化每个环境模块类（严格验证）"
-msgstr "Instantiate each environment module class (strict verification)"
-
-#: ../../module_and_parameter_management.md:240
-msgid "实例化每个 Agent 类（严格验证）"
-msgstr "Instantiate each Agent class (strict validation)"
-
-#: ../../module_and_parameter_management.md:241
-msgid "报告初始化失败的详细错误"
-msgstr "Report detailed errors for initialization failures"
-
-#: ../../module_and_parameter_management.md:243
-msgid "三、配置模型"
-msgstr "3. Configuration model"
-
-#: ../../module_and_parameter_management.md:245
-msgid "3.1 核心配置模型"
-msgstr "3.1 Core configuration model"
-
-#: ../../module_and_parameter_management.md:265
-msgid "3.2 创建实例请求"
-msgstr "3.2 Create instance request"
-
-#: ../../module_and_parameter_management.md:276
-msgid "四、自定义模块开发"
-msgstr "4. Custom module development"
-
-#: ../../module_and_parameter_management.md:278
-msgid "4.1 目录结构"
-msgstr "4.1 Directory structure"
-
-#: ../../module_and_parameter_management.md:292
-msgid "4.2 自定义 Agent 示例"
-msgstr "4.2 Custom Agent Example"
-
-#: ../../module_and_parameter_management.md:312
-msgid "4.3 自定义环境模块示例"
-msgstr "4.3 Example of custom environment module"
-
-#: ../../module_and_parameter_management.md:334
-msgid "4.4 扫描和注册"
-msgstr "4.4 Scan and register"
-
-#: ../../module_and_parameter_management.md:346
-msgid "五、使用示例"
-msgstr "5. Usage examples"
-
-#: ../../module_and_parameter_management.md:348
-msgid "5.1 获取模块信息"
-msgstr "5.1 Get module information"
-
-#: ../../module_and_parameter_management.md:371
-msgid "5.2 实例化模块"
-msgstr "5.2 Instantiating modules"
-
-#: ../../module_and_parameter_management.md:383
-msgid "5.3 列出所有模块"
-msgstr "5.3 List all modules"
-
-#: ../../module_and_parameter_management.md:400
-msgid "5.4 使用预填充参数"
-msgstr "5.4 Using prefilled parameters"
-
-#: ../../module_and_parameter_management.md:415
-msgid "六、总结"
-msgstr "6. Summary"
-
-#: ../../module_and_parameter_management.md:417
-msgid "AgentSociety2 的模块和参数管理系统提供了："
-msgstr "AgentSociety2's module and parameter management system provides:"
-
-#: ../../module_and_parameter_management.md:419
-msgid "**自动发现机制**：自动发现内置和自定义模块"
-msgstr "**Automatic discovery mechanism**: Automatically discover built-in and custom modules"
-
-#: ../../module_and_parameter_management.md:420
-msgid "**统一注册表**：单例模式的 ModuleRegistry"
-msgstr "**Unified registry**: ModuleRegistry in singleton mode"
-
-#: ../../module_and_parameter_management.md:421
-msgid "**多源参数管理**：类定义、生成参数、预填充参数"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/module_and_parameter_management.md:9
+msgid "注册表延迟发现内置模块。先查询实际安装环境中的标识符，再用于配置；不依赖文档中固定的模块数量或示例清单。"
 msgstr ""
-"**Multi-source parameter management**: Class definition, generated parameters,"
-" pre-filled parameters"
+"The registry discovers built-in modules lazily. Query the identifiers in the "
+"installed environment before using them in configuration; do not rely on a fixed "
+"module count or example inventory in documentation."
 
-#: ../../module_and_parameter_management.md:422
-msgid "**灵活的查询接口**：命令行脚本和 API 接口"
-msgstr "**Flexible query interface**: Command line script and API interface"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/module_and_parameter_management.md:11
+msgid ""
+"from agentsociety2.registry import get_registry\n"
+"\n"
+"registry = get_registry()\n"
+"for module_type, module_class in registry.list_env_modules():\n"
+"    print(module_type, module_class.__name__)\n"
+"\n"
+"for agent_type, agent_class in registry.list_agent_modules():\n"
+"    print(agent_type, agent_class.__name__)\n"
+msgstr ""
+"from agentsociety2.registry import get_registry\n"
+"\n"
+"registry = get_registry()\n"
+"for module_type, module_class in registry.list_env_modules():\n"
+"    print(module_type, module_class.__name__)\n"
+"\n"
+"for agent_type, agent_class in registry.list_agent_modules():\n"
+"    print(agent_type, agent_class.__name__)\n"
 
-#: ../../module_and_parameter_management.md:423
-msgid "**严格的验证**：通过实例化验证配置有效性"
-msgstr "**Strict validation**: Verify configuration validity through instantiation"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/module_and_parameter_management.md:22
+msgid ""
+"`get_module_info(module_type, kind)` 返回描述和构造参数；`kind` 为 `env_module` 或 "
+"`agent`。查询时使用上一步返回的标识符。"
+msgstr ""
+"`get_module_info(module_type, kind)` returns descriptions and constructor parameters;"
+" `kind` is `env_module` or `agent`. Use an identifier returned by the preceding "
+"query."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/module_and_parameter_management.md:24
+msgid "发现工作区自定义模块"
+msgstr "Discover Workspace Custom Modules"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/module_and_parameter_management.md:26
+msgid ""
+"workspace-root/\n"
+"├── custom/\n"
+"│   ├── agents/\n"
+"│   ├── envs/\n"
+"│   └── skills/\n"
+"└── .agentsociety/\n"
+"    └── prefill_params.json\n"
+msgstr ""
+"workspace-root/\n"
+"├── custom/\n"
+"│   ├── agents/\n"
+"│   ├── envs/\n"
+"│   └── skills/\n"
+"└── .agentsociety/\n"
+"    └── prefill_params.json\n"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/module_and_parameter_management.md:36
+msgid "`custom/agents/` 和 `custom/envs/` 放置 Python 模块；`custom/skills/` 放置智能体技能，两者使用不同的注册表。"
+msgstr ""
+"`custom/agents/` and `custom/envs/` contain Python modules; `custom/skills/` contains"
+" agent skills. They use separate registries."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/module_and_parameter_management.md:38
+msgid ""
+"from pathlib import Path\n"
+"from agentsociety2.registry import get_registry, scan_and_register_custom_modules\n"
+"\n"
+"workspace = Path(\"/path/to/research-workspace\")\n"
+"result = scan_and_register_custom_modules(workspace_path=workspace, registry=get_registry())\n"
+"print(result)\n"
+msgstr ""
+"from pathlib import Path\n"
+"from agentsociety2.registry import get_registry, scan_and_register_custom_modules\n"
+"\n"
+"workspace = Path(\"/path/to/research-workspace\")\n"
+"result = scan_and_register_custom_modules(workspace_path=workspace, registry=get_registry())\n"
+"print(result)\n"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/module_and_parameter_management.md:47
+#, python-brace-format
+msgid "检查返回的 `errors` 后再引用自定义类。类定义与最小实现见 {doc}`custom_modules`；技能目录见 {doc}`agent_skills`。"
+msgstr ""
+"Check the returned `errors` before referring to custom classes. See "
+"{doc}`custom_modules` for class definitions and minimal implementations, and "
+"{doc}`agent_skills` for skill directories."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/module_and_parameter_management.md:49
+msgid "预填充参数"
+msgstr "Prefill Parameters"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/module_and_parameter_management.md:51
+msgid "`.agentsociety/prefill_params.json` 保存工作区的可复用默认参数，基础结构如下："
+msgstr ""
+"`.agentsociety/prefill_params.json` stores reusable workspace defaults with this base"
+" structure:"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/module_and_parameter_management.md:53
+#, python-brace-format
+msgid ""
+"{\n"
+"  \"version\": \"1.0\",\n"
+"  \"env_modules\": {},\n"
+"  \"agents\": {}\n"
+"}\n"
+msgstr ""
+"{\n"
+"  \"version\": \"1.0\",\n"
+"  \"env_modules\": {},\n"
+"  \"agents\": {}\n"
+"}\n"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/module_and_parameter_management.md:61
+msgid "以注册表中的模块标识符为键添加默认参数。最终实验配置仍需符合实际构造函数和配置模型；预填充文件不会替代参数校验或自动改变已经生成的实验配置。"
+msgstr ""
+"Add defaults keyed by registry module identifiers. Final experiment configuration "
+"must still match actual constructors and configuration models; prefill does not "
+"replace validation or automatically change an existing generated experiment "
+"configuration."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/module_and_parameter_management.md:63
+msgid "在工作台的参数查看器中检查和编辑预填充信息。"
+msgstr "Inspect and edit prefill information in the workbench parameter viewer."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/module_and_parameter_management.md:64
+#, python-brace-format
+msgid "运行前核对 `init_config.json` 与 `steps.yaml`，配置模型见 {doc}`api/config`。"
+msgstr ""
+"Check `init_config.json` and `steps.yaml` before execution; see {doc}`api/config` for"
+" configuration models."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/module_and_parameter_management.md:65
+#, python-brace-format
+msgid "后端的类查询与预填充接口见 {doc}`api/backend`，运行中的请求字段以 `/docs` 为准。"
+msgstr ""
+"See {doc}`api/backend` for class-query and prefill endpoints, and the running `/docs`"
+" for request fields."

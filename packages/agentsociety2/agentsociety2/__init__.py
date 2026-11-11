@@ -21,7 +21,7 @@
 - ``tool``: 工具装饰器
 
 **Society 模块**:
-- ``AgentSociety``: 主模拟编排器（位于 ``agentsociety2.society``）
+- ``AgentSociety``: 主模拟编排器（位于 ``agentsociety2.society`` ）
 - ``AgentSocietyHelper``: 模拟编排助手（顶层 re-export）
 
 **Storage 模块**:
@@ -53,7 +53,7 @@ from typing import TYPE_CHECKING
 
 os.environ["LITELLM_LOCAL_MODEL_COST_MAP"] = "True"
 
-__version__ = "2.10.1"
+__version__ = "2.11.0"
 
 __all__ = [
     "AgentBase",

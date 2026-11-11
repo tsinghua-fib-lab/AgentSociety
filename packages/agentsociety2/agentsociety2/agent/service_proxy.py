@@ -1,4 +1,4 @@
-"""共享服务句柄容器 :class:`ServiceProxy`。
+"""共享服务句柄容器 :class:`ServiceProxy` 。
 
 Agent 不持有运行时对象(LLM dispatcher、env router、trace/replay
 writer)。这些共享服务改为以可序列化句柄的形式,经由单个
@@ -6,7 +6,7 @@ writer)。这些共享服务改为以可序列化句柄的形式,经由单个
 句柄/数据(不含锁、连接或线程),因此能干净地跨越 Ray Task 边界。
 
 proxy、协议与工厂位于本模块,具体的 proxy 类位于各自的运行时模块
-(:class:`~agentsociety2.trace.TraceProxy`、
+(:class:`~agentsociety2.trace.TraceProxy` 、
 :class:`~agentsociety2.storage.replay_proxy.ReplayProxy`)。
 """
 
@@ -89,7 +89,7 @@ class ReplayLike(Protocol):
 class LLMClients:
     """按角色组织的 LLM client 集合。
 
-    Agent 使用 ``default``,env router 使用 ``coder`` / ``default``。
+    Agent 使用 ``default``,env router 使用 ``coder`` / ``default`` 。
     """
 
     coder: Any
@@ -157,17 +157,17 @@ def build_service_proxy(
     replay_db_path: Path | str | None = None,
     replay_sample_rate: float = 1.0,
 ) -> ServiceProxy:
-    """由本地 LLM client 与可选 actor 组装一个 :class:`ServiceProxy`。
+    """由本地 LLM client 与可选 actor 组装一个 :class:`ServiceProxy` 。
 
     构建可序列化的 LLM client(其 Router 在每个进程/事件循环首次使用时
     创建),以及指向 append-only replay/trace 目录的可选
     :class:`~agentsociety2.trace.TraceProxy` 和
-    :class:`~agentsociety2.storage.replay_proxy.ReplayProxy`。所有字段都是
+    :class:`~agentsociety2.storage.replay_proxy.ReplayProxy` 。所有字段都是
     可序列化句柄,因此组装出的 proxy 可传入 agent Ray task /
-    ``from_workspace``。
+    ``from_workspace`` 。
 
     :param env: 进程内 router(``RouterBase``)或 ``EnvRouterProxy``,两者都
-        满足 :class:`EnvLike`。这是唯一的可变项,其余接线完全一致。
+        满足 :class:`EnvLike` 。这是唯一的可变项,其余接线完全一致。
     :param run_dir: 运行目录(同时也是 trace / replay 路径的默认基目录)。
     :param trace: trace 接线,接受:
 
@@ -179,7 +179,7 @@ def build_service_proxy(
         * ``False`` / ``None``,proxy 上的 ``trace`` 为 ``None``(no-op)。
 
         trace 是分布式且无锁的:proxy 只携带输出目录,每个消费者各自构建
-        append-only 的 :class:`~agentsociety2.trace.ShardedAppendSink`。
+        append-only 的 :class:`~agentsociety2.trace.ShardedAppendSink` 。
     :param trace_dir: trace 基目录的覆盖值(默认 ``run_dir / "trace"``)。
         当 ``trace`` 是 :class:`~agentsociety2.trace.TraceProxy` 时被忽略。
     :param replay: replay 接线,接受:
@@ -196,7 +196,7 @@ def build_service_proxy(
     :param replay_sample_rate: replay 写入的采样率(1.0 = 全量)。当
         ``replay`` 是 :class:`~agentsociety2.storage.replay_proxy.ReplayProxy`
         时被忽略。
-    :returns: 接线完备的 :class:`ServiceProxy`。
+    :returns: 接线完备的 :class:`ServiceProxy` 。
     """
     from agentsociety2.config.llm_dispatcher import build_client_for_role
     from agentsociety2.storage.replay_proxy import ReplayProxy

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: AgentSociety 2 2.6.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-23 12:38+0800\n"
+"POT-Creation-Date: 2026-11-09 11:56+0800\n"
 "PO-Revision-Date: 2026-03-20 00:00+0800\n"
 "Last-Translator: AgentSociety Team\n"
 "Language: en\n"
@@ -18,421 +18,693 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: ../../cli.rst:2
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:2
 msgid "命令行界面"
 msgstr "Command Line Interface"
 
-#: ../../cli.rst:4
-msgid "AgentSociety 2 提供了一个强大的命令行界面（CLI）用于运行实验。"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:4
+msgid "CLI 从配置文件启动实验，记录进度与日志，并支持从 checkpoint 恢复。首次运行可从下方最小配置开始，再根据实验规模调整批大小与回放设置。"
 msgstr ""
-"AgentSociety 2 provides a powerful command line interface (CLI) for "
-"running experiments."
+"The CLI starts experiments from configuration files, records progress and logs, and "
+"supports checkpoint recovery. Begin with the minimal configuration below, then adjust"
+" batching and replay settings for your experiment."
 
-#: ../../cli.rst:7
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:7
 msgid "概述"
 msgstr "Overview"
 
-#: ../../cli.rst:9
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:9
 msgid "CLI 是运行 AgentSociety 2 实验的主要方式。它提供："
 msgstr "The CLI is the primary way to run AgentSociety 2 experiments. It provides:"
 
-#: ../../cli.rst:11
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:11
 msgid "实验配置加载和验证"
 msgstr "Experiment configuration loading and validation"
 
-#: ../../cli.rst:12
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:12
 msgid "步骤化执行跟踪"
 msgstr "Step-by-step execution tracking"
 
-#: ../../cli.rst:13
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:13
 msgid "进度持久化（pid.json）"
 msgstr "Progress persistence (pid.json)"
 
-#: ../../cli.rst:14
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:14
 msgid "灵活的日志配置"
 msgstr "Flexible logging configuration"
 
-#: ../../cli.rst:15
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:15
 msgid "后台运行支持"
 msgstr "Background execution support"
 
-#: ../../cli.rst:18
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:18
 msgid "基本用法"
 msgstr "Basic Usage"
 
-#: ../../cli.rst:25
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:20
+msgid "python -m agentsociety2.society.cli [OPTIONS]"
+msgstr "python -m agentsociety2.society.cli [OPTIONS]"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:25
 msgid "必需参数"
 msgstr "Required Arguments"
 
-#: ../../cli.rst:30 ../../cli.rst:43
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:30
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:43
 msgid "参数"
 msgstr "Parameter"
 
-#: ../../cli.rst:31 ../../cli.rst:45 ../../cli.rst:220
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:31
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:45
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:222
 msgid "说明"
 msgstr "Description"
 
-#: ../../cli.rst:32
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:32
 msgid "``--config`` <PATH>"
 msgstr "``--config`` <PATH>"
 
-#: ../../cli.rst:33
-msgid "初始化配置文件路径（init_config.json）"
-msgstr "Initialization configuration file path (init_config.json)"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:33
+msgid "初始化配置文件路径（``init_config.json``）"
+msgstr "Initialization configuration file path (``init_config.json``)"
 
-#: ../../cli.rst:34
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:34
 msgid "``--steps`` <PATH>"
 msgstr "``--steps`` <PATH>"
 
-#: ../../cli.rst:35
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:35
 msgid "步骤配置文件路径（steps.yaml）"
 msgstr "Step configuration file path (steps.yaml)"
 
-#: ../../cli.rst:38
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:38
 msgid "可选参数"
 msgstr "Optional Arguments"
 
-#: ../../cli.rst:44
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:44
 msgid "默认值"
 msgstr "Default value"
 
-#: ../../cli.rst:46
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:46
 msgid "``--run-dir`` <PATH>"
 msgstr "``--run-dir`` <PATH>"
 
-#: ../../cli.rst:47
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:47
 msgid "当前目录"
 msgstr "current directory"
 
-#: ../../cli.rst:48
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:48
 msgid "运行输出目录路径"
 msgstr "Run output directory path"
 
-#: ../../cli.rst:49
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:49
 msgid "``--experiment-id`` <TEXT>"
 msgstr "``--experiment-id`` <TEXT>"
 
-#: ../../cli.rst:50 ../../cli.rst:56
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:50
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:56
 msgid "无"
 msgstr "None"
 
-#: ../../cli.rst:51
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:51
 msgid "实验标识符"
 msgstr "experiment identifier"
 
-#: ../../cli.rst:52
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:52
 msgid "``--log-level``"
 msgstr "``--log-level``"
 
-#: ../../cli.rst:53
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:53
 msgid "INFO"
 msgstr "INFO"
 
-#: ../../cli.rst:54
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:54
 msgid "日志级别：DEBUG, INFO, WARNING, ERROR, CRITICAL"
 msgstr "Log levels: DEBUG, INFO, WARNING, ERROR, CRITICAL"
 
-#: ../../cli.rst:55
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:55
 msgid "``--log-file`` <PATH>"
 msgstr "``--log-file`` <PATH>"
 
-#: ../../cli.rst:57
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:57
 msgid "日志文件路径（**后台运行必需**）"
 msgstr "Log file path (**required for background execution**)"
 
-#: ../../cli.rst:58
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:58
 msgid "``--batch-size`` <INT>"
 msgstr "``--batch-size`` <INT>"
 
-#: ../../cli.rst:59
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:59
 msgid "``AGENTSOCIETY_BATCH_SIZE`` 或 256"
-msgstr ""
+msgstr "``AGENTSOCIETY_BATCH_SIZE`` or 256"
 
-#: ../../cli.rst:60
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:60
 msgid "每个 ``step_agent_batch`` Ray Task 处理的 agent 数"
-msgstr ""
+msgstr "Number of agents handled by each ``step_agent_batch`` Ray task"
 
-#: ../../cli.rst:61
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:61
 msgid "``--replay-disable``"
-msgstr ""
+msgstr "``--replay-disable``"
 
-#: ../../cli.rst:62 ../../cli.rst:65
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:62
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:65
 msgid "false"
-msgstr ""
+msgstr "false"
 
-#: ../../cli.rst:63
-msgid "禁用回放写入（百万级 agent 场景适用）"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:63
+msgid "禁用回放写入；需要后续回放或时序分析时应保留回放数据"
 msgstr ""
+"Disable replay writes; retain replay data when later playback or time-series analysis"
+" is needed"
 
-#: ../../cli.rst:64
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:64
 msgid "``--resume``"
 msgstr "``--resume``"
 
-#: ../../cli.rst:66
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:66
 msgid ""
-"从 ``run_dir/SOCIETY.json`` 和 ``SOCIETY_STEP.json`` 恢复中断的实验。CLI 会恢复 "
-"society 的时钟、步数和各 env 模块状态，并跳过已经完成的 ``RunStep``。``Ask``、 ``Intervene`` 和 "
-"``Questionnaire`` 会重新执行，产物时间戳也会随之更新；如果 ``steps.yaml`` 与 checkpoint "
-"不一致，CLI 会给出告警。"
+"从 ``run_dir/SOCIETY.json`` 和 ``SOCIETY_STEP.json`` 恢复中断的实验。CLI 会恢复 society 的时钟、步数和各 "
+"env 模块状态，并跳过已经完成的 ``RunStep``。``Ask``、 ``Intervene`` 和 ``Questionnaire`` "
+"会重新执行，产物时间戳也会随之更新；如果 ``steps.yaml`` 与 checkpoint 不一致，CLI 会给出告警。"
 msgstr ""
 "Resume an interrupted experiment from ``run_dir/SOCIETY.json`` and "
-"``SOCIETY_STEP.json``. The CLI restores the society clock, step counts, "
-"and env-module state, then skips completed ``RunStep`` entries. ``Ask``, "
-"``Intervene``, and ``Questionnaire`` run again, so their artifact "
-"timestamps are updated. If ``steps.yaml`` does not match the checkpoint, "
-"the CLI emits a warning."
+"``SOCIETY_STEP.json``. The CLI restores the society clock, step counts, and env-"
+"module state, then skips completed ``RunStep`` entries. ``Ask``, ``Intervene``, and "
+"``Questionnaire`` run again, so their artifact timestamps are updated. If "
+"``steps.yaml`` does not match the checkpoint, the CLI emits a warning."
 
-#: ../../cli.rst:72
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:72
 msgid "运行实验"
 msgstr "Running Experiments"
 
-#: ../../cli.rst:75
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:75
 msgid "前台运行（调试模式）"
 msgstr "Foreground Execution (Debug Mode)"
 
-#: ../../cli.rst:85
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:77
+msgid ""
+"python -m agentsociety2.society.cli \\\n"
+"    --config hypothesis_1/experiment_1/init/init_config.json \\\n"
+"    --steps hypothesis_1/experiment_1/init/steps.yaml \\\n"
+"    --run-dir hypothesis_1/experiment_1/run \\\n"
+"    --log-level DEBUG"
+msgstr ""
+"python -m agentsociety2.society.cli \\\n"
+"    --config hypothesis_1/experiment_1/init/init_config.json \\\n"
+"    --steps hypothesis_1/experiment_1/init/steps.yaml \\\n"
+"    --run-dir hypothesis_1/experiment_1/run \\\n"
+"    --log-level DEBUG"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:85
 msgid "日志输出到控制台。"
 msgstr "Log output to the console."
 
-#: ../../cli.rst:88
-msgid "后台运行（生产模式）"
-msgstr "Background Execution (Production Mode)"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:88
+msgid "后台运行"
+msgstr "Background Execution"
 
-#: ../../cli.rst:90
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:90
 msgid "**重要**: 后台运行时必须指定 ``--log-file`` 以捕获日志。"
 msgstr ""
-"**Important**: When running in background, you must specify ``--log-"
-"file`` to capture logs."
+"**Important**: When running in background, you must specify ``--log-file`` to capture"
+" logs."
 
-#: ../../cli.rst:103
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:92
+msgid ""
+"python -m agentsociety2.society.cli \\\n"
+"    --config hypothesis_1/experiment_1/init/init_config.json \\\n"
+"    --steps hypothesis_1/experiment_1/init/steps.yaml \\\n"
+"    --run-dir hypothesis_1/experiment_1/run \\\n"
+"    --experiment-id \"1_1\" \\\n"
+"    --log-level INFO \\\n"
+"    --log-file hypothesis_1/experiment_1/run/output.log &"
+msgstr ""
+"python -m agentsociety2.society.cli \\\n"
+"    --config hypothesis_1/experiment_1/init/init_config.json \\\n"
+"    --steps hypothesis_1/experiment_1/init/steps.yaml \\\n"
+"    --run-dir hypothesis_1/experiment_1/run \\\n"
+"    --experiment-id \"1_1\" \\\n"
+"    --log-level INFO \\\n"
+"    --log-file hypothesis_1/experiment_1/run/output.log &"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:103
 msgid "检查实验状态"
 msgstr "Checking Experiment Status"
 
-#: ../../cli.rst:114
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:105
+msgid ""
+"# 检查 pid.json 查看运行状态\n"
+"cat hypothesis_1/experiment_1/run/pid.json\n"
+"\n"
+"# 查看日志\n"
+"tail -f hypothesis_1/experiment_1/run/output.log"
+msgstr ""
+"# Inspect pid.json for run status\n"
+"cat hypothesis_1/experiment_1/run/pid.json\n"
+"\n"
+"# View logs\n"
+"tail -f hypothesis_1/experiment_1/run/output.log"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:114
 msgid "停止实验"
 msgstr "Stopping Experiments"
 
-#: ../../cli.rst:125
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:116
+msgid ""
+"# 查找进程 ID\n"
+"pid=$(jq -r '.pid' hypothesis_1/experiment_1/run/pid.json)\n"
+"\n"
+"# 发送 SIGTERM 信号\n"
+"kill -TERM \"$pid\""
+msgstr ""
+"# Find the process ID\n"
+"pid=$(jq -r '.pid' hypothesis_1/experiment_1/run/pid.json)\n"
+"\n"
+"# Send SIGTERM\n"
+"kill -TERM \"$pid\""
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:125
 msgid "恢复中断的实验"
 msgstr "Resuming Interrupted Experiments"
 
-#: ../../cli.rst:127
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:127
 msgid "实验会在每步结束时原子地写出 checkpoint。即使进程在写入过程中崩溃，已有 checkpoint 也不会被破坏："
 msgstr ""
-"The experiment writes checkpoints atomically at the end of each step. "
-"Even if the process crashes during a write, the existing checkpoint is "
-"not corrupted:"
+"The experiment writes checkpoints atomically at the end of each step. Even if the "
+"process crashes during a write, the existing checkpoint is not corrupted:"
 
-#: ../../cli.rst:129
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:129
 msgid ""
-"``run_dir/SOCIETY.json`` —— 初始化时写一次，保存不可变的全量配置，例如 ``agent_specs``、 env "
-"模块类型和 kwargs、``batch_size``、``steps_hash``。"
+"``run_dir/SOCIETY.json`` —— 初始化时写一次，保存不可变的全量配置，例如 ``agent_specs``、 env 模块类型和 "
+"kwargs、``batch_size``、``steps_hash``。"
 msgstr ""
-"``run_dir/SOCIETY.json`` -- written once during initialization. It "
-"stores immutable full-run configuration such as ``agent_specs``, env "
-"module types and kwargs, ``batch_size``, and ``steps_hash``."
+"``run_dir/SOCIETY.json`` -- written once during initialization. It stores immutable "
+"full-run configuration such as ``agent_specs``, env module types and kwargs, "
+"``batch_size``, and ``steps_hash``."
 
-#: ../../cli.rst:131
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:131
 msgid "``run_dir/SOCIETY_STEP.json`` —— 每步标量：当前时间、步数、已完成的顶层步数、``terminated``。"
 msgstr ""
-"``run_dir/SOCIETY_STEP.json`` -- per-step scalars: current time, step "
-"count, completed top-level step count, and ``terminated``."
+"``run_dir/SOCIETY_STEP.json`` -- per-step scalars: current time, step count, "
+"completed top-level step count, and ``terminated``."
 
-#: ../../cli.rst:132
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:132
 #, python-brace-format
-msgid ""
-"各 env 模块的状态写到 "
-"``run_dir/env/{module_type}/state/ENV_STATE.json``，具体格式由模块自定。"
+msgid "各 env 模块的状态写到 ``run_dir/env/{module_type}/state/ENV_STATE.json``，具体格式由模块自定。"
 msgstr ""
 "Each env module writes its state to "
-"``run_dir/env/{module_type}/state/ENV_STATE.json``. The module chooses "
-"the concrete format."
+"``run_dir/env/{module_type}/state/ENV_STATE.json``. The module chooses the concrete "
+"format."
 
-#: ../../cli.rst:134
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:134
 msgid "用 ``--resume`` 从最后完成的步续跑："
 msgstr "Use ``--resume`` to continue from the last completed step:"
 
-#: ../../cli.rst:145
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:136
 msgid ""
-"恢复时以 checkpoint 中的 env 模块类型和 kwargs、时钟、步数为准，而不是重新读取 config 文件中的 "
-"这些值，这可以避免配置漂移。``RunStep`` 会根据游标跳过已完成的部分；``Ask``、``Intervene`` 和 "
-"``Questionnaire`` 会重新执行。如果 ``steps.yaml`` 的 hash 与 checkpoint 不一致，CLI 会输出"
-" WARNING。可以用下面的命令校验恢复点："
+"python -m agentsociety2.society.cli \\\n"
+"    --config hypothesis_1/experiment_1/init/init_config.json \\\n"
+"    --steps hypothesis_1/experiment_1/init/steps.yaml \\\n"
+"    --run-dir hypothesis_1/experiment_1/run \\\n"
+"    --resume \\\n"
+"    --log-file hypothesis_1/experiment_1/run/output.log &"
 msgstr ""
-"On resume, the checkpointed env module types and kwargs, clock, and step "
-"counts take precedence over the config file. This avoids configuration "
-"drift. ``RunStep`` skips completed work according to the cursor; ``Ask``,"
-" ``Intervene``, and ``Questionnaire`` run again. If the ``steps.yaml`` "
-"hash does not match the checkpoint, the CLI prints a WARNING. You can "
-"inspect the restore point with:"
+"python -m agentsociety2.society.cli \\\n"
+"    --config hypothesis_1/experiment_1/init/init_config.json \\\n"
+"    --steps hypothesis_1/experiment_1/init/steps.yaml \\\n"
+"    --run-dir hypothesis_1/experiment_1/run \\\n"
+"    --resume \\\n"
+"    --log-file hypothesis_1/experiment_1/run/output.log &"
 
-#: ../../cli.rst:156
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:145
 msgid ""
-"只有覆盖了 ``to_workspace()`` 和 ``restore()`` 的 env 模块才能在 resume 时恢复动态状态 （见 "
-":doc:`env_modules`）。未覆盖的模块 resume 后会回到 fresh 态。"
+"恢复时以 checkpoint 中的 env 模块类型和 kwargs、时钟、步数为准，而不是重新读取 config 文件中的这些值，这可以避免配置漂移。``RunStep`` "
+"会根据游标跳过已完成的部分；``Ask``、``Intervene`` 和 ``Questionnaire`` 会重新执行。如果 ``steps.yaml`` 的 hash 与 "
+"checkpoint 不一致，CLI 会输出 WARNING。可以用下面的命令校验恢复点："
 msgstr ""
-"Only env modules that override ``to_workspace()`` and ``restore()`` can "
-"restore dynamic state during resume; see :doc:`env_modules`. Modules that"
-" do not override them start in a fresh state after resume."
+"On resume, the checkpointed env module types and kwargs, clock, and step counts take precedence "
+"over the config file. This avoids configuration drift. ``RunStep`` skips completed work according"
+" to the cursor; ``Ask``, ``Intervene``, and ``Questionnaire`` run again. If the ``steps.yaml`` "
+"hash does not match the checkpoint, the CLI prints a WARNING. You can inspect the restore point "
+"with:"
 
-#: ../../cli.rst:160
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:149
+msgid "cat hypothesis_1/experiment_1/run/SOCIETY_STEP.json   # step_count / completed_step_count"
+msgstr "cat hypothesis_1/experiment_1/run/SOCIETY_STEP.json   # step_count / completed_step_count"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:155
+msgid ""
+"只有覆盖了 ``to_workspace()`` 和 ``restore()`` 的 env 模块才能在 resume 时恢复动态状态（见 :doc:`env_modules`）。未覆盖的模块 "
+"resume 后会回到 fresh 态。"
+msgstr ""
+"Only env modules that override ``to_workspace()`` and ``restore()`` can restore dynamic state "
+"during resume; see :doc:`env_modules`. Modules that do not override them start in a fresh state "
+"after resume."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:160
 msgid "配置文件"
 msgstr "Configuration Files"
 
-#: ../../cli.rst:163
-msgid "init_config.json"
-msgstr "init_config.json"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:161
+msgid "``init_config.json``"
+msgstr "``init_config.json``"
 
-#: ../../cli.rst:165
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:165
 msgid "初始化配置文件定义实验的基本设置："
-msgstr ""
-"The initialization configuration file defines the basic settings of the "
-"experiment:"
+msgstr "The initialization configuration file defines the basic settings of the experiment:"
 
-#: ../../cli.rst:195
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:165
+#, python-brace-format
+msgid ""
+"{\n"
+"    \"agents\": [\n"
+"        {\n"
+"            \"agent_id\": 1,\n"
+"            \"agent_type\": \"PersonAgent\",\n"
+"            \"kwargs\": {\n"
+"                \"id\": 1,\n"
+"                \"profile\": {\"name\": \"Alice\", \"personality\": \"friendly\"}\n"
+"            }\n"
+"        }\n"
+"    ],\n"
+"    \"env_modules\": [\n"
+"        {\n"
+"            \"module_type\": \"SimpleSocialSpace\",\n"
+"            \"kwargs\": {\n"
+"                \"agent_id_name_pairs\": [[1, \"Alice\"]]\n"
+"            }\n"
+"        }\n"
+"    ],\n"
+"    \"codegen_router\": {\n"
+"        \"final_summary_enabled\": false\n"
+"    }\n"
+"}"
+msgstr ""
+"{\n"
+"    \"agents\": [\n"
+"        {\n"
+"            \"agent_id\": 1,\n"
+"            \"agent_type\": \"PersonAgent\",\n"
+"            \"kwargs\": {\n"
+"                \"id\": 1,\n"
+"                \"profile\": {\"name\": \"Alice\", \"personality\": \"friendly\"}\n"
+"            }\n"
+"        }\n"
+"    ],\n"
+"    \"env_modules\": [\n"
+"        {\n"
+"            \"module_type\": \"SimpleSocialSpace\",\n"
+"            \"kwargs\": {\n"
+"                \"agent_id_name_pairs\": [[1, \"Alice\"]]\n"
+"            }\n"
+"        }\n"
+"    ],\n"
+"    \"codegen_router\": {\n"
+"        \"final_summary_enabled\": false\n"
+"    }\n"
+"}"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:193
+msgid ""
+"``codegen_router`` 块可选。``final_summary_enabled`` 自 v2.10.0 起**默认关闭**：关闭时 env ``ask`` "
+"的最终应答由确定性拼装生成；开启后每次 ask 额外产生一次 LLM summary 调用，会增加调用开销；是否开启取决于是否需要自然语言总结。"
+msgstr ""
+"The ``codegen_router`` block is optional. ``final_summary_enabled`` has been **off by"
+" default** since v2.10.0: when off, the final environment ``ask`` response is "
+"assembled deterministically. Enabling it adds one LLM summary call per ask; use it "
+"when a natural-language summary is needed."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:197
 msgid "steps.yaml"
 msgstr "steps.yaml"
 
-#: ../../cli.rst:197
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:199
 msgid "步骤配置文件定义实验的执行步骤："
 msgstr "The step configuration file defines the execution steps of the experiment:"
 
-#: ../../cli.rst:214
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:199
+msgid ""
+"start_t: \"2026-01-01T00:00:00\"\n"
+"steps:\n"
+"  - type: ask\n"
+"    question: \"Introduce yourself to the group\"\n"
+"\n"
+"  - type: run\n"
+"    num_steps: 1\n"
+"    tick: 3600\n"
+"\n"
+"  - type: intervene\n"
+"    instruction: \"Make everyone feel better\""
+msgstr ""
+"start_t: \"2026-01-01T00:00:00\"\n"
+"steps:\n"
+"  - type: ask\n"
+"    question: \"Introduce yourself to the group\"\n"
+"\n"
+"  - type: run\n"
+"    num_steps: 1\n"
+"    tick: 3600\n"
+"\n"
+"  - type: intervene\n"
+"    instruction: \"Make everyone feel better\""
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:216
 msgid "步骤类型"
 msgstr "Step Types"
 
-#: ../../cli.rst:219
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:221
 msgid "类型"
 msgstr "Type"
 
-#: ../../cli.rst:221
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:223
+msgid "``run``"
+msgstr "``run``"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:224
+msgid "运行 ``num_steps`` 个模拟步，每步时长 ``tick`` 秒"
+msgstr "Run ``num_steps`` simulation steps, each lasting ``tick`` seconds"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:225
 msgid "``ask``"
 msgstr "``ask``"
 
-#: ../../cli.rst:222
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:226
 msgid "只读查询，不修改环境"
 msgstr "Read-only query, do not modify the environment"
 
-#: ../../cli.rst:223
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:227
 msgid "``intervene``"
 msgstr "``intervene``"
 
-#: ../../cli.rst:224
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:228
 msgid "读写操作，可以修改环境"
 msgstr "Read and write operations can modify the environment"
 
-#: ../../cli.rst:225
-msgid "``step``"
-msgstr "``step``"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:229
+msgid "``questionnaire``"
+msgstr "``questionnaire``"
 
-#: ../../cli.rst:226
-msgid "执行一个模拟步骤（指定 tick 时长）"
-msgstr "Execute a simulation step (specify tick duration)"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:230
+msgid ""
+"向目标 agent 发放问卷（``questionnaire_id``、``questions`` 题目列表，可选 "
+"``target_agent_ids``），收集结构化回答"
+msgstr ""
+"Deliver a questionnaire to the target agents (``questionnaire_id`` and a list of "
+"``questions``, with optional ``target_agent_ids``) and collect structured answers"
 
-#: ../../cli.rst:229
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:234
 msgid "输出文件"
 msgstr "Output Files"
 
-#: ../../cli.rst:231
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:236
 msgid "运行实验后，``run-dir`` 目录将包含："
 msgstr "After running an experiment, the ``run-dir`` directory will contain:"
 
-#: ../../cli.rst:247
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:236
+msgid ""
+"hypothesis_1/experiment_1/run/\n"
+"├── pid.json              # 进程信息（PID、启动时间、状态）\n"
+"├── output.log            # 日志文件（如果指定了 --log-file）\n"
+"├── replay/               # _schema.json + sharded JSONL replay datasets\n"
+"├── trace/                # sharded JSONL trace spans\n"
+"├── SOCIETY.json          # 初始化配置 checkpoint\n"
+"├── SOCIETY_STEP.json     # 最近完成步骤 checkpoint\n"
+"├── env/                  # 环境模块状态\n"
+"├── agents/               # agent workspaces\n"
+"└── artifacts/            # ask / intervene / questionnaire 产物\n"
+"    ├── ask_step_0_<timestamp>.md\n"
+"    ├── intervene_step_2_<timestamp>.md\n"
+"    └── ..."
+msgstr ""
+"hypothesis_1/experiment_1/run/\n"
+"├── pid.json              # Process information: PID, start time, and status\n"
+"├── output.log            # Logs when --log-file is specified\n"
+"├── replay/               # _schema.json + sharded JSONL replay datasets\n"
+"├── trace/                # sharded JSONL trace spans\n"
+"├── SOCIETY.json          # Initialization checkpoint\n"
+"├── SOCIETY_STEP.json     # Most recently completed step checkpoint\n"
+"├── env/                  # Environment module state\n"
+"├── agents/               # agent workspaces\n"
+"└── artifacts/            # ask / intervene / questionnaire artifacts\n"
+"    ├── ask_step_0_<timestamp>.md\n"
+"    ├── intervene_step_2_<timestamp>.md\n"
+"    └── ..."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:255
 msgid "pid.json 格式"
 msgstr "pid.json Format"
 
-#: ../../cli.rst:262
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:255
+#, python-brace-format
+msgid ""
+"{\n"
+"    \"pid\": 12345,\n"
+"    \"status\": \"running\",\n"
+"    \"start_time\": \"2026-03-20T10:30:00\",\n"
+"    \"experiment_id\": \"1_1\",\n"
+"    \"simulation_time\": \"2026-01-01T02:00:00\",\n"
+"    \"step_count\": 2\n"
+"}"
+msgstr ""
+"{\n"
+"    \"pid\": 12345,\n"
+"    \"status\": \"running\",\n"
+"    \"start_time\": \"2026-03-20T10:30:00\",\n"
+"    \"experiment_id\": \"1_1\",\n"
+"    \"simulation_time\": \"2026-01-01T02:00:00\",\n"
+"    \"step_count\": 2\n"
+"}"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:266
+msgid ""
+"``status`` 为 ``running`` / ``completed`` / ``completed_with_errors`` / "
+"``failed``；每个步骤结束时会更新进度字段（``simulation_time`` / ``step_count``），完成或失败时追加 ``end_time``，失败时附带 "
+"``error``；``--resume`` 续跑时附带 ``resumed`` / ``resumed_from_step``。"
+msgstr ""
+"``status`` is ``running`` / ``completed`` / ``completed_with_errors`` / ``failed``; progress "
+"fields (``simulation_time`` / ``step_count``) are updated at the end of each step, ``end_time`` "
+"is appended on completion or failure, ``error`` is attached on failure, and ``resumed`` / "
+"``resumed_from_step`` are attached when continuing with ``--resume``."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:273
 msgid "日志级别"
 msgstr "Log Levels"
 
-#: ../../cli.rst:264
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:275
 msgid "可选的日志级别："
 msgstr "Available log levels:"
 
-#: ../../cli.rst:270
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:281
 msgid "级别"
 msgstr "Level"
 
-#: ../../cli.rst:271
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:282
 msgid "用途"
 msgstr "Usage"
 
-#: ../../cli.rst:272
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:283
 msgid "``DEBUG``"
 msgstr "``DEBUG``"
 
-#: ../../cli.rst:273
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:284
 msgid "详细的调试信息，包括 LLM 调用"
 msgstr "Detailed debugging information, including LLM calls"
 
-#: ../../cli.rst:274
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:285
 msgid "``INFO``"
 msgstr "``INFO``"
 
-#: ../../cli.rst:275
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:286
 msgid "常规运行信息（默认）"
 msgstr "General operating information (default)"
 
-#: ../../cli.rst:276
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:287
 msgid "``WARNING``"
 msgstr "``WARNING``"
 
-#: ../../cli.rst:277
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:288
 msgid "警告信息"
 msgstr "Warning message"
 
-#: ../../cli.rst:278
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:289
 msgid "``ERROR``"
 msgstr "``ERROR``"
 
-#: ../../cli.rst:279
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:290
 msgid "错误信息"
 msgstr "Error message"
 
-#: ../../cli.rst:280
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:291
 msgid "``CRITICAL``"
 msgstr "``CRITICAL``"
 
-#: ../../cli.rst:281
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:292
 msgid "严重错误"
 msgstr "Critical error"
 
-#: ../../cli.rst:284
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:295
 msgid "示例：完整工作流"
 msgstr "Example: Complete Workflow"
 
-#~ msgid ""
-#~ "从 ``run_dir/SOCIETY.json`` + ``SOCIETY_STEP.json``"
-#~ " 续跑中断的实验：恢复 society 时钟/步数与各 env 模块状态，跳过已完成的"
-#~ " ``RunStep``（``Ask``/``Intervene``/ ``Questionnaire`` "
-#~ "会重跑，产物时间戳更新）。``steps.yaml`` 与 checkpoint 不一致时告警。"
-#~ msgstr ""
-
-#~ msgid "实验在每步结束时原子地写两份 checkpoint（崩溃不会损坏）："
-#~ msgstr ""
-
-#~ msgid ""
-#~ "``run_dir/SOCIETY.json`` —— 不可变全量（init "
-#~ "时写一次）：``agent_specs``、env 模块类型+kwargs、 "
-#~ "``batch_size``、``steps_hash``。"
-#~ msgstr ""
-
-#~ msgid ""
-#~ "各 env 模块的状态写到 "
-#~ "``run_dir/env/<module_type>/state/ENV_STATE.json``（由模块自选格式）。"
-#~ msgstr ""
-
-#~ msgid ""
-#~ "恢复机制：以持久化的 env 模块类型/kwargs、时钟、步数为准（而非 config "
-#~ "文件，避免配置漂移）； ``RunStep`` "
-#~ "按游标跳过已完成部分，``Ask``/``Intervene``/``Questionnaire`` "
-#~ "重跑；``steps.yaml`` 的 hash 与 checkpoint "
-#~ "不一致时 WARNING。校验恢复点："
-#~ msgstr ""
-
-#~ msgid ""
-#~ "只有覆盖了 ``to_workspace()``/``restore()`` 的 env "
-#~ "模块才能在 resume 时恢复动态状态 （见 "
-#~ ":doc:`env_modules`）。未覆盖的模块 resume 后会回到 fresh "
-#~ "态。"
-#~ msgstr ""
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/cli.rst:294
+msgid ""
+"# 1. 准备配置文件\n"
+"mkdir -p my_experiment/init my_experiment/run\n"
+"# ... 创建 init_config.json 和 steps.yaml ...\n"
+"\n"
+"# 2. 前台测试运行\n"
+"python -m agentsociety2.society.cli \\\n"
+"    --config my_experiment/init/init_config.json \\\n"
+"    --steps my_experiment/init/steps.yaml \\\n"
+"    --run-dir my_experiment/run \\\n"
+"    --log-level DEBUG\n"
+"\n"
+"# 3. 后台生产运行\n"
+"python -m agentsociety2.society.cli \\\n"
+"    --config my_experiment/init/init_config.json \\\n"
+"    --steps my_experiment/init/steps.yaml \\\n"
+"    --run-dir my_experiment/run \\\n"
+"    --experiment-id \"exp_001\" \\\n"
+"    --log-level INFO \\\n"
+"    --log-file my_experiment/run/output.log &\n"
+"\n"
+"# 4. 监控运行\n"
+"tail -f my_experiment/run/output.log\n"
+"\n"
+"# 5. 完成后检查 replay catalog\n"
+"python - <<'PY'\n"
+"from agentsociety2.storage import ReplayReader\n"
+"reader = ReplayReader(\"my_experiment/run/replay\")\n"
+"print([d[\"dataset_id\"] for d in reader.load_dataset_catalog()])\n"
+"reader.close()\n"
+"PY"
+msgstr ""
+"# 1. Prepare configuration files\n"
+"mkdir -p my_experiment/init my_experiment/run\n"
+"# ... create init_config.json and steps.yaml ...\n"
+"\n"
+"# 2. Test in the foreground\n"
+"python -m agentsociety2.society.cli \\\n"
+"    --config my_experiment/init/init_config.json \\\n"
+"    --steps my_experiment/init/steps.yaml \\\n"
+"    --run-dir my_experiment/run \\\n"
+"    --log-level DEBUG\n"
+"\n"
+"# 3. Run in the background\n"
+"python -m agentsociety2.society.cli \\\n"
+"    --config my_experiment/init/init_config.json \\\n"
+"    --steps my_experiment/init/steps.yaml \\\n"
+"    --run-dir my_experiment/run \\\n"
+"    --experiment-id \"exp_001\" \\\n"
+"    --log-level INFO \\\n"
+"    --log-file my_experiment/run/output.log &\n"
+"\n"
+"# 4. Monitor the run\n"
+"tail -f my_experiment/run/output.log\n"
+"\n"
+"# 5. Inspect the replay catalog after completion\n"
+"python - <<'PY'\n"
+"from agentsociety2.storage import ReplayReader\n"
+"reader = ReplayReader(\"my_experiment/run/replay\")\n"
+"print([d[\"dataset_id\"] for d in reader.load_dataset_catalog()])\n"
+"reader.close()\n"
+"PY"

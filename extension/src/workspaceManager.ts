@@ -181,8 +181,20 @@ export class WorkspaceManager {
           // 即使自定义模块初始化失败，也继续创建其他文件
         }
       } else {
-        filesCreated.push('custom/ (already exists)');
         this.log(`Custom directory already exists: ${customDir}`);
+      }
+
+      // Installing a skill can create custom/ before the workspace is initialized.
+      // Repair each required directory without regenerating or replacing user modules.
+      for (const relative of ['custom/agents', 'custom/envs']) {
+        const directory = path.join(workspacePath, relative);
+        if (!fs.existsSync(directory)) {
+          fs.mkdirSync(directory, { recursive: true });
+          filesCreated.push(`${relative}/`);
+          this.log(`Created: ${directory}`);
+        } else if (!fs.statSync(directory).isDirectory()) {
+          throw new Error(`${relative} must be a directory; move the conflicting file and retry`);
+        }
       }
 
       reportProgress('正在创建文献索引...');

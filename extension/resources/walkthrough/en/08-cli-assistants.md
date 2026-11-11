@@ -1,6 +1,6 @@
 ## Claude Code and Codex
 
-**Claude Code** and **Codex** are terminal/editor collaboration surfaces for the AI Social Scientist. After project initialization, the workspace includes:
+**Claude Code** and **Codex** are terminal- and editor-based collaboration surfaces for the AI Social Scientist. After project initialization, the workspace includes:
 
 ```text
 workspace-root/
@@ -13,11 +13,11 @@ workspace-root/
 
 | Mode | Recommended configuration |
 |------|---------------------------|
-| **Official Claude / Codex account** | Keep the corresponding local proxy switch off and sign in from the CLI |
+| **Official Claude / Codex account** | Keep the corresponding local proxy switch off and sign in from the CLI, or use the **Sign in to Codex** device-login panel on the config page |
 | **Direct third-party API** | Add an API-key provider on the config page and make it the default for that assistant |
 | **Third-party API through Gateway** | Add the provider, then enable Claude/Codex routing for protocol translation, failover, and usage accounting |
 
-Official sign-in and third-party provider settings can coexist. Codex keeps credentials in `auth.json` or the OS credential store, while provider routing lives in `config.toml`; AgentSociety changes only its owned routing fields and does not overwrite the official login cache.
+Official sign-in and third-party provider settings can coexist. Codex keeps credentials in `auth.json` or the OS credential store, while provider routing lives in `config.toml`; AgentSociety changes only the routing fields it owns and does not overwrite the official login cache.
 
 ### Codex switching and restart behavior
 
@@ -31,27 +31,19 @@ Codex loads provider and model-catalog settings at startup. Restart Codex from t
 
 ### Recommended setup
 
-1. **Config page** — simulation LLM, optional CLI Gateway, providers, and outbound proxy  
-2. **Skill management → MCP integration** — sync literature MCP to Claude / Codex  
-3. Start `claude` or `codex` in a terminal; check `/status` and `/mcp`  
+1. **Config page** — simulation LLM, optional CLI Gateway, providers, and outbound proxy
+2. **Skill management → MCP** — sync literature MCP to Claude / Codex
+3. Start `claude` or `codex` in a terminal; check `/status` and `/mcp`
 
 [Open Config](command:aiSocialScientist.openConfigPage) · [Open Skills](command:aiSocialScientist.openSkillMarketplace) · [Claude skill sources](command:aiSocialScientist.openClaudeSkillSourcesSettings)
-
-### Bypass permission mode (advanced)
-
-In a trusted workspace, Claude Code can use **bypassPermissions** to reduce repeated confirmations:
-
-![Enable bypass mode](../images/gif/enable-bypass-mode.gif)
-
-> ⚠️ Bypass skips some tool-call confirmations. Use it only for projects you fully trust. It is separate from VS Code Workspace Trust and should not be enabled for unfamiliar repositories.
 
 ### What else to try
 
 | Feature | Entry |
 |---------|-------|
-| Simulation replay | Right-click an experiment folder |
+| Simulation replay | Right-click an experiment folder in the sidebar |
 | Paper / analysis outputs | `paper/`, `presentation/`, `synthesis/` |
-| User guide | Sidebar 📖 |
+| User guide | Command Palette: `AI Social Scientist: User Guide` |
 | Glossary | Last step in this walkthrough |
 
 Docs: [agentsociety2.readthedocs.io](https://agentsociety2.readthedocs.io/) · Paper: [arXiv:2607.11895](https://arxiv.org/abs/2607.11895) · Issues: [GitHub Issues](https://github.com/tsinghua-fib-lab/agentsociety/issues)

@@ -1,7 +1,7 @@
-"""Open-access full-text PDF download for literature index entries.
+"""为文献索引条目下载开放获取的全文 PDF。
 
-Downloads PDFs into ``papers/full_texts/`` and records paths under
-``extra_fields.full_text`` in ``papers/literature_index.json``.
+PDF 下载到 ``papers/full_texts/`` ，路径记录在
+``papers/literature_index.json`` 的 ``extra_fields.full_text`` 下。
 """
 
 from __future__ import annotations
@@ -32,16 +32,16 @@ USER_AGENT = (
 
 
 class FullTextDownloadError(Exception):
-    """Raised when a candidate URL does not yield a valid PDF."""
+    """候选 URL 未返回有效 PDF 时抛出。"""
 
 
 def load_literature_index_dict(workspace: Path) -> tuple[Path, dict[str, Any]]:
-    """Load ``papers/literature_index.json`` from a workspace.
+    """从工作区加载 ``papers/literature_index.json`` 。
 
-    :param workspace: Workspace root directory.
-    :returns: Tuple of index file path and parsed JSON object.
-    :raises FileNotFoundError: If the index file is missing.
-    :raises ValueError: If the file is not valid JSON.
+    :param workspace: 工作区根目录。
+    :returns: 索引文件路径与解析后的 JSON 对象组成的元组。
+    :raises FileNotFoundError: 索引文件缺失时抛出。
+    :raises ValueError: 文件不是合法 JSON 时抛出。
     """
     index_path = workspace / "papers" / "literature_index.json"
     if not index_path.exists():
@@ -53,10 +53,10 @@ def load_literature_index_dict(workspace: Path) -> tuple[Path, dict[str, Any]]:
 
 
 def save_literature_index_dict(index_path: Path, data: dict[str, Any]) -> None:
-    """Write the literature index and set ``updated_at`` to the current UTC time.
+    """写入文献索引，并将 ``updated_at`` 设为当前 UTC 时间。
 
-    :param index_path: Path to ``literature_index.json``.
-    :param data: Index document to serialize.
+    :param index_path: ``literature_index.json`` 的路径。
+    :param data: 待序列化的索引文档。
     """
     data["updated_at"] = datetime.now(UTC).isoformat()
     index_path.write_text(
@@ -66,11 +66,11 @@ def save_literature_index_dict(index_path: Path, data: dict[str, Any]) -> None:
 
 
 def index_entries(data: dict[str, Any]) -> list[dict[str, Any]]:
-    """Return the ``entries`` array from an index document.
+    """返回索引文档中的 ``entries`` 数组。
 
-    :param data: Parsed literature index JSON.
-    :returns: List of entry dicts.
-    :raises ValueError: If ``entries`` is missing or not a list.
+    :param data: 解析后的文献索引 JSON。
+    :returns: 条目字典列表。
+    :raises ValueError: ``entries`` 缺失或不是列表时抛出。
     """
     entries = data.get("entries", [])
     if not isinstance(entries, list):
@@ -79,13 +79,13 @@ def index_entries(data: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def pick_index_entry(data: dict[str, Any], entry_number: int) -> dict[str, Any]:
-    """Select one index entry by 1-based position.
+    """按 1 起始的序号选取单个索引条目。
 
-    :param data: Parsed literature index JSON.
-    :param entry_number: 1-based entry index (CLI convention).
-    :returns: The entry dict at that position.
-    :raises IndexError: If ``entry_number`` is out of range.
-    :raises TypeError: If the entry is not an object.
+    :param data: 解析后的文献索引 JSON。
+    :param entry_number: 1 起始的条目序号（CLI 约定）。
+    :returns: 该位置上的条目字典。
+    :raises IndexError: ``entry_number`` 超出范围时抛出。
+    :raises TypeError: 条目不是对象时抛出。
     """
     entries = index_entries(data)
     if entry_number < 1 or entry_number > len(entries):
@@ -99,10 +99,10 @@ def pick_index_entry(data: dict[str, Any], entry_number: int) -> dict[str, Any]:
 
 
 def entry_extra_fields(entry: dict[str, Any]) -> dict[str, Any]:
-    """Return ``extra_fields`` on an entry, creating an empty dict if absent.
+    """返回条目上的 ``extra_fields`` ，不存在时创建空字典。
 
-    :param entry: Literature index entry.
-    :returns: Mutable ``extra_fields`` dict attached to ``entry``.
+    :param entry: 文献索引条目。
+    :returns: 挂在 ``entry`` 上的可变 ``extra_fields`` 字典。
     """
     extra = entry.get("extra_fields")
     if not isinstance(extra, dict):
@@ -112,7 +112,7 @@ def entry_extra_fields(entry: dict[str, Any]) -> dict[str, Any]:
 
 
 def nested_dict(parent: dict[str, Any], key: str) -> dict[str, Any]:
-    """Return a nested dict value on ``parent``, or an empty dict if missing or wrong type."""
+    """返回 ``parent`` 上的嵌套字典值；缺失或类型不符时返回空字典。"""
     value = parent.get(key)
     return value if isinstance(value, dict) else {}
 
@@ -143,10 +143,10 @@ def arxiv_pdf_url(value: Any) -> str | None:
 
 
 def candidate_urls(entry: dict[str, Any]) -> list[str]:
-    """Collect HTTP(S) PDF candidate URLs from entry metadata.
+    """从条目元数据中收集 HTTP(S) PDF 候选 URL。
 
-    :param entry: Literature index entry (top-level and ``extra_fields``).
-    :returns: De-duplicated list of candidate URLs (arxiv abs URLs normalized to PDF).
+    :param entry: 文献索引条目（顶层字段与 ``extra_fields`` ）。
+    :returns: 去重后的候选 URL 列表（arxiv abs URL 会规范化为 PDF 链接）。
     """
     candidates: list[str] = []
     extra_fields = nested_dict(entry, "extra_fields")
@@ -194,10 +194,10 @@ def candidate_urls(entry: dict[str, Any]) -> list[str]:
 
 
 def safe_pdf_stem(entry: dict[str, Any]) -> str:
-    """Build a filesystem-safe basename for a full-text PDF file.
+    """为全文 PDF 文件构造文件系统安全的主文件名。
 
-    :param entry: Literature index entry.
-    :returns: Stem derived from ``file_path`` or sanitized ``title``.
+    :param entry: 文献索引条目。
+    :returns: 由 ``file_path`` 或清理后的 ``title`` 得到的主文件名。
     """
     file_path = entry.get("file_path")
     if isinstance(file_path, str) and file_path:
@@ -220,10 +220,10 @@ def _is_restricted_ip(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool
 
 
 def _validate_public_url(url: str) -> None:
-    """Validate that a URL is safe to fetch (SSRF protection).
+    """校验 URL 是否可以安全抓取（SSRF 防护）。
 
-    Allows only http/https. Blocks literal private IPs, localhost aliases,
-    and hostnames whose DNS answers include non-global addresses.
+    仅允许 http/https；拦截字面量私网 IP、localhost 别名，以及 DNS
+    解析结果包含非全局地址的主机名。
     """
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https"):
@@ -269,7 +269,7 @@ def _validate_public_url(url: str) -> None:
 
 
 class _SafeRedirectHandler(HTTPRedirectHandler):
-    """Re-validate every redirect hop before following it."""
+    """跟随每一跳重定向前重新校验目标 URL。"""
 
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         _validate_public_url(newurl)
@@ -277,12 +277,12 @@ class _SafeRedirectHandler(HTTPRedirectHandler):
 
 
 def download_pdf_bytes(url: str, *, timeout: int = 60) -> tuple[bytes, str]:
-    """Download bytes from a URL and verify the response looks like a PDF.
+    """从 URL 下载数据并校验响应是否为 PDF。
 
-    :param url: HTTP(S) URL to fetch.
-    :param timeout: Socket timeout in seconds.
-    :returns: Tuple of PDF bytes and final URL after redirects.
-    :raises FullTextDownloadError: On HTTP errors, network errors, or non-PDF content.
+    :param url: 待抓取的 HTTP(S) URL。
+    :param timeout: 套接字超时时间（秒）。
+    :returns: PDF 字节内容与重定向后的最终 URL 组成的元组。
+    :raises FullTextDownloadError: HTTP 错误、网络错误或内容不是 PDF 时抛出。
     """
     _validate_public_url(url)
     request = Request(url, headers={"User-Agent": USER_AGENT})
@@ -317,13 +317,13 @@ def record_full_text(
     source_url: str | None = None,
     reason: str | None = None,
 ) -> None:
-    """Update ``extra_fields.full_text`` on an index entry.
+    """更新索引条目上的 ``extra_fields.full_text`` 。
 
-    :param entry: Literature index entry (mutated in place).
-    :param status: Outcome status (e.g. ``downloaded``, ``failed``, ``no_candidate``).
-    :param file_path: Workspace-relative path to the PDF, if any.
-    :param source_url: URL used for a successful download.
-    :param reason: Human-readable failure or skip reason.
+    :param entry: 文献索引条目（原地修改）。
+    :param status: 结果状态（如 ``downloaded`` 、``failed`` 、``no_candidate`` ）。
+    :param file_path: PDF 相对于工作区的路径（如有）。
+    :param source_url: 下载成功时使用的 URL。
+    :param reason: 人类可读的失败或跳过原因。
     """
     info: dict[str, Any] = {
         "status": status,
@@ -339,10 +339,10 @@ def record_full_text(
 
 
 def full_text_status(entry: dict[str, Any]) -> str:
-    """Return the ``status`` field from ``extra_fields.full_text``, or empty string.
+    """返回 ``extra_fields.full_text`` 中的 ``status`` 字段，缺失时返回空字符串。
 
-    :param entry: Literature index entry.
-    :returns: Status string such as ``downloaded`` or ``failed``.
+    :param entry: 文献索引条目。
+    :returns: 形如 ``downloaded`` 或 ``failed`` 的状态字符串。
     """
     full_text = nested_dict(nested_dict(entry, "extra_fields"), "full_text")
     return str(full_text.get("status", ""))
@@ -356,14 +356,14 @@ def download_entry_pdf(
     output_name: str | None = None,
     skip_if_downloaded: bool = True,
 ) -> FullTextOutcome:
-    """Try to download an open-access PDF for one index entry.
+    """尝试为单个索引条目下载开放获取的 PDF。
 
-    :param workspace_path: Workspace root directory.
-    :param entry: Literature index entry (mutated in place on success or failure).
-    :param explicit_url: Optional URL to try before metadata-derived candidates.
-    :param output_name: Optional filename under ``papers/full_texts/``.
-    :param skip_if_downloaded: If true, skip when status is already ``downloaded``.
-    :returns: One of ``downloaded``, ``skipped``, ``no_candidate``, or ``failed``.
+    :param workspace_path: 工作区根目录。
+    :param entry: 文献索引条目（无论成败都会原地修改）。
+    :param explicit_url: 可选 URL，优先于元数据推导出的候选链接尝试。
+    :param output_name: ``papers/full_texts/`` 下的可选文件名。
+    :param skip_if_downloaded: 为真时，状态已是 ``downloaded`` 则跳过。
+    :returns: ``downloaded`` 、``skipped`` 、``no_candidate`` 或 ``failed`` 之一。
     """
     if skip_if_downloaded and full_text_status(entry) == "downloaded":
         extra = entry_extra_fields(entry)
@@ -413,11 +413,11 @@ def download_open_access_pdfs(
     *,
     only_without_full_text: bool = True,
 ) -> dict[str, int]:
-    """Download open-access PDFs for all entries in the workspace index.
+    """为工作区索引中的所有条目下载开放获取的 PDF。
 
-    :param workspace_path: Workspace root directory.
-    :param only_without_full_text: Skip entries already marked ``downloaded``.
-    :returns: Counts keyed by outcome: ``downloaded``, ``failed``, ``no_candidate``, ``skipped``.
+    :param workspace_path: 工作区根目录。
+    :param only_without_full_text: 跳过已标记为 ``downloaded`` 的条目。
+    :returns: 按结果统计的计数：``downloaded`` 、``failed`` 、``no_candidate`` 、``skipped`` 。
     """
     index_path, data = load_literature_index_dict(workspace_path)
     stats = {"downloaded": 0, "failed": 0, "no_candidate": 0, "skipped": 0}
@@ -448,10 +448,10 @@ def download_open_access_pdfs(
 
 
 def is_enrichable(entry: dict[str, Any]) -> bool:
-    """Return whether an entry failed download and has not been marked enriched.
+    """判断条目是否下载失败且尚未标记为已人工补充。
 
-    :param entry: Literature index entry.
-    :returns: ``True`` if status is ``failed`` or ``no_candidate`` and ``enriched`` is false.
+    :param entry: 文献索引条目。
+    :returns: 状态为 ``failed`` 或 ``no_candidate`` 且 ``enriched`` 为假时返回 ``True`` 。
     """
     full_text = nested_dict(nested_dict(entry, "extra_fields"), "full_text")
     status = full_text.get("status", "")

@@ -1,7 +1,9 @@
 存储与结果访问
 =========================
 
-AgentSociety 2 的新实验把结果写入两个位置：
+只想在工作台查看回放或分析报告时，先读 :doc:`results`。本页说明存储布局、写入格式与程序读取方式；外部输入数据见 :doc:`datasets`。
+
+读取运行目录时，先区分三类产物：
 
 * **Replay 目录**： ``<run_dir>/replay/``。``ReplaySink`` / ``ReplayWriter`` 以
   append-only JSONL 写入 replay 数据，并在 ``_schema.json`` 中保存 dataset catalog
@@ -11,8 +13,7 @@ AgentSociety 2 的新实验把结果写入两个位置：
   与运行时元信息。
 * **Workspace checkpoint（用于 resume）**：各 env 模块把动态状态写入
   ``<run_dir>/env/<module>/state/ENV_STATE.json``，society 把初始化时的不可变全量写入
-  ``<run_dir>/SOCIETY.json``，并把每步标量写入 ``<run_dir>/SOCIETY_STEP.json``。这些文件都是
-  原子 JSON 写入，仅供 ``--resume`` 使用，不进入 replay catalog。**Replay 面向分析，是
+  ``<run_dir>/SOCIETY.json``，并把每步标量写入 ``<run_dir>/SOCIETY_STEP.json``。这些文件都是原子 JSON 写入，仅供 ``--resume`` 使用，不进入 replay catalog。**Replay 面向分析，是
   append-only 的时序数据；workspace 面向恢复，会覆写最新状态**。
 
 读取结果有三条路径：
@@ -41,30 +42,54 @@ HOME。``ExperimentRunner`` 会在其中创建以下结构：
    │   ├── core_agent_profile.<shard>.jsonl
    │   ├── <prefix>_agent_state.<shard>.jsonl
    │   └── <prefix>_env_state.<shard>.jsonl
+   ├── trace/                           # 分布式 trace spans（工具/脚本/LLM 调用），trace_<xx>.jsonl 分片
    ├── pid.json                         # 进程信息与终止状态
    ├── artifacts/                       # ask / intervene / questionnaire 产物
    └── agents/
        └── agent_0001/
            ├── config.json              # 静态配置（create 时写一次）
            ├── AGENT.json               # 动态自描述快照（含 world_description；每步 to_workspace 更新）
-           ├── AGENT_MEMORY.md          # 运行时会话摘要
-           ├── memory/episodes.jsonl    # event-level memories
-           ├── state/
-           └── .runtime/logs/
-               ├── thread_messages.jsonl
-               ├── tool_calls.jsonl
-               └── step_replay.jsonl
+           ├── TODO.json                # 跨步任务列表（todo_* 工具持有）
+           ├── MEMORY.md                # 运行时记忆摘要（由 episodes 派生）
+           ├── memory/
+           │   ├── episodes.jsonl       # event-level memories
+           │   └── state.json           # 记忆运行时状态
+           └── state/                   # 技能/自定义状态文件（如 daily_guidance/）
 
 当通过后端读取实验数据时，``run_dir`` 是从 ``workspace_path`` +
 ``hypothesis_<id>/experiment_<id>/run`` 组装得到的，后端会读取其中的
 ``replay/_schema.json`` 和 JSONL shard。
 
+离线验证回放读写
+----------------
+
+以下脚本在临时目录注册数据集、写入一条记录，再通过 ``ReplayReader`` 读取。它不启动仿真或访问模型，不需要模型凭据；临时目录在结束后自动清理。
+
+.. literalinclude:: ../examples/offline/replay_round_trip.py
+   :language: python
+   :caption: ``examples/offline/replay_round_trip.py``
+
+:download:`下载可运行脚本 <../examples/offline/replay_round_trip.py>`，安装 SDK 后可直接执行。
+
+在已安装 SDK 的环境中，从仓库根目录运行：
+
+.. code-block:: bash
+
+   python packages/agentsociety2/examples/offline/replay_round_trip.py
+
+输出：
+
+.. code-block:: text
+
+   Replay round trip passed.
+
+页面代码直接引用这份脚本。文档构建会执行它，pytest 还会检查数据集元信息、JSONL 文件和读取结果，避免示例与文档各维护一份。
+
 Replay 写入格式
 ----------------
 
 ``ReplaySink`` 是每个进程本地持有的 append-only JSONL writer。``ReplayProxy`` 只携带
-``replay_dir`` 与启用标志，可序列化穿过 Ray task / actor 边界；每个消费者在本进程内
-懒加载自己的 ``ReplaySink``，不再经过中心 SQLite actor。
+``replay_dir`` 与启用标志，可序列化穿过 Ray task / actor 边界；每个消费者在本进程内懒加载自己的 ``ReplaySink``，不再经过中心 SQLite actor。
 
 ``<run_dir>/replay/_schema.json`` 的顶层结构如下：
 
@@ -95,8 +120,7 @@ Replay 写入格式
      }
    }
 
-每个物理表写成 ``<table_name>.<shard>.jsonl``。shard 由行内容的 CRC32 计算得到，
-因此跨 shard 的自然顺序不保证稳定；读取时应使用 dataset 的 ``default_order``、
+每个物理表写成 ``<table_name>.<shard>.jsonl``。shard 由行内容的 CRC32 计算得到，因此跨 shard 的自然顺序不保证稳定；读取时应使用 dataset 的 ``default_order``、
 ``step_key`` 或 ``time_key`` 显式排序。
 
 常见 capability：
@@ -113,8 +137,7 @@ Replay 写入格式
 写入数据
 -----------
 
-环境模块的状态数据有两种写入路径： **声明式** （推荐）和 **手工注册** （事件流、
-自定义形状）。两条路径都调用同一个 replay writer，注入逻辑由
+环境模块的状态数据有两种写入路径： **声明式** （推荐）和 **手工注册** （事件流、自定义形状）。两条路径都调用同一个 replay writer，注入逻辑由
 ``AgentSociety`` / 环境 router 完成。
 
 方式 A：声明式 ``_agent_state_columns`` / ``_env_state_columns``
@@ -123,7 +146,7 @@ Replay 写入格式
 子类化 :class:`~agentsociety2.env.base.EnvBase` 时，把希望每步写入 replay 的列声明在
 class var 里。``EnvBase`` 会在首次写入前自动：
 
-1. 推导表名前缀（PascalCase → snake_case，去 ``Space`` / ``Env`` / ``Module`` 后缀）。
+1. 推导表名前缀（PascalCase → ``snake_case``，去 ``Space`` / ``Env`` / ``Module`` 后缀）。
 2. 注册 ``{prefix}_agent_state`` 和 / 或 ``{prefix}_env_state`` 的 schema。
 3. 调 ``register_dataset`` 写入 ``_schema.json``，capability 默认为
    ``["agent_snapshot", "timeseries"]`` / ``["env_snapshot", "timeseries"]``；如果
@@ -278,12 +301,14 @@ DuckDB view。它保留后端使用的 metadata-driven 查询语义：
 
 * ``config.json`` — agent 静态配置。
 * ``AGENT.json`` — 动态自描述快照（含 ``world_description``；每步 ``to_workspace`` 更新）。
-* ``AGENT_MEMORY.md`` — 运行时会话摘要。
+* ``TODO.json`` — 跨步任务列表（``todo_*`` 工具读写）。
+* ``MEMORY.md`` — 运行时记忆摘要。
 * ``memory/episodes.jsonl`` — event-level memories。
-* ``state/*.json`` — 内置状态以及用户自定义状态文件。
-* ``.runtime/logs/step_replay.jsonl`` — 每个 step 的工具历史。
-* ``.runtime/logs/tool_calls.jsonl`` — 工具调用日志。
-* ``.runtime/logs/thread_messages.jsonl`` — 最近 thread 消息。
+* ``state/*.json`` — 技能与用户自定义状态文件（如 ``state/daily_guidance/`` 下的每日 Story）。
+
+工具、技能脚本与 LLM 调用的过程日志以 trace span 形式写入共享的
+``<run_dir>/trace/trace_<xx>.jsonl`` （按 ``trace_id`` 前缀分片的 JSONL），不在 agent
+workspace 内。
 
 这些文件适合调试 agent 行为、复现 thread 上下文、审视技能执行过程；它们不进入
 replay dataset。
@@ -292,6 +317,4 @@ replay dataset。
 ----------------
 
 旧版本（v1 或早期 v2）数据库里可能仍包含 ``agent_profile``、``agent_status``、
-``agent_dialog`` 三张框架表。新 backend replay API 面向 ``run/replay`` 目录；如果需要
-读取历史 ``sqlite.db``，请使用 ``agentsociety2.storage.models`` 中保留的兼容模型或
-旧版分析脚本。
+``agent_dialog`` 三张框架表。新 backend replay API 面向 ``run/replay`` 目录；如果需要读取历史 ``sqlite.db``，请使用 ``agentsociety2.storage.models`` 中保留的兼容模型或旧版分析脚本。

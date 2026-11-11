@@ -1,5 +1,5 @@
 import * as fs from 'fs';
-import { createHash } from 'crypto';
+import { randomBytes } from 'crypto';
 import * as vscode from 'vscode';
 import type { ClaudeCodeConfigValues } from '../webview/configPage/claudeCodeTypes';
 import {
@@ -43,6 +43,7 @@ import {
 import {
   queryProviderUsage,
   ProviderUsageCache,
+  providerUsageCacheKey,
   supportsProviderUsageQuery,
   type ProviderUsageResult,
 } from './gatewayProviderUsage';
@@ -182,6 +183,8 @@ export class AiCliGatewayManager {
   private storedUpstreamCache: AiCliGatewayUpstream | undefined;
   private codexLiveBackupCache: string | undefined;
   private readonly providerUsageCache = new ProviderUsageCache();
+  // Process-local HMAC keeps credential-dependent cache keys opaque across sessions.
+  private readonly providerUsageCacheSecret = randomBytes(32);
   private outboundProxyCache: OutboundProxyConfig | null;
   private codexLoginSnapshot = getCodexOfficialLoginSnapshot();
   private codexLoginRefreshed = false;
@@ -1692,7 +1695,7 @@ export class AiCliGatewayManager {
     const authMode = inferProviderAuthMode({ ...normalized, apiKind });
     const options = { apiKind, authMode, usageQuery: normalized.usageQuery, authHeaderMode: normalized.authHeaderMode, proxy: this.getOutboundProxy() };
     const login = authMode === 'subscription' ? readCodexSubscriptionSession() : undefined;
-    const fingerprint = createHash('sha256').update(JSON.stringify([normalized.id, normalized.baseUrl, normalized.apiKey, options, login])).digest('hex');
+    const fingerprint = providerUsageCacheKey(this.providerUsageCacheSecret, [normalized.apiKey, login], [normalized.id, normalized.baseUrl, options]);
     return this.providerUsageCache.query(fingerprint, () => queryProviderUsage(normalized.baseUrl, normalized.apiKey, options), force);
   }
 

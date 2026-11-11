@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: AgentSociety 2 2.6.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-20 13:58+0800\n"
+"POT-Creation-Date: 2026-11-10 12:10+0800\n"
 "PO-Revision-Date: 2026-05-19 12:00+0800\n"
 "Last-Translator: AgentSociety Team\n"
 "Language: en\n"
@@ -19,844 +19,1399 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:2
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:2
 msgid "AI Social Scientist 使用指南"
 msgstr "AI Social Scientist User Guide"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:4
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:4
 msgid ""
-"**AI Social Scientist** 是 AgentSociety 2 的交互式研究助手，以 VSCode "
-"扩展的形式提供可视化配置、后端管理和研究编排能力。它支持两种使用方式："
+"**AI Social Scientist** 是 AgentSociety 2 的交互式研究助手，通过 VS Code "
+"扩展提供模型配置、后端管理和研究项目入口。可以使用在线工作空间，也可以在本地安装。"
 msgstr ""
-"**AI Social Scientist** is the interactive research assistant for "
-"AgentSociety 2, provided as a VSCode extension that offers visual "
-"configuration, backend management, and research orchestration "
-"capabilities. It supports two usage modes:"
+"**AI Social Scientist** is AgentSociety 2's interactive research assistant. Its VS Code extension"
+" provides model configuration, backend management, and research project tools. Use an online "
+"workspace or install it locally."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:6
-msgid "**在线工作空间**：通过网页平台直接使用，无需本地安装，适合快速上手。"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:6
+msgid "首次使用时，先选择在线或本地入口，再完成模型与后端配置。项目初始化后，可以管理文献、技能、假设与实验，并查看分析报告。"
 msgstr ""
-"**Online Workspace**: Use directly through the web platform, no local "
-"installation required, ideal for quick onboarding."
+"Choose an online or local setup first, then configure your models and backend. After initializing"
+" a project, manage literature, skills, hypotheses, and experiments, and inspect analysis reports."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:7
-msgid "**本地开发**：在本地安装扩展和依赖，适合需要自定义环境的高级用户。"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:8
+msgid "AI Social Scientist 从选题、假设到实验执行、分析与写作的研究流程"
 msgstr ""
-"**Local Development**: Install the extension and dependencies locally, "
-"suitable for advanced users who need a customized environment."
+"AI Social Scientist research workflow from topic scoping and hypotheses to experiment execution, "
+"analysis, and writing"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:12
-msgid "在线工作空间"
-msgstr "Online Workspace"
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:14
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:13
 msgid ""
-"我们推荐使用在线平台进行实验，平台已预装 agentsociety2 库、AI Social Scientist 插件和 Claude Code "
-"CLI。"
+"AI Social Scientist 的研究流程：从选题与假设推进到实验、分析和写作。图源：`AgentSociety 2 "
+"<https://arxiv.org/html/2607.11895v2#S4.F9>`_，`CC BY-NC-SA 4.0 "
+"<https://creativecommons.org/licenses/by-nc-sa/4.0/>`_。"
 msgstr ""
-"We recommend using the online platform for experiments. The platform "
-"comes pre-installed with the agentsociety2 library, the AI Social "
-"Scientist extension, and the Claude Code CLI."
+"The AI Social Scientist research workflow, from topic scoping and hypotheses through experiments,"
+" analysis, and writing. Source: `AgentSociety 2 <https://arxiv.org/html/2607.11895v2#S4.F9>`_, "
+"`CC BY-NC-SA 4.0 <https://creativecommons.org/licenses/by-nc-sa/4.0/>`_."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:16
-msgid "平台地址：https://agentsociety2.fiblab.net/"
-msgstr "Platform URL: https://agentsociety2.fiblab.net/"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:10
+msgid "按任务查找"
+msgstr "Find a task"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:19
-msgid "注册与登录"
-msgstr "Registration and Login"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:16
+msgid "任务"
+msgstr "Task"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:21
-msgid "打开平台主页，点击\"登录\"。"
-msgstr "Open the platform homepage and click \"Login\"."
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:36
+msgid "阅读入口"
+msgstr "Where to start"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:23
-msgid "平台登录页面"
-msgstr "Platform login page"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:37
+msgid "使用平台提供的开发环境"
+msgstr "Use the platform's development environment"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:27
-msgid "如果没有账号，点击\"注册\"完成注册流程。已有 FIBLAB 账号的用户可直接登录。"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:38
+msgid ":ref:`online-workspace`"
+msgstr ":ref:`online-workspace`"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:39
+msgid "安装 SDK、扩展与研究助手"
+msgstr "Install the SDK, extension, and research assistant"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:40
+msgid ":ref:`local-setup`"
+msgstr ":ref:`local-setup`"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:41
+msgid "配置模型并启动后端"
+msgstr "Configure models and start the backend"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:21
+msgid ":ref:`env-config`"
+msgstr ":ref:`env-config`"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:43
+msgid "连接 Claude Code / Codex 的模型服务"
+msgstr "Connect model services for Claude Code / Codex"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:44
+msgid ":ref:`ai-gateway`"
+msgstr ":ref:`ai-gateway`"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:45
+msgid "创建话题、管理文献与分享项目"
+msgstr "Create a topic, manage literature, and share a project"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:23
+msgid ":ref:`start-research`"
+msgstr ":ref:`start-research`"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:47
+msgid "使用技能、市场与 MCP"
+msgstr "Use skills, the marketplace, and MCP"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:25
+msgid ":ref:`workbench-skills`"
+msgstr ":ref:`workbench-skills`"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:49
+msgid "查看回放、分析与报告"
+msgstr "Inspect replay, analysis, and reports"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:27
+msgid ":ref:`workbench-results`"
+msgstr ":ref:`workbench-results`"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:51
+msgid "排查安装与运行问题"
+msgstr "Troubleshoot installation and runtime issues"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:29
+msgid ":ref:`user-guide-faq`"
+msgstr ":ref:`user-guide-faq`"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:55
+msgid "分步说明"
+msgstr "Step-by-step guides"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:67
+msgid "研究设计的完整流程见 :doc:`research_workflow`；数据准备见 :doc:`datasets`；回放、分析阶段与报告见 :doc:`results`。"
 msgstr ""
-"If you don't have an account, click \"Register\" to complete the "
-"registration process. Users with an existing FIBLAB account can log in "
-"directly."
+"See :doc:`research_workflow` for research design, :doc:`datasets` for data preparation, and "
+":doc:`results` for replay, analysis phases, and reports."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:29
-msgid "注册页面"
-msgstr "Registration page"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/cli-gateway.rst:4
+msgid "CLI 网关配置"
+msgstr "Configure the CLI gateway"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:35
-msgid "登录成功后，您可能需要联系平台管理员审批账号权限，审批通过后刷新页面即可。"
-msgstr ""
-"After logging in, you may need to contact the platform administrator to "
-"approve your account permissions. Once approved, refresh the page."
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:38
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:42
-msgid "创建工作空间"
-msgstr "Create a Workspace"
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:40
-msgid "进入工作区管理页面，点击\"创建工作空间\"，输入名称后确认。"
-msgstr ""
-"Go to the workspace management page, click \"Create Workspace\", enter a "
-"name and confirm."
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:46
-msgid "等待工作空间状态从\"创建中\"变为\"运行中\"。"
-msgstr "Wait for the workspace status to change from \"Creating\" to \"Running\"."
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:48
-msgid "工作空间运行中"
-msgstr "Workspace running"
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:52
-msgid "点击工作空间可查看 **Coder 账号密码**、 **免费 LLM API 端点**和 **API Key** 等信息，请妥善保存。"
-msgstr ""
-"Click on the workspace to view **Coder credentials**, **free LLM API "
-"endpoint**, and **API Key** information. Please save these securely."
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:54
-msgid "工作空间账号与 API 信息"
-msgstr "Workspace credentials and API information"
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:58
-msgid "复制页面上方的 Coder 账号信息，点击\"打开\"进入开发环境。"
-msgstr ""
-"Copy the Coder credentials shown at the top of the page, then click "
-"\"Open\" to enter the development environment."
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:60
-msgid "Coder 登录"
-msgstr "Coder login"
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:64
-msgid "在 Coder 页面中选择 **code-server** （推荐）或 **VS Code Desktop** 打开开发环境。"
-msgstr ""
-"On the Coder page, select **code-server** (recommended) or **VS Code "
-"Desktop** to open the development environment."
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:66
-msgid "选择 code-server 或 VSCode Desktop"
-msgstr "Select code-server or VSCode Desktop"
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:70
-msgid "code-server 界面"
-msgstr "code-server interface"
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:77
-msgid "本地环境安装"
-msgstr "Local Installation"
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:80
-msgid "前置条件"
-msgstr "Prerequisites"
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:82
-msgid "**操作系统**：macOS 或 Linux（Windows 用户建议使用 WSL）"
-msgstr "**Operating System**: macOS or Linux (Windows users should use WSL)"
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:83
-msgid "**Python**：3.11 或更高版本，推荐使用 `uv <https://docs.astral.sh/uv/>`_ 管理"
-msgstr ""
-"**Python**: 3.11 or higher. We recommend using `uv "
-"<https://docs.astral.sh/uv/>`_ for management"
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:91
-msgid "安装 agentsociety2"
-msgstr "Install agentsociety2"
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:104
-msgid "请确保安装的是最新版本。查看当前最新版本：https://pypi.org/project/agentsociety2/"
-msgstr ""
-"Make sure you are installing the latest version. Check the current latest"
-" version at: https://pypi.org/project/agentsociety2/"
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:107
-msgid "安装 AI Social Scientist 插件"
-msgstr "Install the AI Social Scientist Extension"
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:109
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/cli-gateway.rst:6
 msgid ""
-"从 `Release <https://github.com/tsinghua-fib-lab/AgentSociety/releases>`_ "
-"下载最新版本的 VSIX 文件。"
+"**AI Gateway** 是插件内置的本地 HTTP 代理，运行在 ``127.0.0.1:15721-15820`` 端口范围内。它拦截 Claude Code 和 Codex CLI 的"
+" API 请求，将其转发到你配置的上游供应商，并自动完成协议格式转换与模型名映射。"
 msgstr ""
-"Download the latest VSIX file from the `Release page <https://github.com"
-"/tsinghua-fib-lab/AgentSociety/releases>`_."
+"The **AI Gateway** is a local HTTP proxy built into the extension, listening on the "
+"``127.0.0.1:15721-15820`` port range. It intercepts API requests from Claude Code and the Codex "
+"CLI, forwards them to the upstream providers you configure, and transparently converts protocol "
+"formats and model names."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:110
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/cli-gateway.rst:8
+msgid "网关按当前角色和供应商配置转发请求。添加服务前，请核对其接口协议与模型权限。请求流如下："
+msgstr ""
+"The gateway forwards requests using the selected role and provider configuration. Check the "
+"service's protocol and model permissions before adding it. The request flow is shown below:"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:176
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:182
+msgid "本地 AI Gateway 请求流"
+msgstr "Local AI Gateway request flow"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:184
 msgid ""
-"在 VSCode 中按 ``Cmd/Ctrl + Shift + P``，输入 ``Extensions: Install from "
-"VSIX...``。"
+"从左向右读取：客户端请求进入本地 Gateway，再按当前供应商配置转发。仿真 LLM 的配置单独保存在工作区 ``.env``，不由这条 Claude / Codex "
+"路由控制。"
 msgstr ""
-"In VSCode, press ``Cmd/Ctrl + Shift + P``, type ``Extensions: Install "
-"from VSIX...``."
+"Read from left to right: client requests enter the local Gateway, then forward "
+"according to the selected provider. Simulation LLM settings are stored separately in "
+"workspace ``.env``."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:111
-msgid "选择下载的 VSIX 文件完成安装。"
-msgstr "Select the downloaded VSIX file to complete the installation."
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:114
-msgid "配置 Coding Agent"
-msgstr "Configure the Coding Agent"
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:116
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/cli-gateway.rst:20
 msgid ""
-"插件初始化工作区时会自动同步 AI Social Scientist 的技能到 ``.claude/skills/`` "
-"目录下。您也可以点击侧边栏的\"同步 AI 助手资源\"手动同步。"
+"Gateway 对 Claude Code 始终呈现一个标准的 Anthropic Messages 端点（``/v1/messages``），对 Codex 始终呈现一个标准的 OpenAI "
+"Responses 端点（``/v1/responses``）。因此这两个 CLI 不需要知道背后其实是哪家供应商、哪种协议——Gateway 会在中间完成所有转换。"
 msgstr ""
-"When the extension initializes a workspace, it automatically syncs AI "
-"Social Scientist skills to the ``.claude/skills/`` directory. You can "
-"also click \"Sync AI Assistant Resources\" in the sidebar to sync "
-"manually."
+"To Claude Code the Gateway always presents a standard Anthropic Messages endpoint "
+"(``/v1/messages``); to Codex it always presents a standard OpenAI Responses endpoint "
+"(``/v1/responses``). Neither CLI needs to know which provider or protocol actually sits behind "
+"it."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:118
-msgid "同步 AI 助手资源"
-msgstr "Sync AI assistant resources"
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:122
-msgid "Claude Code（推荐）："
-msgstr "Claude Code (recommended):"
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:128
-msgid "配置第三方中转服务时，创建 ``~/.claude/settings.json``："
-msgstr ""
-"When configuring a third-party proxy service, create "
-"``~/.claude/settings.json``:"
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:140
-msgid ""
-"也可以通过 AI Social Scientist 插件的 **高级配置 → Claude / Codex 路由** "
-"打开图形化配置页，使用内置的本地 AI Gateway 统一管理供应商（见下文）。"
-msgstr ""
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:146
-msgid "本地 AI Gateway"
-msgstr ""
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:148
-msgid ""
-"**AI Gateway** 是插件内置的本地 HTTP 代理，运行在 ``127.0.0.1:15721-15820`` 端口范围内。它拦截 "
-"Claude Code 和 Codex CLI 的 API 请求，将其转发到你 配置的上游供应商，并自动完成协议格式转换与模型名映射。"
-msgstr ""
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:152
-msgid ""
-"它的核心价值在于：**让你用任意第三方 LLM 供应商（OpenAI 兼容、智谱、 DeepSeek 等）来驱动 Claude Code / "
-"Codex**，无需每个供应商都去申请 官方 Anthropic / OpenAI 账号。"
-msgstr ""
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:156
-msgid "简单说，请求流是这样的："
-msgstr ""
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:168
-msgid ""
-"Gateway 对 Claude Code 始终呈现一个标准的 Anthropic Messages 端点 "
-"（``/v1/messages``），对 Codex 始终呈现一个标准的 OpenAI Responses 端点 "
-"（``/v1/responses``）。因此这两个 CLI 不需要知道背后其实是哪家供应商、 哪种协议——Gateway 会在中间完成所有转换。"
-msgstr ""
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:174
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:192
 msgid "供应商与路由"
-msgstr ""
+msgstr "Providers and routing"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:176
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/cli-gateway.rst:25
+msgid "Gateway 提供一个**共享供应商池**——供应商只保存一份，但可以在供应商卡片上分别「激活」到 Claude Code 或 Codex CLI 角色："
+msgstr ""
+"The Gateway maintains a **shared provider pool** — each provider is stored once, and can be "
+"individually *activated* for the Claude Code or Codex CLI role on its provider card:"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:197
 msgid ""
-"Gateway 提供一个**共享供应商池**——供应商只保存一份，但可以在供应商 卡片上分别「激活」到 Claude Code 或 Codex "
-"CLI 角色："
+"**Anthropic 原生供应商** （如 ``api.anthropic.com``、DeepSeek 的 ``/anthropic`` 端点）：直接服务 "
+"Claude Code，请求直通转发。"
 msgstr ""
+"**Native Anthropic providers** (e.g. ``api.anthropic.com``, DeepSeek's ``/anthropic``"
+" endpoint): serve Claude Code directly, with requests forwarded as-is."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:179
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:198
 msgid ""
-"**Anthropic 原生供应商** （如 ``api.anthropic.com``、DeepSeek 的 ``/anthropic`` "
-"端点）：直接服务 Claude Code，请求直通转发。"
+"**OpenAI 兼容供应商** （如 ``api.openai.com``、智谱 ``paas/v4``、DeepSeek ``/v1``）：可同时服务 Claude "
+"Code 和 Codex CLI。 - 服务 Claude Code 时，Gateway 会把 Claude Code 发出的 **Anthropic "
+"Messages** 请求实时翻译成 **OpenAI Chat Completions**，再把返回的 SSE 流翻译回去。 - 服务 Codex CLI "
+"时，Gateway 会把 Codex 发出的 **OpenAI Responses** 请求翻译成 **OpenAI Chat Completions**。"
 msgstr ""
+"**OpenAI-compatible providers** (e.g. ``api.openai.com``, Zhipu ``paas/v4``, DeepSeek"
+" ``/v1``): can serve both Claude Code and the Codex CLI. - When serving Claude Code, "
+"the Gateway translates the **Anthropic Messages** requests it emits into **OpenAI "
+"Chat Completions** in real time, and translates the returned SSE stream back. - When "
+"serving the Codex CLI, the Gateway translates the **OpenAI Responses** requests into "
+"**OpenAI Chat Completions**."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:180
-msgid ""
-"**OpenAI 兼容供应商** （如 ``api.openai.com``、智谱 ``paas/v4``、DeepSeek "
-"``/v1``）：可同时服务 Claude Code 和 Codex CLI。 - 服务 Claude Code 时，Gateway 会把 "
-"Claude Code 发出的 **Anthropic Messages** 请求实时翻译成 **OpenAI Chat "
-"Completions**，再把返回的 SSE 流翻译回去。 - 服务 Codex CLI 时，Gateway 会把 Codex 发出的 "
-"**OpenAI Responses** 请求翻译成 **OpenAI Chat Completions**。"
-msgstr ""
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:184
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:202
 msgid "添加供应商时需要选择正确的接口类型："
-msgstr ""
+msgstr "When adding a provider, pick the correct interface type:"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:186
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:204
 msgid "若供应商提供 Anthropic Messages 协议（``/v1/messages``），选择 **Anthropic**。"
 msgstr ""
+"If the provider exposes the Anthropic Messages protocol (``/v1/messages``), choose "
+"**Anthropic**."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:187
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:205
 msgid "若供应商只提供 OpenAI Chat 协议（``/v1/chat/completions``），选择 **OpenAI 兼容**。"
 msgstr ""
+"If it only exposes the OpenAI Chat protocol (``/v1/chat/completions``), choose "
+"**OpenAI-compatible**."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:189
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/cli-gateway.rst:37
 msgid ""
-"内置预设已覆盖常见供应商（Anthropic、DeepSeek、智谱、Kimi、MiniMax、 "
-"火山引擎、OpenRouter、阿里百炼、Moonshot、SiliconFlow 等），可直接选用。"
+"内置预设已覆盖常见供应商（Anthropic、DeepSeek、智谱、Kimi、MiniMax、火山引擎、OpenRouter、阿里百炼、Moonshot、SiliconFlow "
+"等），可直接选用。"
 msgstr ""
+"Built-in presets cover common providers (Anthropic, DeepSeek, Zhipu, Kimi, MiniMax, Volcengine, "
+"OpenRouter, Alibaba Bailian, Moonshot, SiliconFlow, and more) for direct selection."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:193
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:211
 msgid "协议格式转换"
-msgstr ""
+msgstr "Protocol format conversion"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:195
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:213
 msgid "Gateway 在转发过程中会做以下转换，确保第三方模型的行为尽可能贴近原生体验："
 msgstr ""
+"While forwarding, the Gateway performs the following conversions so third-party "
+"models behave as close to native as possible:"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:197
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:215
 msgid ""
-"**请求方向**：``system`` 提示、``tools`` 工具定义、``tool_choice``、 "
-"``thinking``（扩展思考，会映射为 ``reasoning_effort``）、``max_tokens`` 等都会按目标协议规范化。"
+"**请求方向**：``system`` 提示、``tools`` 工具定义、``tool_choice``、 ``thinking``（扩展思考，会映射为 "
+"``reasoning_effort``）、``max_tokens`` 等都会按目标协议规范化。"
 msgstr ""
+"**Request direction**: ``system`` prompts, ``tools`` definitions, ``tool_choice``, "
+"``thinking`` (extended thinking, mapped to ``reasoning_effort``), and ``max_tokens`` "
+"are all normalized to the target protocol."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:200
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/cli-gateway.rst:45
 msgid ""
-"**响应方向**：第三方模型的 ``reasoning_content``（思考过程）会被翻译成 Anthropic 的 ``thinking``"
-" 内容块；``tool_calls`` 会被翻译成 ``tool_use`` 内容块，保证 Claude Code "
-"能正确识别工具调用（这是保证工具调用 / 多轮 对话不中断的关键）。"
+"**响应方向**：第三方模型的 ``reasoning_content``（思考过程）会被翻译成 Anthropic 的 ``thinking`` 内容块；``tool_calls`` "
+"会被翻译成 ``tool_use`` 内容块，保证 Claude Code 能正确识别工具调用（这是保证工具调用 / 多轮对话不中断的关键）。"
 msgstr ""
+"**Response direction**: a third-party model's ``reasoning_content`` (chain of thought) is "
+"translated into Anthropic ``thinking`` content blocks; ``tool_calls`` are translated into "
+"``tool_use`` blocks so Claude Code recognizes tool calls correctly (this is what keeps tool "
+"calling and multi-turn conversations from breaking)."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:204
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/cli-gateway.rst:46
 msgid ""
-"**模型名映射**：Claude Code 发出的 ``claude-sonnet-*`` / ``claude-opus-*`` / "
-"``claude-haiku-*`` / ``claude-fable-*`` 会自动映射为供应商配置的对应角色 模型；``[1M]`` "
-"等本地能力标记会在转发前剥离，避免泄漏给供应商。"
+"**模型名映射**：Claude Code 发出的 ``claude-sonnet-*`` / ``claude-opus-*`` / ``claude-haiku-*`` / "
+"``claude-fable-*`` 会自动映射为供应商配置的对应角色模型；``[1M]`` 等本地能力标记会在转发前剥离，避免泄漏给供应商。"
 msgstr ""
+"**Model-name mapping**: ``claude-sonnet-*`` / ``claude-opus-*`` / ``claude-haiku-*`` / ``claude-"
+"fable-*`` from Claude Code are automatically mapped to the role models configured for the "
+"provider; local capability markers such as ``[1M]`` are stripped before forwarding so they never "
+"leak to the provider."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:209
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:227
 msgid "故障转移与用量统计"
-msgstr ""
+msgstr "Failover and usage statistics"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:211
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/cli-gateway.rst:51
 msgid ""
-"**故障转移**：可为 Claude 和 Codex 分别开启多供应商优先级，单点失败后 自动切换到下一个候选供应商，并由断路器（circuit "
-"breaker）抑制反复 失败的上游。切换成功后会更新活跃供应商，UI 会同步反映。"
+"**故障转移**：可为 Claude 和 Codex 分别开启多供应商优先级，单点失败后自动切换到下一个候选供应商，并由断路器（circuit "
+"breaker）抑制反复失败的上游。切换成功后会更新活跃供应商，UI 会同步反映。"
 msgstr ""
+"**Failover**: per-CLI (Claude and Codex) multi-provider priorities can be enabled; on failure the"
+" gateway automatically falls back to the next candidate, while a circuit breaker suppresses "
+"repeatedly failing upstreams. On a successful switch the active provider is updated and the UI "
+"reflects it."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:214
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:232
 msgid ""
-"**用量统计**：面板按天展示请求趋势，区分 Claude 与 Codex 来源，支持 7 天 / 30 天 / 全部 "
-"筛选。会分别统计输入、输出、缓存读取、缓存写入 token。"
+"**用量统计**：面板按天展示请求趋势，区分 Claude 与 Codex 来源，支持 7 天 / 30 天 / 全部 筛选。会分别统计输入、输出、缓存读取、缓存写入 "
+"token。"
 msgstr ""
+"**Usage statistics**: the panel shows daily request trends, split by Claude vs Codex "
+"origin, with 7-day / 30-day / all filters. Input, output, cache-read, and cache-write"
+" tokens are counted separately."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:216
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/cli-gateway.rst:53
 msgid ""
-"**费用估算**：定价来源优先级为 **自定义 > 远程（OpenRouter / LiteLLM）> 内置**， 远程定价 24 小时缓存。对 "
-"Codex / OpenAI 兼容记录，会先从可计费输入中 扣除缓存命中再计费，缓存读取单独计价。"
+"**费用估算**：定价来源优先级为 **自定义 > 远程（OpenRouter / LiteLLM）> 内置**，远程定价 24 小时缓存。对 Codex / OpenAI "
+"兼容记录，会先从可计费输入中扣除缓存命中再计费，缓存读取单独计价。"
 msgstr ""
+"**Cost estimation**: pricing sources follow the priority **custom > remote (OpenRouter / LiteLLM)"
+" > built-in**, with remote pricing cached for 24 hours. For Codex / OpenAI-compatible records, "
+"cache hits are deducted from billable input before charging, and cache reads are priced "
+"separately."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:219
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:237
 msgid ""
-"**状态栏**：启用 Gateway 后，VS Code 状态栏会显示 ``AI Gateway`` 及当前 路由状态（Claude / "
-"Codex / Claude + Codex），点击即可回到配置页。"
+"**状态栏**：启用 Gateway 后，VS Code 状态栏会显示 Gateway 端口及路由状态（Claude / Codex / Claude + "
+"Codex），点击可打开后端状态菜单或回到配置页。"
 msgstr ""
+"**Status bar**: with the Gateway enabled, the VS Code status bar shows the gateway "
+"port and routing state (Claude / Codex / Claude + Codex); clicking opens the backend "
+"status menu or returns to the config page."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:223
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:240
 msgid "Gateway 排错"
-msgstr ""
+msgstr "Gateway troubleshooting"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:225
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/cli-gateway.rst:59
 msgid ""
-"**查看日志**：打开 ``AI CLI Gateway Log`` 输出通道，每行记录请求路径、 上游地址、HTTP 状态码、耗时与模型名，形如"
-" ``POST /v1/messages → 200 (4183ms) [deepseek-v4-pro] [https://...]``。"
+"**查看日志**：打开 ``AI CLI Gateway`` 输出通道，每行记录请求路径、上游地址、HTTP 状态码、耗时与模型名，形如 ``POST /v1/messages → 200 "
+"(4183ms) [deepseek-v4-pro] [https://...]``。"
 msgstr ""
+"**View logs**: open the ``AI CLI Gateway`` output channel; every line records the request path, "
+"upstream, HTTP status, latency, and model, e.g. ``POST /v1/messages → 200 (4183ms) "
+"[deepseek-v4-pro] [https://...]``."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:228
-msgid "**日志显示 ``in:0 out:0``**：表示该次响应未提取到 token 用量，常见于流 式响应提前中断或上游未返回 usage 字段。"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/cli-gateway.rst:60
+msgid "日志显示 ``in:0 out:0``：表示该次响应未提取到 token 用量，常见于流式响应提前中断或上游未返回 usage 字段。"
 msgstr ""
+"Logs show ``in:0 out:0``: no token usage was extracted for that response — common with early-"
+"aborted streaming responses or upstreams that omit the usage field."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:230
-msgid ""
-"**请求中断 / 对话到一半停止**：通常是对话中触发了工具调用，但旧版本 网关未正确翻译 "
-"``tool_calls``。请确认使用的是已修复该问题的扩展版本。"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/cli-gateway.rst:61
+msgid "**请求中断 / 对话到一半停止**：通常是对话中触发了工具调用，但旧版本网关未正确翻译 ``tool_calls``。请确认使用的是已修复该问题的扩展版本。"
 msgstr ""
+"**Requests interrupted / conversations stop halfway**: usually a tool call was triggered mid-"
+"conversation but an older gateway version failed to translate ``tool_calls`` correctly. Make sure"
+" you are on an extension version with the fix."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:232
-msgid ""
-"**403 key_model_access_denied**：上游拒绝该 API Key 访问请求的模型， "
-"说明模型名映射未生效或供应商未开通该模型权限，请在供应商卡片核对模型。"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/cli-gateway.rst:62
+msgid "**403 key_model_access_denied**：上游拒绝该 API Key 访问请求的模型，说明模型名映射未生效或供应商未开通该模型权限，请在供应商卡片核对模型。"
 msgstr ""
+"**403 key_model_access_denied**: the upstream rejected this API key for the requested model — the"
+" model-name mapping did not take effect, or the provider has not enabled that model; verify the "
+"model on the provider card."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:234
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:251
 #, python-brace-format
-msgid ""
-"**手动校验健康状态**：``curl http://127.0.0.1:<port>/health`` 应返回 ``{\"ok\": true,"
-" ...}``。"
+msgid "**手动校验健康状态**：``curl http://127.0.0.1:<port>/health`` 应返回 ``{\"ok\": true, ...}``。"
 msgstr ""
+"**Manual health check**: ``curl http://127.0.0.1:<port>/health`` should return "
+"``{\"ok\": true, ...}``."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:237
-msgid "也可以安装 Claude Code 的 VSCode 插件，点击扩展侧边栏的\"AI 对话\"后会直接弹出 Claude Code 对话页面："
-msgstr ""
-"You can also install the Claude Code VSCode extension. Clicking \"AI "
-"Chat\" in the extension sidebar will open the Claude Code chat panel "
-"directly:"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/configuration.rst:4
+msgid "模型与后端配置"
+msgstr "Configure models and the backend"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:239
-msgid "Claude Code VSCode 集成"
-msgstr "Claude Code VSCode integration"
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:245
-msgid ""
-"同步到 ``.claude/skills/`` 的技能可被 Claude Code 和 Cursor 自动识别。插件也会自动为 CodeX "
-"创建符号链接（``.codex``），无需手动操作。"
-msgstr ""
-"Skills synced to ``.claude/skills/`` are automatically recognized by "
-"Claude Code and Cursor. The extension also creates a symbolic link for "
-"CodeX (``.codex``) automatically — no manual action needed."
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:250
-msgid "环境配置"
-msgstr "Environment Configuration"
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:253
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:266
 msgid "新建工作区"
 msgstr "Create a New Workspace"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:255
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:268
 msgid "在线工作空间中，在左侧文件树新建一个文件夹作为工作区（如 ``demo``），然后通过 ``File → Open Folder`` 打开。"
 msgstr ""
-"In the online workspace, create a new folder in the left file tree as "
-"your workspace (e.g., ``demo``), then open it via ``File → Open Folder``."
+"In the online workspace, create a new folder in the left file tree as your workspace "
+"(e.g., ``demo``), then open it via ``File → Open Folder``."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:257
-msgid "新建工作区文件夹"
-msgstr "New workspace folder"
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:262
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:271
 msgid "配置向导"
 msgstr "Configuration Wizard"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:264
-msgid "初次进入工作区时会弹出配置向导，包含以下步骤："
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:273
+msgid "首次打开尚未配置的项目文件夹时，扩展会打开配置向导。推荐顺序是：保存仿真 LLM → 初始化研究工作区 → 按需启动后端。向导包含以下步骤，可选项可以跳过："
 msgstr ""
-"When entering a workspace for the first time, a configuration wizard will"
-" appear with the following steps:"
+"The extension opens the setup wizard for an unconfigured project folder. Recommended "
+"order: save Simulation LLM → initialize the workspace → start the backend as needed. "
+"Optional wizard steps can be skipped:"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:266
-msgid "**步骤 1：LLM 配置** — 填写大模型 API 信息："
-msgstr "**Step 1: LLM Configuration** — Fill in the LLM API information:"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:275
+msgid ""
+"**步骤 1：一键导入（可选）** — 从 AgentSociety Web 一键导入配置：登录后自动拉取 LiteLLM Key、默认模型与文献 MCP，并创建 "
+"Gateway 供应商 Fiblab。不需要可点「跳过」，改为手动逐步填写。"
+msgstr ""
+"**Step 1: one-click import (optional)** — import configuration from AgentSociety Web "
+"in one click: after signing in, the LiteLLM key, default model, and literature MCP "
+"are fetched automatically, and the Fiblab gateway provider is created. Click *Skip* "
+"to fill everything in manually instead."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:272
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:297
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:313
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:277
+msgid "**步骤 2：仿真 LLM** — 填写默认大模型 API 信息并点击验证："
+msgstr ""
+"**Step 2: simulation LLM** — fill in the default LLM API information and click "
+"Validate:"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:283
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:309
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:339
 msgid "参数"
 msgstr "Parameter"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:273
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:298
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:314
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:284
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:310
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:340
 msgid "说明"
 msgstr "Description"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:274
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:285
 msgid "是否必填"
 msgstr "Required"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:275
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:286
 msgid "LLM API 密钥"
 msgstr "LLM API Key"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:276
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:287
 msgid "大模型服务的 API Key，用于默认对话、分析等核心功能"
 msgstr ""
-"API key for the LLM service, used for default conversations, analysis, "
-"and other core features"
+"API key for the LLM service, used for default conversations, analysis, and other core"
+" features"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:277
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:280
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:283
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:288
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:291
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:294
 msgid "是"
 msgstr "Yes"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:278
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:289
 msgid "LLM API 基础 URL"
 msgstr "LLM API Base URL"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:279
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:290
 msgid "API 的 base URL，如 ``https://api.openai.com/v1``"
 msgstr "Base URL of the API, e.g., ``https://api.openai.com/v1``"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:281
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:292
 msgid "LLM 模型名称"
 msgstr "LLM Model Name"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:293
 msgid "使用的模型名称，默认 ``gpt-5.5``"
 msgstr "Model name to use, default ``gpt-5.5``"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:295
 msgid "推理（thinking）"
 msgstr "Reasoning (thinking)"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:296
 msgid "配置页下拉：跟随网关默认 / 开 / 关；写入 ``AGENTSOCIETY_LLM_THINKING``（``on`` / ``off``）。留空则不发送该参数"
 msgstr ""
 "Config-page dropdown: follow gateway default / on / off; writes "
 "``AGENTSOCIETY_LLM_THINKING`` (``on`` / ``off``). Leave empty to omit the parameter"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:297
 msgid "否"
 msgstr "No"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst
-msgid "验证通过后会自动进入下一步。AgentSociety 支持任何 OpenAI 接口兼容的大模型 API。更多环境变量见 :doc:`installation`。"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/configuration.rst:40
+msgid "验证通过后进入下一步。使用兼容接口时仍需核对服务商提供的模型名称、访问权限和参数支持；更多环境变量见 :doc:`/installation`。"
 msgstr ""
-"After validation succeeds, the wizard advances automatically. AgentSociety "
-"supports any OpenAI-compatible LLM API. See :doc:`installation` for more "
-"environment variables."
+"After validation, continue to the next step. Check provider model names, permissions and "
+"parameter support when using a compatible endpoint; see :doc:`/installation` for environment "
+"variables."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:291
-msgid "**步骤 2：后端服务** — 配置后端服务地址和 Python 环境："
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:301
+msgid "**步骤 3：保存配置** — 查看摘要并保存到工作区 ``.env``。保存前应完成密钥与服务地址检查。此时可以先从侧边栏初始化研究工作区，再按需继续启动后端。"
 msgstr ""
-"**Step 2: Backend Service** — Configure the backend service address and "
-"Python environment:"
+"**Step 3: Save** — review the summary and save workspace ``.env``. Check the key and "
+"service endpoint first. You can now initialize the workspace from the sidebar, then "
+"continue with backend startup as needed."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:299
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:315
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:303
+msgid "**步骤 4：启动后端** — 选择或自动检测 ``PYTHON_PATH``，点击「保存并启动后端」。成功后状态栏显示 Backend 端口；向导会自动进入可选步骤。"
+msgstr ""
+"**Step 4: start the backend** — select or auto-detect ``PYTHON_PATH``, then click "
+"*Save and Start Backend*. On success the status bar shows the backend port and the "
+"wizard advances to the optional steps."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:311
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:341
 msgid "推荐值"
 msgstr "Recommended"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:300
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:312
 msgid "Python 路径"
 msgstr "Python Path"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:301
-msgid "Python 运行环境路径，留空则自动检测"
-msgstr "Path to the Python runtime environment; leave empty for auto-detection"
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:302
-msgid "``which python3`` 查看"
-msgstr "Check with ``which python3``"
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:304
-msgid "**步骤 3：高级配置** — 展开配置页中的「高级配置」，按需填写专用模型与工具（均可留空，沿用默认 LLM）："
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:313
+msgid "Python 运行环境路径，留空则自动检测已安装 ``agentsociety2`` 的环境"
 msgstr ""
-"**Step 3: Advanced configuration** - expand \"Advanced configuration\" on"
-" the configuration page and fill in dedicated models and tools as needed."
-" All fields can be left empty to use the default LLM:"
+"Path to the Python runtime environment; leave empty to auto-detect an environment "
+"with ``agentsociety2`` installed"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:306
-msgid "``专用模型`` 标签页：代码生成、高频操作、数据分析、Embedding"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:314
+msgid "``uv sync`` 后的 ``.venv/bin/python``"
+msgstr "``.venv/bin/python`` after ``uv sync``"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:316
+msgid "**步骤 5：文献检索（可选）** — 配置学术文献 MCP 网关，可跳过。"
 msgstr ""
-"``Dedicated models`` tab: code generation, high-frequency operations, "
-"data analysis, Embedding"
+"**Step 5: literature search (optional)** — configure the academic literature MCP "
+"gateway; can be skipped."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:307
-msgid "**运行与工具**：Python 路径、学术文献检索 MCP"
-msgstr "**Runtime and tools**: Python path, academic literature search MCP"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:318
+msgid ""
+"**步骤 6：EasyPaper（可选）** — 使用 ``/easypaper`` 生成论文时需配置 LLM 与可选 VLM，保存后写入工作区 "
+"``easypaper_config.yaml``；可从仿真 LLM 一键复制，可跳过。"
+msgstr ""
+"**Step 6: EasyPaper (optional)** — configure the LLM and optional VLM used by "
+"``/easypaper`` paper generation; saved to the workspace ``easypaper_config.yaml``. "
+"Can be copied from the simulation LLM in one click, or skipped."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:316
-msgid "数据分析 LLM"
-msgstr "Data Analysis LLM"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:320
+msgid "**步骤 7：CLI 网关（可选）** — 配置 Claude Code / Codex 本地 AI Gateway 供应商与路由，可跳过。"
+msgstr ""
+"**Step 7: CLI gateway (optional)** — configure Claude Code / Codex local AI Gateway "
+"providers and routing; can be skipped."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:317
-msgid "数据分析、洞察生成和报告撰写使用的模型"
-msgstr "Model used for data analysis, insight generation, and report writing"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/configuration.rst:63
+msgid "完成或退出向导后，可随时通过配置页「打开向导」重新进入。"
+msgstr ""
+"After completing or leaving the wizard, reopen it at any time through Open Wizard on the "
+"configuration page."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:318
-msgid "编程能力较强的模型"
-msgstr "Model with strong coding capabilities"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:325
+msgid "高级配置"
+msgstr "Advanced configuration"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:319
-msgid "高频操作 LLM"
-msgstr "High-Frequency Operations LLM"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:327
+msgid "在配置页切换到完整模式后，可展开 **专用与运行** 标签页，按需填写（均可留空，沿用默认 LLM）："
+msgstr ""
+"After switching the config page to full mode, expand the **dedicated & runtime** tabs"
+" and fill in as needed (all optional; defaults to the default LLM):"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:320
-msgid "高频快速操作的轻量级模型"
-msgstr "Lightweight model for frequent, fast operations"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:329
+msgid "**专用模型**：代码生成（Coder）、Embedding；Coder 也可单独设置推理开关（``AGENTSOCIETY_CODER_LLM_THINKING``）"
+msgstr ""
+"**Dedicated models**: code generation (coder) and embedding; the coder role can also "
+"set its own thinking switch (``AGENTSOCIETY_CODER_LLM_THINKING``)"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:321
-msgid "响应速度快的模型"
-msgstr "Model with fast response times"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:330
+msgid "**Python 环境**：扫描并选择解释器"
+msgstr "**Python environment**: scan and select the interpreter"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:322
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:331
+msgid "**文献检索**：MCP URL 与 API Key"
+msgstr "**Literature search**: MCP URL and API key"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:332
+msgid "**Claude / Codex 路由**：本地 AI Gateway 供应商池"
+msgstr "**Claude / Codex routing**: local AI Gateway provider pool"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:333
+msgid "**EasyPaper**：``/easypaper`` 论文生成所用的 LLM 与可选 VLM（保存后写入 ``easypaper_config.yaml``）"
+msgstr ""
+"**EasyPaper**: LLM and optional VLM used by ``/easypaper`` paper generation (saved to"
+" ``easypaper_config.yaml``)"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:342
 msgid "Embedding 模型"
 msgstr "Embedding Model"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:323
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:343
 msgid "文本嵌入模型"
 msgstr "Text embedding model"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:324
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:344
 msgid "``text-embedding-3-large``（维度 ``1024``）"
 msgstr "``text-embedding-3-large`` (dimensions ``1024``)"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:325
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:345
 msgid "学术文献检索"
 msgstr "Literature Search Service"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:326
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:346
 msgid "学术文献检索 MCP 网关地址"
 msgstr "Academic literature search MCP gateway URL"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:327
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:347
 msgid "``https://llmapi.fiblab.net/mcp/``"
 msgstr "Platform URL: https://agentsociety2.fiblab.net/"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:329
-msgid "配置向导 - 高级功能"
-msgstr "Configuration wizard - advanced features"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:350
+msgid "状态栏与输出"
+msgstr "Status bar and output"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:333
-msgid "**步骤 5：完成** — 配置保存到工作区的 ``.env`` 文件中。"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:352
+msgid "**状态栏**：Backend（端口）、Gateway（路由状态/成功率）、LLM（验证通过时显示模型名）"
 msgstr ""
-"**Step 5: Done** — The configuration is saved to the workspace's ``.env``"
-" file."
+"**Status bar**: Backend (port), Gateway (routing state / success rate), LLM (model "
+"name once validation passes)"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:336
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:353
+msgid ""
+"**输出通道**：``AI Social Scientist``（主通道，含 ``[API]``、``[Chat]`` 等前缀）、``AI Social "
+"Scientist Backend`` 与 ``AI CLI Gateway``"
+msgstr ""
+"**Output channels**: ``AI Social Scientist`` (main channel, with ``[API]``, "
+"``[Chat]`` and other prefixes), ``AI Social Scientist Backend``, and ``AI CLI "
+"Gateway``"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:354
+msgid "扩展默认启用 ``python.terminal.useEnvFile``，集成终端会自动加载工作区 ``.env``"
+msgstr ""
+"The extension enables ``python.terminal.useEnvFile`` by default, so the integrated "
+"terminal automatically loads the workspace ``.env``"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:357
 msgid "启动后端"
 msgstr "Start the Backend"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:338
-msgid "配置完成后点击\"保存并启动后端\"，系统会自动保存配置并启动后端服务。右下角状态栏显示后端运行状态（含端口号）表示启动成功。"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/configuration.rst:100
+msgid "配置向导第 4 步或配置页中的「保存并启动后端」会自动保存配置并启动后端服务。也可通过状态栏 Backend 菜单或命令面板启动。"
 msgstr ""
-"After configuration, click \"Save & Start Backend\". The system will "
-"automatically save the configuration and start the backend service. The "
-"status bar in the bottom-right corner showing the backend running status "
-"(with port number) indicates a successful start."
+"Wizard step 4 and Save and Start Backend on the configuration page save the settings and start "
+"the backend. You can also use the Backend status-bar menu or the command palette."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:340
-msgid "配置验证成功"
-msgstr "Configuration validation successful"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:361
+msgid "右下角状态栏显示后端运行状态（含端口号）表示启动成功。"
+msgstr ""
+"The backend is running when the status bar (bottom right) shows its state including "
+"the port number."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:344
-msgid "后端运行状态"
-msgstr "Backend running status"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/local-installation.rst:4
+msgid "本地安装与助手配置"
+msgstr "Install locally and connect an assistant"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:351
-msgid "开始研究"
-msgstr "Start Research"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:94
+msgid "前置条件"
+msgstr "Prerequisites"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:354
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:358
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:96
+msgid "**操作系统**：macOS 或 Linux（Windows 用户建议使用 WSL）"
+msgstr "**Operating System**: macOS or Linux (Windows users should use WSL)"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:97
+msgid "**Python**：3.11–3.13，推荐使用 `uv <https://docs.astral.sh/uv/>`_ 管理"
+msgstr "**Python**: 3.11–3.13; `uv <https://docs.astral.sh/uv/>`_ is recommended"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/local-installation.rst:12
+msgid ""
+"# 安装 uv（macOS/Linux）\n"
+"curl -LsSf https://astral.sh/uv/install.sh | sh"
+msgstr ""
+"# Install uv on macOS/Linux\n"
+"curl -LsSf https://astral.sh/uv/install.sh | sh"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:105
+msgid "安装 agentsociety2"
+msgstr "Install agentsociety2"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/local-installation.rst:20
+msgid ""
+"# 使用 uv\n"
+"uv venv && source .venv/bin/activate\n"
+"uv pip install agentsociety2\n"
+"\n"
+"# 或使用 pip\n"
+"pip install agentsociety2"
+msgstr ""
+"# Using uv\n"
+"uv venv && source .venv/bin/activate\n"
+"uv pip install agentsociety2\n"
+"\n"
+"# Or using pip\n"
+"pip install agentsociety2"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:118
+msgid "请确保安装的是最新版本。查看当前最新版本：https://pypi.org/project/agentsociety2/"
+msgstr ""
+"Make sure you are installing the latest version. Check the current latest version at:"
+" https://pypi.org/project/agentsociety2/"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:121
+msgid "安装 AI Social Scientist 插件"
+msgstr "Install the AI Social Scientist Extension"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:123
+msgid ""
+"从 `Release <https://github.com/tsinghua-fib-lab/AgentSociety/releases>`_ 下载最新版本的 VSIX"
+" 文件。"
+msgstr ""
+"Download the latest VSIX file from the `Release page <https://github.com/tsinghua-"
+"fib-lab/AgentSociety/releases>`_."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:124
+msgid "在 VSCode 中按 ``Cmd/Ctrl + Shift + P``，输入 ``Extensions: Install from VSIX...``。"
+msgstr "In VSCode, press ``Cmd/Ctrl + Shift + P``, type ``Extensions: Install from VSIX...``."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:125
+msgid "选择下载的 VSIX 文件完成安装。"
+msgstr "Select the downloaded VSIX file to complete the installation."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:128
+msgid "配置 Coding Agent"
+msgstr "Configure the Coding Agent"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:130
+msgid ""
+"插件初始化工作区时会自动同步 AI Social Scientist 的技能到 ``.claude/skills/`` 目录下。您也可以打开技能管理的 "
+"**Claude** 标签页手动同步：卡片上的「同步到工作区」按钮按需同步单个技能，页头「更多」菜单中的「将内置模板复制到当前项目」则一次性同步全部内置模板。"
+msgstr ""
+"When the extension initializes the workspace it automatically syncs AI Social "
+"Scientist skills into ``.claude/skills/``. You can also sync manually from the "
+"**Claude** tab of skill management: the *Sync to workspace* button on each card syncs"
+" that skill, while *Copy built-in templates to the current project* in the header "
+"*More* menu syncs all bundled templates at once."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:132
+msgid "技能管理 Claude 标签页的同步入口"
+msgstr "Skill management Claude tab sync entry points"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:138
+msgid "Claude 标签页管理研究助手技能。卡片“同步到工作区”只同步选中项；“更多”菜单可复制全部内置模板。"
+msgstr ""
+"The Claude tab manages research-assistant skills. Sync to Workspace copies one "
+"selected template; More can copy all bundled templates."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:140
+msgid "Claude Code（推荐）："
+msgstr "Claude Code (recommended):"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/local-installation.rst:55
+msgid "npm install -g @anthropic-ai/claude-code"
+msgstr "npm install -g @anthropic-ai/claude-code"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:146
+msgid "配置第三方中转服务时，创建 ``~/.claude/settings.json``："
+msgstr "When configuring a third-party proxy service, create ``~/.claude/settings.json``:"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/local-installation.rst:61
+#, python-brace-format
+msgid ""
+"{\n"
+"  \"env\": {\n"
+"    \"ANTHROPIC_AUTH_TOKEN\": \"YOUR_API_KEY\",\n"
+"    \"ANTHROPIC_BASE_URL\": \"YOUR_BASE_URL\",\n"
+"    \"ANTHROPIC_MODEL\": \"claude-sonnet-4-6\"\n"
+"  }\n"
+"}"
+msgstr ""
+"{\n"
+"  \"env\": {\n"
+"    \"ANTHROPIC_AUTH_TOKEN\": \"YOUR_API_KEY\",\n"
+"    \"ANTHROPIC_BASE_URL\": \"YOUR_BASE_URL\",\n"
+"    \"ANTHROPIC_MODEL\": \"claude-sonnet-4-6\"\n"
+"  }\n"
+"}"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/local-installation.rst:71
+msgid "也可以通过扩展的 **Claude / Codex** 区域打开配置页，按 :doc:`/user_guide/cli-gateway` 配置本地网关。"
+msgstr ""
+"You can also open the configuration page from **Claude / Codex** in the extension and follow "
+":doc:`/user_guide/cli-gateway` to set up the local gateway."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:254
+msgid "可从扩展侧边栏的“AI 对话”进入协作界面，也可在工作区终端启动 Claude Code。首次使用时按当前客户端提示完成登录。"
+msgstr ""
+"Enter the collaboration interface from AI Chat in the extension sidebar, or start "
+"Claude Code in a workspace terminal. Follow the current client prompts to sign in on "
+"first use."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:258
+msgid ""
+"同步到 ``.claude/skills/`` 的技能可被 Claude Code 和 Cursor 自动识别。插件会尝试为 Codex 建立 "
+"``.codex/skills`` 链接。是否同步成功可在技能页和工作区目录中核对。"
+msgstr ""
+"Claude Code and Cursor can discover skills synced to ``.claude/skills/``. The "
+"extension attempts to create a ``.codex/skills`` link for Codex; inspect the skill "
+"page and workspace directory to check synchronization."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/local-installation.rst:80
+msgid "客户端官方文档"
+msgstr "Official client documentation"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/local-installation.rst:82
+msgid "客户端的安装、登录与设置语法可查阅以下官方文档。本项目的供应商路由配置见 :doc:`/user_guide/cli-gateway`。"
+msgstr ""
+"See the official documentation below for client installation, authentication, and settings "
+"syntax. For this project's provider routing, see :doc:`/user_guide/cli-gateway`."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/local-installation.rst:84
+msgid "`Claude Code 入门 <https://code.claude.com/docs/en/overview>`_"
+msgstr "`Claude Code overview <https://code.claude.com/docs/en/overview>`_"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/local-installation.rst:85
+msgid "`Claude Code 设置文件 <https://code.claude.com/docs/en/settings>`_"
+msgstr "`Claude Code settings files <https://code.claude.com/docs/en/settings>`_"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/local-installation.rst:86
+msgid "`Codex CLI <https://developers.openai.com/codex/cli>`_"
+msgstr "`Codex CLI <https://developers.openai.com/codex/cli>`_"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/local-installation.rst:87
+msgid "`Codex 配置入门 <https://developers.openai.com/codex/config-basic>`_"
+msgstr "`Codex configuration basics <https://developers.openai.com/codex/config-basic>`_"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:34
+msgid "在线工作空间"
+msgstr "Online Workspace"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:36
+msgid "我们推荐使用在线平台进行实验，平台已预装 agentsociety2 库、AI Social Scientist 插件和 Claude Code CLI。"
+msgstr ""
+"We recommend using the online platform for experiments. The platform comes pre-"
+"installed with the agentsociety2 library, the AI Social Scientist extension, and the "
+"Claude Code CLI."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:38
+msgid "平台地址：https://agentsociety2.fiblab.net/"
+msgstr "Platform URL: https://agentsociety2.fiblab.net/"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:41
+msgid "注册与登录"
+msgstr "Registration and Login"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:43
+msgid "打开平台主页，点击\"登录\"。"
+msgstr "Open the platform homepage and click \"Login\"."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:45
+msgid "如果没有账号，点击\"注册\"完成注册流程。已有 FIBLAB 账号的用户可直接登录。"
+msgstr ""
+"If you don't have an account, click \"Register\" to complete the registration "
+"process. Users with an existing FIBLAB account can log in directly."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:49
+msgid "登录成功后，您可能需要联系平台管理员审批账号权限，审批通过后刷新页面即可。"
+msgstr ""
+"After logging in, you may need to contact the platform administrator to approve your "
+"account permissions. Once approved, refresh the page."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:52
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:56
+msgid "创建工作空间"
+msgstr "Create a Workspace"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:54
+msgid "进入工作区管理页面，点击\"创建工作空间\"，输入名称后确认。"
+msgstr ""
+"Go to the workspace management page, click \"Create Workspace\", enter a name and "
+"confirm."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:62
+msgid "在平台中创建开发环境；进入 IDE 后，还需要打开具体的研究项目文件夹。"
+msgstr ""
+"Create the development environment on the platform, then open a specific research "
+"project folder inside the IDE."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:64
+msgid "等待工作空间状态从\"创建中\"变为\"运行中\"。"
+msgstr "Wait for the workspace status to change from \"Creating\" to \"Running\"."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:66
+msgid "点击工作空间可查看 **Coder 账号密码**、 **平台提供的 LLM API 端点**和 **API Key** 等信息，请妥善保存。"
+msgstr ""
+"Open the workspace details to find the **Coder account/password**, **platform LLM "
+"endpoint** and **API key**. Keep these credentials private."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:68
+msgid "复制页面上方的 Coder 账号信息，点击\"打开\"进入开发环境。"
+msgstr ""
+"Copy the Coder credentials shown at the top of the page, then click \"Open\" to enter"
+" the development environment."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:70
+msgid "在 Coder 页面中选择 **code-server** （推荐）或 **VS Code Desktop** 打开开发环境。"
+msgstr ""
+"On the Coder page, select **code-server** (recommended) or **VS Code Desktop** to "
+"open the development environment."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:72
+msgid "选择 code-server 或 VSCode Desktop"
+msgstr "Select code-server or VSCode Desktop"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:78
+msgid "选择打开开发环境的客户端。code-server 是浏览器工作台，后端 API 是另一项服务。"
+msgstr ""
+"Select a client to open the development environment. code-server is the browser "
+"workbench; the backend API is a separate service."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:80
+msgid "code-server 工作台"
+msgstr "code-server workbench"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:86
+msgid "打开工作台后，选择具体的研究项目文件夹。"
+msgstr "After opening the workbench, select your research project folder."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/research-project.rst:4
+msgid "管理研究项目"
+msgstr "Manage a research project"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:369
 msgid "初始化工作区"
 msgstr "Initialize Workspace"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:356
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:371
 msgid ""
-"后端启动成功后，在插件页面点击\"初始化工作区\"，输入研究话题（如 \"polarization\"）并回车。系统会自动创建 "
-"``TOPIC.md`` 和相关目录结构。"
+"保存仿真 LLM 配置后，在侧边栏点击“初始化工作区”，输入研究话题并回车。系统会创建 ``TOPIC.md`` 和基础目录；需要使用技能发现、模块查询等 API "
+"时，再启动后端。"
 msgstr ""
-"After the backend starts successfully, click \"Initialize Workspace\" in "
-"the extension panel, enter a research topic (e.g., \"polarization\") and "
-"press Enter. The system will automatically create ``TOPIC.md`` and the "
-"relevant directory structure."
+"After saving the Simulation LLM configuration, click Initialize Workspace in the "
+"sidebar, enter a research topic and press Enter. This creates ``TOPIC.md`` and the "
+"base directories; start the backend when you need skill discovery, module queries or "
+"other APIs."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:362
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:373
 msgid "``TOPIC.md`` 是贯穿整个研究流程的核心文档，您可以随时手动编辑来补充研究描述、背景信息和研究方向。"
 msgstr ""
-"``TOPIC.md`` is the central document throughout the research process. You"
-" can edit it at any time to add research descriptions, background "
-"information, and research directions."
+"``TOPIC.md`` is the central document throughout the research process. You can edit it"
+" at any time to add research descriptions, background information, and research "
+"directions."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:365
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:376
 msgid "与 Claude Code 协作"
 msgstr "Collaborate with Claude Code"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:367
-msgid "点击插件侧边栏的\"AI 对话\"按钮进入 Claude Code："
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:378
+msgid "点击侧边栏“AI 对话”，或在工作区终端启动 Claude Code，按客户端提示完成登录后描述研究需求。"
 msgstr ""
-"Click the \"AI Chat\" button in the extension sidebar to enter Claude "
-"Code:"
+"Click AI Chat in the sidebar or start Claude Code in a workspace terminal, sign in as"
+" prompted, then describe the research task."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:369
-msgid "Claude Code 登录"
-msgstr "Claude Code login"
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:373
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:380
 msgid "进入对话界面后，用自然语言描述研究需求即可。平台会将研究流程中的关键操作封装为技能（Skill），Claude Code 会自动识别并调用。"
 msgstr ""
-"Once in the chat interface, describe your research needs in natural "
-"language. The platform encapsulates key research operations as Skills, "
-"which Claude Code automatically recognizes and invokes."
+"Once in the chat interface, describe your research needs in natural language. The "
+"platform encapsulates key research operations as Skills, which Claude Code "
+"automatically recognizes and invokes."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:375
-msgid "Claude Code 对话界面"
-msgstr "Claude Code chat interface"
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:380
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:383
 msgid "推荐的研究流程"
 msgstr "Recommended Research Workflow"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:382
-msgid "我们推荐按以下顺序进行研究，但每个阶段都可以随时回退或跳过："
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/research-project.rst:23
+msgid "研究依次形成假设、实验配置、运行记录和分析报告；需要时可以回到前面的阶段修改设计，再由论文工具链接续写作。"
 msgstr ""
-"We recommend following the sequence below, but each stage can be "
-"revisited or skipped at any time:"
+"Research produces hypotheses, experiment configurations, run records, and analysis reports. "
+"Revisit an earlier stage when the design needs revision, then continue manuscript writing with "
+"the external paper toolkit."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:391
-msgid "各阶段说明见 :doc:`skills`。"
-msgstr "For details on each stage, see :doc:`skills`."
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/research-project.rst:25
+msgid "各阶段说明见 :doc:`/skills`。"
+msgstr "For details on each stage, see :doc:`/skills`."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:394
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/research-project.rst:27
+msgid "从问题到实验的完整操作顺序见 :doc:`/research_workflow`，外部数据的发现与准备见 :doc:`/datasets`。"
+msgstr ""
+"See :doc:`/research_workflow` for the complete path from question to experiment, and "
+":doc:`/datasets` for discovering and preparing external data."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:394
 msgid "工作区目录结构"
 msgstr "Workspace Directory Structure"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:396
-msgid "随着研究推进，工作区会逐步形成以下结构（无需手动创建）："
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:396
+msgid "随着研究推进，工作区会按需形成以下结构；初始化只创建基础目录，实验和报告在后续流程生成："
 msgstr ""
-"As research progresses, the workspace will gradually form the following "
-"structure (no manual creation needed):"
+"As research progresses, the workspace acquires the following structure as needed. "
+"Initialization creates only the base directories; experiments and reports are "
+"generated later:"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/research-project.rst:34
+msgid ""
+"工作区/\n"
+"├── TOPIC.md                          # 研究叙事中心文档\n"
+"├── .env                              # 环境配置\n"
+"├── papers/\n"
+"│   ├── literature_index.json         # 文献索引\n"
+"│   ├── <title>_<timestamp>.md        # 文献笔记\n"
+"│   └── full_texts/                   # 全文 PDF（如有）\n"
+"├── user_data/                        # 用户数据\n"
+"├── datasets/                         # 数据集\n"
+"├── hypothesis_1/\n"
+"│   ├── HYPOTHESIS.md                 # 假设描述\n"
+"│   ├── SIM_SETTINGS.json             # 模块配置\n"
+"│   ├── experiment_1/                 # 实验 1（对照组）\n"
+"│   │   ├── init/\n"
+"│   │   │   ├── init_config.json      # 智能体与环境配置\n"
+"│   │   │   └── steps.yaml            # 仿真步骤\n"
+"│   │   └── run/                      # 运行产出\n"
+"│   └── experiment_2/                 # 实验 2（处理组）\n"
+"├── presentation/                     # 分析报告\n"
+"│   └── hypothesis_1/\n"
+"│       ├── report_zh.md\n"
+"│       ├── report_zh.html\n"
+"│       ├── report_en.md\n"
+"│       ├── report_en.html\n"
+"│       └── charts/\n"
+"├── synthesis/                        # 综合报告\n"
+"├── paper/                            # 外部论文工具链产物\n"
+"└── custom/                           # 自定义模块\n"
+"    ├── agents/\n"
+"    ├── envs/\n"
+"    └── skills/"
+msgstr ""
+"workspace/\n"
+"├── TOPIC.md                          # Central research narrative\n"
+"├── .env                              # Environment configuration\n"
+"├── papers/\n"
+"│   ├── literature_index.json         # Literature index\n"
+"│   ├── <title>_<timestamp>.md        # Literature notes\n"
+"│   └── full_texts/                   # Full-text PDFs when available\n"
+"├── user_data/                        # User data\n"
+"├── datasets/                         # Datasets\n"
+"├── hypothesis_1/\n"
+"│   ├── HYPOTHESIS.md                 # Hypothesis description\n"
+"│   ├── SIM_SETTINGS.json             # Module configuration\n"
+"│   ├── experiment_1/                 # Experiment 1, control group\n"
+"│   │   ├── init/\n"
+"│   │   │   ├── init_config.json      # Agent and environment configuration\n"
+"│   │   │   └── steps.yaml            # Simulation steps\n"
+"│   │   └── run/                      # Run outputs\n"
+"│   └── experiment_2/                 # Experiment 2, treatment group\n"
+"├── presentation/                     # Analysis reports\n"
+"│   └── hypothesis_1/\n"
+"│       ├── report_zh.md\n"
+"│       ├── report_zh.html\n"
+"│       ├── report_en.md\n"
+"│       ├── report_en.html\n"
+"│       └── charts/\n"
+"├── synthesis/                        # Synthesis reports\n"
+"├── paper/                            # External paper toolkit artifacts\n"
+"└── custom/                           # Custom modules\n"
+"    ├── agents/\n"
+"    ├── envs/\n"
+"    └── skills/"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:435
+msgid "技能、市场与 MCP"
+msgstr "Skills, marketplace, and MCP"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:437
+msgid "点击项目树中的 **技能**，进入统一管理页："
+msgstr "Click **Skills** in the project tree to open the management page:"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/research-project.rst:75
+msgid "**运行时**：发现、扫描和导入仿真 Agent 可用的行为技能。编写方法见 :doc:`/skill_guide`。"
+msgstr ""
+"**Runtime**: Discover, scan, and import behavioral skills available to simulation agents. See "
+":doc:`/skill_guide` to write your own."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/research-project.rst:76
+msgid "**Claude**：查看研究助手技能，将所需模板同步到工作区。研究流程见 :doc:`/skills`。"
+msgstr ""
+"**Claude**: Browse research assistant skills and sync the templates you need to the workspace. "
+"See :doc:`/skills` for research workflows."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:441
+msgid "**市场**：管理技能源，浏览并安装第三方技能。"
+msgstr "**Marketplace**: Manage skill sources and browse and install third-party skills."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:442
+msgid "**MCP**：添加外部工具服务，将连接配置同步到对应客户端；凭证按服务要求填写。"
+msgstr ""
+"**MCP**: Add external tool services and sync their connection settings to the "
+"appropriate client. Supply credentials as required by each service."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:444
+msgid "研究助手技能负责组织研究流程，运行时技能由仿真参与者按需激活，两者用途不同。查看、安装或同步技能后，仍需在对应助手或仿真中执行它。"
+msgstr ""
+"Research assistant skills organize research workflows; runtime skills are activated "
+"by simulation participants as needed. After browsing, installing, or syncing a skill,"
+" execute it through the appropriate assistant or simulation."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:464
 msgid "分享工作区"
 msgstr "Share a Workspace"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:466
 msgid "研究进行到可交接时，可在扩展侧边栏使用 **导出工作区**，把当前项目打包成压缩包发给同事："
 msgstr ""
-"When a project is ready to hand off, use **Export Workspace** in the "
-"extension sidebar to pack it and send it to a colleague:"
+"When a project is ready to hand off, use **Export Workspace** in the extension "
+"sidebar to pack it and send it to a colleague:"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:468
 msgid "导出列表会展示研究问题、假设与实验、文献、数据、分析报告、项目设置和技能；已有的关键内容默认勾选"
 msgstr ""
 "The export picker shows the research question, hypotheses and experiments, "
-"literature, data, analysis reports, project settings, and skills; existing "
-"key content is selected by default"
+"literature, data, analysis reports, project settings, and skills; existing key "
+"content is selected by default"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:469
 msgid "``hypothesis_*`` 会完整包含实验配置（``init/``）和运行结果（``run/``），体积较大时可取消勾选"
 msgstr ""
-"Each ``hypothesis_*`` directory includes its experiment configuration "
-"(``init/``) and run outputs (``run/``); deselect it when the payload is too large"
+"Each ``hypothesis_*`` directory includes its experiment configuration (``init/``) and"
+" run outputs (``run/``); deselect it when the payload is too large"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:470
 msgid "**始终排除**：密钥与 ``.env``、虚拟环境、Git 历史，以及本地 IDE 状态（``.cursor`` / ``.vscode``）等"
 msgstr ""
-"**Always excluded**: secrets and ``.env``, virtual environments, Git "
-"history, and local IDE state (``.cursor`` / ``.vscode``)"
+"**Always excluded**: secrets and ``.env``, virtual environments, Git history, and "
+"local IDE state (``.cursor`` / ``.vscode``)"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:471
 msgid "发出去之前，请确认你有权分享其中的论文、数据和第三方技能"
+msgstr "Before sending it, confirm you may share any papers, data, and third-party skills"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:473
+msgid ""
+"对方在扩展中选择 **导入工作区** "
+"后，依次选择分享包和保存位置，再输入新项目文件夹名。扩展会显示最终路径并新建目录，不会覆盖已有项目；导入后需要在配置页填写自己的模型密钥，才能继续运行。"
 msgstr ""
-"Before sending it, confirm you may share any papers, data, and third-"
-"party skills"
+"With **Import Workspace**, the recipient selects the share package and parent "
+"directory, then enters a new project folder name. The extension shows the final path "
+"and creates the directory without overwriting an existing project. They must enter "
+"their own model keys before continuing."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst
-msgid "对方在扩展中选择 **导入工作区** 后，依次选择分享包和保存位置，再输入新项目文件夹名。扩展会显示最终路径并新建目录，不会覆盖已有项目；导入后需要在配置页填写自己的模型密钥，才能继续运行。"
-msgstr ""
-"With **Import Workspace**, the recipient selects the share package and "
-"parent directory, then enters a new project folder name. The extension "
-"shows the final path and creates the directory without overwriting an "
-"existing project. They must enter their own model keys before continuing."
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/research-project.rst:95
+msgid "管理文献"
+msgstr "Manage literature"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst
-msgid "文献库：上传 PDF 与标识符补全"
-msgstr "Literature library: upload PDFs and identifier enrichment"
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:478
 msgid "侧边栏 **文献库** 用于管理本地论文资产（与 CLI ``literature-search`` 主题检索互补）："
 msgstr ""
-"The sidebar **Literature Library** manages local paper assets (complementary "
-"to CLI ``literature-search`` topic retrieval):"
+"The sidebar **Literature Library** manages local paper assets (complementary to CLI "
+"``literature-search`` topic retrieval):"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:480
 msgid "可 **上传 PDF**；扩展会尽量从文件内容扫描 DOI / arXiv ID，并调用公开接口补全标题、作者等元数据"
 msgstr ""
-"You can **upload PDFs**; the extension best-effort scans DOI / arXiv IDs "
-"from the file and looks up title, authors, and other metadata via public APIs"
+"You can **upload PDFs**; the extension best-effort scans DOI / arXiv IDs from the "
+"file and looks up title, authors, and other metadata via public APIs"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:481
 msgid "也可 **粘贴 DOI 或 arXiv ID** 直接入库并查找元数据"
 msgstr "You can also **paste a DOI or arXiv ID** to ingest and look up metadata"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:482
 msgid "索引与笔记写在 ``papers/``（如 ``literature_index.json``）；全文 PDF 通常落在 ``papers/full_texts/``"
 msgstr ""
 "Indexes and notes live under ``papers/`` (for example ``literature_index.json``); "
 "full-text PDFs usually land in ``papers/full_texts/``"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst
-msgid "按主题批量检索、开放获取下载仍走文献技能 / MCP，见 :doc:`skills`"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/research-project.rst:102
+msgid "按主题批量检索、开放获取下载仍走文献技能 / MCP，见 :doc:`/skills`"
 msgstr ""
-"Topic search and open-access downloads still go through the literature skill / "
-"MCP; see :doc:`skills`"
+"Topic search and open-access downloads still go through the literature skill / MCP; see "
+":doc:`/skills`"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:430
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:488
 msgid "常见问题"
 msgstr "FAQ"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:433
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/troubleshooting.rst:6
+msgid ""
+"先区分问题发生在哪一层：平台负责启动开发环境，code-server 提供网页 IDE，AgentSociety 后端提供研究 API，模型供应商处理 LLM 请求。IDE "
+"能打开，不代表后端和模型连接都已就绪。"
+msgstr ""
+"First identify the affected layer: the platform starts the development environment, code-server "
+"provides the web IDE, the AgentSociety backend serves research APIs, and the model provider "
+"handles LLM requests. An accessible IDE does not establish that the backend and model connection "
+"are ready."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:491
 msgid "code-server 显示 unhealthy"
 msgstr "code-server shows unhealthy"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:435
-msgid "初次创建工作空间时，后端服务可能正在启动中。稍等片刻后刷新页面，等待状态变为绿色的 \"Running\"。如果持续出现，可以尝试重启工作区。"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/troubleshooting.rst:11
+msgid "**原因**：新工作空间需要启动 IDE 与配套进程，平台状态更新和服务就绪可能有短暂时间差。"
 msgstr ""
-"When creating a workspace for the first time, the backend service may "
-"still be starting. Wait a moment and refresh the page until the status "
-"changes to a green \"Running\". If the issue persists, try restarting the"
-" workspace."
+"**Cause**: A new workspace must start the IDE and supporting processes. Platform status updates "
+"and service readiness may briefly differ."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:438
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/troubleshooting.rst:13
+msgid "**处理**：等待状态变为 Running 后重新进入。持续异常时查看工作空间启动日志，再重启该工作空间；模型 API Key 不会修复 IDE 启动问题。"
+msgstr ""
+"**Action**: Wait for Running and reopen the workspace. If the problem persists, inspect the "
+"workspace startup logs before restarting it. A model API key cannot fix IDE startup problems."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:496
 msgid "打开 code-server 后显示 502 错误"
 msgstr "502 error when opening code-server"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:440
-msgid "后端服务未正确启动，请耐心等待后刷新页面。如果问题持续存在，请查看后端日志或联系平台管理员。"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/troubleshooting.rst:18
+msgid "**原因**：访问网关暂时无法连接 IDE 服务。它与插件调用后端失败属于不同链路。"
 msgstr ""
-"The backend service has not started correctly. Please wait and refresh "
-"the page. If the problem persists, check the backend logs or contact the "
-"platform administrator."
+"**Cause**: The access gateway cannot currently reach the IDE service. This is a different "
+"connection from the extension's backend requests."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:443
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/troubleshooting.rst:20
+msgid "**处理**：先确认平台工作空间正在运行，再检查 IDE 启动日志。若 IDE 正常、只有技能或回放失败，转而查看插件的后端状态与 AI Social Scientist 输出日志。"
+msgstr ""
+"**Action**: Confirm that the platform workspace is running, then inspect the IDE startup logs. If"
+" the IDE works but skills or replay fail, check backend status and the AI Social Scientist output"
+" logs in the extension."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:501
 msgid "本地 Python 环境路径问题"
 msgstr "Local Python environment path issues"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:445
-msgid "在线平台预装了 Python 环境，本地使用时（尤其是通过 uv 创建的虚拟环境），需要在高级配置中指定正确的 Python 路径："
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/troubleshooting.rst:25
+msgid "**原因**：终端使用的 Python 与扩展启动后端时使用的 Python 可能不是同一个；终端能导入 SDK，不代表扩展选择的解释器也装了 SDK。"
 msgstr ""
-"The online platform has Python pre-installed. For local usage (especially"
-" with virtual environments created via uv), you need to specify the "
-"correct Python path in the advanced configuration:"
+"**Cause**: The terminal and extension may use different Python interpreters. Being able to import"
+" the SDK in the terminal does not mean it is installed in the interpreter selected by the "
+"extension."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:452
-msgid "将输出的路径填入配置向导\"后端服务\"步骤的 Python 路径字段。"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/troubleshooting.rst:27
+msgid "**处理**：在已安装 SDK 的环境中执行下列命令，将输出的解释器路径填入配置向导的后端服务步骤，再重新启动后端。"
 msgstr ""
-"Enter the output path in the Python path field of the \"Backend Service\""
-" step in the configuration wizard."
+"**Action**: Run these commands in the environment where the SDK is installed. Enter the "
+"interpreter path in the backend step of the configuration wizard, then restart the backend."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:455
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/troubleshooting.rst:29
+msgid ""
+"python -c \"import sys; print(sys.executable)\"\n"
+"python -c \"from importlib.metadata import version; print(version('agentsociety2'))\""
+msgstr ""
+"python -c \"import sys; print(sys.executable)\"\n"
+"python -c \"from importlib.metadata import version; print(version('agentsociety2'))\""
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/troubleshooting.rst:34
+msgid "使用 uv 时，在项目目录把上面的 ``python`` 换成 ``uv run python``。安装与依赖要求见 :doc:`/installation`。"
+msgstr ""
+"With uv, replace ``python`` above with ``uv run python`` in the project directory. See "
+":doc:`/installation` for installation and dependency requirements."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/troubleshooting.rst:37
+msgid "模型连接成功，为什么运行时仍失败？"
+msgstr "Why does a run fail after a successful model connection test?"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/troubleshooting.rst:39
+msgid "**原因**：连接测试只能验证当次请求。实际任务还可能使用 Coder 或 Embedding 角色，依赖不同模型、协议、上下文长度与供应商额度。"
+msgstr ""
+"**Cause**: A connection test validates only that request. Actual tasks may also use Coder or "
+"Embedding roles with different models, protocols, context limits, and provider quotas."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/troubleshooting.rst:41
+msgid ""
+"**处理**：按错误日志定位失败角色，核对对应模型 ID、协议和 API 配置。401/403 通常与凭据或权限有关，429 "
+"通常与额度或速率有关；应同时阅读供应商返回的错误正文。重试不能修复无效凭据。"
+msgstr ""
+"**Action**: Identify the failing role from the logs and check its model ID, protocol, and API "
+"settings. 401/403 commonly indicate credential or permission problems; 429 commonly indicates "
+"quota or rate limits. Read the provider's error body as well. Retrying cannot repair invalid "
+"credentials."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/troubleshooting.rst:43
+msgid "配置项与推理控制说明见 :doc:`configuration`、:doc:`cli-gateway`；请求使用的模型以实际供应商配置为准。"
+msgstr ""
+"See :doc:`configuration` and :doc:`cli-gateway` for configuration and reasoning controls. The "
+"actual provider configuration determines which model handles a request."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:513
 msgid "实验运行失败"
 msgstr "Experiment execution failed"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:457
-msgid "常见原因："
-msgstr "Common causes:"
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:459
-msgid "**LLM API 连接失败**：检查 ``.env`` 中的 API 配置是否正确"
-msgstr "**LLM API connection failure**: Check the API configuration in ``.env``"
-
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:460
-msgid "**模块实例化失败**：检查 ``init_config.json`` 中的参数是否与模块要求一致"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/troubleshooting.rst:48
+msgid "先查看 ``run/output.log`` 中最早出现的错误，避免只根据最后一条汇总消息判断原因。"
 msgstr ""
-"**Module instantiation failure**: Check that the parameters in "
-"``init_config.json`` match the module requirements"
+"Read the earliest error in ``run/output.log`` first instead of diagnosing from the final summary "
+"message alone."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:461
-msgid "**内存不足**：减少智能体数量或仿真步数"
-msgstr "**Insufficient memory**: Reduce the number of agents or simulation steps"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/troubleshooting.rst:50
+msgid "**模块或参数错误**：核对 ``init/init_config.json`` 与所用模块的初始化参数；合法 JSON 仍可能包含错误的模块名或字段值。"
+msgstr ""
+"**Module or parameter errors**: Compare ``init/init_config.json`` with the selected module's "
+"initialization parameters. Valid JSON can still contain an incorrect module name or field value."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/troubleshooting.rst:51
+msgid "**内存不足**：先缩小智能体规模与单批任务量，再检查是否保留了过大的上下文或输入数据。减少总步数主要缩短运行与数据积累，不一定降低单步峰值内存。"
+msgstr ""
+"**Insufficient memory**: Reduce the agent population and batch size first, then inspect large "
+"contexts and input data. Fewer total steps mainly reduce runtime and accumulated data; they do "
+"not necessarily reduce peak memory within a step."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/troubleshooting.rst:52
+msgid "**模型请求失败**：检查失败角色、协议、额度及供应商错误；不要把服务限流误判为实验配置错误。"
+msgstr ""
+"**Model request failures**: Check the failing role, protocol, quota, and provider error. Rate "
+"limiting is not necessarily an experiment configuration problem."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/troubleshooting.rst:54
+msgid "恢复运行前确认已有检查点；可用的恢复方式见 :doc:`/cli`。独立重跑使用新的输出目录，避免把两次实验的追加数据混在一起。"
+msgstr ""
+"Confirm that a checkpoint exists before resuming; see :doc:`/cli` for supported recovery. Use a "
+"new output directory for an independent rerun so appended records from different runs are not "
+"mixed."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:522
+msgid "后端已启动，但回放没有数据"
+msgstr "The backend is running, but replay has no data"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/troubleshooting.rst:59
+msgid "**原因**：启动后端只提供 API，不会自动执行实验。回放依赖运行过程写出的数据集及其 catalog。"
+msgstr ""
+"**Cause**: Starting the backend only serves the API; it does not execute an experiment. Replay "
+"requires datasets and their catalog to be written during a run."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/troubleshooting.rst:61
+msgid ""
+"**处理**：确认工作台选中的假设与实验，检查该实验的 ``run/replay/_schema.json`` 和 JSONL 分片。缺少 catalog "
+"时先检查实验是否真正启动、是否启用了回放；有 catalog 但没有目标数据时，检查环境模块是否声明并写入了对应数据集。"
+msgstr ""
+"**Action**: Confirm the selected hypothesis and experiment, then inspect its "
+"``run/replay/_schema.json`` and JSONL shards. If the catalog is missing, check whether the "
+"experiment started and replay was enabled. If the catalog exists but the target data is absent, "
+"check whether the environment module declares and writes that dataset."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/troubleshooting.rst:63
+msgid "SDK 快速入门生成的独立目录可用 ``ReplayReader`` 读取；插件回放按研究工作区中的假设 / 实验目录定位数据。目录约定见 :doc:`/storage`。"
+msgstr ""
+"Use ``ReplayReader`` for the standalone directory generated by the SDK quickstart. Extension "
+"replay locates data inside the research workspace's hypothesis and experiment directories. See "
+":doc:`/storage` for directory conventions."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/troubleshooting.rst:66
+msgid "API 返回 403、422 或 500"
+msgstr "The API returns 403, 422, or 500"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/troubleshooting.rst
+msgid "按状态码定位问题"
+msgstr "Diagnose by status code"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/troubleshooting.rst:71
+msgid "**403**：查看响应正文。可能是 ``workspace_path`` 与后端绑定目录不一致，也可能是浏览器来源不受信任；切换项目后应重新绑定后端，不能只更换 URL 参数。"
+msgstr ""
+"**403**: Read the response body. The ``workspace_path`` may differ from the backend's bound "
+"directory, or the browser origin may be untrusted. Rebind the backend after switching projects; "
+"changing a URL parameter alone is insufficient."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/troubleshooting.rst:72
+msgid "**422**：请求未通过参数校验。对照运行中 Swagger 的必填字段、类型及路径参数；它通常发生在业务逻辑执行前。"
+msgstr ""
+"**422**: Request parameter validation failed. Compare required fields, types, and path parameters"
+" with the running Swagger documentation. This usually occurs before business logic runs."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/troubleshooting.rst:73
+msgid "**500**：检查后端输出中的具体异常；未设置 ``WORKSPACE_PATH``、文件读取失败或运行时错误都可能导致此响应，状态码本身不能确定根因。"
+msgstr ""
+"**500**: Inspect the specific exception in backend output. An unset ``WORKSPACE_PATH``, a file "
+"read failure, or another runtime error can produce this response; the status code alone does not "
+"identify the cause."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/troubleshooting.rst:75
+msgid "接口入口与只读请求示例见 :doc:`/api/http`。后端的 LLM API Key 只用于模型调用，不能替代后端访问配置。"
+msgstr ""
+"See :doc:`/api/http` for API access and read-only requests. The backend's LLM API key is used for"
+" model calls and does not replace backend access configuration."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/troubleshooting.rst:78
+msgid "为什么 ask 没推进时间，仍有日志和模型用量？"
+msgstr "Why does ask produce logs and model usage without advancing time?"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/troubleshooting.rst:80
+msgid ""
+"``ask()`` 通过辅助器规划只读查询；只读约束指不允许调用环境写工具，不代表不调用模型或不记录日志。推进仿真时钟需要 ``step()`` 或 ``run()``；修改环境使用 "
+"``intervene()``。具体工具取决于挂载的环境模块，见 :doc:`/interaction`。"
+msgstr ""
+"``ask()`` uses the helper to plan read-only queries. Read-only means environment write tools are "
+"prohibited; model calls and logging can still occur. Use ``step()`` or ``run()`` to advance "
+"simulation time, and ``intervene()`` to modify the environment. Available tools depend on the "
+"mounted environment modules; see :doc:`/interaction`."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/troubleshooting.rst:83
+msgid "tick=600 是要等十分钟吗？"
+msgstr "Does tick=600 mean waiting ten minutes?"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/troubleshooting.rst:85
+msgid "不是。``tick`` 表示每步推进的模拟秒数，真实耗时取决于模型延迟、智能体规模、工具和并发调度。两步、每步 600 秒表示模拟时间前进 20 分钟，不能据此推算机器运行时间。"
+msgstr ""
+"No. ``tick`` is the number of simulated seconds advanced per step. Wall-clock duration depends on"
+" model latency, agent count, tools, and scheduling. Two 600-second steps advance simulated time "
+"by 20 minutes; they do not determine the machine's runtime."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/troubleshooting.rst:88
+msgid "为什么实验结束后没有分析报告？"
+msgstr "Why is there no analysis report after the experiment finishes?"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/troubleshooting.rst:90
+msgid "仿真执行与研究分析是两个阶段。运行结束产生原始记录；分析技能还需要读取数据、核对证据并生成图表与报告。先检查实验数据，再启动相应分析任务；报告位置与阶段说明见 :doc:`/results`。"
+msgstr ""
+"Simulation and research analysis are separate stages. A completed run produces raw records; the "
+"analysis skill must then read data, check evidence, and generate figures and reports. Inspect "
+"experiment data first, then start the appropriate analysis task. See :doc:`/results` for report "
+"locations and stages."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:527
 msgid "导入别人的工作区后无法运行"
 msgstr "An imported workspace will not run"
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst
-msgid "分享包不含密钥。请打开配置页，填写你自己的模型 API Key 后再启动后端或运行实验。"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/troubleshooting.rst:95
+msgid "分享包不含模型密钥。请在配置页填写自己的 API Key，核对可用模型、Python 环境和自定义模块依赖，再启动后端。路径或模型名相同，也不代表双方环境与权限相同。"
 msgstr ""
-"Share packages do not include secrets. Open the configuration page, enter"
-" your own model API key, then start the backend or run experiments."
+"Shared packages do not include model keys. Enter your own API key, verify available models, the "
+"Python environment, and custom module dependencies, then start the backend. Identical paths or "
+"model names do not establish identical environments or permissions."
 
-#: ../../data2/home/huanghaoyu/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide.rst:463
-msgid "更多 CLI 使用方法见 :doc:`cli`，研究技能详见 :doc:`skills`。"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/troubleshooting.rst:98
+msgid "为什么同一配置两次结果不同？"
+msgstr "Why do repeated runs with the same configuration differ?"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/troubleshooting.rst:100
+msgid ""
+"LLM 采样、上下文差异、供应商模型更新和并发执行都可能改变行为轨迹。记录模型 ID、采样参数、配置、输入数据、软件版本与重复次数，有助于判断差异来自方法还是运行条件。配置与离线检查示例见 "
+":doc:`/examples`；复现实验应比较约定指标，不只比较逐字回答。"
 msgstr ""
-"For more CLI usage, see :doc:`cli`. For research skills, see "
-":doc:`skills`."
+"LLM sampling, context differences, provider model updates, and concurrency can alter behavior "
+"trajectories. Record model IDs, sampling parameters, configuration, input data, software "
+"versions, and repetition counts to distinguish methodological differences from runtime "
+"conditions. See :doc:`/examples` for configuration and offline checks. Compare defined metrics "
+"when reproducing experiments, rather than only comparing exact answers."
 
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/user_guide/troubleshooting.rst:102
+msgid "更多 CLI 使用方法见 :doc:`/cli`，研究技能详见 :doc:`/skills`。"
+msgstr "For more CLI usage, see :doc:`/cli`. For research skills, see :doc:`/skills`."

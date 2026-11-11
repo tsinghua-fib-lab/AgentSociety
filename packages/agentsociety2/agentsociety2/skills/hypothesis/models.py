@@ -1,6 +1,6 @@
-"""Hypothesis data models
+"""假设数据模型
 
-Pydantic models for hypothesis and experiment groups.
+用于假设与实验分组的 Pydantic 模型。
 """
 
 from __future__ import annotations
@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 
 class HypothesisModel(BaseModel):
-    """Hypothesis model"""
+    """假设模型"""
 
     description: str = Field(
         ...,
@@ -22,7 +22,7 @@ class HypothesisModel(BaseModel):
 
 
 class ExperimentGroupModel(BaseModel):
-    """Experiment group model (for hypothesis generation phase)"""
+    """实验分组模型（用于假设生成阶段）"""
 
     name: str = Field(
         ...,
@@ -48,7 +48,7 @@ class ExperimentGroupModel(BaseModel):
 
 
 class HypothesisDataModel(BaseModel):
-    """Hypothesis data model (including hypothesis and experiment groups)"""
+    """假设数据模型（包含假设与实验分组）"""
 
     hypothesis: HypothesisModel = Field(
         ...,

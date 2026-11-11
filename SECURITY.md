@@ -30,8 +30,9 @@ Report privately with:
 
 **Contact**
 
+- [Report privately through GitHub](https://github.com/tsinghua-fib-lab/AgentSociety/security/advisories/new)
 - Email: agentsociety.fiblab2025@gmail.com
-- For non-sensitive hardening suggestions, you may use the [Security issue template](https://github.com/tsinghua-fib-lab/AgentSociety/issues/new?template=security_vulnerability.md) on GitHub
+- For general hardening suggestions without vulnerability details, use a normal feature request.
 
 ## Disclosure
 
