@@ -1,16 +1,7 @@
 #!/usr/bin/env python
-"""
-启动后端服务的便捷脚本
+"""启动 AI Social Scientist 后端。
 
-关联文件：
-- @packages/agentsociety2/agentsociety2/backend/app.py - FastAPI应用主入口
-- @extension/src/services/backendManager.ts - VSCode插件后端管理器（调用此脚本启动）
-
-环境变量（.env）：
-- BACKEND_HOST - 服务监听地址（默认: 0.0.0.0）
-- BACKEND_PORT - 服务监听端口（默认: 8001）
-- BACKEND_LOG_LEVEL - 日志等级（默认: info）
-"""
+通过 ``python -m agentsociety2.backend.run`` 运行 :mod:`agentsociety2.backend.app`。``BACKEND_HOST``、``BACKEND_PORT`` 与 ``BACKEND_LOG_LEVEL`` 控制监听地址、端口和日志等级；``WORKSPACE_PATH`` 配置允许访问的研究工作区。访问说明见 :doc:`/api/http`。"""
 
 if __name__ == "__main__":
     import argparse

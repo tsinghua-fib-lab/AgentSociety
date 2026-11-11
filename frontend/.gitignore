@@ -137,3 +137,6 @@ dist
 # Browser regression artifacts
 /test-results/
 /playwright-report/
+
+# Tracked manifest for the documentation browser workspace.
+!tests/docs/package.json

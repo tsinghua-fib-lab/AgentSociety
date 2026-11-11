@@ -1,23 +1,22 @@
-"""Distributed append-only JSONL replay sink.
+"""分布式只追加 JSONL 回放写入端。
 
-Replaces the former central SQLite/Ray actor write path. Each writer process
-holds its own :class:`ReplaySink` and appends directly via ``os.open(O_APPEND)``
-+ ``os.write`` — no central actor and no Ray round-trip on the hot path.
+取代原先的中央 SQLite/Ray actor 写入路径。每个写入进程各自持有
+:class:`ReplaySink` ，直接通过 ``os.open(O_APPEND)`` + ``os.write`` 追加——
+热路径上没有中央 actor，也没有 Ray 往返。
 
-Layout under ``replay_dir``:
+``replay_dir`` 下的布局：
 
-- ``{table}.{shard:02x}.jsonl`` — one JSONL line per row. Sharded by
-  ``zlib.crc32(line) % 256`` so the (at most 256 × #tables) files are touched
-  by a bounded set of concurrent writers regardless of agent count (scales to
-  1M+ agents run as batches of Ray tasks).
-- ``_schema.json`` — schema sidecar catalog (tables + datasets + per-column
-  metadata), merged idempotently across writers.
+- ``{table}.{shard:02x}.jsonl`` — 每行一条 JSONL 记录。按
+  ``zlib.crc32(line) % 256`` 分片，无论 agent 数量多少，（至多
+  256 × 表数）个文件都只被一组有界的并发写入者触碰（可扩展到以
+  Ray task 批次运行的 1M+ agents）。
+- ``_schema.json`` — schema 旁路目录（表 + 数据集 + 逐列元数据），
+  各写入者之间幂等合并。
 
-Atomicity: replay rows can exceed ``PIPE_BUF`` (agent_profile JSON, dialog
-content), so each shard write is guarded by ``fcntl.flock(LOCK_EX)`` —
-multi-chunk writes never interleave across the concurrent writer processes.
-``flock`` is ~µs and replay write volume per tick is tiny vs the LLM seconds
-that dominate each step, so the serialization cost is negligible.
+原子性：replay 行可能超过 ``PIPE_BUF`` （agent_profile JSON、dialog 内容），
+因此每个分片写入都由 ``fcntl.flock(LOCK_EX)`` 保护——多块写入在并发写入
+进程之间绝不会交错。``flock`` 约为 µs 量级，且每个 tick 的回放写入量相对
+主导每步耗时的 LLM 秒数而言极小，串行化开销可忽略。
 """
 
 from __future__ import annotations
@@ -64,8 +63,8 @@ def _file_lock(fd: int):
 
 
 def _normalize(value: Any) -> Any:
-    """Coerce a row value to JSON-serializable form (mirrors the old SQLite
-    writer): datetime → ISO 8601, dict/list → JSON sub-string."""
+    """把行值转换为可 JSON 序列化的形式（与旧 SQLite 写入器一致）：
+    datetime → ISO 8601，dict/list → JSON 子字符串。"""
     if isinstance(value, datetime):
         return value.isoformat()
     if isinstance(value, (dict, list)):
@@ -98,11 +97,11 @@ def _dataset_to_dict(
 
 
 class ReplaySink:
-    """Per-process, distributed, append-only JSONL replay writer.
+    """每进程的分布式只追加 JSONL 回放写入器。
 
-    One instance per writer process (driver / env router actor / each agent Ray
-    task). Holds its own open shard fds; per-shard lock files make concurrent
-    appends to the same shard file safe for rows of any size.
+    每个写入进程（driver / env router actor / 每个 agent Ray task）各持
+    一个实例。各自持有打开的分片 fd；逐分片的锁文件保证并发追加同一分片
+    文件对任意大小的行都是安全的。
     """
 
     def __init__(self, replay_dir: str | Path, *, enabled: bool = True) -> None:
@@ -117,7 +116,7 @@ class ReplaySink:
 
     # ---- back-compat: the old SQLite writer had an async init() ----
     async def init(self) -> None:
-        """No-op (kept for API compatibility with the legacy writer)."""
+        """空操作（仅为兼容旧写入器的 API 而保留）。"""
         return
 
     # ------------------------------------------------------------------
@@ -156,7 +155,7 @@ class ReplaySink:
             yield
 
     def _append_lines(self, table: str, lines: list[bytes]) -> None:
-        """Append pre-serialized lines, sharded, each shard write lock-guarded."""
+        """追加已序列化的行，按分片写入，每个分片写入由锁保护。"""
         if not lines:
             return
         by_shard: dict[int, bytearray] = {}
@@ -173,7 +172,7 @@ class ReplaySink:
                     mv = mv[n:]
 
     async def write(self, table: str, data: dict[str, Any]) -> None:
-        """Append one row to ``table``."""
+        """向 ``table`` 追加一行。"""
         if not self._enabled:
             return
         line = (
@@ -182,7 +181,7 @@ class ReplaySink:
         self._append_lines(table, [line])
 
     async def write_batch(self, table: str, rows: list[dict[str, Any]]) -> None:
-        """Append multiple rows to ``table`` (one flock per shard)."""
+        """向 ``table`` 追加多行（每个分片一次 flock）。"""
         if not self._enabled or not rows:
             return
         lines = [
@@ -198,7 +197,7 @@ class ReplaySink:
     # ------------------------------------------------------------------
 
     async def register_table(self, schema: TableSchema) -> None:
-        """Record a table's schema in ``_schema.json`` (idempotent)."""
+        """把表 schema 记录到 ``_schema.json`` （幂等）。"""
         if not self._enabled:
             return
         self._merge_schema({"tables": {schema.name: _schema_to_dict(schema)}})
@@ -206,7 +205,7 @@ class ReplaySink:
     async def register_dataset(
         self, spec: ReplayDatasetSpec, columns: list[ColumnDef]
     ) -> None:
-        """Record a dataset + its columns in ``_schema.json`` (idempotent)."""
+        """把数据集及其列记录到 ``_schema.json`` （幂等）。"""
         if not self._enabled:
             return
         self._merge_schema(
@@ -214,7 +213,7 @@ class ReplaySink:
         )
 
     def _merge_schema(self, patch: dict[str, Any]) -> None:
-        """Read-merge-write ``_schema.json`` under an flock on the sidecar fd."""
+        """在旁路 fd 的 flock 保护下对 ``_schema.json`` 做读-合并-写。"""
         self._dir.mkdir(parents=True, exist_ok=True)
         fd = os.open(str(self._schema_path), os.O_RDWR | os.O_CREAT, 0o600)
         try:
@@ -251,7 +250,7 @@ class ReplaySink:
     # ------------------------------------------------------------------
 
     async def close(self) -> None:
-        """Close all open shard fds."""
+        """关闭所有打开的分片 fd。"""
         for fd in list(self._fds.values()) + list(self._lock_fds.values()):
             try:
                 os.close(fd)
@@ -266,14 +265,12 @@ class ReplaySink:
 
 
 class ReplayWriter(ReplaySink):
-    """Back-compat alias over :class:`ReplaySink`.
+    """:class:`ReplaySink` 的向后兼容别名。
 
-    The legacy public API (:mod:`agentsociety2.storage`, examples) constructed a
-    SQLite writer with a ``.db`` file path and called ``await init()`` before
-    use. That writer is gone; this alias keeps the symbol importable and writes
-    the same JSONL format, mapping the legacy ``db_path`` to a replay directory
-    (a trailing ``.db`` is stripped) so old call sites keep working without
-    SQLite.
+    旧的公开 API（:mod:`agentsociety2.storage` 、examples）用 ``.db`` 文件路径
+    构造 SQLite 写入器，并在使用前调用 ``await init()`` 。该写入器已被移除；
+    此别名保持符号可导入，并写入相同的 JSONL 格式，把旧的 ``db_path`` 映射为
+    replay 目录（去掉末尾的 ``.db`` ），使旧调用点无需 SQLite 即可继续工作。
     """
 
     def __init__(self, db_path: str | Path, *, enabled: bool = True) -> None:
@@ -283,9 +280,9 @@ class ReplayWriter(ReplaySink):
 
 
 def build_replay_sink(replay_proxy: Any) -> ReplaySink | None:
-    """Build a per-process :class:`ReplaySink` from a :class:`ReplayProxy`.
+    """从 :class:`ReplayProxy` 构建每进程的 :class:`ReplaySink` 。
 
-    Returns ``None`` when the proxy is disabled or carries no ``replay_dir``.
+    proxy 被禁用或未携带 ``replay_dir`` 时返回 ``None`` 。
     """
     if not getattr(replay_proxy, "enabled", True):
         return None

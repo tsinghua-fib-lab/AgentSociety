@@ -1,6 +1,6 @@
-"""Experiment execution skills
+"""实验执行技能
 
-Provides experiment execution and result management.
+提供实验执行与结果管理能力。
 """
 
 from .claude_integration import (

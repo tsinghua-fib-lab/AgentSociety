@@ -56,13 +56,13 @@ class Map:
     解析后设置的实例属性（值为 ``dict`` 等，含 ``shapely_xy`` / ``shapely_lnglat`` 等派生字段）：
 
     :ivar header: 地图元数据（名称、边界、PROJ 投影串等）。
-    :ivar juncs: 路口 ``id ->`` 记录（``lane_ids``、``center`` 等）。
-    :ivar lanes: 车道 ``id ->`` 记录（``type``、``turn``、``center_line``、前后继等）。
-    :ivar roads: 道路 ``id ->`` 记录（``lane_ids``、``driving_lane_ids``、``length`` 等）。
-    :ivar aois: AOI ``id ->`` 记录（``positions``、``poi_ids``、``urban_land_use`` 等）。
-    :ivar pois: POI ``id ->`` 记录（``name``、``category``、``position``、``aoi_id`` 等）。
-    :ivar projector: ``pyproj.Proj``，用于 xy 与经纬度互转。
-    :ivar poi_cate: 类别字典，见 :data:`~agentsociety2.contrib.env.mobility_space.utils.const.POI_CATG_DICT`。
+    :ivar juncs: 路口 ``id ->`` 记录（``lane_ids`` 、``center`` 等）。
+    :ivar lanes: 车道 ``id ->`` 记录（``type`` 、``turn`` 、``center_line`` 、前后继等）。
+    :ivar roads: 道路 ``id ->`` 记录（``lane_ids`` 、``driving_lane_ids`` 、``length`` 等）。
+    :ivar aois: AOI ``id ->`` 记录（``positions`` 、``poi_ids`` 、``urban_land_use`` 等）。
+    :ivar pois: POI ``id ->`` 记录（``name`` 、``category`` 、``position`` 、``aoi_id`` 等）。
+    :ivar projector: ``pyproj.Proj`` ，用于 xy 与经纬度互转。
+    :ivar poi_cate: 类别字典，见 :data:`~agentsociety2.contrib.env.mobility_space.utils.const.POI_CATG_DICT` 。
     """
 
     def __init__(self, pb_path: str) -> None:
@@ -299,7 +299,7 @@ class Map:
         )
 
     def _get_lane_s(self, position: geo_pb2.Position, lane_id: int) -> float:
-        """计算 ``position`` 在 ``lane_id`` 对应车道中心线上的弧长参数 ``s``。
+        """计算 ``position`` 在 ``lane_id`` 对应车道中心线上的弧长参数 ``s`` 。
 
         :param position: 含 ``aoi_position`` 或 ``lane_position`` 的位置。
         :param lane_id: 车道 ID。
@@ -326,7 +326,7 @@ class Map:
         """由机动车道路 ID 得到末段行车道 ID 及其中心线几何（xy）。
 
         :param road_id: 道路 ID。
-        :returns: ``(lane_id, shapely_xy LineString)``。
+        :returns: ``(lane_id, shapely_xy LineString)`` 。
         """
         road = self.roads[road_id]
         aoi_lane_id = road["driving_lane_ids"][-1]
@@ -337,7 +337,7 @@ class Map:
         """由步行导航路段得到车道 ID 及中心线几何（按行进方向可能取反）。
 
         :param segment: 步行路径中的一段。
-        :returns: ``(lane_id, shapely_xy LineString)``。
+        :returns: ``(lane_id, shapely_xy LineString)`` 。
         """
         lane_id = segment.lane_id
         direction = segment.moving_direction
@@ -360,7 +360,7 @@ class Map:
 
         :param x: 投影 x。
         :param y: 投影 y。
-        :returns: ``(lng, lat)``，单位度。
+        :returns: ``(lng, lat)`` ，单位度。
         """
         return self.projector(x, y, inverse=True)
 
@@ -370,7 +370,7 @@ class Map:
         """将 ``Position`` 转为地图投影 xy。
 
         :param position: ``geo_pb2.Position`` 或可 ``ParseDict`` 的字典。
-        :returns: ``(x, y)``；AOI 内位置取 AOI 几何质心，车道上位置按 ``s`` 插值。
+        :returns: ``(x, y)`` ；AOI 内位置取 AOI 几何质心，车道上位置按 ``s`` 插值。
         :raises AssertionError: oneof 无有效字段时。
         """
 
@@ -401,7 +401,7 @@ class Map:
 
         :param id: AOI ID。
         :param include_unused: 为 ``False`` 时删去部分冗余/外部缓存字段。
-        :returns: AOI 字典；不存在则为 ``None``。
+        :returns: AOI 字典；不存在则为 ``None`` 。
         """
         doc = self.aois.get(id)
         if doc is None:
@@ -425,7 +425,7 @@ class Map:
 
         :param id: POI ID。
         :param include_unused: 预留；当前未裁剪额外字段。
-        :returns: POI 字典；不存在则为 ``None``。
+        :returns: POI 字典；不存在则为 ``None`` 。
         """
         doc = self.pois.get(id)
         if doc is None:
@@ -438,7 +438,7 @@ class Map:
 
         :param id: 车道 ID。
         :param include_unused: 为 ``False`` 时移除 ``left_border_line`` 等重型字段。
-        :returns: 车道字典；不存在则为 ``None``。
+        :returns: 车道字典；不存在则为 ``None`` 。
         """
         doc = self.lanes.get(id)
         if doc is None:
@@ -458,7 +458,7 @@ class Map:
 
         :param id: 道路 ID。
         :param include_unused: 预留；当前未裁剪额外字段。
-        :returns: 道路字典；不存在则为 ``None``。
+        :returns: 道路字典；不存在则为 ``None`` 。
         """
         doc = self.roads.get(id)
         if doc is None:
@@ -470,8 +470,8 @@ class Map:
         """按 ID 查询路口（深拷贝）。
 
         :param id: 路口（junction）ID。
-        :param include_unused: 为 ``False`` 时移除 ``external``、``driving_lane_groups`` 等。
-        :returns: 路口字典；不存在则为 ``None``。
+        :param include_unused: 为 ``False`` 时移除 ``external`` 、``driving_lane_groups`` 等。
+        :returns: 路口字典；不存在则为 ``None`` 。
         """
         doc = self.juncs.get(id)
         if doc is None:
@@ -492,7 +492,7 @@ class Map:
         """将 AOI 质心导出为 GeoJSON Feature 字典。
 
         :param id: AOI ID。
-        :param properties: Feature 的 ``properties``；``"auto"`` 时填充 ``point_type``、``aoi_type``、``poi_ids`` 等。
+        :param properties: Feature 的 ``properties`` ；``"auto"`` 时填充 ``point_type`` 、``aoi_type`` 、``poi_ids`` 等。
         :returns: 可 JSON 序列化的 GeoJSON dict。
         """
         aoi = self.get_aoi(id)
@@ -514,7 +514,7 @@ class Map:
         """将 AOI 多边形导出为 GeoJSON Feature 字典。
 
         :param id: AOI ID。
-        :param properties: Feature 的 ``properties``；``"auto"`` 时填充 ``aoi_type``、``poi_ids`` 等。
+        :param properties: Feature 的 ``properties`` ；``"auto"`` 时填充 ``aoi_type`` 、``poi_ids`` 等。
         :returns: 可 JSON 序列化的 GeoJSON dict。
         """
         aoi = self.get_aoi(id)
@@ -534,7 +534,7 @@ class Map:
         """将 POI 点导出为 GeoJSON Feature 字典。
 
         :param id: POI ID。
-        :param properties: Feature 的 ``properties``；``"auto"`` 时填充 ``point_type``、``poi_type``、``name`` 等。
+        :param properties: Feature 的 ``properties`` ；``"auto"`` 时填充 ``point_type`` 、``poi_type`` 、``name`` 等。
         :returns: 可 JSON 序列化的 GeoJSON dict。
         """
         poi = self.get_poi(id)
@@ -557,7 +557,7 @@ class Map:
         """将车道中心线导出为 GeoJSON Feature 字典。
 
         :param id: 车道 ID。
-        :param properties: Feature 的 ``properties``；``"auto"`` 时填充 ``lane_type``、``lane_turn``、``parent_id``、``max_speed``。
+        :param properties: Feature 的 ``properties`` ；``"auto"`` 时填充 ``lane_type`` 、``lane_turn`` 、``parent_id`` 、``max_speed`` 。
         :returns: 可 JSON 序列化的 GeoJSON dict。
         """
         lane = self.get_lane(id)
@@ -580,7 +580,7 @@ class Map:
         """将道路几何导出为 GeoJSON Feature 字典。
 
         :param id: 道路 ID。
-        :param properties: Feature 的 ``properties``；默认 ``None`` 视为 ``{}``。
+        :param properties: Feature 的 ``properties`` ；默认 ``None`` 视为 ``{}`` 。
         :returns: 可 JSON 序列化的 GeoJSON dict。
         """
         if properties is None:
@@ -600,7 +600,7 @@ class Map:
 
         :param route_req: ``GetRouteRequest`` 或可 ``ParseDict`` 的字典。
         :param route_res: ``GetRouteResponse`` 或可 ``ParseDict`` 的字典。
-        :returns: ``(N, 2)`` 的 ``float`` 数组，列为 ``(x, y)``。
+        :returns: ``(N, 2)`` 的 ``float`` 数组，列为 ``(x, y)`` 。
         :raises AssertionError: 路线类型不支持或 journey 类型不匹配时。
         """
         if not isinstance(route_req, routing_service.GetRouteRequest):
@@ -673,7 +673,7 @@ class Map:
 
         :param route_req: ``GetRouteRequest`` 或可 ``ParseDict`` 的字典。
         :param route_res: ``GetRouteResponse`` 或可 ``ParseDict`` 的字典。
-        :param properties: Feature 的 ``properties``；默认 ``None`` 视为 ``{}``。
+        :param properties: Feature 的 ``properties`` ；默认 ``None`` 视为 ``{}`` 。
         :returns: 可 JSON 序列化的 GeoJSON dict。
         """
         if properties is None:
@@ -721,7 +721,7 @@ class Map:
     ) -> list[tuple[Any, float]]:
         """在投影 xy 下按距离查询 POI；类别字符串需出现在 POI 的 ``category`` 列表中。
 
-        :param center: ``(x, y)`` 或 :class:`shapely.geometry.Point`。
+        :param center: ``(x, y)`` 或 :class:`shapely.geometry.Point` 。
         :param radius: 搜索半径（米）；``None`` 表示遍历全图 POI。
         :param category: 非 ``None`` 时仅保留 ``category`` 含该子串的 POI。
         :param limit: 最多返回条数，近者优先。
@@ -756,7 +756,7 @@ class Map:
     ) -> list[tuple[Any, float]]:
         """在投影 xy 下按距离查询 AOI，可按 ``urban_land_use`` 过滤。
 
-        :param center: ``(x, y)`` 或 :class:`shapely.geometry.Point`。
+        :param center: ``(x, y)`` 或 :class:`shapely.geometry.Point` 。
         :param radius: 搜索半径（米）。
         :param urban_land_uses: 非 ``None`` 时仅保留 ``urban_land_use`` 属于该集合的 AOI（GB 50137-2011 分类字符串）。
         :param limit: 最多返回条数，近者优先。
@@ -790,9 +790,9 @@ class Map:
         radius: float,
         lane_type: int = 1,
     ) -> list[tuple[Any, float, float]]:
-        """在投影 xy 下查询附近车道及投影弧长 ``s``。
+        """在投影 xy 下查询附近车道及投影弧长 ``s`` 。
 
-        :param xy: ``(x, y)`` 或 :class:`shapely.geometry.Point`。
+        :param xy: ``(x, y)`` 或 :class:`shapely.geometry.Point` 。
         :param radius: 搜索半径（米）；欧氏距离大于半径的候选会被丢弃。
         :param lane_type: ``1`` 机动车道，``2`` 人行道。
         :returns: ``(lane_dict, s, 距离)`` 列表，按距离升序。

@@ -1,4 +1,4 @@
-name: Publish to PyPI
+name: Publish AgentSociety 2
 
 on:
   push:
@@ -11,16 +11,16 @@ concurrency:
 
 permissions:
   contents: read
-  id-token: write
+
+env:
+  AS2_RELEASE_TAG: ${{ github.ref_name }}
+  MEM0_TELEMETRY: "False"
+  ANONYMIZED_TELEMETRY: "False"
 
 jobs:
   validate:
     name: Validate before release
     runs-on: ubuntu-latest
-    env:
-      MEM0_TELEMETRY: "False"
-      ANONYMIZED_TELEMETRY: "False"
-
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -30,20 +30,24 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Validate tag, component versions and curated changelog
+        run: make ci-release-check AS2_PYTHON=python
+
       - name: Install uv
         uses: astral-sh/setup-uv@v10.3.3
+        with:
+          version: "0.13.6"
+          enable-cache: true
+          cache-suffix: sdk-3.12
 
       - name: Lint and test Python package
         run: |
-          cd packages/agentsociety2
-          uv sync --extra dev
-          uv run ruff check .
-          uv run mypy tests/ --follow-imports=skip
-          uv run pytest -q
+          uv sync --frozen --package agentsociety2 --no-default-groups --extra dev
+          make ci-config ci-python-lint ci-python-test
         env:
-          AGENTSOCIETY_LLM_API_KEY: ${{ secrets.AGENTSOCIETY_LLM_API_KEY }}
-          AGENTSOCIETY_LLM_API_BASE: ${{ secrets.AGENTSOCIETY_LLM_API_BASE }}
-          AGENTSOCIETY_LLM_MODEL: glm-5
+          AGENTSOCIETY_LLM_API_KEY: test-key
+          AGENTSOCIETY_LLM_API_BASE: https://api.openai.com/v1
+          AGENTSOCIETY_LLM_MODEL: gpt-5.5
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -55,12 +59,62 @@ jobs:
       - name: Lint and audit extension
         working-directory: extension
         run: |
-          npm ci
-          npm run lint
-          npm run build
+          npm ci --prefer-offline --no-audit --fund=false
+          make -C .. ci-extension
           # Advisory failures (transitive deps) must not block the release;
-          # matches .gitlab-ci.yml lint-extension (13e28b5e).
+          # follows the existing GitLab audit policy.
           npm audit --audit-level=high --registry=https://registry.npmjs.org || true
+
+  documentation:
+    name: Validate documentation and frontend
+    runs-on: ubuntu-latest
+    needs: validate
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.3.3
+        with:
+          version: "0.13.6"
+          enable-cache: true
+          cache-suffix: docs-3.12
+
+      - name: Install documentation dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends graphviz
+          uv sync --frozen --package agentsociety2 --no-default-groups --extra docs
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: frontend/.nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install browser dependencies
+        working-directory: frontend
+        run: |
+          npm ci --prefer-offline --no-audit --fund=false
+          npx --no-install playwright install --with-deps --only-shell chromium
+
+      - name: Check frontend and bilingual documentation
+        run: make ci-frontend ci-docs-build ci-docs-browser
+
+      - name: Upload browser failure traces
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-browser-traces
+          path: frontend/test-results/
+          if-no-files-found: ignore
 
   build-python:
     name: Build Python distribution
@@ -73,8 +127,17 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
       - name: Install uv
         uses: astral-sh/setup-uv@v10.3.3
+        with:
+          version: "0.13.6"
+          enable-cache: true
+          cache-suffix: build-3.12
 
       - name: Build package
         run: |
@@ -112,15 +175,11 @@ jobs:
 
       - name: Install dependencies
         working-directory: ./extension
-        run: npm ci
+        run: npm ci --prefer-offline --no-audit --fund=false
 
       - name: Validate webpack config
         working-directory: ./extension
         run: node -c webpack.config.js
-
-      - name: Build extension
-        working-directory: ./extension
-        run: npm run build
 
       - name: Package extension
         working-directory: ./extension
@@ -150,7 +209,10 @@ jobs:
 
   publish-to-pypi:
     name: Publish to PyPI
-    needs: build-python
+    permissions:
+      contents: read
+      id-token: write
+    needs: [build-python, build-vscode, documentation]
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -193,26 +255,21 @@ jobs:
           name: vscode-extension
           path: vscode-dist/
 
-      - name: Extract version from tag
+      - name: Extract validated version
         id: get_version
         run: |
-          TAG=${{ github.ref_name }}
-          VERSION=${TAG#agentsociety2-v}
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          python3 scripts/ci/release.py check --release
+          printf 'version=%s\n' "${AS2_RELEASE_TAG#agentsociety2-v}" >> "$GITHUB_OUTPUT"
 
-      - name: Generate release notes
-        id: git_cliff
-        uses: orhun/git-cliff-action@v4
-        with:
-          config: cliff.toml
-          args: --latest --strip header
+      - name: Read curated release notes
+        run: python3 scripts/ci/release.py notes --release --output release_notes.md
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           name: AgentSociety2 ${{ steps.get_version.outputs.version }}
-          body: ${{ steps.git_cliff.outputs.content }}
+          body_path: release_notes.md
           files: |
             python-dist/*.tar.gz
             python-dist/*.whl

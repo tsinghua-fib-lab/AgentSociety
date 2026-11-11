@@ -51,10 +51,14 @@ Paste the full traceback here
 
 ## Environment
 
+<!-- Which component is affected? SDK, VS Code extension, web UI, or legacy v1. -->
+
 | Item                | Value |
 | ------------------- | ----- |
 | Python version      |       |
 | AgentSociety version |      |
+| Extension / VS Code version (if applicable) | |
+| Browser / frontend commit (if applicable) | |
 | OS                  |       |
 | LLM Provider        |       |
 | LLM Model           |       |

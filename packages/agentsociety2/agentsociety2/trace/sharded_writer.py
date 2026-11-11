@@ -46,11 +46,10 @@ def _new_span_id() -> str:
 # Distributed append-only sink (replaces the central TraceActor)
 # ---------------------------------------------------------------------------
 
-# Under O_APPEND the kernel makes a single write() of <= PIPE_BUF bytes atomic
-# across concurrent writers. We cap every record below PIPE_BUF so no lock and
-# no central actor is needed. Truncation targets attribute VALUES (e.g. large
-# observation/summary blobs) — full data lives in the replay DB; trace only
-# carries lightweight spans for timing/structure analysis.
+# Truncation limits individual string values in lightweight trace records;
+# full experiment data lives in replay datasets. PIPE_BUF is only a historical
+# sizing heuristic here: it does not bound an entire serialized JSON record or
+# establish atomic-write guarantees for regular files and shared filesystems.
 # pathconf is POSIX-only; Windows has neither os.pathconf nor pathconf_names.
 try:
     _PIPE_BUF = os.pathconf("/", os.pathconf_names["PC_PIPE_BUF"])
@@ -62,8 +61,7 @@ _TRACE_VALUE_CAP = max(256, _PIPE_BUF // 2 - 256)
 
 
 def _cap_large(value: Any, limit: int = _TRACE_VALUE_CAP) -> Any:
-    """Recursively truncate oversized string values so a record serializes
-    below PIPE_BUF, keeping O_APPEND writes atomic."""
+    """Recursively truncate oversized strings, without bounding total JSON size."""
     if isinstance(value, str):
         if len(value) <= limit:
             return value
@@ -77,32 +75,20 @@ def _cap_large(value: Any, limit: int = _TRACE_VALUE_CAP) -> Any:
 
 @dataclass
 class TraceProxy:
-    """Serializable config for distributed trace writing.
+    """分布式追踪的可序列化配置。
 
-    Carries only the output directory (a path string) — no Ray actor handle.
-    Each consumer (agent / env router / driver) builds its own
-    :class:`ShardedAppendSink` pointed at ``trace_dir`` and appends directly,
-    so there is no central trace actor to deadlock against. When ``trace_dir``
-    is ``None`` the proxy is a no-op.
+    仅保存输出目录 ``trace_dir``，不携带 Ray actor 句柄。智能体、环境路由和驱动进程分别创建本地 :class:`ShardedAppendSink` 并直接写入；``trace_dir`` 为 ``None`` 时不记录追踪数据。
     """
 
     trace_dir: str | None = None
 
 
 class ShardedAppendSink:
-    """Append-only JSONL trace sink sharded by ``trace_id[:2]`` (256 files).
+    """按 ``trace_id[:2]`` 分片的 JSONL 追踪写入器，最多生成 256 个分片文件。
 
-    Distributed and lock-free: every writer process holds its OWN instance and
-    appends directly via ``os.open(O_APPEND)`` + ``os.write``. The kernel
-    guarantees an ``O_APPEND`` ``write`` of at most ``PIPE_BUF`` bytes is
-    atomic across concurrent writers, so the (at most 256) shard files stay
-    consistent without any coordination, lock, or Ray actor. Oversized string
-    values are truncated (:func:`_cap_large`) to keep every record under
-    ``PIPE_BUF``.
+    每个进程维护自己的实例，通过 ``os.open(O_APPEND)`` 和 ``os.write`` 追加记录，不需要集中式 actor。分片数量不随智能体数量增加；并发追加的行为取决于底层文件系统，管道的 ``PIPE_BUF`` 原子写入保证不适用于普通文件。
 
-    The shard/file count is constant (≤256) regardless of agent count, so this
-    scales to 1M+ agents run as batches of Ray tasks — each task process is
-    just another independent writer appending into the shared shard files.
+    ``_cap_large`` 会截断过长字符串，以减少追踪数据量。它限制单个值的长度，不限制整条记录编码后的总大小。
     """
 
     def __init__(
@@ -129,8 +115,8 @@ class ShardedAppendSink:
         """Append one JSONL record to the shard keyed by ``trace_id[:2]``.
 
         Writes go straight to the kernel page cache via ``os.write`` (no
-        userspace buffer), so there is nothing to flush. The record is
-        value-capped first so the whole line fits in one atomic ``write``.
+        userspace buffer), so there is nothing to flush. String values are
+        capped before encoding; partial writes are retried below.
         """
         rec = _cap_large(record, self._cap) if self._cap else record
         key = str(rec.get("trace_id", ""))[:2].lower() or "00"
@@ -138,8 +124,7 @@ class ShardedAppendSink:
         self._ensure_fd(key)
         fd = self._fds[key]
         mv = memoryview(data)
-        # Under O_APPEND each os.write is atomic for <= PIPE_BUF; loop only to
-        # handle the rare partial write of a (capped, small) buffer.
+        # Retry partial writes; a whole record may require multiple writes.
         while mv:
             n = os.write(fd, mv)
             mv = mv[n:]
@@ -163,9 +148,9 @@ class ShardedAppendSink:
 
 
 def build_local_sink(trace_proxy: Any) -> ShardedAppendSink | None:
-    """Build a per-process :class:`ShardedAppendSink` from a :class:`TraceProxy`.
+    """根据 :class:`TraceProxy` 创建当前进程的 :class:`ShardedAppendSink`。
 
-    Returns ``None`` when the proxy carries no ``trace_dir`` (trace disabled).
+    未设置 ``trace_dir`` 时返回 ``None``，表示追踪功能已关闭。
     """
     trace_dir = getattr(trace_proxy, "trace_dir", None)
     if not trace_dir:
@@ -179,24 +164,22 @@ def build_local_sink(trace_proxy: Any) -> ShardedAppendSink | None:
 
 
 class JsonlTraceWriter:
-    """Write OTel-compatible JSONL spans via a sharded backend.
+    """通过分片写入器记录 OpenTelemetry 兼容的 JSONL 追踪片段。
 
-    Each finished span is forwarded to ``sharded_writer`` (a
-    :class:`ShardedAppendSink` in production). When ``sharded_writer`` is None,
-    the span API still works but records are discarded (no-op).
+    完成的片段发送到 ``sharded_writer``；生产环境通常使用 :class:`ShardedAppendSink`。当写入器为 ``None`` 时仍可创建片段，但不会保存记录。
 
     Parameters
     ----------
     agent_id : int
-        The agent this writer belongs to.
+        所属智能体的 ID。
     service_name : str
-        OTel ``resource.service.name`` value.
+        OpenTelemetry 的 ``resource.service.name`` 字段。
     scope_name : str
-        OTel ``scope.name`` value.
+        OpenTelemetry 的 ``scope.name`` 字段。
     scope_version : str
-        OTel ``scope.version`` value.
+        OpenTelemetry 的 ``scope.version`` 字段。
     sharded_writer : ShardedAppendSink | None
-        Backend sink; None = no-op.
+        底层写入器；为 ``None`` 时不保存记录。
     """
 
     def __init__(
@@ -229,7 +212,7 @@ class JsonlTraceWriter:
     ) -> TraceSpan:
         """Create a new :class:`TraceSpan`.
 
-        If *trace_id* is not provided it is inherited from the current parent
+        If ``trace_id`` is not provided it is inherited from the current parent
         span, or auto-generated as a UUID hex string.
         """
         parent = self.current_span

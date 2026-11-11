@@ -1,6 +1,6 @@
 ## 初始化研究项目
 
-**请先完成配置页中的仿真 LLM 保存**（API Key 写入 `.env`）。侧栏在检测到密钥后才会提供「初始化工作区」。
+**请先在配置页保存仿真 LLM 设置**（API Key 会写入 `.env`）。侧栏在检测到密钥后才会显示「初始化工作区」。
 
 开始前需要一个研究工作区文件夹。
 
@@ -12,14 +12,14 @@
 
 ### 初始化项目结构
 
-在已打开的工作区中运行 **Initialize Research Project**。较长的分步演示托管在 GitHub，避免增大已安装扩展：
+1. 在配置页保存仿真 LLM 的 API 地址、密钥与模型。
+2. 点击侧边栏“初始化工作区”，或运行命令 **AI Social Scientist: Initialize Research Project**。
+3. 输入研究话题，等待初始化完成；已有研究文件会保留。
+4. 在 `TOPIC.md` 补充研究背景，再按需启动后端。配置细节见[配置 LLM 与后端](05-configure.md)。
 
-1. [初始化工作区并等待完成](https://github.com/tsinghua-fib-lab/agentsociety/blob/main/extension/resources/walkthrough/images/gif/init-01-workspace.gif)
-2. [一键导入（可选）并确认配置](https://github.com/tsinghua-fib-lab/agentsociety/blob/main/extension/resources/walkthrough/images/gif/init-02-web-import.gif)
-3. [仿真 LLM 与后续向导步骤](https://github.com/tsinghua-fib-lab/agentsociety/blob/main/extension/resources/walkthrough/images/gif/init-03-llm-wizard.gif)
-4. [CLI Gateway 与完成](https://github.com/tsinghua-fib-lab/agentsociety/blob/main/extension/resources/walkthrough/images/gif/init-04-cli-finish.gif)
+想看连续操作，可查看[工作区初始化动图](https://github.com/tsinghua-fib-lab/agentsociety/blob/main/extension/resources/readme/research-workspace.gif)；客户端标签变化时以上方步骤为准。
 
-插件会创建基础目录并写入 `TOPIC.md`、完善 `.env` 相关目录等：
+插件会创建基础目录结构，并写入 `TOPIC.md`、`.env` 模板等相关文件：
 
 ```text
 workspace-root/
@@ -30,9 +30,10 @@ workspace-root/
 ├── user_data/
 ├── custom/
 ├── .claude/skills/
+├── .agentsociety/       # 项目设置与工作流状态
 ├── hypothesis_<id>/     # 后续由工作流创建
-├── presentation/        # 分析报告与资源
-├── synthesis/           # 跨假设综合结果
+├── presentation/        # 分析报告与资源，由后续分析流程生成
+├── synthesis/           # 跨假设综合结果，由后续综合流程生成
 └── paper/               # 使用 paper-toolkit 时创建
 ```
 
@@ -41,6 +42,7 @@ workspace-root/
 ### 命令面板
 
 命令面板搜索 **AI Social Scientist: Initialize Research Project** 也可触发初始化。
+
 - `Ctrl+Shift+P`（Mac: `Cmd+Shift+P`）
 - 输入 `AI Social Scientist` 查看插件命令
 

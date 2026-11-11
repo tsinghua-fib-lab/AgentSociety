@@ -3,10 +3,60 @@
 
 本部分包含演示 AgentSociety 2 功能的示例代码。
 
+先离线检查配置
+--------------
+
+下面的示例验证初始化配置和时间步参数，不启动 Ray 或调用模型。配置校验能发现缺失字段和无效步数；模块是否可用、模型能否连接仍需运行时检查。
+
+.. testcode:: configuration
+
+   from pydantic import ValidationError
+   from agentsociety2.society import InitConfig, RunStep
+
+   config = InitConfig.model_validate({
+       "env_modules": [{"module_type": "SimpleSocialSpace"}],
+       "agents": [{
+           "agent_id": 1,
+           "agent_type": "PersonAgent",
+           "kwargs": {"id": 1, "profile": {"name": "Alice"}},
+       }],
+   })
+   step = RunStep(num_steps=2, tick=600)
+   assert config.agents[0].kwargs["id"] == 1
+   assert step.num_steps * step.tick == 1200
+   try:
+       RunStep(num_steps=0)
+   except ValidationError:
+       print("Invalid step count rejected.")
+   else:
+       raise AssertionError("Expected a validation error")
+
+.. testoutput:: configuration
+
+   Invalid step count rejected.
+
+这个代码块由文档 CI 直接执行。需要付费模型的完整仿真另见 :doc:`quickstart`；记录输入、模型与结果的建议见下方复现说明。
+
+离线回放示例
+------------
+
+只想先确认回放写入、目录元数据和读取接口是否可用时，可运行 :doc:`storage` 中的独立脚本。该示例不需要模型凭据，也不会访问网络。
+
+.. code-block:: bash
+
+   python packages/agentsociety2/examples/offline/replay_round_trip.py
+
+记录可复现的实验
+----------------
+
+分享示例时，一起提供配置文件、输入数据来源、随机种子（适用时）、模型供应商与模型 ID、关键参数、SDK 版本和代码提交。结果中保留运行日志、回放目录及评价方法，避免只有一张结论截图。
+
+LLM 采样、服务端模型更新和并发调度都可能影响行为结果；固定配置有助于比较，但不保证逐字或逐步相同。比较实验应说明重复次数、测量口径与差异范围。工作区产物见 :doc:`results`，外部数据说明见 :doc:`datasets`。
+
 运行示例
 ----------------
 
-所有示例都位于 ``packages/agentsociety2/examples/`` 目录中。
+示例位于 ``packages/agentsociety2/examples/``。``offline/`` 中的示例无需模型凭据；以下涉及智能体决策的示例需要配置模型服务。
 
 **前提条件：**
 
@@ -32,36 +82,12 @@
 * 设置 SimpleSocialSpace 环境
 * 使用 AgentSociety 协调智能体-环境交互
 
-.. code-block:: python
-
-   # Declare agent metadata (agents are created from specs during init)
-   agent_specs = [
-       {
-           "id": 1,
-           "profile": {
-               "id": 1,
-               "name": "Alice",
-               "age": 28,
-               "personality": "friendly, curious, optimistic",
-               "bio": "A software engineer who loves hiking and reading.",
-           },
-           "config": {},
-       }
-   ]
-
-   # Create environment and society
-   society = AgentSociety(
-       agent_specs=agent_specs,
-       agent_class_name="PersonAgent",
-       env_router=env_router,
-       start_t=datetime.now(),
-       run_dir=Path("run"),
-   )
-   await society.init()
-
-   # Interact
-   response = await society.ask("What's your favorite activity?")
-   print(f"Agent: {response}")
+.. literalinclude:: ../examples/basics/01_hello_agent.py
+   :language: python
+   :start-at:     agent_specs = [
+   :end-at:     await society.init()
+   :dedent: 4
+   :caption: ``basics/01_hello_agent.py``
 
 **自定义环境模块** (``basics/02_custom_env_module.py``)
 
@@ -73,7 +99,7 @@
 
 **回放系统** (``basics/03_replay_system.py``)
 
-展示全面的数据跟踪：
+展示 replay 数据记录与读取：
 
 * 为环境模块启用 ReplayWriter
 * 生成 replay catalog 和环境 replay dataset
@@ -82,8 +108,7 @@
 博弈论示例
 ---------------------
 
-这些示例使用 contrib 下的博弈 agent / env，并通过 ``society.step()`` 推进回合。
-需要配置 LLM 凭证（参见 :doc:`installation`）。
+这些示例使用 contrib 下的博弈 agent / env，并通过 ``society.step()`` 推进回合。需要配置 LLM 凭证（参见 :doc:`installation`）。
 
 **囚徒困境** (``games/01_prisoners_dilemma.py``)
 

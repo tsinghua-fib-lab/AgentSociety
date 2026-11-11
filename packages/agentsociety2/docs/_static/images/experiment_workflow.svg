@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="230" viewBox="0 0 1040 230" role="img" aria-labelledby="title desc">
+  <title id="title">Experiment workflow</title>
+  <desc id="desc">Design → Configure → Run → Inspect.</desc>
+  <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="m0 0 10 5-10 5" fill="#91a1b2"/></marker></defs>
+  <rect width="1040" height="230" rx="14" fill="#f7f9fc"/>
+  <path d="M182 91H324.667" stroke="#b2bfcc" stroke-width="2" marker-end="url(#arrow)"/>
+  <path d="M448.667 91H591.333" stroke="#b2bfcc" stroke-width="2" marker-end="url(#arrow)"/>
+  <path d="M715.333 91H858" stroke="#b2bfcc" stroke-width="2" marker-end="url(#arrow)"/>
+  <g transform="translate(120 91)" color="#1a66ad">
+    <circle r="46" fill="white" stroke="#d5dfe9" stroke-width="1.5"/>
+    <g transform="translate(-24 -24)" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="11" y="6" width="26" height="36" rx="3"/><path d="M17 17h14M17 24h14M17 31h10"/></g>
+    <text y="87" text-anchor="middle" fill="#25374c" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="600">Design</text>
+  </g>
+  <g transform="translate(386.667 91)" color="#168276">
+    <circle r="46" fill="white" stroke="#d5dfe9" stroke-width="1.5"/>
+    <g transform="translate(-24 -24)" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M7 13h34M7 24h34M7 35h34"/><circle cx="18" cy="13" r="4" fill="white"/><circle cx="31" cy="24" r="4" fill="white"/><circle cx="22" cy="35" r="4" fill="white"/></g>
+    <text y="87" text-anchor="middle" fill="#25374c" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="600">Configure</text>
+  </g>
+  <g transform="translate(653.333 91)" color="#6958a2">
+    <circle r="46" fill="white" stroke="#d5dfe9" stroke-width="1.5"/>
+    <g transform="translate(-24 -24)" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="m17 10 22 14-22 14z" fill="currentColor" stroke="none"/></g>
+    <text y="87" text-anchor="middle" fill="#25374c" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="600">Run</text>
+  </g>
+  <g transform="translate(920 91)" color="#9b713d">
+    <circle r="46" fill="white" stroke="#d5dfe9" stroke-width="1.5"/>
+    <g transform="translate(-24 -24)" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M8 8v32h34M16 31v-9M25 31V15M34 31V9" stroke-width="3"/></g>
+    <text y="87" text-anchor="middle" fill="#25374c" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="600">Inspect</text>
+  </g>
+</svg>

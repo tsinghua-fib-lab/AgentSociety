@@ -42,7 +42,20 @@ const {
 } = require('../out/services/aiCliGatewayUpstream');
 const { claudeSettingsBaseUrl } = require('../out/aiCli/officialEndpoints');
 const { detectUsageTemplate, customUsageUrl, parseCustomUsage } = require('../out/shared/providerUsage');
-const { queryProviderUsage, ProviderUsageCache } = require('../out/services/gatewayProviderUsage');
+const { queryProviderUsage, ProviderUsageCache, providerUsageCacheKey } = require('../out/services/gatewayProviderUsage');
+
+test('usage cache identity tracks credentials, account sessions and query settings without exposing secrets', () => {
+  const secret = Buffer.alloc(32, 1);
+  const credentials = ['provider-api-key', { accessToken: 'session-token' }];
+  const metadata = ['provider-id', 'https://provider.example/v1', { proxy: null }];
+  const key = providerUsageCacheKey(secret, credentials, metadata);
+  assert.equal(providerUsageCacheKey(secret, credentials, metadata), key);
+  assert.notEqual(providerUsageCacheKey(secret, ['changed-key', credentials[1]], metadata), key);
+  assert.notEqual(providerUsageCacheKey(secret, [credentials[0], { accessToken: 'new-session' }], metadata), key);
+  assert.notEqual(providerUsageCacheKey(secret, credentials, [...metadata, 'changed-query']), key);
+  assert.notEqual(providerUsageCacheKey(Buffer.alloc(32, 2), credentials, metadata), key);
+  assert.ok(!key.includes('provider-api-key') && !key.includes('session-token'));
+});
 
 test('balance query detection respects disable and custom modes and exact official hosts', () => {
   assert.equal(detectUsageTemplate('https://api.deepseek.com/v1'), 'deepseek');

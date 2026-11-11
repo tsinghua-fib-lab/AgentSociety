@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="230" viewBox="0 0 1040 230" role="img" aria-labelledby="title desc">
+  <title id="title">Hypothesis workflow</title>
+  <desc id="desc">Literature → Hypothesis → Review.</desc>
+  <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="m0 0 10 5-10 5" fill="#91a1b2"/></marker></defs>
+  <rect width="1040" height="230" rx="14" fill="#f7f9fc"/>
+  <path d="M182 91H458" stroke="#b2bfcc" stroke-width="2" marker-end="url(#arrow)"/>
+  <path d="M582 91H858" stroke="#b2bfcc" stroke-width="2" marker-end="url(#arrow)"/>
+  <g transform="translate(120 91)" color="#1a66ad">
+    <circle r="46" fill="white" stroke="#d5dfe9" stroke-width="1.5"/>
+    <g transform="translate(-24 -24)" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="11" y="6" width="26" height="36" rx="3"/><path d="M17 17h14M17 24h14M17 31h10"/></g>
+    <text y="87" text-anchor="middle" fill="#25374c" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="600">Literature</text>
+  </g>
+  <g transform="translate(520 91)" color="#168276">
+    <circle r="46" fill="white" stroke="#d5dfe9" stroke-width="1.5"/>
+    <g transform="translate(-24 -24)" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M17 31c0-5-6-6-6-14a13 13 0 0 1 26 0c0 8-6 9-6 14zM18 36h12M20 41h8"/></g>
+    <text y="87" text-anchor="middle" fill="#25374c" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="600">Hypothesis</text>
+  </g>
+  <g transform="translate(920 91)" color="#6958a2">
+    <circle r="46" fill="white" stroke="#d5dfe9" stroke-width="1.5"/>
+    <g transform="translate(-24 -24)" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="10" y="9" width="28" height="33" rx="3"/><rect x="17" y="5" width="14" height="8" rx="2" fill="white"/><path d="m16 25 6 6 11-13"/></g>
+    <text y="87" text-anchor="middle" fill="#25374c" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="600">Review</text>
+  </g>
+</svg>

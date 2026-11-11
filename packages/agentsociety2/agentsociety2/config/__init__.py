@@ -10,11 +10,13 @@
 - **get_dispatcher**: 获取指定 role 的 :class:`LLMClient` （per-process 调度）
 
 角色类型：
+
 - ``default``: 默认 LLM（通用任务）
 - ``coder``: 代码生成 LLM（更强大的模型）
 - ``embedding``: 嵌入模型
 
 环境变量配置：
+
 - ``AGENTSOCIETY_LLM_API_KEY``: 主 API 密钥（必需）
 - ``AGENTSOCIETY_LLM_API_BASE``: API 基础 URL（必需）
 - ``AGENTSOCIETY_LLM_MODEL``: 默认模型名称

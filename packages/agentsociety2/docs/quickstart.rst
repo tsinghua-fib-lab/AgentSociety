@@ -1,248 +1,102 @@
 快速入门
-===========
+========
 
-本指南将帮助您快速上手 AgentSociety 2。
+本页运行一个最小的 Python SDK 仿真。使用 VS Code / code-server 工作台时，可先阅读 :doc:`user_guide`；从配置文件运行实验时，阅读 :doc:`cli`。
 
 前置条件
-----------------
+--------
 
-在运行示例前，请先配置 LLM 环境变量（见 :doc:`installation`），或在项目目录中准备好 ``.env`` 并在入口处尽早加载。
+先按 :doc:`installation` 安装 SDK 并配置模型。下面代码会访问模型服务；``python`` 应来自已安装 SDK 的环境。也可在项目目录准备 ``.env``，在导入 SDK 前用 ``load_dotenv()`` 加载。
 
-您的第一个智能体
-----------------
+创建并运行
+----------
 
-使用 :class:`~agentsociety2.society.AgentSociety` 创建一个简单的智能体并与它交互。注意：智能体现在
-以 **spec（元数据）** 的形式声明，由编排器在 ``init`` 时批量创建 workspace；不再直接 ``PersonAgent(...)``
-实例化（见 :doc:`agents`）。
+通过元数据声明一个参与者，创建共享环境路由，查询画像并推进两个时间步：
 
 .. code-block:: python
 
    import asyncio
    from datetime import datetime
-   from agentsociety2.env import CodeGenRouter
-   from agentsociety2.contrib.env import SimpleSocialSpace
+   from pathlib import Path
+
+   from agentsociety2.env import create_env_router_proxy
    from agentsociety2.society import AgentSociety
 
    async def main():
-       # 1) 声明 agent 元数据（id / profile / config），不实例化 agent 对象
+       run_dir = Path("run_quickstart")
        agent_specs = [
            {
                "id": 1,
-               "profile": {
-                   "name": "Alice",
-                   "age": 28,
-                   "personality": "friendly and curious",
-                   "bio": "A software engineer who loves hiking.",
-               },
+               "profile": {"name": "Alice", "age": 28, "bio": "Enjoys reading."},
                "config": {},
            }
        ]
-       names = [(s["id"], s["profile"]["name"]) for s in agent_specs]
-
-       # 2) 创建环境模块 + 路由器（进程内 CodeGenRouter 即可；生产环境用 EnvRouterProxy）
-       social_env = SimpleSocialSpace(agent_id_name_pairs=names)
-       env_router = CodeGenRouter(env_modules=[social_env])
-
-       # 3) 创建 society（agent_specs + agent_class_name + env_router）
+       env_router = await create_env_router_proxy(
+           ["SimpleSocialSpace"],
+           {"SimpleSocialSpace": {"agent_id_name_pairs": [(1, "Alice")]}},
+           run_dir=run_dir,
+       )
        society = AgentSociety(
            agent_specs=agent_specs,
            agent_class_name="PersonAgent",
            env_router=env_router,
-           start_t=datetime.now(),
-           run_dir=__import__("pathlib").Path("run"),
+           start_t=datetime(2026, 1, 1, 8, 0),
+           run_dir=run_dir,
        )
-
-       # 4) 初始化（批量创建 agent workspace、绑定环境）
-       await society.init()
-
-       # 5) 只读查询
-       response = await society.ask("What's your favorite activity?")
-       print(f"Agent: {response}")
-
-       await society.close()
+       try:
+           await society.init()
+           answer = await society.ask(
+               "Use get_agent_profile for name=Alice. Summarize the profile."
+           )
+           print(answer)
+           await society.run(num_steps=2, tick=600)
+           print(society.all_token_stats())
+       finally:
+           await society.close()
 
    if __name__ == "__main__":
        asyncio.run(main())
 
-运行此代码将产生类似以下输出：
+``agent_specs`` 描述画像与配置，由 ``init()`` 创建 Agent 工作目录；不直接用画像参数构造 ``PersonAgent`` 实例。``create_env_router_proxy`` 让各 Ray worker 访问同一环境，使用方式与 CLI 一致。
 
-.. code-block:: text
+``tick`` 的单位是秒，表示每步模拟时间跨度，不是等待的真实秒数。回答和 Agent 决策随模型与上下文变化；运行记录在 ``run_quickstart/``。再次独立运行时使用新的输出目录；恢复实验见 :doc:`cli`。
 
-   Agent: I really love hiking! Being in nature, exploring new trails, and enjoying beautiful scenery brings a sense of peace.
-   It's a great way to relax and stay energized.
+检查结果
+--------
 
-创建自定义环境
+* 查看终端输出与 ``run_quickstart/SOCIETY_STEP.json`` 确认推进进度，结合调用记录检查错误。
+* ``run_quickstart/replay/`` 保存 catalog 与时序数据；可用字段取决于实际写入的数据集。
+* ``run_quickstart/agents/`` 保存人物的持久状态，``run_quickstart/trace/`` 保存调用记录。
+
+回放与报告入口见 :doc:`results`；程序读取方法见 :doc:`storage`。SDK 直接运行的目录可用 ``ReplayReader`` 读取；插件回放默认从研究工作区的假设 / 实验目录读取数据。
+
+查询、干预与推进
+----------------
+
+在已经初始化的 ``society`` 上，三个入口的用途分别是：
+
+.. list-table::
+   :widths: 32 68
+   :header-rows: 1
+
+   * - 方法
+     - 用途
+   * - ``society.ask(question)``
+     - 通过辅助器规划只读查询，可检查画像、询问目标 Agent 或查询环境。
+   * - ``society.intervene(instruction)``
+     - 允许调用环境写工具，具体操作由挂载模块提供。
+   * - ``society.step(tick)`` / ``run(num_steps, tick)``
+     - 推进参与者、环境与仿真时钟。
+
+查询画像中的已有字段时，可明确请求 ``get_agent_profile``；需要参与者作答时，明确 Agent 编号并请求 ``ask_agents``。只读查询仍可能留下日志；它不会自动推进仿真时钟。详细交互方法见 :doc:`interaction`。
+
+扩展与后续步骤
 --------------
 
-环境模块允许智能体与特定功能进行交互：
+* :doc:`research_workflow`：组织研究问题、假设与实验，保留可检查的中间产物。
+* :doc:`datasets`：准备画像、环境输入或比较数据。
+* :doc:`custom_modules`：实现自己的 Agent 或环境工具。
+* :doc:`agent_skills`：扩展仿真参与者的行为能力。
+* :doc:`examples`：查看仓库中的入门、博弈和进阶示例。
 
-.. code-block:: python
-
-   import asyncio
-   from datetime import datetime
-   from pathlib import Path
-
-   from agentsociety2.env import EnvBase, tool, CodeGenRouter
-   from agentsociety2.society import AgentSociety
-
-   class MyEnvironment(EnvBase):
-       """A custom environment module."""
-
-       @tool(readonly=True, kind="observe")
-       def get_weather(self, agent_id: int) -> str:
-           """Get current weather."""
-           return "The weather is sunny, temperature 25°C."
-
-       @tool(readonly=False)
-       def set_mood(self, agent_id: int, mood: str) -> str:
-           """Change agent's mood."""
-           return f"Agent {agent_id}'s mood is now {mood}."
-
-   async def main():
-       agent_specs = [{"id": 1, "profile": {"name": "Bob"}, "config": {}}]
-       env_router = CodeGenRouter(env_modules=[MyEnvironment()])
-       society = AgentSociety(
-           agent_specs=agent_specs,
-           agent_class_name="PersonAgent",
-           env_router=env_router,
-           start_t=datetime.now(),
-           run_dir=Path("run"),
-       )
-       await society.init()
-       response = await society.ask("What's the weather like?")
-       print(response)
-       await society.close()
-
-   if __name__ == "__main__":
-       asyncio.run(main())
-
-使用 CLI 运行实验
-------------------
-
-AgentSociety 2 提供了一个强大的 CLI 用于运行实验。
-
-**前台运行（调试）:**
-
-.. code-block:: bash
-
-   python -m agentsociety2.society.cli \
-       --config my_experiment/init/init_config.json \
-       --steps my_experiment/init/steps.yaml \
-       --run-dir my_experiment/run \
-       --log-level DEBUG
-
-**后台运行（生产）:**
-
-.. code-block:: bash
-
-   python -m agentsociety2.society.cli \
-       --config my_experiment/init/init_config.json \
-       --steps my_experiment/init/steps.yaml \
-       --run-dir my_experiment/run \
-       --log-level INFO \
-       --log-file my_experiment/run/output.log &
-
-**重要**: 后台运行时必须指定 ``--log-file`` 参数。
-
-更多详情请参见 :doc:`cli`。
-
-运行实验（代码方式）
---------------------
-
-下面是一个使用 AgentSociety 2 的多智能体完整实验示例：
-
-.. code-block:: python
-
-   import asyncio
-   from datetime import datetime
-   from pathlib import Path
-   from agentsociety2.env import CodeGenRouter
-   from agentsociety2.contrib.env import SimpleSocialSpace
-   from agentsociety2.society import AgentSociety
-
-   async def main():
-       # 1) 声明 agent 元数据
-       agent_specs = [
-           {"id": i, "profile": {"name": f"Player{i}", "personality": "competitive"}, "config": {}}
-           for i in range(1, 4)
-       ]
-       names = [(s["id"], s["profile"]["name"]) for s in agent_specs]
-
-       # 2) 环境路由器（replay 默认开启，写入 run_dir/replay/）
-       env_router = CodeGenRouter(env_modules=[SimpleSocialSpace(agent_id_name_pairs=names)])
-
-       # 3) 创建并初始化 society
-       society = AgentSociety(
-           agent_specs=agent_specs,
-           agent_class_name="PersonAgent",
-           env_router=env_router,
-           start_t=datetime.now(),
-           run_dir=Path("run"),
-       )
-       await society.init()
-
-       # 4) 逐个询问（低频外部查询，在主进程内按需 from_workspace 重建目标 agent）
-       for spec in agent_specs:
-           response = await society.ask(
-               f"Tell {spec['profile']['name']} to introduce themselves to the group!"
-           )
-           print(f"{spec['profile']['name']}: {response}")
-
-       await society.close()
-
-   if __name__ == "__main__":
-       asyncio.run(main())
-
-.. note::
-
-   ``ReplayWriter`` 现在把 replay dataset 写入 ``run/replay/`` 的 sharded JSONL，
-   并用 ``_schema.json`` 保存 catalog。``PersonAgent`` 的本地状态、thread 和工具日志
-   会落在 ``run/agents/agent_xxxx/`` 目录，而不是旧 SQLite 的 ``agent_status`` /
-   ``agent_profile`` 表。
-
-下一步
-----------
-
-既然您已经掌握了基础知识，可以继续探索：
-
-* :doc:`agents` - 详细了解智能体
-* :doc:`env_modules` - 创建自定义环境模块
-* :doc:`concepts` - 理解核心概念
-* :doc:`architecture` - 系统架构与 Ray 执行模型
-* :doc:`storage` - 了解回放系统
-* :doc:`examples` - 查看更多示例
-
-常见模式
----------------
-
-只读查询
-~~~~~~~~~~~~~~~~
-
-对于不修改状态的查询，使用 ``society.ask()``：
-
-.. code-block:: python
-
-   # society.ask() ensures read-only access
-   response = await society.ask("What agents are in the simulation?")
-
-进行修改
-~~~~~~~~~~~~~~
-
-对于修改环境的操作，使用 ``society.intervene()``：
-
-.. code-block:: python
-
-   # society.intervene() allows environment modifications
-   result = await society.intervene("Make everyone feel better")
-
-查询特定智能体
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-向特定智能体提问：
-
-.. code-block:: python
-
-   # Ask a specific agent
-   response = await society.ask(
-       "Alice, what are your thoughts on the current situation?"
-   )
+完整研究不要求手写全部编排代码；工作台与研究技能的使用方式见 :doc:`user_guide`、:doc:`skills`。

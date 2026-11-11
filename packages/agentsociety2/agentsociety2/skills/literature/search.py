@@ -1,7 +1,7 @@
-"""Literature search and workspace persistence.
+"""文献检索与工作区持久化。
 
-Search academic literature via MCP, save Markdown metadata, and optionally
-download open-access PDFs into the workspace index.
+通过 MCP 检索学术文献、保存 Markdown 元数据，并可选地将开放获取的
+PDF 下载到工作区索引中。
 """
 
 from __future__ import annotations
@@ -46,20 +46,19 @@ async def search_literature_and_save(
     enable_multi_query: bool = False,
     download_full_text: bool = True,
 ) -> dict[str, Any]:
-    """Search for literature and save results to workspace
+    """检索文献并将结果保存到工作区
 
-    :param query: Search query (supports Chinese, will be translated to English)
-    :param workspace_path: Path to workspace directory
-    :param router: Optional litellm router. When omitted, the default LLM
-        dispatcher is used.
-    :param limit: Number of articles to return (default: 10)
-    :param year_from: Filter by publication year (start)
-    :param year_to: Filter by publication year (end)
-    :param sources: Data sources to search (default: all sources)
-    :param enable_multi_query: Enable multi-query mode to split complex queries into subtopics
-    :param download_full_text: After saving metadata, try to download open-access PDFs
+    :param query: 检索词（支持中文，会自动翻译成英文）
+    :param workspace_path: 工作区目录路径
+    :param router: 可选的 litellm router；省略时使用默认的 LLM dispatcher。
+    :param limit: 返回的文章数量（默认：10）
+    :param year_from: 按发表年份过滤（起始）
+    :param year_to: 按发表年份过滤（结束）
+    :param sources: 要检索的数据源（默认：全部来源）
+    :param enable_multi_query: 启用多查询模式，将复杂查询拆分为子主题
+    :param download_full_text: 保存元数据后，尝试下载开放获取的 PDF
 
-    :returns: Dictionary with search results and saved file information
+    :returns: 包含检索结果与已保存文件信息的字典
     """
     # Build call kwargs
     call_kwargs: dict[str, Any] = {
@@ -132,15 +131,14 @@ async def generate_summary(
     total: int,
     router: Any | None = None,
 ) -> str:
-    """Generate a summary using LLM to guide users on next steps
+    """使用 LLM 生成摘要，引导用户进行后续步骤
 
-    :param query: Original search query
-    :param articles: List of found articles
-    :param total: Total number of articles found
-    :param router: Optional LLM router. When omitted, the default LLM
-        dispatcher is used.
+    :param query: 原始检索词
+    :param articles: 已找到的文章列表
+    :param total: 找到的文章总数
+    :param router: 可选的 LLM router；省略时使用默认的 LLM dispatcher。
 
-    :returns: Generated summary text
+    :returns: 生成的摘要文本
     """
     try:
         # Prepare article summaries for LLM context
@@ -222,12 +220,12 @@ async def _save_literature_to_workspace(
     result: dict[str, Any],
     workspace_path: Path,
 ) -> list[str]:
-    """Save literature search results to workspace papers directory
+    """将文献检索结果保存到工作区 papers 目录
 
-    :param result: Literature search result dictionary
-    :param workspace_path: Path to workspace directory
+    :param result: 文献检索结果字典
+    :param workspace_path: 工作区目录路径
 
-    :returns: List of saved file paths
+    :returns: 已保存文件路径的列表
     """
     if not workspace_path:
         logger.warning("Workspace path not set, cannot save literature files")
@@ -358,13 +356,13 @@ async def _save_literature_to_workspace(
 
 
 def format_search_results(articles: list, total: int, query: str) -> str:
-    """Format search results for display
+    """格式化检索结果用于展示
 
-    :param articles: List of article dictionaries
-    :param total: Total number of articles
-    :param query: Search query
+    :param articles: 文章字典列表
+    :param total: 文章总数
+    :param query: 检索词
 
-    :returns: Formatted string for display
+    :returns: 用于展示的格式化字符串
     """
     if not articles:
         return f"No articles found related to '{query}'."
@@ -412,11 +410,11 @@ def format_search_results(articles: list, total: int, query: str) -> str:
 
 
 def load_literature_index(workspace_path: Path) -> LiteratureIndex | None:
-    """Load literature index from workspace
+    """从工作区加载文献索引
 
-    :param workspace_path: Path to workspace directory
+    :param workspace_path: 工作区目录路径
 
-    :returns: LiteratureIndex object or None if file doesn't exist
+    :returns: LiteratureIndex 对象；文件不存在时返回 None
     """
     json_filepath = workspace_path / "papers" / "literature_index.json"
     if not json_filepath.exists():

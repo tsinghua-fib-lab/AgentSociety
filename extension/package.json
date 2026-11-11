@@ -2,7 +2,7 @@
   "name": "ai-social-scientist",
   "displayName": "AI Social Scientist",
   "description": "AI Social Scientist - Next-generation human-AI interaction interface for social science research",
-  "version": "1.8.1",
+  "version": "1.9.0",
   "publisher": "tsinghua-fib-lab",
   "license": "Apache-2.0",
   "homepage": "https://github.com/tsinghua-fib-lab/agentsociety",
@@ -191,7 +191,7 @@
       "aiSocialScientist": [
         {
           "id": "projectStructureView",
-          "name": "Project Structure",
+          "name": "%view.aiSocialScientist.projectStructureView.name%",
           "when": "workspaceFolderCount > 0"
         }
       ]
@@ -208,172 +208,172 @@
     "commands": [
       {
         "command": "aiSocialScientist.initProject",
-        "title": "AI Social Scientist: Initialize Research Project",
+        "title": "%command.aiSocialScientist.initProject.title%",
         "icon": "$(add)"
       },
       {
         "command": "aiSocialScientist.openChat",
-        "title": "AI Social Scientist: Open AI Chat",
+        "title": "%command.aiSocialScientist.openChat.title%",
         "icon": "$(comment-discussion)"
       },
       {
         "command": "aiSocialScientist.selectAiChat",
-        "title": "AI Social Scientist: 选择 AI Chat 提供商",
+        "title": "%command.aiSocialScientist.selectAiChat.title%",
         "icon": "$(comment-discussion)"
       },
       {
         "command": "aiSocialScientist.deleteLiterature",
-        "title": "AI Social Scientist: 删除文献",
+        "title": "%command.aiSocialScientist.deleteLiterature.title%",
         "icon": "$(trash)"
       },
       {
         "command": "aiSocialScientist.renameLiterature",
-        "title": "AI Social Scientist: 重命名文献",
+        "title": "%command.aiSocialScientist.renameLiterature.title%",
         "icon": "$(edit)"
       },
       {
         "command": "aiSocialScientist.viewLiteratureIndex",
-        "title": "AI Social Scientist: 打开文献库",
+        "title": "%command.aiSocialScientist.viewLiteratureIndex.title%",
         "icon": "$(library)"
       },
       {
         "command": "aiSocialScientist.syncLiteratureLibrary",
-        "title": "AI Social Scientist: 同步完善文献库",
+        "title": "%command.aiSocialScientist.syncLiteratureLibrary.title%",
         "icon": "$(sync)"
       },
       {
         "command": "aiSocialScientist.exportLiteratureBibCopy",
-        "title": "AI Social Scientist: 复制文献 BibTeX",
+        "title": "%command.aiSocialScientist.exportLiteratureBibCopy.title%",
         "icon": "$(copy)"
       },
       {
         "command": "aiSocialScientist.exportLiteratureBibFile",
-        "title": "AI Social Scientist: 导出 library.bib",
+        "title": "%command.aiSocialScientist.exportLiteratureBibFile.title%",
         "icon": "$(export)"
       },
       {
         "command": "aiSocialScientist.importLiteratureBib",
-        "title": "AI Social Scientist: 导入 BibTeX",
+        "title": "%command.aiSocialScientist.importLiteratureBib.title%",
         "icon": "$(desktop-download)"
       },
       {
         "command": "aiSocialScientist.openPdfPreview",
-        "title": "AI Social Scientist: 预览 PDF",
+        "title": "%command.aiSocialScientist.openPdfPreview.title%",
         "icon": "$(file-pdf)"
       },
       {
         "command": "aiSocialScientist.openHtmlReport",
-        "title": "AI Social Scientist: 预览 HTML 报告",
+        "title": "%command.aiSocialScientist.openHtmlReport.title%",
         "icon": "$(open-preview)"
       },
       {
         "command": "aiSocialScientist.openTreeFileInEditor",
-        "title": "AI Social Scientist: Open in Editor",
+        "title": "%command.aiSocialScientist.openTreeFileInEditor.title%",
         "icon": "$(go-to-file)"
       },
       {
         "command": "aiSocialScientist.openMarkdownInEditor",
-        "title": "AI Social Scientist: 在编辑器中打开 Markdown",
+        "title": "%command.aiSocialScientist.openMarkdownInEditor.title%",
         "icon": "$(markdown)"
       },
       {
         "command": "agentsociety.viewPrefillParams",
-        "title": "AI Social Scientist: View Prefill Parameters",
+        "title": "%command.agentsociety.viewPrefillParams.title%",
         "icon": "$(settings)"
       },
       {
         "command": "aiSocialScientist.openReplay",
-        "title": "AI Social Scientist: Open Simulation Replay",
+        "title": "%command.aiSocialScientist.openReplay.title%",
         "icon": "$(play-circle)"
       },
       {
         "command": "aiSocialScientist.startBackend",
-        "title": "AI Social Scientist: Start Backend Service",
+        "title": "%command.aiSocialScientist.startBackend.title%",
         "icon": "$(play)"
       },
       {
         "command": "aiSocialScientist.stopBackend",
-        "title": "AI Social Scientist: Stop Backend Service",
+        "title": "%command.aiSocialScientist.stopBackend.title%",
         "icon": "$(stop)"
       },
       {
         "command": "aiSocialScientist.restartBackend",
-        "title": "AI Social Scientist: Restart Backend Service",
+        "title": "%command.aiSocialScientist.restartBackend.title%",
         "icon": "$(refresh)"
       },
       {
         "command": "aiSocialScientist.showBackendLogs",
-        "title": "AI Social Scientist: Show Backend Logs",
+        "title": "%command.aiSocialScientist.showBackendLogs.title%",
         "icon": "$(output)"
       },
       {
         "command": "aiSocialScientist.openConfigPage",
-        "title": "AI Social Scientist: 打开配置",
+        "title": "%command.aiSocialScientist.openConfigPage.title%",
         "icon": "$(settings)"
       },
       {
         "command": "aiSocialScientist.openHelpPage",
-        "title": "AI Social Scientist: 使用指南",
+        "title": "%command.aiSocialScientist.openHelpPage.title%",
         "icon": "$(book)"
       },
       {
         "command": "aiSocialScientist.openClaudeCodeConfig",
-        "title": "AI Social Scientist: Claude Code 配置（配置页）",
+        "title": "%command.aiSocialScientist.openClaudeCodeConfig.title%",
         "icon": "$(key)"
       },
       {
         "command": "aiSocialScientist.openWalkthrough",
-        "title": "AI Social Scientist: 打开快速入门",
+        "title": "%command.aiSocialScientist.openWalkthrough.title%",
         "icon": "$(map)"
       },
       {
         "command": "aiSocialScientist.openSkillMarketplace",
-        "title": "AI Social Scientist: 技能管理",
+        "title": "%command.aiSocialScientist.openSkillMarketplace.title%",
         "icon": "$(extensions)"
       },
       {
         "command": "aiSocialScientist.openSkillSourcesSettings",
-        "title": "AI Social Scientist: Agent 技能源（设置）",
+        "title": "%command.aiSocialScientist.openSkillSourcesSettings.title%",
         "icon": "$(repo)"
       },
       {
         "command": "aiSocialScientist.openClaudeSkillSourcesSettings",
-        "title": "AI Social Scientist: Claude 技能源（设置）",
+        "title": "%command.aiSocialScientist.openClaudeSkillSourcesSettings.title%",
         "icon": "$(repo)"
       },
       {
         "command": "aiSocialScientist.refreshProjectView",
-        "title": "AI Social Scientist: Refresh Project View",
+        "title": "%command.aiSocialScientist.refreshProjectView.title%",
         "icon": "$(refresh)"
       },
       {
         "command": "aiSocialScientist.formatJsonFile",
-        "title": "AI Social Scientist: Format and View JSON",
+        "title": "%command.aiSocialScientist.formatJsonFile.title%",
         "icon": "$(json)"
       },
       {
         "command": "aiSocialScientist.viewStepsYaml",
-        "title": "AI Social Scientist: View Steps Timeline",
+        "title": "%command.aiSocialScientist.viewStepsYaml.title%",
         "icon": "$(list-ordered)"
       },
       {
         "command": "aiSocialScientist.copyFilePath",
-        "title": "AI Social Scientist: 复制路径",
+        "title": "%command.aiSocialScientist.copyFilePath.title%",
         "icon": "$(copy)"
       },
       {
         "command": "aiSocialScientist.copyAtReference",
-        "title": "AI Social Scientist: 复制 @引用",
+        "title": "%command.aiSocialScientist.copyAtReference.title%",
         "icon": "$(quote)"
       },
       {
         "command": "aiSocialScientist.viewJsonFile",
-        "title": "AI Social Scientist: View JSON",
+        "title": "%command.aiSocialScientist.viewJsonFile.title%",
         "icon": "$(json)"
       },
       {
         "command": "aiSocialScientist.viewCsvFile",
-        "title": "AI Social Scientist: 表格预览 (CSV/TSV)",
+        "title": "%command.aiSocialScientist.viewCsvFile.title%",
         "icon": "$(table)"
       },
       {
@@ -383,32 +383,32 @@
       },
       {
         "command": "aiSocialScientist.viewYamlFile",
-        "title": "AI Social Scientist: View YAML",
+        "title": "%command.aiSocialScientist.viewYamlFile.title%",
         "icon": "$(file-code)"
       },
       {
         "command": "aiSocialScientist.viewAnalysisHarnessStatus",
-        "title": "AI Social Scientist: 分析阶段状态",
+        "title": "%command.aiSocialScientist.viewAnalysisHarnessStatus.title%",
         "icon": "$(list-tree)"
       },
       {
         "command": "aiSocialScientist.openInExplorer",
-        "title": "AI Social Scientist: 在系统中打开",
+        "title": "%command.aiSocialScientist.openInExplorer.title%",
         "icon": "$(folder)"
       },
       {
         "command": "aiSocialScientist.exportWorkspaceZip",
-        "title": "导出工作区为 .zip 分享包",
+        "title": "%command.aiSocialScientist.exportWorkspaceZip.title%",
         "icon": "$(cloud-download)"
       },
       {
         "command": "aiSocialScientist.importWorkspaceZip",
-        "title": "从 .zip 分享包导入工作区",
+        "title": "%command.aiSocialScientist.importWorkspaceZip.title%",
         "icon": "$(cloud-upload)"
       },
       {
         "command": "aiSocialScientist.toggleLanguage",
-        "title": "AI Social Scientist: 切换中英文",
+        "title": "%command.aiSocialScientist.toggleLanguage.title%",
         "icon": "$(globe)"
       }
     ],
@@ -857,7 +857,8 @@
     "package": "vsce package -o ai-social-scientist.vsix",
     "package:check": "npm run check && npm run package",
     "lint": "eslint src",
-    "test:gateway": "npm run check-types && node --test test/*.test.js"
+    "test:gateway": "npm run check-types && node --test test/*.test.js",
+    "docs:check-assets": "node scripts/check-doc-assets.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

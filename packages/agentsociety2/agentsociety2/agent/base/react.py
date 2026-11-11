@@ -1,10 +1,10 @@
 """ReAct 循环基础数据结构与脚手架。
 
-中文：提供 ReAct 循环的数据结构（``ReactDecision`` / ``ReactToolResult``）。
+中文：提供 ReAct 循环的数据结构（``ReactDecision`` / ``ReactToolResult`` ）。
 English: Provides the ReAct loop data structures (``ReactDecision`` / ``ReactToolResult``).
 
 具体的 ReAct 循环编排(消息构建、LLM 调度、工具执行)位于 agent 子类及其
-支撑模块(``person_prompt.py``、``person_tools.py``)。本模块只持有共享的
+支撑模块(``person_prompt.py`` 、``person_tools.py``)。本模块只持有共享的
 dataclass,使基础工具分发与 person 专属 react 循环引用同一份规范定义。
 """
 
@@ -48,9 +48,9 @@ class ReactTurn:
     provider 的 prompt-prefix 缓存才能跨轮增长而非每轮重置。
 
     :param decisions: 解析出的决策(响应不可用时为空)。
-    :param error: schema/解析错误文本;轮次干净时为 ``""``。
+    :param error: schema/解析错误文本;轮次干净时为 ``""`` 。
     :param assistant_message: 待追加的规范化 assistant 消息;provider 未
-        返回任何可追加内容(无 choices / 无 content)时为 ``None``。
+        返回任何可追加内容(无 choices / 无 content)时为 ``None`` 。
     """
 
     decisions: list[ReactDecision]

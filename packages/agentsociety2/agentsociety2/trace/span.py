@@ -8,7 +8,7 @@ from typing import Any
 
 @dataclass
 class TraceSpan:
-    """Runtime span carrying OpenTelemetry-compatible fields."""
+    """保存 OpenTelemetry 兼容字段的运行时追踪片段（span）。"""
 
     trace_id: str
     span_id: str

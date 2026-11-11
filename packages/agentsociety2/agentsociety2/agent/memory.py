@@ -129,13 +129,18 @@ class MemoryExtractionResult(BaseModel):
     """步骤记忆抽取的函数调用结果。
 
     :param memories: 从单个步骤抽取出的记忆点。
+    :type memories: ``list[ExtractedMemoryEpisode]``
     """
 
     memories: list[ExtractedMemoryEpisode] = Field(default_factory=list, max_length=8)
 
 
 class MemoryConsolidationResult(BaseModel):
-    """Legacy public result model retained for SDK import compatibility."""
+    """为保持 SDK 导入兼容性而保留的记忆合并结果模型。
+
+    :param memory_md: 合并后的长期记忆 Markdown 文本。
+    :type memory_md: str
+    """
 
     memory_md: str = Field(min_length=1, max_length=20000)
 

@@ -1,20 +1,6 @@
-"""
-Modules API router
+"""查询可用的智能体类和环境模块。
 
-Provides endpoints for listing available agent classes and environment modules.
-Supports both built-in modules and custom modules from the workspace.
-
-关联文件：
-- @extension/src/apiClient.ts - API客户端（调用getAgentClasses, getEnvModules）
-- @extension/src/prefillParamsViewProvider.ts - 预填充参数查看器
-- @extension/src/simSettingsEditorProvider.ts - SIM_SETTINGS编辑器
-- @packages/agentsociety2/agentsociety2/registry/ - 模块注册表
-
-API端点：
-- GET /api/v1/modules/agent_classes - 获取所有可用的Agent类
-- GET /api/v1/modules/env_module_classes - 获取所有可用的Environment模块类
-- GET /api/v1/modules/refresh - 刷新模块列表（重新扫描）
-"""
+为配置编辑器提供内置模块与工作区自定义模块的元数据。模块发现与注册由 :class:`agentsociety2.registry.ModuleRegistry` 提供；HTTP 路径和参数见运行中后端的 Swagger 文档。"""
 
 from __future__ import annotations
 
@@ -38,7 +24,7 @@ router = APIRouter(prefix="/api/v1/modules", tags=["modules"])
 
 
 def _get_workspace_path() -> str:
-    """Get workspace path from environment variable"""
+    """从环境变量获取工作区路径"""
     workspace_path = os.getenv("WORKSPACE_PATH")
     if not workspace_path:
         raise HTTPException(
@@ -49,7 +35,7 @@ def _get_workspace_path() -> str:
 
 
 def _load_custom_modules_if_needed() -> None:
-    """Load custom modules if workspace is configured"""
+    """已配置工作区时加载自定义模块"""
     try:
         workspace_path = os.getenv("WORKSPACE_PATH")
         if workspace_path:
@@ -67,14 +53,13 @@ def _load_custom_modules_if_needed() -> None:
 async def get_agent_classes(
     include_custom: bool = Query(True, description="是否包含自定义模块"),
 ) -> dict[str, Any]:
-    """
-    获取所有可用的Agent类列表
+    """获取所有可用的Agent类列表
 
     返回系统中所有已注册的Agent类，包括内置和自定义模块。
 
     :param include_custom: 是否包含自定义模块，默认True
 
-    :returns: Dict[str, Any]: 包含Agent类信息的响应： - success: 是否成功 - agents: Agent类字典，键为类型名，值为： - type: 类型名 - class_name: 类名 - description: 描述 - is_custom: 是否为自定义模块 - count: Agent类总数
+    :returns: Dict[str, Any]: 包含Agent类信息的响应： - success: 是否成功 - agents: Agent类字典，键为类型名，值为： - type: 类型名 - ``class_name``: 类名 - description: 描述 - ``is_custom``: 是否为自定义模块 - count: Agent类总数
     :raises HTTPException: 500 - 获取Agent类失败
     """
     try:
@@ -122,14 +107,13 @@ async def get_agent_classes(
 async def get_env_module_classes(
     include_custom: bool = Query(True, description="是否包含自定义模块"),
 ) -> dict[str, Any]:
-    """
-    获取所有可用的环境模块类列表
+    """获取所有可用的环境模块类列表
 
     返回系统中所有已注册的环境模块类，包括内置和自定义模块。
 
     :param include_custom: 是否包含自定义模块，默认True
 
-    :returns: Dict[str, Any]: 包含环境模块类信息的响应： - success: 是否成功 - modules: 环境模块类字典，键为类型名，值为： - type: 类型名 - class_name: 类名 - description: 描述 - is_custom: 是否为自定义模块 - count: 模块类总数
+    :returns: Dict[str, Any]: 包含环境模块类信息的响应： - success: 是否成功 - modules: 环境模块类字典，键为类型名，值为： - type: 类型名 - ``class_name``: 类名 - description: 描述 - ``is_custom``: 是否为自定义模块 - count: 模块类总数
     :raises HTTPException: 500 - 获取环境模块类失败
     """
     try:
@@ -177,14 +161,13 @@ async def get_env_module_classes(
 async def get_all_modules(
     include_custom: bool = Query(True, description="是否包含自定义模块"),
 ) -> dict[str, Any]:
-    """
-    获取所有可用的模块类
+    """获取所有可用的模块类
 
     一次性返回所有Agent类和环境模块类，减少请求次数。
 
     :param include_custom: 是否包含自定义模块，默认True
 
-    :returns: Dict[str, Any]: 包含所有模块信息的响应： - success: 是否成功 - agents: Agent类字典 - agent_count: Agent类数量 - env_modules: 环境模块类字典 - env_module_count: 环境模块类数量
+    :returns: Dict[str, Any]: 包含所有模块信息的响应： - success: 是否成功 - agents: Agent类字典 - ``agent_count``: Agent类数量 - ``env_modules``: 环境模块类字典 - ``env_module_count``: 环境模块类数量
     :raises HTTPException: 500 - 获取模块失败
     """
     try:

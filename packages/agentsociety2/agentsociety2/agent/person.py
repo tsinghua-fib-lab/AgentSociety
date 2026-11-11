@@ -2,7 +2,7 @@
 
 中文：``PersonAgent`` 现在只负责 person 专属逻辑（memory、todo、person prompt、
 observe），通用的 agent 机器（workspace / skill / tool / react）已下沉到
-``agent.base``。
+``agent.base`` 。
 English: ``PersonAgent`` now owns only person-specific logic (memory, todo,
 person prompt, observe).  The generic agent machinery (workspace / skill /
 tool / react) has been pushed down into ``agent.base``.
@@ -59,13 +59,11 @@ class PersonAgent(AgentBase):
       ``memory_*`` 工具分发。
     - ``todo_*`` 工具分发(通用 TODO 状态存储与辅助方法位于
       :class:`AgentBase`;PersonAgent 把 ``todo_*`` 前缀路由过去)。
-    - person 提示词构建(``build_react_messages``),即通用 ReAct 循环调用的
-      提示词 hook。
+    - person 提示词构建(``build_react_messages``),即通用 ReAct 循环调用的提示词 hook。
     - ``step`` / ``ask`` 编排(observe + react 循环 + 生命周期 hook)。
 
-    通用 agent 机器(workspace 绑定、skill 发现、文件/skill/ask_env 工具分发、
-    ReAct 循环、LLM 分发、响应解析、TODO 状态、trace span、AGENT.json 持久化、
-    构造模型)全部继承自 :class:`AgentBase`。
+    通用 agent 机器(workspace 绑定、skill 发现、文件``/skill/ask_env`` 工具分发、
+    ReAct 循环、LLM 分发、响应解析、TODO 状态、trace span、AGENT.json 持久化、构造模型)全部继承自 :class:`AgentBase` 。
     """
 
     # ==================== Workspace contract ====================
@@ -124,8 +122,7 @@ Minimal config example:
     def _apply_person_config(self) -> None:
         """从 ``self._config`` 解析 person 专属配置字段。
 
-        在基类 restore 之后由 :meth:`restore` 调用。通用 react 循环 / 工具
-        开关(``_max_react_turns``、``_enable_todo_list``)已改由
+        在基类 restore 之后由 :meth:`restore` 调用。通用 react 循环 / 工具开关(``_max_react_turns`` 、``_enable_todo_list``)已改由
         :meth:`AgentBase.restore` 解析;本方法只解析 person 专属的记忆配置。
         """
         cfg = self._config
@@ -169,7 +166,7 @@ Minimal config example:
         self._build_memory_runtime()
 
     def _build_memory_runtime(self) -> None:
-        """构建绑定到本 agent 的 ``PersonMemoryRuntime``。"""
+        """构建绑定到本 agent 的 ``PersonMemoryRuntime`` 。"""
         from agentsociety2.agent.memory import MemoryConsolidationConfig
 
         cfg = self._config
@@ -216,8 +213,8 @@ Minimal config example:
     async def to_workspace(self, workspace_path: Path) -> None:
         """把当前动态状态写回 workspace。
 
-        写入 ``AGENT.json``(profile / step_count / current_time / skills /
-        initialized_at)。``config.json`` 不会被重写。记忆(``MEMORY.md`` +
+        写入 ``AGENT.json``(profile / ``step_count`` / ``current_time`` / skills /
+        ``initialized_at``)。``config.json`` 不会被重写。记忆(``MEMORY.md`` +
         episodes)在 ``step()`` 期间经记忆运行时的 ``after_step`` 路径持久化。
 
         :param workspace_path: agent workspace 根目录。
@@ -303,12 +300,12 @@ Minimal config example:
 
         这里处理的 person 专属前缀:
 
-        - ``memory_*`` → :meth:`_dispatch_memory_tool` (person 记忆运行时)。
+        - ``memory_*`` → ``_dispatch_memory_tool`` (person 记忆运行时)。
         - ``todo_*`` → :meth:`dispatch_todo_tool` (继承自
           :class:`AgentBase`;通用 TODO 存储 + 参数归一化)。
 
-        其余所有动作(workspace / skill / ask_env)委托给
-        ``await super().dispatch_react_tool(action, args, readonly=readonly)``。
+        其余所有动作(workspace / skill / ``ask_env``)委托给
+        ``await super().dispatch_react_tool(action, args, readonly=readonly)`` 。
         """
         try:
             if readonly and action.startswith("todo_") and action != "todo_list":
@@ -329,9 +326,8 @@ Minimal config example:
         """按模式替换 ``finish`` 工具。
 
         - ask / readonly 模式: 仅含答案的 ``finish``(外部问题)。
-        - step 模式: ``finish`` 带简短 ``final`` 且内联 ``memories``,让模型
-          在结束 step 的同一次调用里记录 step 记忆,从而省去单独的记忆抽取
-          LLM 调用。``step()`` 把捕获到的记忆送入 ``memory_runtime.after_step``。
+        - step 模式: ``finish`` 带简短 ``final`` 且内联 ``memories``,让模型在结束 step 的同一次调用里记录 step 记忆,从而省去单独的记忆抽取
+          LLM 调用。``step()`` 把捕获到的记忆送入 ``memory_runtime.after_step`` 。
         """
         from agentsociety2.agent.person_tools import (
             finish_ask_tool_schema,
@@ -369,7 +365,7 @@ Minimal config example:
 
         把 AGENT.json 内容拆成布局所需的两个 prompt 块:运行期稳定的
         ``<agent>`` 身份视图(剥离易变与宿主路径字段)和逐 step 的
-        ``<turn_state>``。两者来自同一源 dict,因此不会漂移失配。
+        ``<turn_state>`` 。两者来自同一源 dict,因此不会漂移失配。
         """
         return build_react_messages(
             base_rules_override=_str_override(self._prompt_overrides, "base_rules"),
@@ -429,17 +425,15 @@ Minimal config example:
         ``<todo_context>`` 与系统 ``<skill_content>`` 块若不刷新,就会在 step
         余下部分保持过期。
 
-        - TODO 变更重发 ``<todo_context>``:它聚合单个工具 observation 不含的
-          状态(``due_now``、``overdue_or_blocked``、``counts``)。
+        - TODO 变更重发 ``<todo_context>``:它聚合单个工具 observation 不含的状态(``due_now`` 、``overdue_or_blocked`` 、``counts``)。
         - skill 变更只重发激活 skill 的**清单**,不重发其文档:
-          ``activate_skill`` 已把完整 SKILL.md 作为工具 observation 返回,在此
-          重复会使多 KB 块翻倍。清单才是 ``deactivate_skill`` 真正需要的;
+          ``activate_skill`` 已把完整 SKILL.md 作为工具 observation 返回,在此重复会使多 KB 块翻倍。清单才是 ``deactivate_skill`` 真正需要的;
           observation 无法撤回模型已读过的内容。
 
         :param actions: 本轮成功执行的工具动作名列表。
         :param tick: 当前模拟 tick。
         :param t: 当前模拟时间。
-        :returns: 一条 ``role: "user"`` 刷新消息;没有相关变化时返回 ``None``。
+        :returns: 一条 ``role: "user"`` 刷新消息;没有相关变化时返回 ``None`` 。
         """
         blocks: list[str] = []
         if self._enable_todo_list and self._TODO_MUTATING_ACTIONS.intersection(actions):
@@ -511,16 +505,14 @@ Minimal config example:
     _IDLE_SKIP_ACTIVITIES = frozenset({"sleep"})
 
     def _idle_skip_segment(self, pre_hooks: list[dict[str, Any]] | None) -> dict | None:
-        """从 pre_step hook 输出中判定当前是否处于可跳过的静态活动段。
+        """从 ``pre_step`` hook 输出中判定当前是否处于可跳过的静态活动段。
 
-        daily-guidance 的 pre_step hook 以 YAML 返回 ``active_segment``
+        daily-guidance 的 ``pre_step`` hook 以 YAML 返回 ``active_segment``
         (含 activity/start/end 等);活动命中 ``_IDLE_SKIP_ACTIVITIES``
-        即认为该 step 可按剧本确定性执行。任何缺失/解析失败/未开启
-        都返回 ``None``,调用方回退完整 ReAct 路径(fail-open,绝不让
-        优化吞掉判断)。
+        即认为该 step 可按剧本确定性执行。任何缺失/解析失败/未开启都返回 ``None``,调用方回退完整 ReAct 路径(fail-open,绝不让优化吞掉判断)。
 
         :param pre_hooks: ``run_lifecycle_hooks`` 的原始返回项。
-        :returns: 命中的活动段字典,无则 ``None``。
+        :returns: 命中的活动段字典,无则 ``None`` 。
         """
         if not self._idle_skip_enabled or not pre_hooks:
             return None

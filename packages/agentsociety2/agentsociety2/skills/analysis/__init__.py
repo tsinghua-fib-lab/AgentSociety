@@ -1,4 +1,4 @@
-"""Analysis tool layer: data access, execution helpers, output helpers, and path utilities."""
+"""分析工具层：数据访问、执行辅助、输出辅助与路径工具。"""
 
 from .chart_export import export_altair_html, export_plotly_html, export_pygwalker_html
 from .data import ContextLoader, DatabaseSchema, DataReader, DataStats, DataSummary

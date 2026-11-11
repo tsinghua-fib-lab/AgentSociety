@@ -1,10 +1,11 @@
-"""Hypothesis management module
+"""假设管理模块
 
-Provides functionality for:
-- Creating hypotheses
-- Reading hypotheses
-- Listing hypotheses
-- Deleting hypotheses
+提供以下功能：
+
+- 创建假设
+- 读取假设
+- 列出假设
+- 删除假设
 """
 
 from agentsociety2.skills.hypothesis.manager import (

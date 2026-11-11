@@ -4,29 +4,22 @@
 本页介绍 AgentSociety 2 的运行时架构，以及它如何在较大规模的仿真中组织智能体、环境、LLM 调用、
 trace 和 replay 存储。
 
-AgentSociety 2 将智能体状态放在独立 workspace 中，执行时再由 Ray Task 按批重建和推进智能体。
-环境路由、LLM 调度、trace、replay 等运行时组件作为共享服务存在，通过 ``ServiceProxy`` 注入到每个
-智能体。这样做的目标是让智能体数量可以随实验规模增长，而不是为每个智能体长期保留一个进程或 actor。
+AgentSociety 2 将智能体状态放在独立 workspace 中，执行时再由 Ray Task 按批重建和推进智能体。环境路由、LLM 调度、trace、replay 等运行时组件作为共享服务存在，通过 ``ServiceProxy`` 注入到每个智能体。这样做的目标是让智能体数量可以随实验规模增长，而不是为每个智能体长期保留一个进程或 actor。
 
 
 执行模型
 -----------------------------------
 
 每个 ``AgentBase`` 子类的持久状态都保存在自己的 workspace 中，包括 ``config.json``、``AGENT.json``、
-``state/*`` 和 ``.runtime/logs/*``。智能体对象只是在一次任务执行期间从这些文件重建出来的运行时对象；
-一次 ``step()`` 结束后，新的状态会写回 workspace。
+``TODO.json``、``MEMORY.md``、``memory/`` 和 ``state/``。智能体对象只是在一次任务执行期间从这些文件重建出来的运行时对象；一次 ``step()`` 结束后，新的状态会写回 workspace。
 
-这一模型对应 :doc:`agents` 中的 ``create`` / ``from_workspace`` / ``to_workspace`` 契约。对调度器来说，
-一个智能体可以表示为轻量的执行说明：workspace 路径、智能体类型、智能体 id，以及共享的
+这一模型对应 :doc:`agents` 中的 ``create`` / ``from_workspace`` / ``to_workspace`` 契约。对调度器来说，一个智能体可以表示为轻量的执行说明：workspace 路径、智能体类型、智能体 id，以及共享的
 ``ServiceProxy`` 句柄。Ray worker 收到任务后在本地调用 ``from_workspace``，运行 ``step``，再调用
 ``to_workspace`` 持久化结果。智能体对象本身不会在 Ray object store 中来回传递。
 
 环境模块使用一套对称的持久化契约：``EnvBase.to_workspace()`` 负责写出动态状态，
 ``restore()`` 负责恢复。每个模块可以选择自己的状态格式，通常把文件放在
-``<workspace_root>/state/ENV_STATE.json``。路由会在每步结束时调用 ``to_workspaces()``；
-使用 ``--resume`` 时，actor 的 ``init()`` 会通过 ``from_workspaces()`` 重建各模块。恢复发生在
-模块 ``init()`` 之后，因此 checkpoint 中的状态会覆盖初始化时的重置。``AgentSociety`` 自身的状态
-写入 ``SOCIETY.json`` 和 ``SOCIETY_STEP.json``。详见 :doc:`env_modules` 与 :doc:`cli` 的
+``<workspace_root>/state/ENV_STATE.json``。路由会在每步结束时调用 ``to_workspaces()``；使用 ``--resume`` 时，actor 的 ``init()`` 会通过 ``from_workspaces()`` 重建各模块。恢复发生在模块 ``init()`` 之后，因此 checkpoint 中的状态会覆盖初始化时的重置。``AgentSociety`` 自身的状态写入 ``SOCIETY.json`` 和 ``SOCIETY_STEP.json``。详见 :doc:`env_modules` 与 :doc:`cli` 的
 resume 说明。
 
 ``AgentSociety`` 在每个 tick 中执行以下流程：
@@ -36,35 +29,38 @@ resume 说明。
 3. 每个 task 在批内用 ``asyncio.gather`` 并发推进智能体；批之间由 Ray 调度到不同 worker。
 4. 所有批次完成后，调用环境的 ``step``，再推进仿真时钟。
 
-默认批大小为 ``AGENTSOCIETY_BATCH_SIZE=256``（CLI ``--batch-size`` 可覆盖）。每 tick 的
-Ray Task 数 = ⌈N / 批大小⌉，受 ``AGENTSOCIETY_LLM_RAY_MAX_WORKERS``（默认机器 CPU 核数）封顶；
-单个 task 内的并发 fan-out 由批大小决定，每进程的 LLM 并发则由本地 ``LLMClient`` 的 AIMD
-自适应控制（无人工上下限）。
+默认批大小为 ``AGENTSOCIETY_BATCH_SIZE=256``（CLI ``--batch-size`` 可覆盖）。每 tick 提交的 Ray Task 数为 ⌈N / 批大小⌉；同时执行的数量由 Ray 资源预算与调度决定。
+``AGENTSOCIETY_LLM_RAY_MAX_WORKERS`` 配置 Ray 的 CPU 预算，不会减少已提交的批次数。单个 task 内的并发由批大小和本地 ``LLMClient`` 的 AIMD 控制器共同影响。
 
 .. graphviz::
+   :caption: Ray 按批调度，智能体从 workspace 重建并写回状态
+   :alt: Ray 按批调度，智能体从 workspace 重建并写回状态
+   :class: doc-figure
 
    digraph exec_model {
        rankdir=LR;
-       node [shape=box, style=rounded];
+       graph [bgcolor="#ffffff", pad="0.2"];
+       node [shape=box, style="rounded,filled", fillcolor="#f4f7fc", color="#9dafc9", fontname="Arial"];
+       edge [color="#64748b", fontname="Arial", fontsize=10];
 
        Driver [label="AgentSociety (driver)"];
-       Batch [label="step_agent_batch\nRay Task × 批", shape=note];
-       Agent [label="agent.from_workspace()\n无状态重建 + step"];
-       WS [label="workspace\n(磁盘状态)", shape=cylinder];
+       Batch [label="step_agent_batch\nRay task per batch", shape=note];
+       Agent [label="agent.from_workspace()\nRestore + step"];
+       WS [label="workspace\n(persisted state)", shape=cylinder];
 
-       Services [label="共享服务\nenv / llm / trace / replay", style=filled, color=lightyellow];
+       Services [label="Shared services\nenv / llm / trace / replay", style=filled, color=lightyellow];
 
-       Driver -> Batch [label="切批提交"];
+       Driver -> Batch [label="Submit batches"];
        Batch -> Agent;
-       Agent -> WS [label="读写状态"];
-       Agent -> Services [label="经 ServiceProxy"];
+       Agent -> WS [label="Read / write state"];
+       Agent -> Services [label="Via ServiceProxy"];
    }
 
 
 ServiceProxy
 ----------------------------
 
-智能体不直接创建或持有 LLM dispatcher、环境 router、trace actor 或 replay actor。``from_workspace``
+智能体通过注入的服务句柄访问 LLM dispatcher、环境 router、trace writer 与 replay sink。``from_workspace``
 接收一个 ``ServiceProxy``，并在 ``_bind_services(service_proxy)`` 中把相关句柄绑定到智能体实例。
 
 .. list-table::
@@ -87,8 +83,7 @@ ServiceProxy
      - ``service_proxy.trace``
      - trace writer 句柄（通常是 ``TraceProxy``）。
 
-``ServiceProxy`` 只保存可序列化的句柄和配置，不保存锁、连接池或后台线程。Ray Task 因此只需要接收
-一个服务容器；环境 router、trace 与 replay 由 driver 或 CLI 统一创建，LLM client 只携带连接参数，
+``ServiceProxy`` 只保存可序列化的句柄和配置，不保存锁、连接池或后台线程。Ray Task 因此只需要接收一个服务容器；环境 router、trace 与 replay 由 driver 或 CLI 统一创建，LLM client 只携带连接参数，
 worker 在自己的事件循环中按需创建 litellm Router 和并发控制器。
 
 环境路由
@@ -99,7 +94,8 @@ actor，并把 ``EnvRouterProxy`` 放入 ``ServiceProxy``。智能体通过该 p
 ``step``、``init`` 和 ``get_world_description`` 等接口；所有智能体看到的是同一份环境状态。
 
 actor 的 ``max_concurrency`` 取决于挂载模块是否全部声明 ``is_concurrency_safe()``：全部安全时使用
-``AGENTSOCIETY_ENV_ACTOR_MAX_CONCURRENCY``（默认 8），否则为 ``1``。详见 :doc:`env_modules`。
+``AGENTSOCIETY_ENV_ACTOR_MAX_CONCURRENCY``（默认 64），否则为 ``1``。全部模块安全时
+``CodeGenRouter`` 跳过全局执行锁；非安全栈串行执行。详见 :doc:`env_modules`。
 
 路由器（``RouterBase`` 子类）负责把智能体的自然语言请求映射到环境模块暴露的 ``@tool`` 方法：
 
@@ -110,8 +106,7 @@ actor 的 ``max_concurrency`` 取决于挂载模块是否全部声明 ``is_concu
    * - 路由器
      - 特点
    * - ``CodeGenRouter`` (默认)
-     - 从环境模块提取工具签名，生成调用代码并在受限环境中执行；AST 守卫；
-       **仅** ``template_mode=True`` 时启用 FAISS 指令模板缓存；无 observe/statistics
+     - 从环境模块提取工具签名，生成调用代码，经静态验证与 AST 守卫后执行；**仅** ``template_mode=True`` 时启用 FAISS 指令模板缓存；无 observe/statistics
        工具时 init 不跑空桩 LLM 代码生成。
    * - ``ReActRouter``
      - ReAct 式工具选择。
@@ -122,6 +117,9 @@ actor 的 ``max_concurrency`` 取决于挂载模块是否全部声明 ``is_concu
    * - ``SearchToolRouter``
      - 以搜索/检索方式选择工具。
 
+生成代码的执行后端由 ``AGENTSOCIETY_CODE_EXEC_BACKEND`` 选择：默认 ``inprocess`` 在环境进程内直接执行（协作式期限）；设为 ``process`` 时进入独立计算进程，获得硬期限与内存上限。详见
+:doc:`codegen_execution`。
+
 环境模块与 ``@tool`` 装饰器见 :doc:`env_modules` 与 :doc:`concepts`。
 
 LLM 调度
@@ -129,8 +127,7 @@ LLM 调度
 
 LLM 调用由 :mod:`agentsociety2.config.llm_dispatcher` 统一封装。当前实现使用 per-process
 dispatcher：``LLMClient`` 是可序列化的连接配置，只携带 ``model_name``、``base_url`` 和
-``api_key``；它可以随 ``ServiceProxy`` 进入 Ray Task 或 env router actor。
-每个消费者在自己的事件循环中第一次调用 ``call()`` 时，本地创建 litellm ``Router`` 与
+``api_key``；它可以随 ``ServiceProxy`` 进入 Ray Task 或 env router actor。每个消费者在自己的事件循环中第一次调用 ``call()`` 时，本地创建 litellm ``Router`` 与
 ``AdaptiveSemaphore``。这样可以避免跨 Ray task 复用 asyncio 对象导致的 event-loop 绑定问题。
 
 并发控制发生在每个进程 / 事件循环内部：``AdaptiveSemaphore`` 根据近期延迟和 rate-limit 错误做
@@ -161,12 +158,18 @@ AIMD（加性增、乘性减）调整，用于控制该进程内 LLM 请求 fan-
    * - ``AGENTSOCIETY_LLM_SLOW_LATENCY_MS``
      - 未设置
      - 可选的绝对延迟阈值（毫秒）。未设置时只使用相对因子。
+   * - ``AGENTSOCIETY_LLM_API_TYPE``
+     - ``openai``
+     - 接口协议选择：``openai`` 为 Chat Completions，``anthropic`` 为 Messages。
    * - ``AGENTSOCIETY_LLM_THINKING``
      - 未设置
-     - 推理（thinking）总开关，``on`` / ``off``。**未设置时不发送任何新参数**。仅适用于 OpenAI 兼容 chat-completions 接口。
+     - 推理（thinking）总开关，``on`` / ``off``。**未设置时不发送任何新参数**；openai 与 anthropic 接口分别生成对应的开关参数。
    * - ``AGENTSOCIETY_LLM_REASONING_EFFORT``
      - 未设置
-     - 显式 ``reasoning_effort``。``off`` 时缺省回退 ``minimal``；``on`` 时仅在显式设置后发送。
+     - 显式 ``reasoning_effort``。``off`` 时发送 ``none``；``on`` 时默认 ``medium``，显式设置后按该值发送。
+   * - ``AGENTSOCIETY_LLM_THINKING_FORMAT``
+     - 未设置
+     - 显式声明控制字段：``reasoning_effort`` / ``thinking`` / ``enable_thinking`` / ``chat_template_kwargs`` / ``reasoning``。
    * - ``AGENTSOCIETY_LLM_EXTRA_BODY``
      - 未设置
      - JSON 对象字符串，合并进请求的 ``extra_body``，用于网关私有开关（如 ``{"enable_thinking": false}``）。配了它时 ``off`` 只发 ``extra_body``、不发 ``reasoning_effort``。
@@ -180,15 +183,15 @@ AIMD（加性增、乘性减）调整，用于控制该进程内 LLM 请求 fan-
 Trace
 -----------
 
-:mod:`agentsociety2.trace` 提供分布式追踪：
+:mod:`agentsociety2.trace` 提供分布式追踪，采用分布式无锁写入，没有中心 actor：
 
-* ``ShardedTraceWriter`` 按 ``trace_id`` 分片写入，并通过后台线程批量落盘。
+* ``ShardedAppendSink``（别名 ``ShardedTraceWriter``）按 ``trace_id[:2]`` 分片（最多 256 个文件），每个写进程持有自己的实例，以 ``os.open(O_APPEND)`` + ``os.write`` 追加记录，不经过中心写入 actor。共享目录的并发写入语义还取决于底层文件系统，不能用管道的 ``PIPE_BUF`` 保证推断普通文件的行为。
 * ``JsonlTraceWriter`` 提供 ``start_span``、``trace_span``、``record_event``、``end_span`` 和
-  ``TraceSpan``。
-* ``TraceActor`` 是常驻 Ray actor；``TraceProxy`` 是放入 ``ServiceProxy`` 的轻量句柄。
+  ``TraceSpan``，把完成的 span 转发给 sink。
+* ``TraceProxy`` 是放入 ``ServiceProxy`` 的轻量句柄，只携带 trace 目录；各消费者在本地自建
+  ``ShardedAppendSink``。
 
-智能体执行、memory、环境调用和 LLM 调用都可以记录为 span。运行完成后，trace 数据可用于分析慢调用、
-长尾任务和环境工具调用瓶颈。
+智能体执行、memory、环境调用和 LLM 调用都可以记录为 span。运行完成后，trace 数据可用于分析慢调用、长尾任务和环境工具调用瓶颈。
 
 Replay 与存储
 --------------------------

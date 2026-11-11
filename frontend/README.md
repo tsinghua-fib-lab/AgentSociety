@@ -1,133 +1,40 @@
 # AgentSociety UI
 
-[![License](https://img.shields.io/badge/License-MIT-green)](../LICENSE)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue)](../LICENSE)
 
-<p align="center">
-  <a href="#agentsociety-ui">English</a> · <a href="#agentsociety-ui-1">中文</a>
-</p>
+React + TypeScript + Vite dashboard, using Ant Design, Monaco, Plotly and Mapbox/Deck.gl. User documentation: [AgentSociety 2](https://agentsociety2.readthedocs.io/).
 
----
+## Develop and verify
 
-## AgentSociety UI
-
-AgentSociety UI is the **React + Vite** web dashboard for the AgentSociety 2 simulation platform. It provides a web-based interface for managing experiments, viewing simulation results, and configuring research workflows.
-
-### Tech Stack
-
-- **React 19** + **TypeScript**
-- **Vite** (build tool)
-- **Ant Design 6** / **Ant Design Pro Components** (UI framework)
-- **Monaco Editor** (code editing)
-- **Plotly.js** (data visualization)
-- **Deck.gl** / **Mapbox GL** (geospatial visualization)
-- **i18n** (internationalization support)
-
-### Getting Started
+From `frontend/`:
 
 ```bash
-# Install dependencies
-cd frontend
 npm ci
-
-# Start development server
 npm run dev
-
-# Build for production
-npm run build
-
-# Lint (zero warnings)
 npm run lint
-
-# Browser regressions against the production build, with mocked API responses
-npx playwright install chromium
 npm run build
+
+# Browser regressions against the production build (mock API responses)
+npx playwright install chromium
 npm run test:e2e
 ```
 
-The dev server runs at `http://localhost:5173` by default.
+The dev server defaults to `http://localhost:5173`. The current `/api` development proxy targets `http://localhost:80`; adjust [vite.config.ts](vite.config.ts) to your API gateway. The standalone AS2 backend defaults to `127.0.0.1:8001`, with its own `/docs`. Check endpoint compatibility before pointing every dashboard route at that backend: several pages use older `/api/...` contracts, while the skill page uses `/api/v1/agent-skills/...`.
 
-### Backend API
+`npm run test:docs` checks the separately built bilingual documentation, including search and mobile controls. It serves `../docs-preview` by default; set `DOCS_PREVIEW_URL` to reuse a running preview. `DOCS_PYTHON_EXECUTABLE` selects the Python interpreter used for the static server; the default is `../.venv/bin/python`.
 
-The frontend communicates with the AgentSociety 2 backend (FastAPI) running at `http://localhost:8001`. API documentation is available at `http://localhost:8001/docs` when the backend is running.
+From the repository root, `make ci-frontend` runs the same lint/build/browser checks as GitHub and GitLab. After building the documentation with `make ci-docs-build`, use `make ci-docs-browser` for its browser checks. Chromium must be installed first as shown above.
 
-### Project Structure
+Browser regressions use fixtures; they verify rendering and interactions, not a live experiment. `PLAYWRIGHT_CHROMIUM_EXECUTABLE` can select a locally installed Chromium. For extension documentation assets, see [the extension development guide](../extension/docs/DEVELOPMENT.md#文档配图维护).
 
-```
-frontend/
-├── src/
-│   ├── main.tsx              # Entry point
-│   ├── Layout.tsx            # App layout
-│   ├── Menu.tsx              # Navigation menu
-│   ├── pages/                # Route pages
-│   ├── components/           # Shared components
-│   ├── i18n/                 # i18n configuration
-│   ├── utils/                # Utilities
-│   └── types/                # TypeScript type definitions
-├── public/                   # Static assets
-├── index.html
-├── vite.config.ts
-└── package.json
-```
+## 中文说明
 
----
+这是 React + Vite 网页仪表盘。开发、检查、构建、浏览器回归共用上方命令，避免维护两套步骤。页面入口在 `src/pages/`，导航在 `src/Menu.tsx`，国际化资源在 `src/i18n/`。
 
-## AgentSociety UI
+开发代理当前转发到 `localhost:80`，请按实际 API 网关修改 `vite.config.ts`。AS2 独立后端默认是 `127.0.0.1:8001`；部分页面仍使用旧版接口，不能仅改端口就假定所有页面都兼容。浏览器测试使用固定数据，不代表真实实验结果。工作台配图的维护规则见[扩展开发指南](../extension/docs/DEVELOPMENT.md#文档配图维护)。
 
-AgentSociety UI 是 **AgentSociety 2** 仿真平台的 **React + Vite** Web 仪表盘，提供基于 Web 的实验管理、结果查看和研究工作流配置界面。
+## Dependency maintenance
 
-### 技术栈
+Keep `@deck.gl/widgets` and `rc-field-form`: DeckGL and Pro Components import them during bundling even though application code does not. Verify removals with `npm ci` and a production build, then run the browser tests. Plotly's React type declarations belong to development dependencies.
 
-- **React 19** + **TypeScript**
-- **Vite**（构建工具）
-- **Ant Design 6** / **Ant Design Pro Components**（UI 框架）
-- **Monaco Editor**（代码编辑器）
-- **Plotly.js**（数据可视化）
-- **Deck.gl** / **Mapbox GL**（地理空间可视化）
-- **i18n**（国际化支持）
-
-### 快速开始
-
-```bash
-# 安装依赖
-cd frontend
-npm ci
-
-# 启动开发服务器
-npm run dev
-
-# 生产构建
-npm run build
-
-# 代码检查（零警告）
-npm run lint
-
-# 生产构建的浏览器回归测试，API 使用本地模拟响应
-npx playwright install chromium
-npm run build
-npm run test:e2e
-```
-
-开发服务器默认运行在 `http://localhost:5173`。
-
-### 后端 API
-
-前端与 AgentSociety 2 后端（FastAPI）通信，后端运行在 `http://localhost:8001`。后端启动后，API 文档可访问 `http://localhost:8001/docs`。
-
-### 项目结构
-
-```
-frontend/
-├── src/
-│   ├── main.tsx              # 入口文件
-│   ├── Layout.tsx            # 应用布局
-│   ├── Menu.tsx              # 导航菜单
-│   ├── pages/                # 路由页面
-│   ├── components/           # 共享组件
-│   ├── i18n/                 # 国际化配置
-│   ├── utils/                # 工具函数
-│   └── types/                # TypeScript 类型定义
-├── public/                   # 静态资源
-├── index.html
-├── vite.config.ts
-└── package.json
-```
+For documentation-only checks, install the lightweight workspace with `npm ci --workspace tests/docs --include-workspace-root=false`, then run `npm run test:docs`. It shares the frontend lockfile; the dashboard build still uses the full `npm ci`.

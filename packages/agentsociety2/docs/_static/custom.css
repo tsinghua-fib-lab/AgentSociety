@@ -13,7 +13,7 @@ body[data-theme="dark"] .mobile-header a img,
 body[data-theme="dark"] .mobile-header .sidebar-logo {
   filter: brightness(0) saturate(100%) invert(88%) sepia(12%) saturate(850%)
     hue-rotate(203deg) brightness(108%) contrast(98%)
-    drop-shadow(0 0 2px rgba(246, 244, 255, 0.42));
+    drop-shadow(0 1px 1px rgba(246, 244, 255, 0.12));
 }
 
 @media (prefers-color-scheme: dark) {
@@ -23,7 +23,7 @@ body[data-theme="dark"] .mobile-header .sidebar-logo {
   body[data-theme="auto"] .mobile-header .sidebar-logo {
     filter: brightness(0) saturate(100%) invert(88%) sepia(12%) saturate(850%)
       hue-rotate(203deg) brightness(108%) contrast(98%)
-      drop-shadow(0 0 2px rgba(246, 244, 255, 0.42));
+      drop-shadow(0 1px 1px rgba(246, 244, 255, 0.12));
   }
 }
 
@@ -84,4 +84,249 @@ article[role="main"] li + li {
 
 .content h1 {
   margin-top: 0.15em;
+}
+
+/* 配图观感：论文图与界面截图统一圆角与轻阴影，白底截图加描边避免与版面糊成一片 */
+article[role="main"] img {
+  border-radius: 6px;
+}
+
+article[role="main"] .docutils.container img,
+article[role="main"] figure img {
+  box-shadow: 0 1px 3px rgba(15, 20, 36, 0.12), 0 4px 14px rgba(15, 20, 36, 0.06);
+}
+
+body[data-theme="dark"] article[role="main"] .docutils.container img,
+body[data-theme="dark"] article[role="main"] figure img {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5), 0 4px 14px rgba(0, 0, 0, 0.32);
+}
+
+/* align:center 的图片块水平居中（furo 对 container 默认左对齐） */
+article[role="main"] .docutils.container {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* 徽章行（index 顶部 PyPI 等）不参与阴影 */
+article[role="main"] p:first-of-type img {
+  box-shadow: none;
+  border-radius: 0;
+}
+
+/* 首页先给出常用入口；完整章节仍由目录与侧栏导航提供。 */
+.project-links > ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+article[role="main"] .project-links > ul > li {
+  margin: 0;
+  padding: 0.1rem 0.65rem;
+  border: 1px solid var(--color-background-border);
+  border-radius: 0.3rem;
+  font-size: 0.8em;
+}
+
+/* Sphinx Design owns card layout and links; theme variables keep both modes consistent. */
+body {
+  --sd-color-primary: var(--color-brand-primary);
+  --sd-color-primary-text: var(--color-foreground-primary);
+  --sd-color-card-background: var(--color-background-secondary);
+  --sd-color-card-border: var(--color-background-border);
+}
+
+.doc-card {
+  border-radius: 0.6rem;
+  box-shadow: none;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.doc-card:hover {
+  border-color: var(--color-brand-primary);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 6%);
+}
+
+.doc-card .sd-card-title {
+  color: var(--color-foreground-primary);
+  font-size: 1.02rem;
+  line-height: 1.5;
+  font-weight: 600;
+}
+
+.doc-card .sd-card-text {
+  color: var(--color-foreground-secondary);
+  font-size: 0.9em;
+}
+
+.content a:focus-visible,
+.content .table-wrapper:focus-visible,
+.content .highlight pre:focus-visible,
+.mobile-header [role="button"]:focus-visible,
+.doc-card:focus-within {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: 3px;
+}
+
+.doc-card .sd-stretched-link:focus-visible {
+  outline: none;
+}
+
+article[role="main"] figure.doc-figure {
+  margin: 1.6rem 0;
+}
+
+figure.doc-figure figcaption {
+  margin-top: 0.7rem;
+  font-size: 0.86em;
+  line-height: 1.5;
+  color: var(--color-foreground-secondary);
+}
+
+article[role="main"] a.image-reference:focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: 4px;
+}
+
+/* 表格与 API 内容在自己的区域内换行或滚动，不挤宽手机端正文。 */
+.content .table-wrapper {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.content table.docutils th,
+.content table.docutils td {
+  vertical-align: top;
+  padding: 0.65rem 0.8rem;
+}
+
+.content table.docutils thead,
+.content table.docutils tbody tr:nth-child(even) {
+  background: var(--color-background-secondary);
+}
+
+.content table.docutils th {
+  font-weight: 600;
+}
+
+.content p code.literal,
+.content li code.literal,
+.content dl.py .sig {
+  overflow-wrap: anywhere;
+}
+
+.content .highlight pre {
+  line-height: 1.6;
+}
+
+.content section[id] {
+  scroll-margin-top: 1rem;
+}
+
+.content .toctree-wrapper + .toctree-wrapper {
+  margin-top: 1.25rem;
+}
+
+article[role="main"] img {
+  max-width: 100%;
+  height: auto;
+}
+
+@media (max-width: 48rem) {
+  .mobile-header .header-center {
+    min-width: 0;
+  }
+
+  .mobile-header .brand {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.95rem;
+  }
+
+  .content h1 {
+    font-size: clamp(1.75rem, 6vw, 2.1rem);
+  }
+
+  /* 文中的百分比用于桌面排版，窄屏截图与论文图使用完整正文宽度。 */
+  article[role="main"] a.image-reference img[src*="_images/"][src$=".png"],
+  article[role="main"] a.image-reference img[src*="_images/"][src$=".svg"] {
+    width: 100% !important;
+    height: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  article[role="main"] .doc-card {
+    transition: none;
+  }
+}
+
+/* 卡片根据正文容器宽度排版，避免侧栏出现后仍按屏幕宽度强塞三列。 */
+.content .start-links,
+.content .topic-links,
+.content .reference-links {
+  container-type: inline-size;
+}
+
+.content :is(.start-links, .topic-links, .reference-links) .sd-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 0;
+}
+
+.content .topic-links .sd-row {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.content :is(.start-links, .topic-links, .reference-links) .sd-row > .sd-col {
+  width: auto;
+  min-width: 0;
+  padding: 0;
+}
+
+.content .sd-card-body,
+.content .related-pages a,
+.content .related-pages .page-info {
+  min-width: 0;
+}
+
+.content .related-pages .title {
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+
+@container (max-width: 42rem) {
+  .content .topic-links .sd-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@container (max-width: 34rem) {
+  .content :is(.start-links, .reference-links) .sd-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 30rem) {
+  .content .related-pages {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+}
+
+/* 索引含很长的 Python 名称；中等屏宽仍需允许在名称内部折行。 */
+.content .genindextable {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.content .genindextable td,
+.content .genindextable a {
+  overflow-wrap: anywhere;
 }

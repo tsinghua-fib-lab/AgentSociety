@@ -33,7 +33,7 @@
 
 ---
 
-AgentSociety is a framework for building LLM-based agent simulations in urban environments and research workflows.
+AgentSociety is a family of frameworks for LLM-based agent simulation and executable social science research. It lets researchers turn questions, hypotheses, and interventions into running experiments, with AI Social Scientists orchestrating the research workflow and Silicon Participants living in the simulation.
 
 **Papers:**
 
@@ -60,7 +60,7 @@ This repository contains two main packages:
 
 [![PyPI Version](https://img.shields.io/pypi/v/agentsociety2.svg)](https://pypi.org/project/agentsociety2/)
 
-**AgentSociety 2** is a modern, LLM-native agent simulation platform designed for social science research and experimentation.
+**AgentSociety 2** is an LLM-native research environment where AI Social Scientists and Silicon Participants collaborate: research skills cover the loop from literature retrieval to analysis, while simulation runs on a scalable Ray-based runtime.
 
 ```bash
 pip install agentsociety2
@@ -72,9 +72,13 @@ pip install agentsociety2
 - **Flexible Environment System**: Modular environment components with hot-pluggable tools
 - **Multiple Reasoning Patterns**: CodeGen (default), ReAct, Plan-Execute, Two-Tier, and Search routers
 - **Scalable Execution**: Agents are workspace-bound stateless records driven by Ray Tasks, with env / LLM clients / trace / replay handles behind a single `ServiceProxy`
-- **Research Skills**: Literature search, hypothesis generation, experiment design, paper writing
+- **Research Skills**: Literature search, hypothesis generation, experiment design, and data analysis (paper writing is provided by the external `paper-toolkit` plugin)
 - **Experiment Replay**: Catalog-driven JSONL replay with DuckDB-powered reads and distributed tracing
 - **MCP Support**: Model Context Protocol integration for tool extensibility
+
+**Architecture** — from the social simulation platform in AgentSociety 1 to the integrated dual-role research environment of AgentSociety 2, where AI Social Scientists implement experiments and provide feedback while Silicon Participants live in the simulation ([paper](https://arxiv.org/abs/2607.11895), Figure 2):
+
+![AgentSociety 2 integrated dual-role research environment](extension/resources/walkthrough/images/agentsociety2-dual-role.png)
 
 **Documentation:** [agentsociety2.readthedocs.io](https://agentsociety2.readthedocs.io/)
 
@@ -105,19 +109,25 @@ pip install agentsociety
 - **[agentsociety-community](./packages/agentsociety-community/)**: Community contributions for custom agents and blocks
 - **[agentsociety-benchmark](./packages/agentsociety-benchmark/)**: Benchmarking utilities for agent evaluation
 
+## Tools
+
+- **AI Social Scientist** ([extension/](./extension/)): the VS Code workbench of AgentSociety 2 — a conversational research assistant over the workspace, experiment configuration and runs, replay, skill marketplace, and MCP tool configuration. See the [user guide](https://agentsociety2.readthedocs.io/en/latest/user_guide.html).
+- **[frontend/](./frontend/)**: the React web console. Some routes retain older API contracts; the AgentSociety 2 research workbench is provided by the VS Code extension.
+
 ## Project Structure
 
 ```
 AgentSociety/
 ├── packages/
 │   ├── agentsociety2/      # v2.x - Modern LLM-native platform (recommended)
+│   │   └── examples/       # AS2 onboarding examples (basics / games / advanced)
 │   ├── agentsociety/       # v1.x - Legacy city simulation
+│   │   └── docs/           # v1 Sphinx documentation (legacy)
 │   ├── agentsociety-community/
 │   └── agentsociety-benchmark/
-├── frontend/               # React web frontend
-├── extension/              # VSCode extension
-├── packages/agentsociety/docs/   # v1 Sphinx documentation (legacy)
-└── packages/agentsociety2/examples/  # AS2 onboarding examples (basics / games / advanced)
+├── frontend/               # React web console
+├── extension/              # AI Social Scientist VS Code extension (AS2 workbench)
+└── examples/               # Demo experiments (v1 classics + v2/daily_mobility)
 ```
 
 ## Quick Start
@@ -162,14 +172,14 @@ asyncio.run(main())
 ### AgentSociety 1.x
 
 ```python
-from agentsociety import AgentSociety
+from agentsociety.simulation import AgentSociety
 
 # See packages/agentsociety/README.md for usage
 ```
 
 ## Requirements
 
-- Python >= 3.11
+- Python 3.11 – 3.13
 - An LLM API key (OpenAI, Anthropic, or any litellm-supported provider)
 
 ## Contributors
@@ -182,7 +192,7 @@ Thank you to everyone who has contributed to this project:
 
 ## License
 
-AgentSociety is licensed under the Apache License Version 2.0 except for the `packages/agentsociety/commercial` folder. See the [LICENSE](LICENSE) file for details.
+AgentSociety is licensed under the Apache License Version 2.0 except for the `packages/agentsociety/agentsociety/commercial` folder. See the [LICENSE](LICENSE) file for details.
 
 ## Citation
 

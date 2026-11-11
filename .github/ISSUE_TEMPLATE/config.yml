@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: Report a security vulnerability privately
+    url: https://github.com/tsinghua-fib-lab/AgentSociety/security/advisories/new
+    about: Send vulnerability details privately to the maintainers. Do not post credentials or exploits in public issues.
   - name: Security policy
     url: https://github.com/tsinghua-fib-lab/AgentSociety/blob/main/SECURITY.md
     about: Supported versions and how to report vulnerabilities privately.

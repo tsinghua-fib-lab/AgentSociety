@@ -1,6 +1,6 @@
-"""Literature formatting utilities
+"""文献格式化工具
 
-Functions for formatting literature entries as markdown and managing filenames.
+用于将文献条目格式化为 Markdown 以及管理文件名的函数集合。
 """
 
 from __future__ import annotations
@@ -11,11 +11,11 @@ from typing import Any
 
 
 def sanitize_filename(filename: str) -> str:
-    """Clean filename by removing illegal characters
+    """清理文件名中的非法字符
 
-    :param filename: Original filename
+    :param filename: 原始文件名
 
-    :returns: Sanitized filename safe for filesystem
+    :returns: 清理后可安全用于文件系统的文件名
     """
     # Remove or replace illegal characters
     sanitized = re.sub(r'[<>:"/\\|?*]', "_", filename)
@@ -25,12 +25,12 @@ def sanitize_filename(filename: str) -> str:
 
 
 def format_article_as_markdown(article: dict[str, Any], query: str) -> str:
-    """Format a single literature article as markdown
+    """将单篇文献格式化为 Markdown
 
-    :param article: Article data dictionary
-    :param query: Search query used to find the article
+    :param article: 文章数据字典
+    :param query: 检索到该文章的查询词
 
-    :returns: Markdown formatted string
+    :returns: Markdown 格式的字符串
     """
     lines = []
     lines.append(f"# {article.get('title', 'Untitled Article')}")

@@ -3,7 +3,7 @@
 
 提供实验基本信息与产出文件查询。新 replay 写入格式为
 ``run/replay/_schema.json`` + sharded JSONL；实验统计通过
-``agentsociety2.storage.ReplayReader`` 读取，不再访问 ``sqlite.db``。
+``agentsociety2.storage.ReplayReader`` 读取，不再访问 ``sqlite.db`` 。
 """
 
 from __future__ import annotations
@@ -38,14 +38,14 @@ _LOG_READ_CHUNK = 64 * 1024
 
 
 def _resolve_experiment_log_path(run_dir: Path, source: str) -> Path:
-    """Pick the log file under ``run/`` for the requested source.
+    """按请求的 source 选择 ``run/`` 下的日志文件。
 
-    :param run_dir: Trusted experiment run directory.
-    :param source: Requested source name: ``auto``, ``output.log``, or
-        ``stderr.log``.
-    :returns: Resolved path to an existing log file below ``run_dir``.
-    :raises HTTPException: If ``source`` is unsupported or no matching log
-        exists.
+    :param run_dir: 已信任的实验运行目录。
+    :param source: 请求的日志来源名：``auto`` 、``output.log`` 或
+        ``stderr.log`` 。
+    :returns: 解析出的 ``run_dir`` 下已存在的日志文件路径。
+    :raises HTTPException: ``source`` 不受支持或找不到匹配的日志文件时
+        抛出。
     """
     # Select trusted literal filenames, never join the request value into a path.
     if source == "auto":
@@ -64,15 +64,15 @@ def _resolve_experiment_log_path(run_dir: Path, source: str) -> Path:
 
 
 def read_log_tail(path: Path, *, tail: int) -> str:
-    """Return the last ``tail`` lines of ``path`` without loading the whole file.
+    """返回 ``path`` 的最后 ``tail`` 行，无需加载整个文件。
 
-    Reads backward in fixed-size chunks from EOF until enough newlines are
-    found (or the file starts). Suitable for multi-MB ``output.log`` files.
+    从 EOF 起按固定大小的块向前读取，直到找到足够的换行符（或到达文件
+    开头）。适用于数 MB 的 ``output.log`` 文件。
 
-    :param path: Log file path.
-    :param tail: Number of trailing lines to keep (must be ``>= 1``).
-    :returns: Trailing text, preserving a final newline when the source had one.
-    :raises ValueError: If ``tail < 1``.
+    :param path: 日志文件路径。
+    :param tail: 保留的尾部行数（必须 ``>= 1`` ）。
+    :returns: 尾部文本；源文件以换行符结尾时保留最后的换行符。
+    :raises ValueError: 当 ``tail < 1`` 时抛出。
     """
     if tail < 1:
         raise ValueError("tail must be >= 1")
@@ -120,22 +120,22 @@ def _get_experiment_path(
     hypothesis_id: str,
     experiment_id: str,
 ) -> Path:
-    """Resolve an experiment directory below the configured workspace.
+    """解析配置工作区下的实验目录。
 
-    :param workspace_path: Workspace root supplied by the API caller.
-    :param hypothesis_id: Validated hypothesis identifier.
-    :param experiment_id: Validated experiment identifier.
-    :returns: Resolved experiment directory path.
-    :raises HTTPException: If any component escapes the workspace root.
+    :param workspace_path: API 调用方提供的工作区根目录。
+    :param hypothesis_id: 已校验的假设标识符。
+    :param experiment_id: 已校验的实验标识符。
+    :returns: 解析出的实验目录路径。
+    :raises HTTPException: 任一路径组成部分逃逸出工作区根目录时抛出。
     """
     return resolve_experiment_dir(workspace_path, hypothesis_id, experiment_id)
 
 
 def _list_agent_state_datasets(datasets: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Return deterministic agent snapshot candidates from a replay catalog.
+    """从 replay 目录中返回确定性的 agent 快照候选数据集。
 
-    :param datasets: Replay dataset catalog entries.
-    :returns: Compatible entries ordered by capability and dataset identifier.
+    :param datasets: replay 数据集目录条目。
+    :returns: 按 capability 与 dataset_id 排序后的兼容条目。
     """
     items = [
         dataset
@@ -157,10 +157,10 @@ def _list_agent_state_datasets(datasets: list[dict[str, Any]]) -> list[dict[str,
 def _get_agent_profile_dataset(
     datasets: list[dict[str, Any]],
 ) -> dict[str, Any] | None:
-    """Select the preferred agent profile dataset.
+    """选择首选的 agent profile 数据集。
 
-    :param datasets: Replay dataset catalog entries.
-    :returns: The first compatible profile dataset, or ``None``.
+    :param datasets: replay 数据集目录条目。
+    :returns: 第一个兼容的 profile 数据集，无则返回 ``None`` 。
     """
     candidates = [
         dataset
@@ -173,10 +173,10 @@ def _get_agent_profile_dataset(
 
 
 def _get_timeline_dataset(datasets: list[dict[str, Any]]) -> dict[str, Any] | None:
-    """Select the preferred dataset for calculating replay step counts.
+    """选择用于计算 replay 步数的首选数据集。
 
-    :param datasets: Replay dataset catalog entries.
-    :returns: A compatible agent or environment snapshot dataset, or ``None``.
+    :param datasets: replay 数据集目录条目。
+    :returns: 兼容的 agent 或环境快照数据集，无则返回 ``None`` 。
     """
     agent_datasets = [
         dataset
@@ -199,10 +199,10 @@ def _get_timeline_dataset(datasets: list[dict[str, Any]]) -> dict[str, Any] | No
 
 
 def _read_replay_summary(replay_dir: Path) -> tuple[int, int]:
-    """Return agent and step counts from current replay JSONL data.
+    """从当前 replay JSONL 数据返回 agent 数与步数。
 
-    :param replay_dir: Directory containing replay schema and shard files.
-    :returns: ``(agent_count, step_count)``.
+    :param replay_dir: 包含 replay schema 与分片文件的目录。
+    :returns: ``(agent_count, step_count)`` 。
     """
 
     reader = ReplayReader(replay_dir)
@@ -243,12 +243,11 @@ async def get_experiment_info(
 
     返回指定实验的状态、开始/结束时间、Agent 数量和已执行 step 数。
 
-    :param hypothesis_id: Hypothesis identifier.
-    :param experiment_id: Experiment identifier.
-    :param workspace_path: Workspace root containing experiment data.
-    :returns: Experiment status and replay summary.
-    :raises HTTPException: If an identifier is unsafe or the experiment is
-        missing.
+    :param hypothesis_id: 假设标识符。
+    :param experiment_id: 实验标识符。
+    :param workspace_path: 包含实验数据的工作区根目录。
+    :returns: 实验状态与 replay 摘要。
+    :raises HTTPException: 标识符不安全或实验不存在时抛出。
     """
     # Validate path parameters at the API boundary
     require_safe_segment(hypothesis_id, field="hypothesis_id")
@@ -304,11 +303,11 @@ async def list_artifacts(
 ) -> list[dict[str, str]]:
     """列出实验运行过程中生成的 Markdown 产出文件。
 
-    :param hypothesis_id: Hypothesis identifier.
-    :param experiment_id: Experiment identifier.
-    :param workspace_path: Workspace root containing experiment data.
-    :returns: Metadata for generated Markdown artifacts.
-    :raises HTTPException: If an identifier or resolved path is unsafe.
+    :param hypothesis_id: 假设标识符。
+    :param experiment_id: 实验标识符。
+    :param workspace_path: 包含实验数据的工作区根目录。
+    :returns: 生成的 Markdown 产出文件的元数据。
+    :raises HTTPException: 标识符或解析出的路径不安全时抛出。
     """
 
     # Validate path parameters at the API boundary
@@ -342,12 +341,12 @@ async def get_artifact(
 ) -> dict[str, str]:
     """获取指定 Markdown 产出文件内容。
 
-    :param hypothesis_id: Hypothesis identifier.
-    :param experiment_id: Experiment identifier.
-    :param artifact_name: Markdown artifact filename.
-    :param workspace_path: Workspace root containing experiment data.
-    :returns: Artifact name and UTF-8 content.
-    :raises HTTPException: If the artifact path is unsafe or missing.
+    :param hypothesis_id: 假设标识符。
+    :param experiment_id: 实验标识符。
+    :param artifact_name: Markdown 产出文件名。
+    :param workspace_path: 包含实验数据的工作区根目录。
+    :returns: 产出文件名与 UTF-8 内容。
+    :raises HTTPException: 产出文件路径不安全或不存在时抛出。
     """
 
     artifact_path = resolve_artifact_path(
@@ -378,16 +377,16 @@ async def get_experiment_log(
         description="Log file: auto | output.log | stderr.log",
     ),
 ) -> PlainTextResponse:
-    """Return the tail of an experiment run log.
+    """返回实验运行日志的尾部内容。
 
-    :param hypothesis_id: Hypothesis identifier.
-    :param experiment_id: Experiment identifier.
-    :param workspace_path: Workspace root containing experiment data.
-    :param tail: Maximum number of trailing lines to return.
-    :param source: Log source: ``auto``, ``output.log``, or ``stderr.log``.
-    :returns: Plain-text response containing the selected log tail.
-    :raises HTTPException: If an identifier, path, or source is invalid, or if
-        the run directory or log file is missing.
+    :param hypothesis_id: 假设标识符。
+    :param experiment_id: 实验标识符。
+    :param workspace_path: 包含实验数据的工作区根目录。
+    :param tail: 返回的尾部最大行数。
+    :param source: 日志来源：``auto`` 、``output.log`` 或 ``stderr.log`` 。
+    :returns: 包含所选日志尾部内容的纯文本响应。
+    :raises HTTPException: 标识符、路径或来源无效，或运行目录/日志文件
+        不存在时抛出。
     """
 
     require_safe_segment(hypothesis_id, field="hypothesis_id")

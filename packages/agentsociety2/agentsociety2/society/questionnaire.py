@@ -25,7 +25,7 @@ __all__ = [
 
 
 class Questionnaire(BaseModel):
-    """Runtime questionnaire definition."""
+    """运行时问卷定义。"""
 
     questionnaire_id: str = Field(..., min_length=1)
     title: str = ""
@@ -34,7 +34,7 @@ class Questionnaire(BaseModel):
 
 
 class QuestionnaireAnswer(BaseModel):
-    """Single parsed answer for one question."""
+    """单个问题的回答及解析结果。"""
 
     question_id: str
     raw_text: str
@@ -46,7 +46,7 @@ class QuestionnaireAnswer(BaseModel):
 
 
 class AgentQuestionnaireResult(BaseModel):
-    """Collected questionnaire answers for one agent."""
+    """单个智能体的问卷回答集合。"""
 
     agent_id: int
     agent_name: str
@@ -54,7 +54,7 @@ class AgentQuestionnaireResult(BaseModel):
 
 
 class QuestionnaireResponse(BaseModel):
-    """Top-level questionnaire execution result."""
+    """一次问卷执行的汇总结果。"""
 
     questionnaire_id: str
     title: str = ""

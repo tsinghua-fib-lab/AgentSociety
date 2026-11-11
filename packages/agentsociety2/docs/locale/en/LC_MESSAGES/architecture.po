@@ -8,9 +8,9 @@ msgid ""
 msgstr ""
 "Project-Id-Version: AgentSociety 2 2.6.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-23 12:38+0800\n"
-"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"POT-Creation-Date: 2026-11-09 11:56+0800\n"
+"PO-Revision-Date: 2026-03-05 23:55+0800\n"
+"Last-Translator: AgentSociety Team\n"
 "Language: en\n"
 "Language-Team: en <LL@li.org>\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
@@ -19,567 +19,620 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: ../../architecture.rst:2
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:2
 msgid "架构与可扩展性"
 msgstr "Architecture and Scalability"
 
-#: ../../architecture.rst:4
-msgid ""
-"本页介绍 AgentSociety 2 的运行时架构，以及它如何在较大规模的仿真中组织智能体、环境、LLM 调用、 trace 和 replay "
-"存储。"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:4
+msgid "本页介绍 AgentSociety 2 的运行时架构，以及它如何在较大规模的仿真中组织智能体、环境、LLM 调用、 trace 和 replay 存储。"
 msgstr ""
-"This page describes the AgentSociety 2 runtime architecture and how it "
-"organizes agents, environments, LLM calls, trace data, and replay storage"
-" for larger-scale simulations.\n"
+"This page describes the AgentSociety 2 runtime architecture and how it organizes "
+"agents, environments, LLM calls, trace data, and replay storage for larger-scale "
+"simulations."
 
-#: ../../architecture.rst:7
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:7
 msgid ""
-"AgentSociety 2 将智能体状态放在独立 workspace 中，执行时再由 Ray Task 按批重建和推进智能体。 环境路由、LLM"
-" 调度、trace、replay 等运行时组件作为共享服务存在，通过 ``ServiceProxy`` 注入到每个 "
-"智能体。这样做的目标是让智能体数量可以随实验规模增长，而不是为每个智能体长期保留一个进程或 actor。"
+"AgentSociety 2 将智能体状态放在独立 workspace 中，执行时再由 Ray Task 按批重建和推进智能体。环境路由、LLM 调度、trace、replay "
+"等运行时组件作为共享服务存在，通过 ``ServiceProxy`` 注入到每个智能体。这样做的目标是让智能体数量可以随实验规模增长，而不是为每个智能体长期保留一个进程或 actor。"
 msgstr ""
-"AgentSociety 2 stores agent state in independent workspaces. During "
-"execution, Ray Tasks rebuild and advance agents in batches. Runtime "
-"components such as environment routing, LLM dispatch, trace, and replay "
-"run as shared services and are injected into each agent through "
-"``ServiceProxy``. The goal is to let the number of agents grow with "
-"experiment scale instead of keeping a long-lived process or actor for "
-"every agent.\n"
+"AgentSociety 2 stores agent state in independent workspaces. During execution, Ray Tasks rebuild "
+"and advance agents in batches. Runtime components such as environment routing, LLM dispatch, "
+"trace, and replay run as shared services and are injected into each agent through "
+"``ServiceProxy``. The goal is to let the number of agents grow with experiment scale instead of "
+"keeping a long-lived process or actor for every agent."
 
-#: ../../architecture.rst:13
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:13
 msgid "执行模型"
 msgstr "Execution Model"
 
-#: ../../architecture.rst:15
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:13
 msgid ""
-"每个 ``AgentBase`` 子类的持久状态都保存在自己的 workspace 中，包括 "
-"``config.json``、``AGENT.json``、 ``state/*`` 和 "
-"``.runtime/logs/*``。智能体对象只是在一次任务执行期间从这些文件重建出来的运行时对象； 一次 ``step()`` "
-"结束后，新的状态会写回 workspace。"
+"每个 ``AgentBase`` 子类的持久状态都保存在自己的 workspace 中，包括 ``config.json``、``AGENT.json``、 "
+"``TODO.json``、``MEMORY.md``、``memory/`` 和 ``state/``。智能体对象只是在一次任务执行期间从这些文件重建出来的运行时对象；一次 "
+"``step()`` 结束后，新的状态会写回 workspace。"
 msgstr ""
-"Each ``AgentBase`` subclass stores its persistent state in its own "
-"workspace, including ``config.json``, ``AGENT.json``, ``state/*``, and "
-"``.runtime/logs/*``. The agent object is only a runtime object rebuilt "
-"from those files for one task execution; after a ``step()`` completes, "
-"the new state is written back to the workspace.\n"
+"Each ``AgentBase`` subclass persists its state in its workspace, including ``config.json``, "
+"``AGENT.json``, ``TODO.json``, ``MEMORY.md``, ``memory/``, and ``state/``. The agent object is "
+"reconstructed from these files for a task; after each ``step()``, updated state is written back "
+"to the workspace."
 
-#: ../../architecture.rst:19
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:16
 msgid ""
-"这一模型对应 :doc:`agents` 中的 ``create`` / ``from_workspace`` / "
-"``to_workspace`` 契约。对调度器来说， 一个智能体可以表示为轻量的执行说明：workspace 路径、智能体类型、智能体 "
-"id，以及共享的 ``ServiceProxy`` 句柄。Ray worker 收到任务后在本地调用 ``from_workspace``，运行 "
-"``step``，再调用 ``to_workspace`` 持久化结果。智能体对象本身不会在 Ray object store 中来回传递。"
+"这一模型对应 :doc:`agents` 中的 ``create`` / ``from_workspace`` / ``to_workspace`` "
+"契约。对调度器来说，一个智能体可以表示为轻量的执行说明：workspace 路径、智能体类型、智能体 id，以及共享的 ``ServiceProxy`` 句柄。Ray worker "
+"收到任务后在本地调用 ``from_workspace``，运行 ``step``，再调用 ``to_workspace`` 持久化结果。智能体对象本身不会在 Ray object store "
+"中来回传递。"
 msgstr ""
-"This model matches the ``create`` / ``from_workspace`` / ``to_workspace``"
-" contract described in :doc:`agents`. To the scheduler, an agent can be "
-"represented as a lightweight execution spec: workspace path, agent type, "
-"agent id, and a shared ``ServiceProxy`` handle. After a Ray worker "
-"receives a task, it calls ``from_workspace`` locally, runs ``step``, and "
-"then calls ``to_workspace`` to persist the result. The agent object "
-"itself is not passed back and forth through the Ray object store.\n"
+"This model matches the ``create`` / ``from_workspace`` / ``to_workspace`` contract described in "
+":doc:`agents`. To the scheduler, an agent can be represented as a lightweight execution spec: "
+"workspace path, agent type, agent id, and a shared ``ServiceProxy`` handle. After a Ray worker "
+"receives a task, it calls ``from_workspace`` locally, runs ``step``, and then calls "
+"``to_workspace`` to persist the result. The agent object itself is not passed back and forth "
+"through the Ray object store."
 
-#: ../../architecture.rst:24
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:20
 msgid ""
-"环境模块使用一套对称的持久化契约：``EnvBase.to_workspace()`` 负责写出动态状态， ``restore()`` "
-"负责恢复。每个模块可以选择自己的状态格式，通常把文件放在 "
-"``<workspace_root>/state/ENV_STATE.json``。路由会在每步结束时调用 "
-"``to_workspaces()``； 使用 ``--resume`` 时，actor 的 ``init()`` 会通过 "
-"``from_workspaces()`` 重建各模块。恢复发生在 模块 ``init()`` 之后，因此 checkpoint "
-"中的状态会覆盖初始化时的重置。``AgentSociety`` 自身的状态 写入 ``SOCIETY.json`` 和 "
-"``SOCIETY_STEP.json``。详见 :doc:`env_modules` 与 :doc:`cli` 的 resume 说明。"
+"环境模块使用一套对称的持久化契约：``EnvBase.to_workspace()`` 负责写出动态状态， ``restore()`` 负责恢复。每个模块可以选择自己的状态格式，通常把文件放在 "
+"``<workspace_root>/state/ENV_STATE.json``。路由会在每步结束时调用 ``to_workspaces()``；使用 ``--resume`` 时，actor"
+" 的 ``init()`` 会通过 ``from_workspaces()`` 重建各模块。恢复发生在模块 ``init()`` 之后，因此 checkpoint "
+"中的状态会覆盖初始化时的重置。``AgentSociety`` 自身的状态写入 ``SOCIETY.json`` 和 ``SOCIETY_STEP.json``。详见 "
+":doc:`env_modules` 与 :doc:`cli` 的 resume 说明。"
 msgstr ""
-"Environment modules use a symmetric persistence contract: "
-"``EnvBase.to_workspace()`` writes dynamic state, and ``restore()`` "
-"restores it. Each module can choose its own state format, and usually "
-"stores the file at ``<workspace_root>/state/ENV_STATE.json``. The router "
-"calls ``to_workspaces()`` at the end of each step. When ``--resume`` is "
-"used, the actor's ``init()`` rebuilds modules through "
-"``from_workspaces()``. Restoration happens after the module ``init()``, "
-"so checkpointed state overrides initialization-time resets. "
-"``AgentSociety`` stores its own state in ``SOCIETY.json`` and "
-"``SOCIETY_STEP.json``. See :doc:`env_modules` and the resume section in "
+"Environment modules use a symmetric persistence contract: ``EnvBase.to_workspace()`` writes "
+"dynamic state, and ``restore()`` restores it. Each module can choose its own state format, and "
+"usually stores the file at ``<workspace_root>/state/ENV_STATE.json``. The router calls "
+"``to_workspaces()`` at the end of each step. When ``--resume`` is used, the actor's ``init()`` "
+"rebuilds modules through ``from_workspaces()``. Restoration happens after the module ``init()``, "
+"so checkpointed state overrides initialization-time resets. ``AgentSociety`` stores its own state"
+" in ``SOCIETY.json`` and ``SOCIETY_STEP.json``. See :doc:`env_modules` and the resume section in "
 ":doc:`cli` for details."
 
-#: ../../architecture.rst:32
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:32
 msgid "``AgentSociety`` 在每个 tick 中执行以下流程："
 msgstr "For each tick, ``AgentSociety`` performs the following flow:"
 
-#: ../../architecture.rst:34
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:34
 msgid "将智能体 id 切成若干批。"
 msgstr "Split agent ids into batches."
 
-#: ../../architecture.rst:35
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:35
 msgid "为每一批提交一个 ``step_agent_batch`` Ray Task。"
 msgstr "Submit one ``step_agent_batch`` Ray Task for each batch."
 
-#: ../../architecture.rst:36
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:36
 msgid "每个 task 在批内用 ``asyncio.gather`` 并发推进智能体；批之间由 Ray 调度到不同 worker。"
 msgstr ""
-"Within each task, advance agents concurrently with ``asyncio.gather``; "
-"across batches, Ray schedules work onto different workers.\n"
+"Within each task, advance agents concurrently with ``asyncio.gather``; across "
+"batches, Ray schedules work onto different workers."
 
-#: ../../architecture.rst:37
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:37
 msgid "所有批次完成后，调用环境的 ``step``，再推进仿真时钟。"
 msgstr ""
-"After all batches complete, call the environment ``step`` and then "
-"advance the simulation clock."
+"After all batches complete, call the environment ``step`` and then advance the "
+"simulation clock."
 
-#: ../../architecture.rst:39
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:32
 msgid ""
-"默认批大小为 ``AGENTSOCIETY_BATCH_SIZE=256``（CLI ``--batch-size`` 可覆盖）。每 tick 的"
-" Ray Task 数 = ⌈N / 批大小⌉，受 ``AGENTSOCIETY_LLM_RAY_MAX_WORKERS``（默认机器 CPU "
-"核数）封顶； 单个 task 内的并发 fan-out 由批大小决定，每进程的 LLM 并发则由本地 ``LLMClient`` 的 AIMD "
-"自适应控制（无人工上下限）。"
+"默认批大小为 ``AGENTSOCIETY_BATCH_SIZE=256``（CLI ``--batch-size`` 可覆盖）。每 tick 提交的 Ray Task 数为 ⌈N / "
+"批大小⌉；同时执行的数量由 Ray 资源预算与调度决定。 ``AGENTSOCIETY_LLM_RAY_MAX_WORKERS`` 配置 Ray 的 CPU 预算，不会减少已提交的批次数。单个 "
+"task 内的并发由批大小和本地 ``LLMClient`` 的 AIMD 控制器共同影响。"
 msgstr ""
+"The default batch size is ``AGENTSOCIETY_BATCH_SIZE=256`` (overridden by CLI ``--batch-size``). "
+"Each tick submits ⌈N / batch size⌉ Ray tasks; concurrent execution depends on the Ray resource "
+"budget and scheduler. ``AGENTSOCIETY_LLM_RAY_MAX_WORKERS`` configures the Ray CPU budget without "
+"reducing submitted batches. Per-task concurrency also depends on batch size and the local "
+"``LLMClient`` AIMD controller."
 
-#: ../../architecture.rst:65
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:43
+msgid "Ray 按批调度，智能体从 workspace 重建并写回状态"
+msgstr "Ray schedules batches; agents are restored from and persisted to workspaces"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:69
 msgid "ServiceProxy"
-msgstr ""
+msgstr "ServiceProxy"
 
-#: ../../architecture.rst:67
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:71
 msgid ""
-"智能体不直接创建或持有 LLM dispatcher、环境 router、trace actor 或 replay "
-"actor。``from_workspace`` 接收一个 ``ServiceProxy``，并在 "
-"``_bind_services(service_proxy)`` 中把相关句柄绑定到智能体实例。"
+"智能体通过注入的服务句柄访问 LLM dispatcher、环境 router、trace writer 与 replay sink。``from_workspace``"
+" 接收一个 ``ServiceProxy``，并在 ``_bind_services(service_proxy)`` 中把相关句柄绑定到智能体实例。"
 msgstr ""
-"Agents do not directly create or own the LLM dispatcher, environment "
-"router, trace actor, or replay actor. ``from_workspace`` receives a "
-"``ServiceProxy`` and binds the relevant handles to the agent instance in "
-"``_bind_services(service_proxy)``.\n"
+"Agents access the LLM dispatcher, environment router, trace writer, and replay sink "
+"through injected service handles. ``from_workspace`` receives a ``ServiceProxy``, and"
+" ``_bind_services(service_proxy)`` binds its handles to the agent instance."
 
-#: ../../architecture.rst:74
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:78
 msgid "slot"
-msgstr ""
+msgstr "Slot"
 
-#: ../../architecture.rst:75
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:79
 msgid "来源"
 msgstr "Source"
 
-#: ../../architecture.rst:76
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:80
 msgid "用途"
 msgstr "Purpose"
 
-#: ../../architecture.rst:77
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:81
 msgid "``_service_proxy``"
-msgstr ""
+msgstr "``_service_proxy``"
 
-#: ../../architecture.rst:78
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:82
 msgid "入参"
 msgstr "Input parameter"
 
-#: ../../architecture.rst:79
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:83
 msgid "原始服务容器，包含 env / llm / trace / replay 句柄。"
 msgstr "Raw service container with env / llm / trace / replay handles."
 
-#: ../../architecture.rst:80
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:84
 msgid "``_env``"
-msgstr ""
+msgstr "``_env``"
 
-#: ../../architecture.rst:81
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:85
 msgid "``service_proxy.env``"
-msgstr ""
+msgstr "``service_proxy.env``"
 
-#: ../../architecture.rst:82
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:86
 msgid "环境 router（``RouterBase`` / ``EnvRouterProxy``）。"
 msgstr "Environment router (``RouterBase`` / ``EnvRouterProxy``)."
 
-#: ../../architecture.rst:83
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:87
 msgid "``_dispatcher``"
-msgstr ""
+msgstr "``_dispatcher``"
 
-#: ../../architecture.rst:84
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:88
 msgid "``service_proxy.llm.default``"
-msgstr ""
+msgstr "``service_proxy.llm.default``"
 
-#: ../../architecture.rst:85
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:89
 msgid "默认 LLM dispatcher（``call(...)``）。"
 msgstr "Default LLM dispatcher (``call(...)``)."
 
-#: ../../architecture.rst:86
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:90
 msgid "``_trace``"
-msgstr ""
+msgstr "``_trace``"
 
-#: ../../architecture.rst:87
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:91
 msgid "``service_proxy.trace``"
-msgstr ""
+msgstr "``service_proxy.trace``"
 
-#: ../../architecture.rst:88
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:92
 msgid "trace writer 句柄（通常是 ``TraceProxy``）。"
 msgstr "Trace writer handle, usually ``TraceProxy``."
 
-#: ../../architecture.rst:90
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:86
 msgid ""
-"``ServiceProxy`` 只保存可序列化的句柄和配置，不保存锁、连接池或后台线程。Ray Task 因此只需要接收 一个服务容器；环境 "
-"router、trace 与 replay 由 driver 或 CLI 统一创建，LLM client 只携带连接参数， worker "
-"在自己的事件循环中按需创建 litellm Router 和并发控制器。"
+"``ServiceProxy`` 只保存可序列化的句柄和配置，不保存锁、连接池或后台线程。Ray Task 因此只需要接收一个服务容器；环境 router、trace 与 replay 由 "
+"driver 或 CLI 统一创建，LLM client 只携带连接参数， worker 在自己的事件循环中按需创建 litellm Router 和并发控制器。"
 msgstr ""
-"``ServiceProxy`` stores only serializable handles and configuration. It "
-"does not store locks, connection pools, or background threads. A Ray Task"
-" therefore only needs to receive one service container. The environment "
-"router, trace, and replay are created once by the driver or CLI; the LLM "
-"client only carries connection parameters, and workers create the litellm"
-" Router and concurrency controller on demand in their own event loop."
+"``ServiceProxy`` stores only serializable handles and configuration. It does not store locks, "
+"connection pools, or background threads. A Ray Task therefore only needs to receive one service "
+"container. The environment router, trace, and replay are created once by the driver or CLI; the "
+"LLM client only carries connection parameters, and workers create the litellm Router and "
+"concurrency controller on demand in their own event loop."
 
-#: ../../architecture.rst:95
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:99
 msgid "环境路由"
 msgstr "Environment Routing"
 
-#: ../../architecture.rst:97
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:101
 msgid ""
-"环境状态由环境路由统一管理。生产运行时，CLI 会通过 ``get_env_router_actor_class`` 创建专用的 Ray "
-"actor，并把 ``EnvRouterProxy`` 放入 ``ServiceProxy``。智能体通过该 proxy 调用 ``ask``、 "
-"``step``、``init`` 和 ``get_world_description`` 等接口；所有智能体看到的是同一份环境状态。"
+"环境状态由环境路由统一管理。生产运行时，CLI 会通过 ``get_env_router_actor_class`` 创建专用的 Ray actor，并把 "
+"``EnvRouterProxy`` 放入 ``ServiceProxy``。智能体通过该 proxy 调用 ``ask``、 ``step``、``init`` 和 "
+"``get_world_description`` 等接口；所有智能体看到的是同一份环境状态。"
 msgstr ""
-"Environment state is managed by the environment router. In production "
-"runtime, the CLI creates a dedicated Ray actor through "
-"``get_env_router_actor_class`` and places an ``EnvRouterProxy`` in "
-"``ServiceProxy``. Agents call ``ask``, ``step``, ``init``, "
-"``get_world_description``, and related interfaces through that proxy; all"
-" agents see the same environment state.\n"
+"Environment state is managed by the environment router. In production runtime, the "
+"CLI creates a dedicated Ray actor through ``get_env_router_actor_class`` and places "
+"an ``EnvRouterProxy`` in ``ServiceProxy``. Agents call ``ask``, ``step``, ``init``, "
+"``get_world_description``, and related interfaces through that proxy; all agents see "
+"the same environment state."
 
-#: ../../architecture.rst:101
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:96
+msgid ""
+"actor 的 ``max_concurrency`` 取决于挂载模块是否全部声明 ``is_concurrency_safe()``：全部安全时使用 "
+"``AGENTSOCIETY_ENV_ACTOR_MAX_CONCURRENCY``（默认 64），否则为 ``1``。全部模块安全时 ``CodeGenRouter`` "
+"跳过全局执行锁；非安全栈串行执行。详见 :doc:`env_modules`。"
+msgstr ""
+"The actor ``max_concurrency`` depends on whether all mounted modules declare "
+"``is_concurrency_safe()``. If so, it uses ``AGENTSOCIETY_ENV_ACTOR_MAX_CONCURRENCY`` (default: "
+"64); otherwise, it uses ``1``. ``CodeGenRouter`` skips the global execution lock when all modules"
+" are safe; unsafe stacks execute serially. See :doc:`env_modules`."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:109
 msgid "路由器（``RouterBase`` 子类）负责把智能体的自然语言请求映射到环境模块暴露的 ``@tool`` 方法："
 msgstr ""
-"Routers (``RouterBase`` subclasses) map an agent's natural-language "
-"request to ``@tool`` methods exposed by environment modules:\n"
+"Routers (``RouterBase`` subclasses) map an agent's natural-language request to "
+"``@tool`` methods exposed by environment modules:"
 
-#: ../../architecture.rst:107
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:115
 msgid "路由器"
 msgstr "Router"
 
-#: ../../architecture.rst:108
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:116
 msgid "特点"
 msgstr "Characteristics"
 
-#: ../../architecture.rst:109
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:117
 msgid "``CodeGenRouter`` (默认)"
 msgstr "``CodeGenRouter`` (default)"
 
-#: ../../architecture.rst:110
-msgid "从环境模块提取工具签名，生成调用代码并在受限环境中执行；带 AST 守卫与缓存统计。"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:109
+msgid ""
+"从环境模块提取工具签名，生成调用代码，经静态验证与 AST 守卫后执行；**仅** ``template_mode=True`` 时启用 FAISS 指令模板缓存；无 "
+"observe/statistics 工具时 init 不跑空桩 LLM 代码生成。"
 msgstr ""
-"Extracts tool signatures from environment modules, generates call code, "
-"and executes it in a restricted environment; includes AST guards and "
-"cache statistics.\n"
+"Extracts tool signatures from environment modules, generates call code, and executes it after "
+"static validation and AST guards; the FAISS instruction template cache is enabled **only** when "
+"``template_mode=True``; init skips empty-stub LLM code generation when there are no "
+"observe/statistics tools."
 
-#: ../../architecture.rst:111
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:121
 msgid "``ReActRouter``"
-msgstr ""
+msgstr "``ReActRouter``"
 
-#: ../../architecture.rst:112
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:122
 msgid "ReAct 式工具选择。"
 msgstr "ReAct-style tool selection."
 
-#: ../../architecture.rst:113
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:123
 msgid "``PlanExecuteRouter``"
-msgstr ""
+msgstr "``PlanExecuteRouter``"
 
-#: ../../architecture.rst:114
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:124
 msgid "先规划再执行。"
 msgstr "Plan first, then execute."
 
-#: ../../architecture.rst:115
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:125
 msgid "``TwoTierReActRouter`` / ``TwoTierPlanExecuteRouter``"
-msgstr ""
+msgstr "``TwoTierReActRouter`` / ``TwoTierPlanExecuteRouter``"
 
-#: ../../architecture.rst:116
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:126
 msgid "两级路由，适合大工具集。"
 msgstr "Two-tier routing for large tool sets."
 
-#: ../../architecture.rst:117
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:127
 msgid "``SearchToolRouter``"
-msgstr ""
+msgstr "``SearchToolRouter``"
 
-#: ../../architecture.rst:118
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:128
 msgid "以搜索/检索方式选择工具。"
 msgstr "Selects tools through search/retrieval."
 
-#: ../../architecture.rst:120
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:120
+msgid ""
+"生成代码的执行后端由 ``AGENTSOCIETY_CODE_EXEC_BACKEND`` 选择：默认 ``inprocess`` 在环境进程内直接执行（协作式期限）；设为 "
+"``process`` 时进入独立计算进程，获得硬期限与内存上限。详见 :doc:`codegen_execution`。"
+msgstr ""
+"The execution backend for generated code is chosen by ``AGENTSOCIETY_CODE_EXEC_BACKEND``: the "
+"default ``inprocess`` executes directly inside the environment process (cooperative deadline); "
+"setting it to ``process`` moves execution into a dedicated compute process that gains a hard "
+"deadline and a memory cap. See :doc:`codegen_execution` for details."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:134
 msgid "环境模块与 ``@tool`` 装饰器见 :doc:`env_modules` 与 :doc:`concepts`。"
 msgstr ""
-"For environment modules and the ``@tool`` decorator, see "
-":doc:`env_modules` and :doc:`concepts`.\n"
+"For environment modules and the ``@tool`` decorator, see :doc:`env_modules` and "
+":doc:`concepts`."
 
-#: ../../architecture.rst:123
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:137
 msgid "LLM 调度"
 msgstr "LLM Dispatch"
 
-#: ../../architecture.rst:125
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:128
 msgid ""
-"LLM 调用由 :mod:`agentsociety2.config.llm_dispatcher` 统一封装。当前实现使用 per-"
-"process dispatcher：``LLMClient`` 是可序列化的连接配置，只携带 "
-"``model_name``、``base_url`` 和 ``api_key``；它可以随 ``ServiceProxy`` 进入 Ray "
-"Task 或 env router actor。 每个消费者在自己的事件循环中第一次调用 ``call()`` 时，本地创建 litellm "
-"``Router`` 与 ``AdaptiveSemaphore``。这样可以避免跨 Ray task 复用 asyncio 对象导致的 "
-"event-loop 绑定问题。"
+"LLM 调用由 :mod:`agentsociety2.config.llm_dispatcher` 统一封装。当前实现使用 per-process "
+"dispatcher：``LLMClient`` 是可序列化的连接配置，只携带 ``model_name``、``base_url`` 和 ``api_key``；它可以随 "
+"``ServiceProxy`` 进入 Ray Task 或 env router actor。每个消费者在自己的事件循环中第一次调用 ``call()`` 时，本地创建 litellm "
+"``Router`` 与 ``AdaptiveSemaphore``。这样可以避免跨 Ray task 复用 asyncio 对象导致的 event-loop 绑定问题。"
 msgstr ""
-"LLM calls are centrally wrapped by "
-":mod:`agentsociety2.config.llm_dispatcher`. The current implementation "
-"uses a per-process dispatcher: ``LLMClient`` is a serializable connection"
-" config carrying only ``model_name``, ``base_url``, and ``api_key``; it "
-"can enter Ray Tasks or the env router actor through ``ServiceProxy``. "
-"When each consumer calls ``call()`` for the first time in its own event "
-"loop, it creates a local litellm ``Router`` and ``AdaptiveSemaphore``. "
-"This avoids event-loop binding problems caused by reusing asyncio objects"
-" across Ray tasks."
+"LLM calls are centrally wrapped by :mod:`agentsociety2.config.llm_dispatcher`. The current "
+"implementation uses a per-process dispatcher: ``LLMClient`` is a serializable connection config "
+"carrying only ``model_name``, ``base_url``, and ``api_key``; it can enter Ray Tasks or the env "
+"router actor through ``ServiceProxy``. When each consumer calls ``call()`` for the first time in "
+"its own event loop, it creates a local litellm ``Router`` and ``AdaptiveSemaphore``. This avoids "
+"event-loop binding problems caused by reusing asyncio objects across Ray tasks."
 
-#: ../../architecture.rst:131
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:145
 msgid ""
 "并发控制发生在每个进程 / 事件循环内部：``AdaptiveSemaphore`` 根据近期延迟和 rate-limit 错误做 "
-"AIMD（加性增、乘性减）调整，用于控制该进程内 LLM 请求 fan-out。token usage 也按 ``LLMClient`` "
-"实例本地累计，再通过 Ray Task 返回值合并。"
+"AIMD（加性增、乘性减）调整，用于控制该进程内 LLM 请求 fan-out。token usage 也按 ``LLMClient`` 实例本地累计，再通过 Ray "
+"Task 返回值合并。"
 msgstr ""
-"Concurrency control happens inside each process / event loop. "
-"``AdaptiveSemaphore`` adjusts with AIMD (additive increase, "
-"multiplicative decrease) based on recent latency and rate-limit errors, "
-"controlling LLM request fan-out within that process. Token usage is also "
-"accumulated locally per ``LLMClient`` instance and merged through Ray "
-"Task return values."
+"Concurrency control happens inside each process / event loop. ``AdaptiveSemaphore`` "
+"adjusts with AIMD (additive increase, multiplicative decrease) based on recent "
+"latency and rate-limit errors, controlling LLM request fan-out within that process. "
+"Token usage is also accumulated locally per ``LLMClient`` instance and merged through"
+" Ray Task return values."
 
-#: ../../architecture.rst:135
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:149
 msgid "默认配置可直接使用；需要调参时主要关注以下环境变量（详见 :doc:`installation`）："
 msgstr ""
-"Defaults work out of the box; when tuning is needed, focus on these "
-"environment variables (see :doc:`installation`):"
+"Defaults work out of the box; when tuning is needed, focus on these environment "
+"variables (see :doc:`installation`):"
 
-#: ../../architecture.rst:141
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:155
 msgid "环境变量"
 msgstr "Environment variable"
 
-#: ../../architecture.rst:142
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:156
 msgid "默认"
 msgstr "Default"
 
-#: ../../architecture.rst:143
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:157
 msgid "含义"
 msgstr "Meaning"
 
-#: ../../architecture.rst:144
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:158
 msgid "``AGENTSOCIETY_LLM_RAY_MAX_WORKERS``"
-msgstr ""
+msgstr "``AGENTSOCIETY_LLM_RAY_MAX_WORKERS``"
 
-#: ../../architecture.rst:145
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:159
 msgid "机器 CPU 核数"
-msgstr ""
+msgstr "Number of CPU cores on the machine"
 
-#: ../../architecture.rst:146
-msgid ""
-"``ray.init(num_cpus=...)`` 的 CPU 预算，封顶每 tick 同时运行的 ``step_agent_batch`` "
-"Ray Task 数。"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:160
+msgid "``ray.init(num_cpus=...)`` 的 CPU 预算，封顶每 tick 同时运行的 ``step_agent_batch`` Ray Task 数。"
 msgstr ""
-"CPU budget for ``ray.init(num_cpus=...)``; caps how many "
-"``step_agent_batch`` Ray Tasks can run concurrently per tick."
+"CPU budget for ``ray.init(num_cpus=...)``; caps how many ``step_agent_batch`` Ray "
+"Tasks can run concurrently per tick."
 
-#: ../../architecture.rst:147
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:161
 msgid "``AGENTSOCIETY_LLM_RAY_CONCURRENCY``"
-msgstr ""
+msgstr "``AGENTSOCIETY_LLM_RAY_CONCURRENCY``"
 
-#: ../../architecture.rst:148
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:162
 msgid "16"
-msgstr ""
+msgstr "16"
 
-#: ../../architecture.rst:149
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:163
 msgid "每个本地 ``LLMClient`` 的 AIMD 初始并发；无人工上下限，自动逼近 API 真实容量。"
 msgstr ""
-"Initial AIMD concurrency for each local ``LLMClient``. There is no manual"
-" upper or lower bound; it automatically approaches the API's actual "
-"capacity."
+"Initial AIMD concurrency for each local ``LLMClient``. There is no manual upper or "
+"lower bound; it automatically approaches the API's actual capacity."
 
-#: ../../architecture.rst:150
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:164
 msgid "``AGENTSOCIETY_BATCH_SIZE``"
-msgstr ""
+msgstr "``AGENTSOCIETY_BATCH_SIZE``"
 
-#: ../../architecture.rst:151
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:165
 msgid "256"
-msgstr ""
+msgstr "256"
 
-#: ../../architecture.rst:152
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:166
 msgid "每个 ``step_agent_batch`` Ray Task 处理的 agent 数；CLI ``--batch-size`` 可覆盖。"
 msgstr ""
-"Number of agents handled by each ``step_agent_batch`` Ray Task; the CLI "
-"``--batch-size`` option can override it."
+"Number of agents handled by each ``step_agent_batch`` Ray Task; the CLI ``--batch-"
+"size`` option can override it."
 
-#: ../../architecture.rst:153
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:167
 msgid "``AGENTSOCIETY_LLM_LATENCY_DEGRADE_FACTOR``"
-msgstr ""
+msgstr "``AGENTSOCIETY_LLM_LATENCY_DEGRADE_FACTOR``"
 
-#: ../../architecture.rst:154
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:168
 msgid "4.0"
-msgstr ""
+msgstr "4.0"
 
-#: ../../architecture.rst:155
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:169
 msgid "AIMD 的相对退避因子。调用延迟明显高于近期健康基线时触发降并发。"
 msgstr ""
-"Relative AIMD backoff factor. Concurrency is reduced when call latency is"
-" significantly higher than the recent healthy baseline.\n"
+"Relative AIMD backoff factor. Concurrency is reduced when call latency is "
+"significantly higher than the recent healthy baseline."
 
-#: ../../architecture.rst:156
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:170
 msgid "``AGENTSOCIETY_LLM_SLOW_LATENCY_MS``"
-msgstr ""
+msgstr "``AGENTSOCIETY_LLM_SLOW_LATENCY_MS``"
 
-#: ../../architecture.rst:157
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:171
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:177
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:180
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:183
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:186
 msgid "未设置"
 msgstr "Not set"
 
-#: ../../architecture.rst:158
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:172
 msgid "可选的绝对延迟阈值（毫秒）。未设置时只使用相对因子。"
 msgstr ""
-"Optional absolute latency threshold in milliseconds. When unset, only the"
-" relative factor is used.\n"
+"Optional absolute latency threshold in milliseconds. When unset, only the relative "
+"factor is used."
 
-#: ../../architecture.rst:160
-msgid ""
-"``init_dispatchers()`` 只负责初始化 Ray（用于 env router actor 和 agent Ray Tasks）。"
-" ``shutdown_dispatchers()`` 对 LLM 侧是 no-op；本地 Router 随所在进程退出释放。"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:173
+msgid "``AGENTSOCIETY_LLM_API_TYPE``"
+msgstr "``AGENTSOCIETY_LLM_API_TYPE``"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:174
+msgid "``openai``"
+msgstr "``openai``"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:175
+msgid "接口协议选择：``openai`` 为 Chat Completions，``anthropic`` 为 Messages。"
+msgstr "API protocol selection: ``openai`` for Chat Completions, ``anthropic`` for Messages."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:176
+msgid "``AGENTSOCIETY_LLM_THINKING``"
+msgstr "``AGENTSOCIETY_LLM_THINKING``"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:178
+msgid "推理（thinking）总开关，``on`` / ``off``。**未设置时不发送任何新参数**；openai 与 anthropic 接口分别生成对应的开关参数。"
 msgstr ""
-"``init_dispatchers()`` only initializes Ray for the env router actor and "
-"agent Ray Tasks. ``shutdown_dispatchers()`` is a no-op on the LLM side; "
-"local Routers are released when their process exits."
+"Master switch for thinking, ``on`` / ``off``. **When unset, no new parameters are "
+"sent**; the openai and anthropic interfaces each generate their corresponding toggle "
+"parameters."
 
-#: ../../architecture.rst:164
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:179
+msgid "``AGENTSOCIETY_LLM_REASONING_EFFORT``"
+msgstr "``AGENTSOCIETY_LLM_REASONING_EFFORT``"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:181
+msgid "显式 ``reasoning_effort``。``off`` 时发送 ``none``；``on`` 时默认 ``medium``，显式设置后按该值发送。"
+msgstr ""
+"Explicit ``reasoning_effort``. ``off`` sends ``none``; ``on`` defaults to ``medium``,"
+" and an explicitly set value is sent as-is."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:182
+msgid "``AGENTSOCIETY_LLM_THINKING_FORMAT``"
+msgstr "``AGENTSOCIETY_LLM_THINKING_FORMAT``"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:184
+msgid ""
+"显式声明控制字段：``reasoning_effort`` / ``thinking`` / ``enable_thinking`` / "
+"``chat_template_kwargs`` / ``reasoning``。"
+msgstr ""
+"Explicitly declares the control field: ``reasoning_effort`` / ``thinking`` / "
+"``enable_thinking`` / ``chat_template_kwargs`` / ``reasoning``."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:185
+msgid "``AGENTSOCIETY_LLM_EXTRA_BODY``"
+msgstr "``AGENTSOCIETY_LLM_EXTRA_BODY``"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:187
+#, python-brace-format
+msgid ""
+"JSON 对象字符串，合并进请求的 ``extra_body``，用于网关私有开关（如 ``{\"enable_thinking\": false}``）。配了它时 "
+"``off`` 只发 ``extra_body``、不发 ``reasoning_effort``。"
+msgstr ""
+"A JSON object string merged into the request's ``extra_body``, used for gateway-"
+"private switches (e.g. ``{\"enable_thinking\": false}``). When configured, ``off`` "
+"sends only ``extra_body`` and no ``reasoning_effort``."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:188
+msgid "``AGENTSOCIETY_CODER_LLM_THINKING`` / ``_REASONING_EFFORT`` / ``_EXTRA_BODY``"
+msgstr "``AGENTSOCIETY_CODER_LLM_THINKING`` / ``_REASONING_EFFORT`` / ``_EXTRA_BODY``"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:189
+msgid "回退默认组"
+msgstr "Fall back to the default group"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:190
+msgid "上述三项的 coder 角色（env router 代码生成）覆盖。"
+msgstr "Coder-role (env router code generation) overrides of the three settings above."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:192
+msgid ""
+"``init_dispatchers()`` 只负责初始化 Ray（用于 env router actor 和 agent Ray Tasks）。 "
+"``shutdown_dispatchers()`` 对 LLM 侧是 no-op；本地 Router 随所在进程退出释放。"
+msgstr ""
+"``init_dispatchers()`` only initializes Ray for the env router actor and agent Ray "
+"Tasks. ``shutdown_dispatchers()`` is a no-op on the LLM side; local Routers are "
+"released when their process exits."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:196
 msgid "Trace"
+msgstr "Trace"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:198
+msgid ":mod:`agentsociety2.trace` 提供分布式追踪，采用分布式无锁写入，没有中心 actor："
 msgstr ""
+":mod:`agentsociety2.trace` provides distributed tracing with lock-free, distributed "
+"writes and no central actor:"
 
-#: ../../architecture.rst:166
-msgid ":mod:`agentsociety2.trace` 提供分布式追踪："
-msgstr ":mod:`agentsociety2.trace` provides distributed tracing:"
-
-#: ../../architecture.rst:168
-msgid "``ShardedTraceWriter`` 按 ``trace_id`` 分片写入，并通过后台线程批量落盘。"
-msgstr ""
-"``ShardedTraceWriter`` shards writes by ``trace_id`` and flushes them in "
-"batches through a background thread.\n"
-
-#: ../../architecture.rst:169
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:188
 msgid ""
-"``JsonlTraceWriter`` 提供 "
-"``start_span``、``trace_span``、``record_event``、``end_span`` 和 "
-"``TraceSpan``。"
+"``ShardedAppendSink``（别名 ``ShardedTraceWriter``）按 ``trace_id[:2]`` 分片（最多 256 个文件），每个写进程持有自己的实例，以 "
+"``os.open(O_APPEND)`` + ``os.write`` 追加记录，不经过中心写入 actor。共享目录的并发写入语义还取决于底层文件系统，不能用管道的 ``PIPE_BUF``"
+" 保证推断普通文件的行为。"
 msgstr ""
-"``JsonlTraceWriter`` provides ``start_span``, ``trace_span``, "
-"``record_event``, ``end_span``, and ``TraceSpan``.\n"
+"``ShardedAppendSink`` (alias ``ShardedTraceWriter``) shards by ``trace_id[:2]`` into at most 256 "
+"files. Each writer process holds its own instance and appends records using ``os.open(O_APPEND)``"
+" and ``os.write``, without a central writer actor. Concurrent shared-directory writes depend on "
+"the filesystem; pipe ``PIPE_BUF`` guarantees do not establish regular-file behavior."
 
-#: ../../architecture.rst:171
-msgid "``TraceActor`` 是常驻 Ray actor；``TraceProxy`` 是放入 ``ServiceProxy`` 的轻量句柄。"
-msgstr ""
-"``TraceActor`` is a long-lived Ray actor; ``TraceProxy`` is the "
-"lightweight handle placed in ``ServiceProxy``.\n"
-
-#: ../../architecture.rst:173
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:203
 msgid ""
-"智能体执行、memory、环境调用和 LLM 调用都可以记录为 span。运行完成后，trace 数据可用于分析慢调用、 "
-"长尾任务和环境工具调用瓶颈。"
+"``JsonlTraceWriter`` 提供 ``start_span``、``trace_span``、``record_event``、``end_span`` 和"
+" ``TraceSpan``，把完成的 span 转发给 sink。"
 msgstr ""
-"Agent execution, memory, environment calls, and LLM calls can all be "
-"recorded as spans. After a run completes, trace data can be used to "
-"analyze slow calls, tail-latency tasks, and environment tool-call "
-"bottlenecks.\n"
+"``JsonlTraceWriter`` provides ``start_span``, ``trace_span``, ``record_event``, "
+"``end_span``, and ``TraceSpan``, forwarding completed spans to the sink."
 
-#: ../../architecture.rst:177
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:205
+msgid ""
+"``TraceProxy`` 是放入 ``ServiceProxy`` 的轻量句柄，只携带 trace 目录；各消费者在本地自建 "
+"``ShardedAppendSink``。"
+msgstr ""
+"``TraceProxy`` is the lightweight handle placed into ``ServiceProxy``; it carries "
+"only the trace directory, and each consumer builds its own local "
+"``ShardedAppendSink``."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:194
+msgid "智能体执行、memory、环境调用和 LLM 调用都可以记录为 span。运行完成后，trace 数据可用于分析慢调用、长尾任务和环境工具调用瓶颈。"
+msgstr ""
+"Agent execution, memory, environment calls, and LLM calls can all be recorded as spans. After a "
+"run completes, trace data can be used to analyze slow calls, tail-latency tasks, and environment "
+"tool-call bottlenecks."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:212
 msgid "Replay 与存储"
 msgstr "Replay and Storage"
 
-#: ../../architecture.rst:179
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:214
 msgid ""
 "Replay 数据由 ``ReplaySink`` / ``ReplayWriter`` 以 append-only JSONL 写入 "
-"``run/replay/``，dataset catalog 和列元数据保存在 ``_schema.json``。``ReplayProxy``"
-" 只携带 replay 目录和启用标志；env router、society 和 agent task 各自在本进程内创建 "
-"``ReplaySink`` 并并发 append，不再经过中心 SQLite actor。读取侧由 ``ReplayReader`` 使用 "
-"DuckDB 将 JSONL shard 注册为 view，表结构与数据集注册机制见 :doc:`storage`。"
+"``run/replay/``，dataset catalog 和列元数据保存在 ``_schema.json``。``ReplayProxy`` 只携带 replay "
+"目录和启用标志；env router、society 和 agent task 各自在本进程内创建 ``ReplaySink`` 并并发 append，不再经过中心 "
+"SQLite actor。读取侧由 ``ReplayReader`` 使用 DuckDB 将 JSONL shard 注册为 view，表结构与数据集注册机制见 "
+":doc:`storage`。"
 msgstr ""
-"Replay data is written by ``ReplaySink`` / ``ReplayWriter`` as append-"
-"only JSONL under ``run/replay/``. The dataset catalog and column metadata"
-" are stored in ``_schema.json``. ``ReplayProxy`` only carries the replay "
-"directory and enabled flag; the env router, society, and agent tasks each"
-" create a local ``ReplaySink`` in their own process and append "
-"concurrently, without a central SQLite actor. On the read side, "
-"``ReplayReader`` uses DuckDB to register JSONL shards as views. For table"
-" structure and dataset registration, see :doc:`storage`.\n"
+"Replay data is written by ``ReplaySink`` / ``ReplayWriter`` as append-only JSONL "
+"under ``run/replay/``. The dataset catalog and column metadata are stored in "
+"``_schema.json``. ``ReplayProxy`` only carries the replay directory and enabled flag;"
+" the env router, society, and agent tasks each create a local ``ReplaySink`` in their"
+" own process and append concurrently, without a central SQLite actor. On the read "
+"side, ``ReplayReader`` uses DuckDB to register JSONL shards as views. For table "
+"structure and dataset registration, see :doc:`storage`."
 
-#: ../../architecture.rst:188
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:223
 msgid "扩展点"
 msgstr "Extension Points"
 
-#: ../../architecture.rst:190
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:225
 msgid "AgentSociety 2 的主要扩展点包括："
 msgstr "The main AgentSociety 2 extension points are:"
 
-#: ../../architecture.rst:192
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:227
 msgid "新增智能体能力：编写 Agent Skill，放入 ``custom/skills/``，见 :doc:`agent_skills`。"
 msgstr ""
-"Add agent capabilities: write Agent Skills and place them under "
-"``custom/skills/``; see :doc:`agent_skills`.\n"
+"Add agent capabilities: write Agent Skills and place them under ``custom/skills/``; "
+"see :doc:`agent_skills`."
 
-#: ../../architecture.rst:193
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:228
 msgid "新增环境模块：继承 ``EnvBase`` 并用 ``@tool`` 暴露可调用方法，见 :doc:`env_modules`。"
 msgstr ""
-"Add environment modules: inherit from ``EnvBase`` and expose callable "
-"methods with ``@tool``; see :doc:`env_modules`.\n"
+"Add environment modules: inherit from ``EnvBase`` and expose callable methods with "
+"``@tool``; see :doc:`env_modules`."
 
-#: ../../architecture.rst:194
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:229
 msgid "自定义智能体类型：继承 ``AgentBase`` 并通过注册表发现，见 :doc:`agents`。"
 msgstr ""
-"Customize agent types: inherit from ``AgentBase`` and discover them "
-"through the registry; see :doc:`agents`.\n"
+"Customize agent types: inherit from ``AgentBase`` and discover them through the "
+"registry; see :doc:`agents`."
 
-#: ../../architecture.rst:195
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:230
 msgid "分析运行结果：读取 trace span 或 replay dataset，见 :doc:`storage`。"
-msgstr ""
-"Analyze run results: read trace spans or replay datasets; see "
-":doc:`storage`."
+msgstr "Analyze run results: read trace spans or replay datasets; see :doc:`storage`."
 
-#: ../../architecture.rst:199
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:234
 msgid "参考"
 msgstr "References"
 
-#: ../../architecture.rst:201
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:236
 msgid ":doc:`agents`：智能体构造模型、workspace 布局与 ReAct 工具循环。"
-msgstr ""
-":doc:`agents`: agent construction model, workspace layout, and ReAct tool"
-" loop."
+msgstr ":doc:`agents`: agent construction model, workspace layout, and ReAct tool loop."
 
-#: ../../architecture.rst:202
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:237
 msgid ":doc:`agent_skills`：Agent Skill 的目录结构、加载与执行方式。"
-msgstr ""
-":doc:`agent_skills`: Agent Skill directory structure, loading, and "
-"execution."
+msgstr ":doc:`agent_skills`: Agent Skill directory structure, loading, and execution."
 
-#: ../../architecture.rst:203
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:238
 msgid ":doc:`env_modules`：环境模块与 ``@tool`` 装饰器。"
 msgstr ":doc:`env_modules`: environment modules and the ``@tool`` decorator."
 
-#: ../../architecture.rst:204
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:239
 msgid ":doc:`storage`：replay 数据集、``_schema.json`` catalog、JSONL 写入与 DuckDB 读取。"
 msgstr ""
-":doc:`storage`: replay datasets, the ``_schema.json`` catalog, JSONL "
-"writes, and DuckDB reads.\n"
+":doc:`storage`: replay datasets, the ``_schema.json`` catalog, JSONL writes, and "
+"DuckDB reads."
 
-#: ../../architecture.rst:205
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/architecture.rst:240
 msgid ":doc:`api/env` / :doc:`api/storage`：router、proxy、writer API。"
-msgstr ""
-
-#~ msgid ""
-#~ "默认批大小为 ``batch_size=256``。批大小影响单个 Ray Task "
-#~ "内的并发 fan-out；每个进程内的 LLM 并发由本地 "
-#~ "``LLMClient`` 自适应控制。"
-#~ msgstr ""
-#~ "The default batch size is "
-#~ "``batch_size=256``. Batch size controls the"
-#~ " concurrency fan-out within a single"
-#~ " Ray Task; global LLM concurrency is"
-#~ " still controlled by the shared LLM"
-#~ " dispatch layer.\n"
-
-#~ msgid "4"
-#~ msgstr ""
-
-#~ msgid ""
-#~ "环境模块采用对称的持久化契约：``EnvBase.to_workspace()`` 把动态状态写入 "
-#~ "``<workspace_root>/state/ENV_STATE.json``（模块自选格式），``restore()`` "
-#~ "恢复；路由每步调用 ``to_workspaces()``，``--resume`` 时由 actor"
-#~ " 的 ``init()`` 经 ``from_workspaces()`` 重建各模块"
-#~ " （晚于 ``init()`` 执行，故 checkpoint "
-#~ "覆盖重置）。``AgentSociety`` 自身的状态写 ``SOCIETY.json`` / "
-#~ "``SOCIETY_STEP.json``。详见 :doc:`env_modules` 与 "
-#~ ":doc:`cli` 的 resume 说明。"
-#~ msgstr ""
+msgstr ":doc:`api/env` / :doc:`api/storage`: router, proxy, and writer APIs."

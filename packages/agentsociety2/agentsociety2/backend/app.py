@@ -1,19 +1,6 @@
-"""
-FastAPI backend service for AI Social Scientist VSCode extension
+"""AI Social Scientist 的 FastAPI 应用。
 
-关联文件：
-- @packages/agentsociety2/agentsociety2/backend/run.py - 服务启动脚本
-- @extension/src/services/backendManager.ts - VSCode插件后端进程管理
-- @extension/src/apiClient.ts - VSCode插件API客户端
-
-路由注册：
-- @packages/agentsociety2/agentsociety2/backend/routers/prefill_params.py - /api/v1/prefill-params
-- @packages/agentsociety2/agentsociety2/backend/routers/experiments.py - /api/v1/experiments
-- @packages/agentsociety2/agentsociety2/backend/routers/replay.py - /api/v1/replay
-- @packages/agentsociety2/agentsociety2/backend/routers/custom.py - /api/v1/custom
-- @packages/agentsociety2/agentsociety2/backend/routers/modules.py - /api/v1/modules
-- @packages/agentsociety2/agentsociety2/backend/routers/agent_skills.py - /api/v1/agent-skills
-"""
+注册实验、回放、参数、模块与技能管理路由，并配置应用生命周期、可信主机和浏览器来源检查。服务入口见 :mod:`agentsociety2.backend.run`，HTTP 调用方式见 :doc:`/api/http`。"""
 
 from __future__ import annotations
 
@@ -30,6 +17,8 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 
 from agentsociety2 import __version__
+from agentsociety2.backend import api_documentation as _api_documentation
+from agentsociety2.backend import docs_ui as _docs_ui
 from agentsociety2.backend.routers import (
     agent_skills,
     custom,
@@ -48,7 +37,7 @@ load_dotenv(_project_root / ".env")
 def _setup_logging():
     """配置后端服务日志。
 
-    读取环境变量 ``BACKEND_LOG_LEVEL``，并初始化 root logger 与相关模块 logger。
+    读取环境变量 ``BACKEND_LOG_LEVEL`` ，并初始化 root logger 与相关模块 logger。
     """
     log_level = os.getenv("BACKEND_LOG_LEVEL", "info")
     # 将 uvicorn 的 "trace" 映射到 Python logging 的 "DEBUG"
@@ -97,7 +86,10 @@ async def lifespan(app: FastAPI):
 # 创建FastAPI应用
 app = FastAPI(
     title="AI Social Scientist Backend API",
-    description="Backend API service for AI Social Scientist VSCode extension",
+    docs_url=None,
+    description=_api_documentation.API_DESCRIPTION,
+    openapi_tags=_api_documentation.OPENAPI_TAGS,
+    swagger_ui_parameters=_api_documentation.SWAGGER_UI_PARAMETERS,
     version=__version__,
     lifespan=lifespan,
 )
@@ -115,7 +107,7 @@ _ALLOWED_ORIGINS = {
 
 
 class BrowserOriginMiddleware:
-    """Block untrusted browser requests, including form/simple POST requests."""
+    """拦截不受信任的浏览器请求（包括 form/simple POST 请求）。"""
 
     def __init__(self, app):
         self.app = app
@@ -210,6 +202,10 @@ async def global_exception_handler(request: Request, exc: Exception):
             "error": "Internal Server Error",
         },
     )
+
+
+_api_documentation.install_api_documentation(app)
+_docs_ui.install_docs_ui(app)
 
 
 if __name__ == "__main__":

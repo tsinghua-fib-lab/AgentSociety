@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: AgentSociety 2 2.6.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-23 12:41+0800\n"
+"POT-Creation-Date: 2026-11-09 19:28+0800\n"
 "PO-Revision-Date: 2026-03-05 23:55+0800\n"
 "Last-Translator: AgentSociety Team\n"
 "Language: en\n"
@@ -19,373 +19,846 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: ../../env_modules.rst:2
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:2
 msgid "环境模块"
 msgstr "Environment Modules"
 
-#: ../../env_modules.rst:4
-msgid "本部分介绍如何创建和使用环境模块。"
-msgstr "This section covers how to create and work with environment modules."
-
-#: ../../env_modules.rst:7
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:17
 msgid "创建自定义模块"
 msgstr "Creating Custom Modules"
 
-#: ../../env_modules.rst:10
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:20
 msgid "继承 EnvBase"
 msgstr "Inherit from EnvBase"
 
-#: ../../env_modules.rst:12
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:22
 msgid "要创建自定义环境模块，请继承 ``EnvBase`` 并实现必需的方法："
 msgstr ""
-"To create a custom environment module, inherit from ``EnvBase`` and "
-"implement the required methods:"
+"To create a custom environment module, inherit from ``EnvBase`` and implement the "
+"required methods:"
 
-#: ../../env_modules.rst:15
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:25
 msgid "需要实现的方法"
 msgstr "Required Methods to Implement"
 
-#: ../../env_modules.rst:17
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:27
 msgid "创建自定义环境模块时，必须实现："
 msgstr "When creating a custom environment module, you must implement:"
 
-#: ../../env_modules.rst:19
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:29
 msgid "**async def step(self, tick: int, t: datetime) -> None**"
 msgstr "**async def step(self, tick: int, t: datetime) -> None**"
 
-#: ../../env_modules.rst:21
-msgid "执行一个模拟步骤。在 AgentSociety 模拟期间自动调用。 使用此方法更新时间相关的状态。"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:23
+msgid "执行一个模拟步骤。在 AgentSociety 模拟期间自动调用。使用此方法更新时间相关的状态。"
 msgstr ""
-"Execute one simulation step. This is called automatically during "
-"AgentSociety simulations. Use this to update time-dependent state."
+"Execute one simulation step. This is called automatically during AgentSociety simulations. Use "
+"this to update time-dependent state."
 
-#: ../../env_modules.rst:24
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:34
 msgid "参数:"
 msgstr "Parameters:"
 
-#: ../../env_modules.rst:25
-msgid "tick: 此步骤的持续时间（秒） t: 此步骤后的当前模拟日期时间"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:35
+msgid "tick: 此步骤的持续时间（秒） t: 此步骤开始时的模拟日期时间；全部智能体与环境推进后，编排器再将时钟增加 tick"
 msgstr ""
-"tick: Duration of this step in seconds t: Current simulation datetime "
-"after this step"
+"tick: step duration in seconds t: simulation time at the start of the step; the "
+"orchestrator adds tick after advancing all agents and the environment"
 
-#: ../../env_modules.rst:28
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:38
 msgid "**使用 @tool 装饰的工具**"
 msgstr "**Tools decorated with @tool**"
 
-#: ../../env_modules.rst:30
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:40
 msgid "使用 ``@tool`` 装饰器将方法公开为智能体的可调用函数。"
-msgstr ""
-"Use the ``@tool`` decorator to expose methods as callable functions for "
-"agents."
+msgstr "Use the ``@tool`` decorator to expose methods as callable functions for agents."
 
-#: ../../env_modules.rst:53
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:33
+#, python-brace-format
+msgid ""
+"from datetime import datetime\n"
+"from agentsociety2.env import EnvBase, tool\n"
+"\n"
+"class MyModule(EnvBase):\n"
+"    def __init__(self):\n"
+"        super().__init__()\n"
+"        self._values: dict[int, int] = {}\n"
+"\n"
+"    @tool(readonly=True, kind=\"observe\")\n"
+"    def get_value(self, agent_id: int) -> str:\n"
+"        \"\"\"Get a value for an agent.\"\"\"\n"
+"        return f\"Value for agent {agent_id}\"\n"
+"\n"
+"    @tool(readonly=False)\n"
+"    def set_value(self, agent_id: int, value: int) -> str:\n"
+"        \"\"\"Set a value for an agent.\"\"\"\n"
+"        self._values[agent_id] = value\n"
+"        return f\"Set value for agent {agent_id}\"\n"
+"\n"
+"    async def step(self, tick: int, t: datetime) -> None:\n"
+"        self.t = t"
+msgstr ""
+"from datetime import datetime\n"
+"from agentsociety2.env import EnvBase, tool\n"
+"\n"
+"class MyModule(EnvBase):\n"
+"    def __init__(self):\n"
+"        super().__init__()\n"
+"        self._values: dict[int, int] = {}\n"
+"\n"
+"    @tool(readonly=True, kind=\"observe\")\n"
+"    def get_value(self, agent_id: int) -> str:\n"
+"        \"\"\"Get a value for an agent.\"\"\"\n"
+"        return f\"Value for agent {agent_id}\"\n"
+"\n"
+"    @tool(readonly=False)\n"
+"    def set_value(self, agent_id: int, value: int) -> str:\n"
+"        \"\"\"Set a value for an agent.\"\"\"\n"
+"        self._values[agent_id] = value\n"
+"        return f\"Set value for agent {agent_id}\"\n"
+"\n"
+"    async def step(self, tick: int, t: datetime) -> None:\n"
+"        self.t = t"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:67
 msgid "参考实现"
 msgstr "Reference Implementation"
 
-#: ../../env_modules.rst:55
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:69
 msgid "有关完整的参考实现，请参阅："
 msgstr "For complete reference implementations, see:"
 
-#: ../../env_modules.rst:57
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:71
 msgid "``SimpleSocialSpace`` - 社交互动模块"
 msgstr "``SimpleSocialSpace`` - Social interaction module"
 
-#: ../../env_modules.rst:58
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:72
 msgid "``PublicGoodsEnv`` - 公共物品博弈模块"
 msgstr "``PublicGoodsEnv`` - Public goods game module"
 
-#: ../../env_modules.rst:59
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:73
 msgid "``PrisonersDilemmaEnv`` - 囚徒困境模块"
 msgstr "``PrisonersDilemmaEnv`` - Prisoner's dilemma module"
 
-#: ../../env_modules.rst:62
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:76
 msgid "@tool 装饰器"
 msgstr "The @tool Decorator"
 
-#: ../../env_modules.rst:64
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:78
 msgid "``@tool`` 装饰器将方法标记为可被智能体调用："
 msgstr "The ``@tool`` decorator marks methods as callable by agents:"
 
-#: ../../env_modules.rst:75
-msgid "参数："
-msgstr "Parameters:"
-
-#: ../../env_modules.rst:77
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:71
+#, python-brace-format
 msgid ""
-"**readonly** (bool): 工具是否修改环境 * ``True`` = 只读，可用于查询 * ``False`` = "
-"修改状态，可用于干预"
+"from agentsociety2.env import tool\n"
+"\n"
+"@tool(readonly=True, kind=\"observe\")\n"
+"def get_status(self, agent_id: int) -> str:\n"
+"    \"\"\"Get the status of an agent.\"\"\"\n"
+"    return f\"Agent {agent_id} status\""
 msgstr ""
-"**readonly** (bool): Whether the tool modifies the environment * ``True``"
-" = read-only, can be used in queries * ``False`` = modifies state, can be"
-" used in interventions"
+"from agentsociety2.env import tool\n"
+"\n"
+"@tool(readonly=True, kind=\"observe\")\n"
+"def get_status(self, agent_id: int) -> str:\n"
+"    \"\"\"Get the status of an agent.\"\"\"\n"
+"    return f\"Agent {agent_id} status\""
 
-#: ../../env_modules.rst:81
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:101
+msgid "并发安全"
+msgstr "Concurrency Safety"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:103
+msgid "环境模块可覆盖类方法 ``is_concurrency_safe() -> bool``（默认 ``False``）："
+msgstr ""
+"Environment modules can override the class method ``is_concurrency_safe() -> bool`` "
+"(default ``False``):"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:105
+msgid "返回 ``True``：工具只触达 per-agent / 已自带锁保护的状态，可与其它 ask 并行执行。"
+msgstr ""
+"Return ``True``: tools only touch per-agent state or state already protected by "
+"locks, so they can run in parallel with other asks."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:106
+msgid "当**挂载的全部模块**都返回 ``True`` 时："
+msgstr "When **all mounted modules** return ``True``:"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:108
 msgid ""
-"**kind** (str): 工具的类型 * ``\"observe\"``: 单参数观察（需要 readonly=True） * "
-"``\"statistics\"``: 聚合查询（无参数，需要 readonly=True） * ``None`` 或省略: "
-"常规工具（任何签名，任何 readonly 值）"
+"CLI / ``EnvRouterProxy`` 创建的 Ray actor 使用 ``AGENTSOCIETY_ENV_ACTOR_MAX_CONCURRENCY`` "
+"（默认 ``64``）作为 ``max_concurrency``；"
 msgstr ""
-"**kind** (str): The type of tool * ``\"observe\"``: Single-parameter "
-"observations (requires readonly=True) * ``\"statistics\"``: Aggregate "
-"queries (no parameters, requires readonly=True) * ``None`` or omitted: "
-"Regular tool (any signature, any readonly value)"
+"The Ray actor created by the CLI / ``EnvRouterProxy`` uses "
+"``AGENTSOCIETY_ENV_ACTOR_MAX_CONCURRENCY`` (default ``64``) as ``max_concurrency``;"
 
-#: ../../env_modules.rst:87
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:110
+msgid "``CodeGenRouter`` 跳过全局 ``_execute_lock``，改依赖各模块本地锁。"
+msgstr ""
+"``CodeGenRouter`` skips the global ``_execute_lock`` and relies on each module's "
+"local locks instead."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:111
+msgid "任一模块不安全时，actor 退回 ``max_concurrency=1``，保证串行正确性。"
+msgstr ""
+"When any module is unsafe, the actor falls back to ``max_concurrency=1`` to guarantee"
+" serial correctness."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:114
 msgid "工具类型"
 msgstr "Tool Types"
 
-#: ../../env_modules.rst:89
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:116
 msgid "**observe**: 单参数观察（需要 readonly=True）"
 msgstr "**observe**: Single-parameter observations (readonly=True required)"
 
-#: ../../env_modules.rst:90
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:117
 msgid "**statistics**: 聚合查询（无参数，需要 readonly=True）"
 msgstr "**statistics**: Aggregate queries (no parameters, readonly=True required)"
 
-#: ../../env_modules.rst:91
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:118
 msgid "**regular**: 任何其他工具（可以是只读或读写）"
 msgstr "**regular**: Any other tool (can be readonly or read-write)"
 
-#: ../../env_modules.rst:93
-msgid "有关工具类型的更多详情，请参阅 :doc:`concepts`。"
-msgstr "See :doc:`concepts` for more details on tool types."
-
-#: ../../env_modules.rst:96
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:123
 msgid "状态持久化与 resume"
 msgstr "State Persistence and Resume"
 
-#: ../../env_modules.rst:98
-msgid ""
-"如果模块带有动态内存态，例如计数器、收件箱或队列，可以实现 workspace 持久化，让仿真在中断后通过 ``--resume`` "
-"继续运行（详见 :doc:`cli`）。基类提供一对可覆盖的钩子，但**不规定状态格式、文件名或目录**。 模块可以自行选择布局；通常把状态写到 "
-"``<workspace_root>/state/ENV_STATE.json``。"
-msgstr ""
-"If a module has dynamic in-memory state, such as counters, inboxes, or "
-"queues, it can implement workspace persistence so the simulation can "
-"continue after an interruption with ``--resume``; see :doc:`cli`. The "
-"base class provides two overridable hooks, but **does not prescribe the "
-"state format, file name, or directory**. Each module can choose its own "
-"layout; state is usually written to "
-"``<workspace_root>/state/ENV_STATE.json``."
-
-#: ../../env_modules.rst:106
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:133
 msgid "方法"
 msgstr "Method"
 
-#: ../../env_modules.rst:107
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:134
 msgid "作用"
 msgstr "Role"
 
-#: ../../env_modules.rst:108
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:135
 msgid "``async def to_workspace(self, workspace_path=None)``"
 msgstr "``async def to_workspace(self, workspace_path=None)``"
 
-#: ../../env_modules.rst:109
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:136
 msgid ""
 "把动态状态写入 workspace。society 会在每步结束时通过 router 调用它。建议用 "
 "``agentsociety2.storage.workspace_state.atomic_write_text`` 原子写。"
 msgstr ""
-"Write dynamic state into the workspace. Society calls this through the "
-"router at the end of each step. Use "
-"``agentsociety2.storage.workspace_state.atomic_write_text`` for atomic "
-"writes."
+"Write dynamic state into the workspace. Society calls this through the router at the "
+"end of each step. Use ``agentsociety2.storage.workspace_state.atomic_write_text`` for"
+" atomic writes."
 
-#: ../../env_modules.rst:111
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:138
 msgid "``async def restore(self, workspace_path) -> bool``"
 msgstr "``async def restore(self, workspace_path) -> bool``"
 
-#: ../../env_modules.rst:112
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:139
 msgid ""
-"从 workspace 恢复动态状态，用于 resume 路径。返回值表示是否加载到了快照，供 router 区分 fresh 和 "
-"resume。该方法只会在 ``__init__`` 与 ``init()`` 之后调用，因此可以安全覆盖 ``init()`` 里的重置。"
+"从 workspace 恢复动态状态，用于 resume 路径。返回值表示是否加载到了快照，供 router 区分 fresh 和 resume。该方法只会在 "
+"``__init__`` 与 ``init()`` 之后调用，因此可以安全覆盖 ``init()`` 里的重置。"
 msgstr ""
-"Restore dynamic state from the workspace on the resume path. The return "
-"value indicates whether a snapshot was loaded, allowing the router to "
-"distinguish fresh startup from resume. This method is called only after "
-"``__init__`` and ``init()``, so it can safely override resets performed in"
-" ``init()``."
+"Restore dynamic state from the workspace on the resume path. The return value "
+"indicates whether a snapshot was loaded, allowing the router to distinguish fresh "
+"startup from resume. This method is called only after ``__init__`` and ``init()``, so"
+" it can safely override resets performed in ``init()``."
 
-#: ../../env_modules.rst:115
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:142
 msgid "``def _bind_workspace(self, workspace_path)``"
 msgstr "``def _bind_workspace(self, workspace_path)``"
 
-#: ../../env_modules.rst:116
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:143
 msgid "绑定到 workspace 目录（幂等），创建该目录。由 ``to_workspace``/``restore`` 自动调用。"
 msgstr ""
-"Bind the module to a workspace directory idempotently and create that "
-"directory. Called automatically by ``to_workspace`` / ``restore``."
+"Bind the module to a workspace directory idempotently and create that directory. "
+"Called automatically by ``to_workspace`` / ``restore``."
 
-#: ../../env_modules.rst:117
-msgid ""
-"``classmethod async def from_workspace(cls, workspace_path, "
-"**init_kwargs)``"
-msgstr ""
-"``classmethod async def from_workspace(cls, workspace_path, "
-"**init_kwargs)``"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:144
+msgid "``classmethod async def from_workspace(cls, workspace_path, **init_kwargs)``"
+msgstr "``classmethod async def from_workspace(cls, workspace_path, **init_kwargs)``"
 
-#: ../../env_modules.rst:118
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:145
 msgid ""
 "重建一个可用的模块：先执行 ``cls(**init_kwargs)``，再调用 ``restore``。resume 时，actor 会从 "
 "``SOCIETY.json`` 读取 ``init_kwargs``。"
 msgstr ""
-"Rebuild a ready module by running ``cls(**init_kwargs)`` and then calling"
-" ``restore``. During resume, the actor reads ``init_kwargs`` from "
-"``SOCIETY.json``."
+"Rebuild a ready module by running ``cls(**init_kwargs)`` and then calling "
+"``restore``. During resume, the actor reads ``init_kwargs`` from ``SOCIETY.json``."
 
-#: ../../env_modules.rst:121
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:148
 msgid "实现示例（参考 ``SimpleSocialSpace`` / ``EconomySpace`` / ``MobilitySpace``）："
 msgstr ""
-"Implementation example; compare ``SimpleSocialSpace``, ``EconomySpace``, "
-"and ``MobilitySpace``:"
+"Implementation example; compare ``SimpleSocialSpace``, ``EconomySpace``, and "
+"``MobilitySpace``:"
 
-#: ../../env_modules.rst:167
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:140
+#, python-brace-format
+msgid ""
+"import json\n"
+"import asyncio\n"
+"from agentsociety2.env import EnvBase, tool\n"
+"from agentsociety2.storage.workspace_state import atomic_write_text\n"
+"\n"
+"_STATE_REL = \"state/ENV_STATE.json\"\n"
+"\n"
+"class MyPersistentEnv(EnvBase):\n"
+"    def __init__(self, capacity: int = 100):\n"
+"        super().__init__()\n"
+"        self.capacity = capacity          # 构造配置（在 env_kwargs，不存盘）\n"
+"        self._resources: dict[int, float] = {}  # 动态态（存盘）\n"
+"        self._lock = asyncio.Lock()       # 不存盘（由 __init__ 重建）\n"
+"\n"
+"    @tool(readonly=False)\n"
+"    def allocate(self, agent_id: int, amount: float) -> str:\n"
+"        \"\"\"Allocate resources.\"\"\"\n"
+"        self._resources[agent_id] = amount\n"
+"        return f\"Allocated {amount} to agent {agent_id}\"\n"
+"\n"
+"    async def to_workspace(self, workspace_path=None) -> None:\n"
+"        if workspace_path is not None:\n"
+"            self._bind_workspace(workspace_path)\n"
+"        atomic_write_text(\n"
+"            self._workspace_root / _STATE_REL,\n"
+"            json.dumps(\n"
+"                {\"resources\": {str(k): v for k, v in self._resources.items()}},\n"
+"                ensure_ascii=False,\n"
+"                indent=2,\n"
+"                default=str,\n"
+"            ),\n"
+"        )\n"
+"\n"
+"    async def restore(self, workspace_path) -> bool:\n"
+"        self._bind_workspace(workspace_path)\n"
+"        state_path = self._workspace_root / _STATE_REL\n"
+"        if not state_path.is_file():\n"
+"            return False\n"
+"        d = json.loads(state_path.read_text(encoding=\"utf-8\"))\n"
+"        self._resources = {int(k): v for k, v in d.get(\"resources\", {}).items()}\n"
+"        return True"
+msgstr ""
+"import json\n"
+"import asyncio\n"
+"from agentsociety2.env import EnvBase, tool\n"
+"from agentsociety2.storage.workspace_state import atomic_write_text\n"
+"\n"
+"_STATE_REL = \"state/ENV_STATE.json\"\n"
+"\n"
+"class MyPersistentEnv(EnvBase):\n"
+"    def __init__(self, capacity: int = 100):\n"
+"        super().__init__()\n"
+"        self.capacity = capacity          # Constructor configuration in env_kwargs, not "
+"persisted\n"
+"        self._resources: dict[int, float] = {}  # Dynamic state, persisted\n"
+"        self._lock = asyncio.Lock()       # Recreated by __init__, not persisted\n"
+"\n"
+"    @tool(readonly=False)\n"
+"    def allocate(self, agent_id: int, amount: float) -> str:\n"
+"        \"\"\"Allocate resources.\"\"\"\n"
+"        self._resources[agent_id] = amount\n"
+"        return f\"Allocated {amount} to agent {agent_id}\"\n"
+"\n"
+"    async def to_workspace(self, workspace_path=None) -> None:\n"
+"        if workspace_path is not None:\n"
+"            self._bind_workspace(workspace_path)\n"
+"        atomic_write_text(\n"
+"            self._workspace_root / _STATE_REL,\n"
+"            json.dumps(\n"
+"                {\"resources\": {str(k): v for k, v in self._resources.items()}},\n"
+"                ensure_ascii=False,\n"
+"                indent=2,\n"
+"                default=str,\n"
+"            ),\n"
+"        )\n"
+"\n"
+"    async def restore(self, workspace_path) -> bool:\n"
+"        self._bind_workspace(workspace_path)\n"
+"        state_path = self._workspace_root / _STATE_REL\n"
+"        if not state_path.is_file():\n"
+"            return False\n"
+"        d = json.loads(state_path.read_text(encoding=\"utf-8\"))\n"
+"        self._resources = {int(k): v for k, v in d.get(\"resources\", {}).items()}\n"
+"        return True"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:194
 msgid "约定："
 msgstr "Conventions:"
 
-#: ../../env_modules.rst:169
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:196
 msgid ""
 "JSON 键只能是字符串。``dict[int, ...]`` 应使用 ``str(k)`` 存、``int(k)`` 读，或用 "
 "``agentsociety2.env.base.dump_int_map``/``load_int_map`` 辅助。"
 msgstr ""
-"JSON keys must be strings. For ``dict[int, ...]``, write keys with "
-"``str(k)`` and read them back with ``int(k)``, or use "
-"``agentsociety2.env.base.dump_int_map`` / ``load_int_map``."
+"JSON keys must be strings. For ``dict[int, ...]``, write keys with ``str(k)`` and "
+"read them back with ``int(k)``, or use ``agentsociety2.env.base.dump_int_map`` / "
+"``load_int_map``."
 
-#: ../../env_modules.rst:171
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:198
 msgid ""
-"pydantic 模型用 ``model_dump(mode=\"json\")`` 和 ``model_validate``；datetime "
-"用 ``isoformat``/``fromisoformat``；``set`` 存 ``sorted(list)``。"
+"pydantic 模型用 ``model_dump(mode=\"json\")`` 和 ``model_validate``；datetime 用 "
+"``isoformat``/``fromisoformat``；``set`` 存 ``sorted(list)``。"
 msgstr ""
-"For pydantic models, use ``model_dump(mode=\"json\")`` and "
-"``model_validate``. For datetime values, use ``isoformat`` / "
-"``fromisoformat``. Store ``set`` values as ``sorted(list)``."
+"For pydantic models, use ``model_dump(mode=\"json\")`` and ``model_validate``. For "
+"datetime values, use ``isoformat`` / ``fromisoformat``. Store ``set`` values as "
+"``sorted(list)``."
 
-#: ../../env_modules.rst:173
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:200
 msgid ""
-"``asyncio.Lock``、外部子进程、预训练模型权重等不可或不必序列化的对象不存盘，由 ``__init__``/``init()`` "
-"重建（如 ``MobilitySpace`` 的 routing server、``SocialMediaSpace`` 的推荐器）。"
+"``asyncio.Lock``、外部子进程、预训练模型权重等不可或不必序列化的对象不存盘，由 ``__init__``/``init()`` 重建（如 "
+"``MobilitySpace`` 的 routing server、``SocialMediaSpace`` 的推荐器）。"
 msgstr ""
 "Do not persist objects that cannot or need not be serialized, such as "
-"``asyncio.Lock``, external subprocesses, or pretrained model weights. "
-"Recreate them in ``__init__`` / ``init()``, as with the routing server in"
-" ``MobilitySpace`` or the recommender in ``SocialMediaSpace``."
+"``asyncio.Lock``, external subprocesses, or pretrained model weights. Recreate them "
+"in ``__init__`` / ``init()``, as with the routing server in ``MobilitySpace`` or the "
+"recommender in ``SocialMediaSpace``."
 
-#: ../../env_modules.rst:176
-msgid ""
-"持久化与 replay 表（``_agent_state_columns`` 和 "
-"``_env_state_columns``）相互独立。replay 面向 分析，是 append-only 的时序数据；workspace "
-"面向恢复，会覆写最新状态。详见 :doc:`storage`。"
-msgstr ""
-"Persistence and replay tables (``_agent_state_columns`` and "
-"``_env_state_columns``) are independent. Replay is append-only "
-"time-series data for analysis; workspace persistence is for recovery and"
-" overwrites the latest state. See :doc:`storage`."
-
-#: ../../env_modules.rst:180
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:207
 msgid "注册模块"
 msgstr "Registering Modules"
 
-#: ../../env_modules.rst:193
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:209
+msgid "环境模块没有 ``register_module`` 之类的注册方法，只能在构造 router 时通过 ``env_modules`` 参数挂载："
+msgstr ""
+"Environment modules have no ``register_module``-style registration method; they can "
+"only be mounted through the ``env_modules`` parameter when constructing the router:"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:201
+msgid ""
+"from agentsociety2.env import CodeGenRouter\n"
+"\n"
+"router = CodeGenRouter(env_modules=[MyModule()])\n"
+"\n"
+"# Or mount multiple modules at once\n"
+"router = CodeGenRouter(env_modules=[MyModule(), MyOtherModule()])"
+msgstr ""
+"from agentsociety2.env import CodeGenRouter\n"
+"\n"
+"router = CodeGenRouter(env_modules=[MyModule()])\n"
+"\n"
+"# Or mount multiple modules at once\n"
+"router = CodeGenRouter(env_modules=[MyModule(), MyOtherModule()])"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:222
 msgid "完整示例"
 msgstr "Complete Example"
 
-#: ../../env_modules.rst:246
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:213
+#, python-brace-format
 msgid ""
-"生产环境下环境路由跑在一个专用的 Ray actor 里（``EnvRouterProxy``），所有 agent 共享一份 "
-"环境状态；也可在进程内直接用 ``CodeGenRouter``。除默认的 ``CodeGenRouter`` 外还有 "
-"``ReActRouter`` / ``PlanExecuteRouter`` / ``TwoTierReActRouter`` / "
-"``TwoTierPlanExecuteRouter`` / ``SearchToolRouter`` 可选（见 "
-":doc:`architecture`）。"
+"from typing import Dict\n"
+"from pathlib import Path\n"
+"from datetime import datetime\n"
+"from agentsociety2.env import EnvBase, tool, CodeGenRouter\n"
+"from agentsociety2 import PersonAgent\n"
+"from agentsociety2.society import AgentSociety\n"
+"\n"
+"class WeatherEnvironment(EnvBase):\n"
+"    \"\"\"A simple weather environment module.\"\"\"\n"
+"\n"
+"    def __init__(self):\n"
+"        super().__init__()\n"
+"        self._weather = \"sunny\"\n"
+"        self._temperature = 25\n"
+"        self._agent_locations: Dict[int, str] = {}\n"
+"\n"
+"    @tool(readonly=True, kind=\"observe\")\n"
+"    def get_weather(self, agent_id: int) -> str:\n"
+"        \"\"\"Get the current weather for an agent's location.\"\"\"\n"
+"        location = self._agent_locations.get(agent_id, \"unknown\")\n"
+"        return f\"The weather in {location} is {self._weather} with {self._temperature}°C.\"\n"
+"\n"
+"    @tool(readonly=False)\n"
+"    def change_weather(self, weather: str, temperature: int) -> str:\n"
+"        \"\"\"Change the weather conditions.\"\"\"\n"
+"        self._weather = weather\n"
+"        self._temperature = temperature\n"
+"        return f\"Weather changed to {weather} at {temperature}°C.\"\n"
+"\n"
+"    async def step(self, tick: int, t: datetime) -> None:\n"
+"        \"\"\"Update environment state for one simulation step.\"\"\"\n"
+"        self.t = t\n"
+"        # Update time-dependent state here if needed\n"
+"\n"
+"# Use the custom module（agent 以 spec 声明，不实例化）\n"
+"env_router = CodeGenRouter(env_modules=[WeatherEnvironment()])\n"
+"\n"
+"agent_specs = [{\"id\": 1, \"profile\": {\"name\": \"Bob\"}, \"config\": {}}]\n"
+"\n"
+"society = AgentSociety(\n"
+"    agent_specs=agent_specs,\n"
+"    agent_class_name=\"PersonAgent\",\n"
+"    env_router=env_router,\n"
+"    start_t=datetime.now(),\n"
+"    run_dir=Path(\"run\"),\n"
+")\n"
+"await society.init()"
 msgstr ""
-"In production, environment routing runs in a dedicated Ray actor "
-"(``EnvRouterProxy``), and all agents share the same environment state. "
-"``CodeGenRouter`` can also be used directly in-process. In addition to "
-"the default ``CodeGenRouter``, optional routers include ``ReActRouter``, "
-"``PlanExecuteRouter``, ``TwoTierReActRouter``, "
-"``TwoTierPlanExecuteRouter``, and ``SearchToolRouter`` (see "
-":doc:`architecture`)."
+"from typing import Dict\n"
+"from pathlib import Path\n"
+"from datetime import datetime\n"
+"from agentsociety2.env import EnvBase, tool, CodeGenRouter\n"
+"from agentsociety2 import PersonAgent\n"
+"from agentsociety2.society import AgentSociety\n"
+"\n"
+"class WeatherEnvironment(EnvBase):\n"
+"    \"\"\"A simple weather environment module.\"\"\"\n"
+"\n"
+"    def __init__(self):\n"
+"        super().__init__()\n"
+"        self._weather = \"sunny\"\n"
+"        self._temperature = 25\n"
+"        self._agent_locations: Dict[int, str] = {}\n"
+"\n"
+"    @tool(readonly=True, kind=\"observe\")\n"
+"    def get_weather(self, agent_id: int) -> str:\n"
+"        \"\"\"Get the current weather for an agent's location.\"\"\"\n"
+"        location = self._agent_locations.get(agent_id, \"unknown\")\n"
+"        return f\"The weather in {location} is {self._weather} with {self._temperature}°C.\"\n"
+"\n"
+"    @tool(readonly=False)\n"
+"    def change_weather(self, weather: str, temperature: int) -> str:\n"
+"        \"\"\"Change the weather conditions.\"\"\"\n"
+"        self._weather = weather\n"
+"        self._temperature = temperature\n"
+"        return f\"Weather changed to {weather} at {temperature}°C.\"\n"
+"\n"
+"    async def step(self, tick: int, t: datetime) -> None:\n"
+"        \"\"\"Update environment state for one simulation step.\"\"\"\n"
+"        self.t = t\n"
+"        # Update time-dependent state here if needed\n"
+"\n"
+"# Use the custom module; declare agents through specs rather than direct instantiation\n"
+"env_router = CodeGenRouter(env_modules=[WeatherEnvironment()])\n"
+"\n"
+"agent_specs = [{\"id\": 1, \"profile\": {\"name\": \"Bob\"}, \"config\": {}}]\n"
+"\n"
+"society = AgentSociety(\n"
+"    agent_specs=agent_specs,\n"
+"    agent_class_name=\"PersonAgent\",\n"
+"    env_router=env_router,\n"
+"    start_t=datetime.now(),\n"
+"    run_dir=Path(\"run\"),\n"
+")\n"
+"await society.init()"
 
-#: ../../env_modules.rst:252
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:282
 msgid "示例"
 msgstr "Examples"
 
-#: ../../env_modules.rst:254
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:284
 msgid "请参阅 ``agentsociety2.contrib.env`` 中的内置环境类（类名以当前代码为准）："
 msgstr ""
-"See the built-in environment classes in ``agentsociety2.contrib.env`` "
-"(class names follow the current code):"
+"See the built-in environment classes in ``agentsociety2.contrib.env`` (class names "
+"follow the current code):"
 
-#: ../../env_modules.rst:256
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:286
 msgid "``SimpleSocialSpace`` — 社交互动"
 msgstr "``SimpleSocialSpace`` — social interaction"
 
-#: ../../env_modules.rst:257
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:287
+msgid ""
+"``WeatherEnvironment`` — 天气查询 / 干预（onboarding 见 "
+"``examples/basics/02_custom_env_module.py``）"
+msgstr ""
+"``WeatherEnvironment`` — weather queries / intervention (onboarding example: "
+"``examples/basics/02_custom_env_module.py``)"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:288
 msgid "``PublicGoodsEnv`` — 公共物品博弈"
 msgstr "``PublicGoodsEnv`` — public goods game"
 
-#: ../../env_modules.rst:258
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:289
 msgid "``PrisonersDilemmaEnv`` — 囚徒困境"
 msgstr "``PrisonersDilemmaEnv`` — prisoner's dilemma"
 
-#: ../../env_modules.rst:259
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:290
 msgid "``TrustGameEnv`` — 信任博弈"
 msgstr "``TrustGameEnv`` — trust game"
 
-#~ msgid ""
-#~ "模块若带动态内存态（计数器、收件箱、队列等），可实现 workspace 持久化，使仿真能在中断后 "
-#~ "``--resume`` 续跑（详见 "
-#~ ":doc:`cli`）。基类提供一对可覆盖的钩子，**不规定状态格式、文件名或目录** ——模块自选布局，通常写到 "
-#~ "``<workspace_root>/state/ENV_STATE.json``。"
-#~ msgstr ""
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:4
+msgid "环境模块保存仿真世界的状态，并通过 ``@tool`` 方法提供观察、查询和操作。智能体通过 ``ask_env`` 提出请求，由环境路由器选择并调用工具。"
+msgstr ""
+"Environment modules store simulation-world state and expose observation, query and action methods"
+" through ``@tool``. Agents submit requests through ``ask_env``; the environment router selects "
+"and calls tools."
 
-#~ msgid ""
-#~ "把动态状态写入 workspace（每步由 society 经 router "
-#~ "调用）。建议用 "
-#~ "``agentsociety2.storage.workspace_state.atomic_write_text`` 原子写。"
-#~ msgstr ""
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:6
+msgid "先阅读 :doc:`env_modules/routing` 理解模块与路由器的分工，再编写工具。带动态状态的模块还需要实现保存与恢复，才能在实验中断后继续运行。"
+msgstr ""
+"Read :doc:`env_modules/routing` to understand module and router responsibilities before writing "
+"tools. Modules with dynamic state also need saving and restoration to continue interrupted "
+"experiments."
 
-#~ msgid ""
-#~ "从 workspace 恢复动态状态（resume 路径）。返回是否加载到快照（供 "
-#~ "router 区分 fresh / resume）。仅在 "
-#~ "``__init__`` 与 ``init()`` 之后调用，故可安全覆盖 "
-#~ "``init()`` 的重置。"
-#~ msgstr ""
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:11
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules/routing.rst:2
+msgid "环境模块与路由器"
+msgstr "Environment modules and routers"
 
-#~ msgid ""
-#~ "重建就绪模块：``cls(**init_kwargs)`` 后 ``restore``。resume "
-#~ "时由 actor 从 ``SOCIETY.json`` 取 "
-#~ "``init_kwargs``。"
-#~ msgstr ""
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:15
+msgid "理解共享环境、工具路由、查询、干预与时间推进的关系。"
+msgstr "Understand shared environments, tool routing, queries, interventions and time advancement."
 
-#~ msgid "约定： - JSON 键只能是字符串——``dict[int, ...]`` 用 ``str(k)`` 存、``int(k)`` 读（或用"
-#~ msgstr ""
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:17
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules/tools.rst:2
+msgid "创建环境模块与工具"
+msgstr "Creating environment modules and tools"
 
-#~ msgid "``agentsociety2.env.base.dump_int_map``/``load_int_map`` 辅助）。"
-#~ msgstr ""
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:21
+msgid "编写环境工具，区分观察、统计与状态修改，并挂载到路由器。"
+msgstr ""
+"Write environment tools, distinguish observation, statistics and state changes, and mount modules"
+" on a router."
 
-#~ msgid ""
-#~ "pydantic 模型用 ``model_dump(mode=\"json\")`` / "
-#~ "``model_validate``；datetime 用 "
-#~ "``isoformat``/``fromisoformat``；``set`` 存 "
-#~ "``sorted(list)``。"
-#~ msgstr ""
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:23
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules/persistence.rst:2
+msgid "环境状态与中断恢复"
+msgstr "Environment state and resuming runs"
 
-#~ msgid ""
-#~ "``asyncio.Lock``、外部子进程、预训练模型权重等不可/不必序列化的对象不存盘，由 "
-#~ "``__init__``/``init()`` 重建（如 ``MobilitySpace`` 的 "
-#~ "routing server、``SocialMediaSpace`` 的推荐器）。"
-#~ msgstr ""
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules.rst:27
+msgid "保存动态状态，重建运行时对象，并检查中断恢复的结果。"
+msgstr "Save dynamic state, reconstruct runtime objects and verify recovery after interruption."
 
-#~ msgid ""
-#~ "持久化与 replay "
-#~ "表（``_agent_state_columns``/``_env_state_columns``）相互独立：replay 面向"
-#~ " 分析（append-only），workspace 面向恢复（覆写最新）。详见 "
-#~ ":doc:`storage`。"
-#~ msgstr ""
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules/persistence.rst:9
+msgid ""
+"如果模块带有动态内存态，例如计数器、收件箱或队列，可以实现 workspace 持久化，让仿真在中断后通过 ``--resume`` 继续运行（详见 "
+":doc:`/cli`）。基类提供一对可覆盖的钩子，但**不规定状态格式、文件名或目录**。模块可以自行选择布局；通常把状态写到 "
+"``<workspace_root>/state/ENV_STATE.json``。"
+msgstr ""
+"If a module has dynamic in-memory state, such as counters, inboxes, or queues, it can implement "
+"workspace persistence so the simulation can continue after an interruption with ``--resume``; see"
+" :doc:`/cli`. The base class provides two overridable hooks, but **does not prescribe the state "
+"format, file name, or directory**. Each module can choose its own layout; state is usually "
+"written to ``<workspace_root>/state/ENV_STATE.json``."
 
-#~ msgid ""
-#~ "JSON 键只能是字符串。``dict[int, ...]`` 应使用 ``str(k)``"
-#~ " 存、``int(k)`` 读，或用 "
-#~ "``agentsociety2.env.base.dump_int_map``/``load_int_map`` 辅助）。"
-#~ msgstr ""
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules/persistence.rst:86
+msgid ""
+"持久化与 replay 表（``_agent_state_columns`` 和 ``_env_state_columns``）相互独立。replay 面向分析，是 append-only "
+"的时序数据；workspace 面向恢复，会覆写最新状态。详见 :doc:`/storage`。"
+msgstr ""
+"Persistence and replay tables (``_agent_state_columns`` and ``_env_state_columns``) are "
+"independent. Replay is append-only time-series data for analysis; workspace persistence is for "
+"recovery and overwrites the latest state. See :doc:`/storage`."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules/persistence.rst:89
+msgid "验证保存与恢复"
+msgstr "Verifying saving and restoration"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules/persistence.rst:91
+msgid "下面的离线检查复用上面的模块，在临时目录保存资源，再构造新实例恢复。断言同时检查整数键是否还原，以及构造配置是否被正确传入。整个过程不调用模型。"
+msgstr ""
+"This offline check reuses the module above, saves resources in a temporary directory, then "
+"restores them into a new instance. Assertions check integer-key restoration and constructor "
+"configuration. No model calls are made."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules/persistence.rst:93
+#, python-brace-format
+msgid ""
+"from pathlib import Path\n"
+"from tempfile import TemporaryDirectory\n"
+"\n"
+"async def check_round_trip():\n"
+"    with TemporaryDirectory() as directory:\n"
+"        workspace = Path(directory)\n"
+"        original = MyPersistentEnv(capacity=20)\n"
+"        original.allocate(agent_id=7, amount=12.5)\n"
+"        await original.to_workspace(workspace)\n"
+"        restored = await MyPersistentEnv.from_workspace(workspace, capacity=20)\n"
+"        assert restored._resources == {7: 12.5}\n"
+"        assert restored.capacity == 20\n"
+"        missing = MyPersistentEnv()\n"
+"        assert await missing.restore(workspace / \"new\") is False\n"
+"    print(\"Environment state restored\")\n"
+"\n"
+"asyncio.run(check_round_trip())"
+msgstr ""
+"from pathlib import Path\n"
+"from tempfile import TemporaryDirectory\n"
+"\n"
+"async def check_round_trip():\n"
+"    with TemporaryDirectory() as directory:\n"
+"        workspace = Path(directory)\n"
+"        original = MyPersistentEnv(capacity=20)\n"
+"        original.allocate(agent_id=7, amount=12.5)\n"
+"        await original.to_workspace(workspace)\n"
+"        restored = await MyPersistentEnv.from_workspace(workspace, capacity=20)\n"
+"        assert restored._resources == {7: 12.5}\n"
+"        assert restored.capacity == 20\n"
+"        missing = MyPersistentEnv()\n"
+"        assert await missing.restore(workspace / \"new\") is False\n"
+"    print(\"Environment state restored\")\n"
+"\n"
+"asyncio.run(check_round_trip())"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules/persistence.rst:113
+msgid "Environment state restored"
+msgstr "Environment state restored"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules/routing.rst:5
+msgid "模块保存状态，路由器组织调用"
+msgstr "Modules store state; routers organize calls"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules/routing.rst:7
+msgid "``EnvBase`` 模块描述世界的一部分，例如社交关系、天气或公共资源。一个实验可以挂载多个模块；智能体通过同一个环境入口使用它们。"
+msgstr ""
+"An ``EnvBase`` module describes one part of the world, such as social relationships, weather or "
+"public resources. An experiment can mount multiple modules; agents access them through a single "
+"environment entry point."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules/routing.rst:9
+msgid "智能体通过环境路由器调用多个环境模块的工具"
+msgstr "Agents call tools in multiple environment modules through an environment router"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules/routing.rst:27
+msgid ""
+"模块定义状态、工具和每步更新规则；``RouterBase`` 聚合工具、处理请求并返回结果。Ray 运行模式中的 ``EnvRouterProxy`` "
+"连接智能体任务与共享的环境服务，避免每个智能体各自持有一份互不一致的世界状态。"
+msgstr ""
+"Modules define state, tools and step updates; ``RouterBase`` aggregates tools, handles requests "
+"and returns results. In Ray mode, ``EnvRouterProxy`` connects agent tasks to a shared environment"
+" service, keeping agents from holding inconsistent copies of world state."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules/routing.rst:30
+msgid "选择路由策略"
+msgstr "Choosing a routing strategy"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules/routing.rst:36
+msgid "路由器"
+msgstr "Router"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules/routing.rst:37
+msgid "调用方式"
+msgstr "How calls are organized"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules/routing.rst:38
+msgid "``CodeGenRouter``"
+msgstr "``CodeGenRouter``"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules/routing.rst:39
+msgid "生成代码来组合环境工具，适合需要多步查询、计算或批量操作的请求。"
+msgstr ""
+"Generates code to combine environment tools for requests involving multiple queries, calculations"
+" or batch operations."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules/routing.rst:40
+msgid "``ReActRouter`` / ``PlanExecuteRouter``"
+msgstr "``ReActRouter`` / ``PlanExecuteRouter``"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules/routing.rst:41
+msgid "通过工具决策循环，或先规划再执行，组织对模块工具的调用。"
+msgstr ""
+"Organizes module tool calls through a tool-decision loop or through planning followed by "
+"execution."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules/routing.rst:42
+msgid "``TwoTierReActRouter`` / ``TwoTierPlanExecuteRouter``"
+msgstr "``TwoTierReActRouter`` / ``TwoTierPlanExecuteRouter``"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules/routing.rst:43
+msgid "分层组织模块选择与工具执行，用于工具集合较大的环境。"
+msgstr ""
+"Organizes module selection and tool execution in separate tiers for environments with larger tool"
+" collections."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules/routing.rst:44
+msgid "``SearchToolRouter``"
+msgstr "``SearchToolRouter``"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules/routing.rst:45
+msgid "先检索相关工具，再组织调用。"
+msgstr "Retrieves relevant tools before organizing calls."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules/routing.rst:47
+msgid ""
+"先使用实验已有的策略，确认工具接口与结果可用后再比较其他路由器。代码执行后端、期限与模板复用见 :doc:`/codegen_execution`，系统执行模型见 "
+":doc:`/architecture`。"
+msgstr ""
+"Begin with the strategy already configured for the experiment. Verify tool interfaces and results"
+" before comparing routers. See :doc:`/codegen_execution` for execution backends, deadlines and "
+"template reuse, and :doc:`/architecture` for the system execution model."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules/routing.rst:50
+msgid "查询、干预与时间推进"
+msgstr "Queries, interventions and time advancement"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules/routing.rst:52
+msgid "**查询**：工具使用 ``readonly=True``；只读请求只允许查询类工具。"
+msgstr "**Queries**: mark tools with ``readonly=True``; read-only requests can only call query tools."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules/routing.rst:53
+msgid "**干预**：修改资源、关系或规则的工具使用 ``readonly=False``；允许写入的请求才可调用。"
+msgstr ""
+"**Interventions**: mark tools that modify resources, relationships or rules with "
+"``readonly=False``; only requests that allow writes can call them."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules/routing.rst:54
+msgid "**时间推进**：模块的 ``step(tick, t)`` 更新随时间变化的状态，工具调用本身不会替代实验时钟推进。"
+msgstr ""
+"**Time advancement**: module ``step(tick, t)`` methods update time-dependent state. Calling a "
+"tool does not replace advancement of the experiment clock."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules/routing.rst:56
+msgid "只读限制取决于工具声明和实现是否一致。一个标记为只读的方法也应避免在内部修改实验状态。工具返回“已成功”之前，应完成必要的状态更新与输入校验。"
+msgstr ""
+"Read-only enforcement relies on declarations matching implementation. A read-only method should "
+"also avoid modifying experiment state internally. Complete state updates and input validation "
+"before returning a successful result."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules/routing.rst:59
+msgid "检查请求走到了哪里"
+msgstr "Tracing where a request goes"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules/routing.rst:61
+msgid "先直接调用模块方法，确认输入和返回值；再挂载到路由器，检查工具是否被发现、只读属性是否正确。最后通过小规模实验检查智能体是否能使用工具，并核对 trace 与 replay 中的结果。"
+msgstr ""
+"Call module methods directly to verify inputs and return values, then mount the module on a "
+"router and check tool discovery and read-only flags. Finally, use a small experiment to verify "
+"agent access and inspect the trace and replay results."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules/routing.rst:63
+msgid "模块未出现时检查挂载列表和自定义模块扫描结果；工具未出现时检查 ``@tool``、类型注解与签名；结果能返回但恢复后丢失时，继续检查 :doc:`persistence`。"
+msgstr ""
+"If a module is missing, check the mount list and custom-module scan results. If a tool is "
+"missing, check ``@tool``, annotations and signatures. If results disappear after restoration, "
+"continue with :doc:`persistence`."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules/tools.rst:86
+msgid "``readonly=True`` 表示查询，``readonly=False`` 表示可能修改状态。``kind`` 控制工具是否参与自动观察或统计收集："
+msgstr ""
+"``readonly=True`` marks a query; ``readonly=False`` permits state changes. ``kind`` controls "
+"whether the tool participates in automatic observation or statistics collection:"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules/tools.rst:88
+msgid "``observe``：只读，除 ``self`` 外最多一个参数，用于按智能体收集观察。"
+msgstr ""
+"``observe``: read-only, with at most one parameter besides ``self``, for collecting observations "
+"per agent."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules/tools.rst:89
+msgid "``statistics``：只读，除 ``self`` 外没有参数，用于收集整体统计。"
+msgstr ""
+"``statistics``: read-only, with no parameters besides ``self``, for collecting aggregate "
+"statistics."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules/tools.rst:90
+msgid "未设置 ``kind``：常规工具，可以只读或读写，由路由器按请求调用。"
+msgstr "No ``kind``: a regular tool, either read-only or writable, called by the router as requested."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules/tools.rst:92
+msgid "工具的类型注解和 docstring 用于生成调用说明。返回值应包含足够的信息，让智能体能够判断操作结果；缺少输入或操作失败时给出明确原因。"
+msgstr ""
+"Tool type annotations and docstrings provide call descriptions. Return enough information for the"
+" agent to assess the result, including a clear reason when input is missing or an operation "
+"fails."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules/tools.rst:118
+msgid "有关工具类型的更多详情，请参阅 :doc:`/concepts`。"
+msgstr "See :doc:`/concepts` for more details on tool types."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/env_modules/tools.rst:194
+msgid ""
+"生产环境下环境路由跑在一个专用的 Ray actor 里（``EnvRouterProxy``），所有 agent 共享一份环境状态；也可在进程内直接用 "
+"``CodeGenRouter``。除默认的 ``CodeGenRouter`` 外还有 ``ReActRouter`` / ``PlanExecuteRouter`` / "
+"``TwoTierReActRouter`` / ``TwoTierPlanExecuteRouter`` / ``SearchToolRouter`` 可选（见 "
+":doc:`/architecture`）。"
+msgstr ""
+"In production, environment routing runs in a dedicated Ray actor (``EnvRouterProxy``), and all "
+"agents share the same environment state. ``CodeGenRouter`` can also be used directly in-process. "
+"In addition to the default ``CodeGenRouter``, optional routers include ``ReActRouter``, "
+"``PlanExecuteRouter``, ``TwoTierReActRouter``, ``TwoTierPlanExecuteRouter``, and "
+"``SearchToolRouter`` (see :doc:`/architecture`)."

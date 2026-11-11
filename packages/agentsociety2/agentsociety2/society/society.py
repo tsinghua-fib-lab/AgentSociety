@@ -1,22 +1,20 @@
 """仿真社会编排模块（record-based，无 agent 对象常驻）。
 
 :class:`AgentSociety` 不再持有 agent 对象——agent 是磁盘上的记录，每 tick 通过
-Ray Task（:mod:`agentsociety2.agent.runner`）流式处理。这使得内存占用与总 agent 数 N
-解耦：driver 只持有 specs（元数据）+ ids + 句柄（env / service_proxy），并行度来自
+Ray Task（:mod:`agentsociety2.agent.runner` ）流式处理。这使得内存占用与总 agent 数 N
+解耦：driver 只持有 specs（元数据）+ ids + 句柄（env / ``service_proxy``），并行度来自
 "大量 Ray Task"而非"主进程内的 N 个对象"。
 
 主要功能：
 
-- **仿真初始化**: 初始化 Ray / LLM dispatcher、service_proxy（已注入则复用）、批式创建 agent
+- **仿真初始化**: 初始化 Ray / LLM dispatcher、``service_proxy``（已注入则复用）、批式创建 agent
   workspaces（不在主进程实例化 agent）、初始化环境路由器、可选回放写入 agent profile。
 - **时间推进**: 通过 ``step()``/``run()`` 每 tick 切批提交 ``step_agent_batch`` Ray Task，
   ``await`` 全部后再推进 env、前进时钟。
-- **交互接口**: ``ask()``/``intervene()``/``run_questionnaire()`` 为低频外部查询，在主进程
-  内按需 ``from_workspace`` 重建目标 agent（workspace 在本地磁盘，无需 Ray Task）。
+- **交互接口**: ``ask()``/``intervene()``/``run_questionnaire()`` 为低频外部查询，在主进程内按需 ``from_workspace`` 重建目标 agent（workspace 在本地磁盘，无需 Ray Task）。
 - **状态持久化**: ``to_workspace()`` 每 step 写 ``run_dir/SOCIETY.json`` （society
   时间 / 步数 / env 模块配置）并让 env router 落盘各模块动态状态；``from_workspace()``
-  从 ``run_dir`` 重建 society（agent 状态已落盘，env 由 actor 在 ``init`` 中恢复），
-  支持中断后 CLI ``--resume`` 续跑。
+  从 ``run_dir`` 重建 society（agent 状态已落盘，env 由 actor 在 ``init`` 中恢复），支持中断后 CLI ``--resume`` 续跑。
 """
 
 from __future__ import annotations
@@ -108,13 +106,10 @@ class AgentSociety:
 
     AgentSociety 是框架的核心类，负责管理仿真生命周期：
 
-    - 持有 **agent_specs** （元数据含 id / profile / config）与 **agent_ids**，
-      绝不在主进程常驻 agent 对象。
-    - ``step`` 每 tick 切批提交 ``step_agent_batch`` Ray Task，跨 worker 并行；批内顺序执行
-      （每个 agent 是 LLM-bound，顺序无妨）。
+    - 持有 ``agent_specs`` （元数据含 id / profile / config）与 ``agent_ids``，绝不在主进程常驻 agent 对象。
+    - ``step`` 每 tick 切批提交 ``step_agent_batch`` Ray Task，跨 worker 并行；批内顺序执行（每个 agent 是 LLM-bound，顺序无妨）。
     - ``ask`` / ``intervene`` / ``run_questionnaire`` 为低频外部查询，按需在主进程
-      ``from_workspace`` 重建目标 agent （workspace 在本地磁盘）。
-      状态落盘使用 ``to_workspace`` / ``from_workspace`` （society 级 checkpoint）。
+      ``from_workspace`` 重建目标 agent （workspace 在本地磁盘）。状态落盘使用 ``to_workspace`` / ``from_workspace`` （society 级 checkpoint）。
 
     Example::
 
@@ -152,9 +147,9 @@ class AgentSociety:
         """创建 record-based 仿真编排器。
 
         :param agent_specs: agent 元数据列表，每个形如
-            ``{"id": int, "profile": dict, "config": dict}``。仅元数据，不在构造时实例化。
-        :param agent_class_name: agent 类名（经 registry 解析，如 ``"PersonAgent"``）。
-        :param env_router: 环境路由器（in-process 或 ``EnvRouterProxy``）。
+            ``{"id": int, "profile": dict, "config": dict}`` 。仅元数据，不在构造时实例化。
+        :param agent_class_name: agent 类名（经 registry 解析，如 ``"PersonAgent"`` ）。
+        :param env_router: 环境路由器（in-process 或 ``EnvRouterProxy`` ）。
         :param start_t: 仿真开始时间。
         :param run_dir: 运行目录（``run_dir/agents`` 为 agent workspaces 根）。
         :param service_proxy: 共享服务句柄（env / llm / trace / replay）。流式任务
@@ -162,7 +157,7 @@ class AgentSociety:
             直接复用；``close`` 关闭其中 trace/replay actor。
         :param batch_size: 每 ``step_agent_batch`` Ray Task 处理的 agent 数；
             ``None`` 时回落到 ``Config.BATCH_SIZE`` （环境变量
-            ``AGENTSOCIETY_BATCH_SIZE``，缺省 256）。
+            ``AGENTSOCIETY_BATCH_SIZE`` ，缺省 256）。
         :param enable_replay: 是否启用回放记录。
         """
         self._agent_specs: list[dict] = list(agent_specs)
@@ -253,10 +248,9 @@ class AgentSociety:
     def token_stats(self) -> dict[str, dict[str, int]]:
         """按模型聚合的 LLM token 用量（agent 侧，快照）。
 
-        每项含 ``calls`` / ``input`` / ``output`` / ``cached_input``。
-        ``cached_input`` 是 ``input`` 中命中 provider prompt 前缀缓存的部分。
-        仅统计 agent 侧调用；env router（coder 角色）的用量见
-        :meth:`router_token_stats`。
+        每项含 ``calls`` / ``input`` / ``output`` / ``cached_input`` 。
+        ``cached_input`` 是 ``input`` 中命中 provider prompt 前缀缓存的部分。仅统计 agent 侧调用；env router（coder 角色）的用量见
+        :meth:`router_token_stats` 。
         """
         return {model: dict(s) for model, s in self._token_stats.items()}
 
@@ -264,8 +258,7 @@ class AgentSociety:
     def router_token_stats(self) -> dict[str, dict[str, int]]:
         """env router（coder/summary 角色）的 token 用量快照。
 
-        :meth:`RouterBase.get_token_usages` 返回的是**快照而非增量**，所以这里
-        取一次合并即可，不要按步累加，否则会重复计数。
+        :meth:`RouterBase.get_token_usages` 返回的是**快照而非增量**，所以这里取一次合并即可，不要按步累加，否则会重复计数。
         """
         env_router = getattr(self, "_env_router", None)
         getter = getattr(env_router, "get_token_usages", None)
@@ -290,13 +283,12 @@ class AgentSociety:
         return merge_token_stats(self.token_stats, self.router_token_stats)
 
     def cache_hit_rate(self) -> float:
-        """Prompt 前缀缓存命中率（``cached_input / input``，全部调用合计）。
+        """Prompt 前缀缓存命中率（``cached_input / input`` ，全部调用合计）。
 
         .. note::
            分母包含 ask 轮与一次性工具调用（world description、memory
-           consolidation），这些结构上不可能命中前缀缓存、恒为 0%，因此该聚合值
-           会**低估** ReAct 循环自身的命中率。要看后者请用 ``llm.completion``
-           trace span 上的 ``llm.cache_hit_rate``。
+           consolidation），这些结构上不可能命中前缀缓存、恒为 0%，因此该聚合值会**低估** ReAct 循环自身的命中率。要看后者请用 ``llm.completion``
+           trace span 上的 ``llm.cache_hit_rate`` 。
         """
         from agentsociety2.config.llm_dispatcher import cache_hit_rate
 
@@ -593,7 +585,7 @@ class AgentSociety:
     # Lifecycle
     # ------------------------------------------------------------------
     async def init(self):
-        """初始化：Ray / LLM dispatcher → service_proxy → replay → 批式创建 workspaces → env init。"""
+        """初始化：Ray / LLM dispatcher → ``service_proxy`` → replay → 批式创建 workspaces → env init。"""
         # Initializes Ray and per-process LLM dispatch support (idempotent).
         from agentsociety2.config.llm_dispatcher import init_dispatchers
 
@@ -630,7 +622,7 @@ class AgentSociety:
             self._society_json_written = True
 
     async def close(self):
-        """关闭：env router + service_proxy 的 trace/replay 句柄 + LLM dispatcher。"""
+        """关闭：env router + ``service_proxy`` 的 trace/replay 句柄 + LLM dispatcher。"""
         try:
             await self._env_router.close()
         except Exception:
@@ -658,10 +650,7 @@ class AgentSociety:
     async def to_workspace(self, *, tick: int | None = None) -> None:
         """持久化 society + env 状态（每步调用，无状态 resume）。
 
-        让 env router 落盘各模块状态，并写 ``run_dir/SOCIETY_STEP.json`` （仅少量
-        标量：当前时间 / 步数 / 已完成前置步数 / terminated）。不可变的大字段
-        （agent_specs 等）只在 :meth:`init` 写一次到 ``SOCIETY.json``，避免每步
-        重序列化。``run_dir`` 为空时 no-op；env 落盘失败时抛错，不提交总进度。
+        让 env router 落盘各模块状态，并写 ``run_dir/SOCIETY_STEP.json`` （仅少量标量：当前时间 / 步数 / 已完成前置步数 / terminated）。不可变的大字段（``agent_specs`` 等）只在 :meth:`init` 写一次到 ``SOCIETY.json`` ，避免每步重序列化。``run_dir`` 为空时 no-op；env 落盘失败时抛错，不提交总进度。
 
         :param tick: 保留以兼容旧调用签名（不再单独持久化）。
         """
@@ -673,8 +662,7 @@ class AgentSociety:
     def _write_society_json(self) -> None:
         """写不可变全量 checkpoint 到 ``run_dir/SOCIETY.json`` （init 时写一次）。
 
-        含 schema_version、agent_specs、env 模块类型+kwargs、batch_size、steps_hash。
-        原子写入。
+        含 ``schema_version``、``agent_specs``、env 模块类型+kwargs、``batch_size``、``steps_hash``。原子写入。
         """
         assert self._run_dir is not None
         payload = {
@@ -706,13 +694,11 @@ class AgentSociety:
         )
 
     def write_llm_stats_json(self) -> dict[str, Any] | None:
-        """把 LLM token 用量与缓存命中率写到 ``run_dir/LLM_STATS.json``。
+        """把 LLM token 用量与缓存命中率写到 ``run_dir/LLM_STATS.json`` 。
 
-        含 agent 侧与 env router（coder）侧的合并快照、逐模型明细、以及聚合命中率。
-        原始计数器一并保留——不同网关对 ``input`` 是否含 cache read 的口径不同，
-        保留原值便于自行换算。
+        含 agent 侧与 env router（coder）侧的合并快照、逐模型明细、以及聚合命中率。原始计数器一并保留——不同网关对 ``input`` 是否含 cache read 的口径不同，保留原值便于自行换算。
 
-        :returns: 写入的 payload；无 run_dir 时返回 ``None``。
+        :returns: 写入的 payload；无 ``run_dir`` 时返回 ``None`` 。
         """
         if self._run_dir is None:
             return None
@@ -764,10 +750,8 @@ class AgentSociety:
     def mark_step_completed(self, step_idx: int) -> None:
         """标记第 ``step_idx`` 个顶层 step 已完成并立即持久化进度。
 
-        由 CLI 在每个顶层 step（含 Ask/Intervene/Questionnaire）成功后调用。
-        游标语义为**最大连续完成前缀**（2026-10-19 修复）：游标只在
-        ``step_idx == 游标`` 时前进,后续成功步不再把被失败步隔开的缺口
-        顶上去——失败步因此保持可重试,resume 不会永久跳过它。
+        由 CLI 在每个顶层 step（含 Ask/Intervene/Questionnaire）成功后调用。游标语义为**最大连续完成前缀**（2026-10-19 修复）：游标只在
+        ``step_idx == 游标`` 时前进,后续成功步不再把被失败步隔开的缺口顶上去——失败步因此保持可重试,resume 不会永久跳过它。
 
         背景(T2 生产实锤):旧语义 ``游标 = step_idx + 1`` 下,step 59 失败、
         step 60 成功即把游标顶到 61,59 的时钟缺口永久丢失且 resume 空转
@@ -786,10 +770,10 @@ class AgentSociety:
 
     @staticmethod
     def _read_checkpoint(run_dir: Path) -> tuple[dict, dict]:
-        """读取并校验 society checkpoint，返回 (society_meta, step_meta)。
+        """读取并校验 society checkpoint，返回 (``society_meta``, ``step_meta``)。
 
         :raises FileNotFoundError: SOCIETY.json 不存在。
-        :raises ValueError: schema_version 缺失/不支持，或字段残缺。
+        :raises ValueError: ``schema_version`` 缺失/不支持，或字段残缺。
         """
         run_dir = Path(run_dir)
         meta_path = run_dir / SOCIETY_JSON
@@ -839,8 +823,7 @@ class AgentSociety:
         ``env_router`` 必须由调用方（CLI）预先构造（actor 不可在此重建）；
         env 模块状态由 actor 在自身 ``init()`` 中恢复。
 
-        返回的 society 的 :meth:`init` 会跳过 agent workspace 创建与 profile 重写
-        （原 run 已存在），也不会覆盖已有的 ``SOCIETY.json``。
+        返回的 society 的 :meth:`init` 会跳过 agent workspace 创建与 profile 重写（原 run 已存在），也不会覆盖已有的 ``SOCIETY.json`` 。
 
         :raises FileNotFoundError: ``run_dir/SOCIETY.json`` 不存在。
         :raises ValueError: schema 不兼容或 checkpoint 损坏。
@@ -887,7 +870,7 @@ class AgentSociety:
     # Step / Run — the hot path (no agent objects held)
     # ------------------------------------------------------------------
     async def step(self, tick: int):
-        """推进一次仿真步：sync clock → 切批 step_agent_batch → env.step → 前进时钟。
+        """推进一次仿真步：sync clock → 切批 ``step_agent_batch`` → env.step → 前进时钟。
 
         :param tick: 本步时间跨度（秒）。
         """
@@ -1007,7 +990,7 @@ class AgentSociety:
     # Queries — low-volume, reconstruct target agents locally
     # ------------------------------------------------------------------
     async def _reconstruct_agent(self, agent_id: int) -> AgentBase:
-        """Reconstruct a single agent in the society process via from_workspace.
+        """Reconstruct a single agent in the society process via ``from_workspace``.
 
         Used by ask/intervene/questionnaire (low-volume external queries). The
         workspace lives on local disk, so no Ray Task is needed.
@@ -1031,7 +1014,7 @@ class AgentSociety:
         return await cls.from_workspace(ws, proxy)
 
     async def _reconstruct_agents(self, agent_ids: list[int]) -> list[AgentBase]:
-        """Reconstruct a subset of agents (parallel from_workspace calls)."""
+        """Reconstruct a subset of agents (parallel ``from_workspace`` calls)."""
         coros = [self._reconstruct_agent(int(aid)) for aid in agent_ids]
         return list(await asyncio.gather(*coros))
 

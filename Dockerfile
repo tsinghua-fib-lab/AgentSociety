@@ -15,18 +15,18 @@
 # BuildKit cache mounts (apt / uv / npm) avoid re-downloading on cache miss.
 
 # ================= Stage 1: Build VSCode extension as vsix =================
-FROM node:22 AS extension-builder
+FROM node:22.23.1-bookworm AS extension-builder
 
 WORKDIR /app/extension
 
-RUN npm config set registry https://registry.npmmirror.com \
-    && npm install -g @vscode/vsce@4.0.0
+RUN npm config set registry https://registry.npmmirror.com
 
 COPY ./extension/package.json ./extension/package-lock.json ./
-COPY ./extension/package.nls.json ./extension/package.nls.zh-cn.json ./
 COPY ./extension/.npmrc ./
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci
+    npm ci --prefer-offline --no-audit --fund=false
+
+COPY ./extension/package.nls.json ./extension/package.nls.zh-cn.json ./
 
 COPY ./extension/tsconfig.json ./extension/webpack.config.js ./
 COPY ./extension/src/ ./src/
@@ -43,15 +43,15 @@ COPY LICENSE ./LICENSE.txt
 
 # vsce invokes vscode:prepublish itself; running it explicitly would compile
 # every webview bundle twice in the same image layer.
-RUN vsce package --out /app/extension.vsix
+RUN ./node_modules/.bin/vsce package --out /app/extension.vsix
 
 # ================= Stage 1b: Global Claude Code / Codex CLIs =================
 # Independent of Python lockfile and agentsociety2 source; shares node:22 base cache
 # with extension-builder on the runner.
-FROM node:22 AS node-cli
+FROM node:22.23.1-bookworm AS node-cli
 
 RUN --mount=type=cache,target=/root/.npm \
-    npm install -g @anthropic-ai/claude-code@2.1.314 @openai/codex@0.166.0
+    npm install -g --registry=https://registry.npmmirror.com @anthropic-ai/claude-code@2.1.314 @openai/codex@0.166.0
 
 # ================= Stage 2: Python runtime with extension =================
 FROM python:3.12
@@ -59,11 +59,14 @@ FROM python:3.12
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     set -eux; \
-    if [ -f /etc/apt/sources.list.d/debian.sources ]; then \
-        sed -i 's|deb.debian.org|mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list.d/debian.sources; \
-    else \
-        sed -i 's|deb.debian.org|mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list; \
-    fi; \
+    rm -f /etc/apt/apt.conf.d/docker-clean; \
+    for source_file in /etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources; do \
+        if [ -f "$source_file" ]; then \
+            sed -i -e 's|https\?://deb\.debian\.org|https://mirrors.tuna.tsinghua.edu.cn|g' \
+                -e 's|https\?://security\.debian\.org|https://mirrors.tuna.tsinghua.edu.cn|g' "$source_file"; \
+        fi; \
+    done; \
+    printf 'Acquire::Retries "3";\nAcquire::https::Timeout "30";\n' > /etc/apt/apt.conf.d/80agentsociety-ci; \
     apt-get update; \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         curl \
@@ -128,6 +131,16 @@ RUN --mount=type=cache,target=/root/.cache/uv \
         "easypaper[docling,images]==0.2.4" \
         "paper-toolkit==0.1.2"
 
+# ---- Locked third-party deps from workspace manifest (uv.lock changes only) ----
+COPY pyproject.toml uv.lock ./
+COPY packages/agentsociety2/pyproject.toml packages/agentsociety2/pyproject.toml
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv export --frozen --no-dev --no-emit-package agentsociety2 \
+        --format requirements-txt -o /tmp/reqs.txt \
+    && uv pip install --system --no-config --no-deps --require-hashes -r /tmp/reqs.txt \
+    && uv pip check --system \
+    && rm /tmp/reqs.txt
+
 # ---- Node.js + Claude Code / Codex (independent of uv.lock / AS2 source) ----
 # Copy the Node binary and global package tree only. Do NOT COPY /usr/local/bin/{npm,npx,claude,codex}:
 # Docker often materializes those shims as plain files, so relative requires like
@@ -161,16 +174,6 @@ for (const name of ["@anthropic-ai/claude-code", "@openai/codex"]) {
   }
 }
 NODE
-
-# ---- Locked third-party deps from workspace manifest (uv.lock changes only) ----
-COPY pyproject.toml uv.lock ./
-COPY packages/agentsociety2/pyproject.toml packages/agentsociety2/pyproject.toml
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv export --frozen --no-dev --no-emit-package agentsociety2 \
-        --format requirements-txt -o /tmp/reqs.txt \
-    && uv pip install --system --no-config --no-deps --require-hashes -r /tmp/reqs.txt \
-    && uv pip check --system \
-    && rm /tmp/reqs.txt
 
 # ---- agentsociety2 source (editable, deps already present) ----
 COPY README.md LICENSE ./

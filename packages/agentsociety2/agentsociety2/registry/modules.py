@@ -60,7 +60,7 @@ def register_scanned_custom_modules(
 
     :param scan_result: scanner 输出（包含 envs/agents/errors）。
     :param registry: 可选注册中心；为空则使用全局 registry。
-    :returns: 更新后的 scan_result（会追加 registration_errors）。
+    :returns: 更新后的 ``scan_result``（会追加 ``registration_errors``）。
     """
 
     if registry is None:
@@ -215,7 +215,7 @@ def _discover_builtin_agents() -> dict[str, type[AgentBase]]:
 
 
 def _class_name_to_type(class_name: str) -> str | None:
-    """将类名转换为 type identifier（CamelCase -> snake_case）。"""
+    """将类名转换为 type identifier（CamelCase -> ``snake_case``）。"""
     import re
 
     # Handle special cases
@@ -302,20 +302,20 @@ def scan_and_register_custom_modules(
 
 
 def get_registered_env_modules() -> list[tuple[str, type[EnvBase]]]:
-    """:returns: 已注册环境模块列表 ``[(module_type, module_class), ...]``。"""
+    """:returns: 已注册环境模块列表 ``[(module_type, module_class), ...]`` 。"""
     return get_registry().list_env_modules()
 
 
 def get_registered_agent_modules() -> list[tuple[str, type[AgentBase]]]:
-    """:returns: 已注册 agent 列表 ``[(agent_type, agent_class), ...]``。"""
+    """:returns: 已注册 agent 列表 ``[(agent_type, agent_class), ...]`` 。"""
     return get_registry().list_agent_modules()
 
 
 def get_env_module_class(module_type: str) -> type[EnvBase] | None:
     """按 type 获取环境模块类。
 
-    :param module_type: type identifier。
-    :returns: 环境模块 class；未找到返回 ``None``。
+    :param module_type: 类型标识。
+    :returns: 环境模块 class；未找到返回 ``None`` 。
     """
     return get_registry().get_env_module(module_type)
 
@@ -323,8 +323,8 @@ def get_env_module_class(module_type: str) -> type[EnvBase] | None:
 def get_agent_module_class(agent_type: str) -> type[AgentBase] | None:
     """按 type 获取 agent 类。
 
-    :param agent_type: type identifier。
-    :returns: agent class；未找到返回 ``None``。
+    :param agent_type: 类型标识。
+    :returns: agent class；未找到返回 ``None`` 。
     """
     return get_registry().get_agent_module(agent_type)
 

@@ -1,6 +1,6 @@
 export default {
   title: 'Agent Skills',
-  description: 'Manage skills available to agents — built-in skills are read-only; custom skills can be created, uploaded, edited and removed.',
+  description: 'Agents select skills as needed during simulation. Create or upload custom skills, then scan the workspace to discover them.',
   columns: {
     name: 'Name',
     description: 'Description',

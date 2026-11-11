@@ -1,5 +1,5 @@
 # Paths are relative to the repository root (monorepo).
-# Prefer this file or packages/agentsociety2/.readthedocs.yaml (same content).
+# Compatibility entry used by the existing RTD project; keep both AS2 configs aligned.
 version: 2
 
 build:
@@ -19,4 +19,4 @@ python:
 
 sphinx:
   configuration: packages/agentsociety2/docs/conf.py
-  fail_on_warning: false
+  fail_on_warning: true

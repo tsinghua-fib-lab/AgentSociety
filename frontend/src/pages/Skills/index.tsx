@@ -1,26 +1,25 @@
 import { useAsyncResource } from '../../hooks/useAsyncResource';
 import { useCallback, useRef, useState } from "react";
 import {
-  Button, message, Modal, Space, Tag, Popconfirm,
-  Form, Input, Upload, Typography, Switch,
+  Button, message, Modal, Space, Tag,
+  Form, Input, Upload, Typography,
 } from "antd";
 import { ProTable, ProColumns } from "@ant-design/pro-components";
 import { ActionType } from "@ant-design/pro-table";
 import { useTranslation } from "react-i18next";
 import { fetchCustom } from "../../components/fetch";
 import {
-  PlusOutlined, UploadOutlined, ReloadOutlined,
-  DeleteOutlined, EyeOutlined, ScanOutlined,
+  PlusOutlined, UploadOutlined, EyeOutlined, ScanOutlined,
 } from "@ant-design/icons";
 
 const { TextArea } = Input;
-const { Text } = Typography;
+const { Text, Paragraph } = Typography;
 
 interface SkillItem {
+  skill_id: string;
   name: string;
   description: string;
   source: string;
-  enabled: boolean;
   path: string;
   has_skill_md: boolean;
   script: string;
@@ -33,91 +32,39 @@ const SkillsPage = () => {
   const [viewOpen, setViewOpen] = useState(false);
   const [viewContent, setViewContent] = useState("");
   const [viewSkillName, setViewSkillName] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [createForm] = Form.useForm();
 
-    const loadResource = useCallback(async (): Promise<SkillItem[]> => {
-        const response = await fetchCustom('/api/v1/agent-skills/list');
-        if (!response.ok) throw new Error(await response.text());
-        const data = await response.json();
-        if (!data.success) throw new Error(data.message || "Failed to load skills");
-        return data.skills || [];
-    }, []);
-    const handleLoadError = useCallback((error: unknown) => {
-        console.error('Failed to load skills:', error);
-        message.error(t("skill.messages.operationFailed"));
-    }, [t]);
-    const { data: skills, loading, reload: fetchSkills } = useAsyncResource(
-        loadResource, handleLoadError, [],
-    );
+  const loadResource = useCallback(async (): Promise<SkillItem[]> => {
+    const response = await fetchCustom('/api/v1/agent-skills/list');
+    if (!response.ok) throw new Error(await response.text());
+    const data = await response.json();
+    if (!data.success) throw new Error(data.message || "Failed to load skills");
+    return data.skills || [];
+  }, []);
+  const handleLoadError = useCallback((error: unknown) => {
+    console.error('Failed to load skills:', error);
+    message.error(t("skill.messages.operationFailed"));
+  }, [t]);
+  const { data: skills, loading, reload: fetchSkills } = useAsyncResource(
+    loadResource, handleLoadError, [],
+  );
 
-  const handleToggleEnabled = async (name: string, enabled: boolean) => {
-    try {
-      const path = enabled ? "/api/v1/agent-skills/enable" : "/api/v1/agent-skills/disable";
-      const res = await fetchCustom(path, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        message.success(enabled ? t("skill.messages.enableSuccess") : t("skill.messages.disableSuccess"));
-        fetchSkills();
-      } else {
-        message.error(data.message || t("skill.messages.operationFailed"));
-      }
-    } catch {
-      message.error(t("skill.messages.operationFailed"));
-    }
-  };
+  const operationError = (data: { detail?: unknown; message?: string }) =>
+    typeof data.detail === 'string' ? data.detail : data.message || t("skill.messages.operationFailed");
 
-  const handleReload = async (name: string) => {
+  const handleView = async (skillId: string) => {
     try {
-      const res = await fetchCustom("/api/v1/agent-skills/reload", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
-      });
+      const res = await fetchCustom(`/api/v1/agent-skills/${encodeURIComponent(skillId)}/info`);
       const data = await res.json();
-      if (data.success) {
-        message.success(t("skill.messages.reloadSuccess"));
-        fetchSkills();
-      } else {
-        message.error(data.message || t("skill.messages.operationFailed"));
-      }
-    } catch {
-      message.error(t("skill.messages.operationFailed"));
-    }
-  };
-
-  const handleRemove = async (name: string) => {
-    try {
-      const res = await fetchCustom("/api/v1/agent-skills/remove", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        message.success(t("skill.messages.removeSuccess"));
-        fetchSkills();
-      } else {
-        message.error(data.message || t("skill.messages.operationFailed"));
-      }
-    } catch {
-      message.error(t("skill.messages.operationFailed"));
-    }
-  };
-
-  const handleView = async (name: string) => {
-    try {
-      const res = await fetchCustom(`/api/v1/agent-skills/${encodeURIComponent(name)}/info`);
-      const data = await res.json();
-      if (data.success) {
+      if (res.ok && data.success) {
         setViewSkillName(data.name);
         setViewContent(data.skill_md || "(empty)");
         setViewOpen(true);
       } else {
-        message.error(t("skill.messages.operationFailed"));
+        message.error(operationError(data));
       }
     } catch {
       message.error(t("skill.messages.operationFailed"));
@@ -125,6 +72,8 @@ const SkillsPage = () => {
   };
 
   const handleScan = async () => {
+    if (scanning) return;
+    setScanning(true);
     try {
       const res = await fetchCustom("/api/v1/agent-skills/scan", {
         method: "POST",
@@ -132,22 +81,28 @@ const SkillsPage = () => {
         body: JSON.stringify({}),
       });
       const data = await res.json();
-      if (data.success) {
+      if (res.ok && data.success) {
         message.success(`${t("skill.messages.scanSuccess")} — ${data.message}`);
         fetchSkills();
       } else {
-        message.error(data.message || t("skill.messages.operationFailed"));
+        message.error(operationError(data));
       }
     } catch {
       message.error(t("skill.messages.operationFailed"));
+    } finally {
+      setScanning(false);
     }
   };
 
   const handleCreate = async () => {
+    if (creating) return;
+    // Field validation already explains the problem next to the input.
+    const values = await createForm.validateFields().catch(() => null);
+    if (!values) return;
+    setCreating(true);
     try {
-      const values = await createForm.validateFields();
       const payload = {
-        name: values.name,
+        name: values.name.trim(),
         description: values.description || "",
         script: values.script || "",
         body: values.body || "",
@@ -159,20 +114,24 @@ const SkillsPage = () => {
         body: JSON.stringify(payload),
       });
       const data = await res.json();
-      if (data.success) {
+      if (res.ok && data.success) {
         message.success(t("skill.messages.createSuccess"));
         setCreateOpen(false);
         createForm.resetFields();
         fetchSkills();
       } else {
-        message.error(data.message || t("skill.messages.operationFailed"));
+        message.error(operationError(data));
       }
     } catch {
       message.error(t("skill.messages.operationFailed"));
+    } finally {
+      setCreating(false);
     }
   };
 
   const handleUpload = async (file: File) => {
+    if (uploading) return false;
+    setUploading(true);
     const formData = new FormData();
     formData.append("file", file);
     try {
@@ -181,27 +140,29 @@ const SkillsPage = () => {
         body: formData,
       });
       const data = await res.json();
-      if (data.success) {
+      if (res.ok && data.success) {
         message.success(`${t("skill.messages.uploadSuccess")} — ${data.name}`);
         fetchSkills();
       } else {
-        message.error(data.message || t("skill.messages.operationFailed"));
+        message.error(operationError(data));
       }
     } catch {
       message.error(t("skill.messages.operationFailed"));
+    } finally {
+      setUploading(false);
     }
     return false;
   };
 
   const sourceLabel = (source: string) => {
-    if (source === "builtin") return t("skill.source.builtin");
+    if (source === "built-in") return t("skill.source.builtin");
     if (source === "custom") return t("skill.source.custom");
-    if (source.startsWith("env:")) return `${t("skill.source.env")}`;
+    if (source === "env" || source.startsWith("env:")) return `${t("skill.source.env")}`;
     return source;
   };
 
   const sourceColor = (source: string) => {
-    if (source === "builtin") return "blue";
+    if (source === "built-in") return "blue";
     if (source === "custom") return "green";
     return "orange";
   };
@@ -226,59 +187,41 @@ const SkillsPage = () => {
         <Tag color={sourceColor(record.source)}>{sourceLabel(record.source)}</Tag>
       ),
       filters: [
-        { text: t("skill.source.builtin"), value: "builtin" },
+        { text: t("skill.source.builtin"), value: "built-in" },
         { text: t("skill.source.custom"), value: "custom" },
-        { text: t("skill.source.env"), value: "env:" },
+        { text: t("skill.source.env"), value: "env" },
       ],
       onFilter: (value, record) => record.source === value || record.source.startsWith(value as string),
     },
     {
-      title: t("skill.columns.enabled"),
-      dataIndex: "enabled",
-      width: 120,
-      render: (_, record) =>
-        record.source === "builtin" ? (
-          <Tag color="blue">{t("skill.status.builtinAlwaysOn")}</Tag>
-        ) : (
-          <Switch
-            checked={record.enabled}
-            checkedChildren={t("skill.status.enabled")}
-            unCheckedChildren={t("skill.status.disabled")}
-            onChange={(checked) => handleToggleEnabled(record.name, checked)}
-          />
-        ),
-    },
-    {
       title: t("skill.columns.script"),
       dataIndex: "script",
-      width: 120,
+      width: 180,
+      ellipsis: true,
       render: (_, record) => (
         record.script
-          ? <Tag color="purple">{record.script}</Tag>
+          ? <Tag
+              color="purple"
+              title={record.script}
+              style={{
+                maxWidth: '100%',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                verticalAlign: 'middle',
+                marginInlineEnd: 0,
+              }}
+            >{record.script}</Tag>
           : <Text type="secondary">{t("skill.type.promptOnly")}</Text>
       ),
     },
     {
       title: t("skill.columns.actions"),
-      width: 200,
+      width: 100,
       render: (_, record) => (
         <Space size="small">
-          <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => handleView(record.name)}>
+          <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => handleView(record.skill_id)}>
             {t("skill.actions.view")}
           </Button>
-          <Button type="link" size="small" icon={<ReloadOutlined />} onClick={() => handleReload(record.name)}>
-            {t("skill.actions.reload")}
-          </Button>
-          {record.source === "custom" && (
-            <Popconfirm
-              title={t("skill.messages.removeConfirm")}
-              onConfirm={() => handleRemove(record.name)}
-            >
-              <Button type="link" size="small" danger icon={<DeleteOutlined />}>
-                {t("skill.actions.remove")}
-              </Button>
-            </Popconfirm>
-          )}
         </Space>
       ),
     },
@@ -286,26 +229,30 @@ const SkillsPage = () => {
 
   return (
     <div style={{ padding: 24 }}>
+      <Paragraph type="secondary">{t("skill.description")}</Paragraph>
       <ProTable<SkillItem>
         headerTitle={t("skill.title")}
         actionRef={actionRef}
-        rowKey="name"
+        rowKey="skill_id"
         columns={columns}
         dataSource={skills}
         loading={loading}
         search={false}
         pagination={false}
+        options={{ reload: fetchSkills }}
+        scroll={{ x: 1000 }}
         toolBarRender={() => [
-          <Button key="scan" icon={<ScanOutlined />} onClick={handleScan}>
+          <Button key="scan" icon={<ScanOutlined />} onClick={handleScan} loading={scanning}>
             {t("skill.actions.scan")}
           </Button>,
           <Upload
             key="upload"
             accept=".zip"
             showUploadList={false}
+            disabled={uploading}
             beforeUpload={(file) => { handleUpload(file); return false; }}
           >
-            <Button icon={<UploadOutlined />}>{t("skill.actions.upload")}</Button>
+            <Button icon={<UploadOutlined />} loading={uploading}>{t("skill.actions.upload")}</Button>
           </Upload>,
           <Button key="create" type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>
             {t("skill.actions.create")}
@@ -317,8 +264,13 @@ const SkillsPage = () => {
       <Modal
         title={t("skill.create.title")}
         open={createOpen}
-        onCancel={() => setCreateOpen(false)}
+        onCancel={() => { if (!creating) setCreateOpen(false); }}
         onOk={handleCreate}
+        confirmLoading={creating}
+        cancelButtonProps={{ disabled: creating }}
+        closable={!creating}
+        maskClosable={!creating}
+        keyboard={!creating}
         width={720}
         destroyOnClose
       >
@@ -326,7 +278,7 @@ const SkillsPage = () => {
           <Form.Item
             name="name"
             label={t("skill.create.name")}
-            rules={[{ required: true, message: t("skill.create.nameRequired") }]}
+            rules={[{ required: true, whitespace: true, message: t("skill.create.nameRequired") }]}
           >
             <Input placeholder={t("skill.create.namePlaceholder")} />
           </Form.Item>

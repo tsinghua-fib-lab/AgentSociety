@@ -1,9 +1,8 @@
 """环境模块基类。
 
-本模块提供环境模块的基类 :class:`EnvBase` 和工具注册装饰器 :func:`tool`。
+本模块提供环境模块的基类 :class:`EnvBase` 和工具注册装饰器 :func:`tool` 。
 
-环境模块定义智能体可执行的操作和可观察的状态。通过 ``@tool`` 装饰器
-注册方法为可调用工具，供 Router 调用执行。
+环境模块定义智能体可执行的操作和可观察的状态。通过 ``@tool`` 装饰器注册方法为可调用工具，供 Router 调用执行。
 
 工具类型
 ========
@@ -67,7 +66,7 @@ def dump_int_map(mapping: dict[int, Any]) -> dict[str, Any]:
 
 
 def load_int_map(mapping: dict[str, Any] | None) -> dict[int, Any]:
-    """JSON 还原后的 ``dict[str, ...]`` → ``dict[int, ...]``。"""
+    """JSON 还原后的 ``dict[str, ...]`` → ``dict[int, ...]`` 。"""
     if not mapping:
         return {}
     return {int(k): v for k, v in mapping.items()}
@@ -110,9 +109,9 @@ def tool(
     :param description: 可选。工具描述（用于模型函数调用 schema）。
     :param kind: 可选。工具类型：
 
-        - ``observe``：观测工具（通常每步自动调用），除 ``self`` 外最多 1 个参数
-        - ``statistics``：统计工具，除 ``self`` 外不能有参数
-        - ``None``：普通工具
+        - ``observe`` ：观测工具（通常每步自动调用），除 ``self`` 外最多 1 个参数
+        - ``statistics`` ：统计工具，除 ``self`` 外不能有参数
+        - ``None`` ：普通工具
     :returns: 装饰器函数。
     :raises ValueError: ``kind`` 与 ``readonly``/参数签名不匹配时抛出。
     """
@@ -333,7 +332,7 @@ def _serialize_to_literal(value: Any) -> Any:
 
 
 class EnvMeta(type):
-    """元类：收集 ``@tool`` 装饰的方法并注册到 tool_manager。"""
+    """元类：收集 ``@tool`` 装饰的方法并注册到 ``tool_manager``。"""
 
     def __new__(cls, name, bases, namespace, **kwargs):
         new_class = super().__new__(cls, name, bases, namespace, **kwargs)
@@ -360,8 +359,7 @@ class EnvMeta(type):
 class EnvBase(metaclass=EnvMeta):
     """环境模块基类。
 
-    环境模块定义 Agent 可执行的操作和可观察的状态。通过 ``@tool`` 装饰器
-    注册方法为可调用工具，供 Router 调用。
+    环境模块定义 Agent 可执行的操作和可观察的状态。通过 ``@tool`` 装饰器注册方法为可调用工具，供 Router 调用。
 
     工具类型：
         - **常规工具**: ``@tool(readonly=False)`` — 可修改环境状态
@@ -383,9 +381,8 @@ class EnvBase(metaclass=EnvMeta):
         """返回本模块的工具是否允许被并发调用。
 
         并发安全的模块不在其工具中修改共享(跨 agent)状态,因此 router
-        可以不加全局 ``_execute_lock`` 执行其生成的代码,env Ray actor 也能
-        并行扇出 ``ask`` 调用。默认为 ``False``(保守);只持有 per-agent
-        状态(以 agent_id 为键、无共享可变结构)的模块应将其覆写为 ``True``。
+        可以不加全局 ``_execute_lock`` 执行其生成的代码,env Ray actor 也能并行扇出 ``ask`` 调用。默认为 ``False``(保守);只持有 per-agent
+        状态(以 ``agent_id`` 为键、无共享可变结构)的模块应将其覆写为 ``True`` 。
 
         :returns: 并发调用工具安全时为 True。
         """
@@ -393,7 +390,7 @@ class EnvBase(metaclass=EnvMeta):
 
     @classmethod
     def _state_table_prefix_from_class(cls) -> str:
-        """从类名推导表名前缀（PascalCase -> snake_case，去常见后缀）"""
+        """从类名推导表名前缀（PascalCase -> ``snake_case``，去常见后缀）"""
         name = cls.__name__
         for suffix in ("Space", "Env", "Module"):
             if name.endswith(suffix) and len(name) > len(suffix):
@@ -522,7 +519,7 @@ class EnvBase(metaclass=EnvMeta):
 
         每个 skill 目录应包含带 SKILL.md 文件的子目录,例如
         ``agent_skills/navigation/SKILL.md`` 及可选的
-        ``agent_skills/navigation/scripts/``。
+        ``agent_skills/navigation/scripts/`` 。
 
         :returns: 指向含 skill 子目录的目录的 Path 对象列表。无 skill 时
             为空列表。
@@ -582,7 +579,7 @@ class EnvBase(metaclass=EnvMeta):
         """把动态状态写入 workspace（每步由 society 经 router 调用）。
 
         默认 no-op。子类按自选的格式/文件名把需要跨重启保留的状态写到
-        ``self._workspace_root`` （或传入的 ``workspace_path``）下。建议用
+        ``self._workspace_root`` （或传入的 ``workspace_path`` ）下。建议用
         :func:`~agentsociety2.storage.workspace_state.atomic_write_text` 原子写。
         """
         if workspace_path is not None:
@@ -591,9 +588,7 @@ class EnvBase(metaclass=EnvMeta):
     async def restore(self, workspace_path: Path) -> bool:
         """从 workspace 恢复动态状态（resume 路径）。
 
-        默认返回 ``False``。子类读取自己写入的状态并还原；返回是否成功加载
-        （供 router 区分 fresh / resume）。仅在 ``__init__`` 与 ``init()`` 之后调用，
-        故可安全覆盖 ``init()`` 设置的字段。
+        默认返回 ``False`` 。子类读取自己写入的状态并还原；返回是否成功加载（供 router 区分 fresh / resume）。仅在 ``__init__`` 与 ``init()`` 之后调用，故可安全覆盖 ``init()`` 设置的字段。
         """
         self._bind_workspace(workspace_path)
         return False
@@ -602,7 +597,7 @@ class EnvBase(metaclass=EnvMeta):
     async def from_workspace(
         cls, workspace_path: Path, **init_kwargs: Any
     ) -> "EnvBase":
-        """从 workspace 重建就绪模块：``cls(**init_kwargs)`` 后 ``restore``。
+        """从 workspace 重建就绪模块：``cls(**init_kwargs)`` 后 ``restore`` 。
 
         :param init_kwargs: 构造该模块用的 kwargs（resume 时由 actor 从 ``SOCIETY.json`` 取）。
         """
@@ -613,8 +608,8 @@ class EnvBase(metaclass=EnvMeta):
     def get_tool_call_history(self) -> list[dict[str, Any]]:
         """获取工具调用历史（浅拷贝）。
 
-        :returns: 调用记录列表。每条包含 ``function_name``、``kwargs``、``return_value``、
-            ``exception_occurred``、``exception_info``、``timestamp``。
+        :returns: 调用记录列表。每条包含 ``function_name`` 、``kwargs`` 、``return_value`` 、
+            ``exception_occurred`` 、``exception_info`` 、``timestamp`` 。
         """
         return self._tool_call_history.copy()
 
@@ -647,7 +642,7 @@ class EnvBase(metaclass=EnvMeta):
 
     @staticmethod
     def _on_register_state_tables_done(task: "asyncio.Task[None]") -> None:
-        """_register_state_tables 任务的回调,用于记录异常日志。"""
+        """``_register_state_tables`` 任务的回调,用于记录异常日志。"""
         if task.cancelled():
             return
         exc = task.exception()
@@ -660,11 +655,11 @@ class EnvBase(metaclass=EnvMeta):
 
     @property
     def _state_table_prefix(self) -> str:
-        """从类名推导表名前缀（PascalCase → snake_case，去常见后缀）"""
+        """从类名推导表名前缀（PascalCase → ``snake_case``，去常见后缀）"""
         return type(self)._state_table_prefix_from_class()
 
     async def _register_state_tables(self) -> None:
-        """根据 _agent_state_columns / _env_state_columns 声明自动注册 replay 表"""
+        """根据 ``_agent_state_columns`` / ``_env_state_columns`` 声明自动注册 replay 表"""
         if self._replay_writer is None or self._state_tables_registered:
             return
 
@@ -783,7 +778,7 @@ class EnvBase(metaclass=EnvMeta):
     async def _write_agent_state(
         self, agent_id: int, step: int, t: datetime, **data: Any
     ) -> None:
-        """写入 per-agent 交互状态到 {prefix}_agent_state 表
+        """写入 per-agent 交互状态到 ``{prefix}_agent_state`` 表
 
         :param agent_id: Agent ID
         :param step: 当前步数
@@ -806,7 +801,7 @@ class EnvBase(metaclass=EnvMeta):
 
         :param step: 当前步数
         :param t: 当前模拟时间
-        :param records: 记录列表，每条需包含 agent_id 和模块自定义字段
+        :param records: 记录列表，每条需包含 ``agent_id`` 和模块自定义字段
         """
         if self._replay_writer is None or not records:
             return
@@ -817,7 +812,7 @@ class EnvBase(metaclass=EnvMeta):
         await self._replay_writer.write_batch(table_name, rows)
 
     async def _write_env_state(self, step: int, t: datetime, **data: Any) -> None:
-        """写入环境全局状态到 {prefix}_env_state 表
+        """写入环境全局状态到 ``{prefix}_env_state`` 表
 
         :param step: 当前步数
         :param t: 当前模拟时间

@@ -1,4 +1,4 @@
-"""Replay metadata definitions for dataset-driven export and analysis."""
+"""面向数据集驱动导出与分析的回放元数据定义。"""
 
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ STEP_FAILURE_CAPABILITY = "step_failures"
 
 @dataclass
 class ReplayDatasetSpec:
-    """Semantic metadata for a replay dataset backed by a JSONL table shard set."""
+    """回放数据集的语义元数据（底层为 JSONL 表分片集合）。"""
 
     dataset_id: str
     table_name: str

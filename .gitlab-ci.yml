@@ -12,13 +12,17 @@ workflow:
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "develop"
     - if: $CI_COMMIT_TAG
 
 variables:
   PYTHON_VERSION: "3.12"
+  UV_VERSION: "0.13.6"
   UV_INDEX_URL: "https://pypi.tuna.tsinghua.edu.cn/simple"
   UV_CACHE_DIR: "$CI_PROJECT_DIR/.cache/uv"
   NPM_CONFIG_CACHE: "$CI_PROJECT_DIR/.cache/npm"
+  PLAYWRIGHT_BROWSERS_PATH: "$CI_PROJECT_DIR/.cache/ms-playwright"
+  DEBIAN_FRONTEND: noninteractive
   MEM0_TELEMETRY: "False"
   ANONYMIZED_TELEMETRY: "False"
   DOCKER_BUILDKIT: "1"
@@ -34,7 +38,16 @@ variables:
 # python_changes: quality gates (lint/test). Includes .gitlab-ci.yml so CI edits
 # are self-tested; that path alone does NOT rebuild the Docker image.
 .python_changes: &python_changes
-  - packages/agentsociety2/**/*
+  - CHANGELOG.md
+  - cliff.toml
+  - scripts/ci/**/*
+  - Makefile
+  - .github/workflows/*.yml
+  - packages/agentsociety2/agentsociety2/**/*
+  - packages/agentsociety2/tests/**/*
+  - packages/agentsociety2/examples/**/*
+  - packages/agentsociety2/scripts/**/*
+  - packages/agentsociety2/pyproject.toml
   - pyproject.toml
   - uv.lock
   - .gitlab-ci.yml
@@ -45,18 +58,72 @@ variables:
 #   pyproject.toml, uv.lock, README.md, LICENSE
 # frontend/ is intentionally absent — not installed into the runtime image.
 .docker_python_changes: &docker_python_changes
-  - packages/agentsociety2/**/*
+  - packages/agentsociety2/agentsociety2/**/*
+  - packages/agentsociety2/examples/**/*
+  - packages/agentsociety2/pyproject.toml
   - pyproject.toml
   - uv.lock
+
+.documentation_changes: &documentation_changes
+  - scripts/ci/**/*
+  - Makefile
+  - .github/workflows/*.yml
+  - packages/agentsociety2/docs/**/*
+  - packages/agentsociety2/agentsociety2/**/*
+  - packages/agentsociety2/examples/**/*
+  - packages/agentsociety2/scripts/**/*
+  - packages/agentsociety2/pyproject.toml
+  - packages/agentsociety2/.readthedocs.yaml
+  - packages/agentsociety2/README*.md
+  - extension/resources/walkthrough/**/*
+  - extension/README.md
+  - extension/scripts/check-doc-assets.mjs
+  - frontend/tests/docs/**/*
+  - frontend/playwright.docs.config.ts
+  - frontend/package*.json
+  - README*.md
+  - READTHEDOCS.md
+  - pyproject.toml
+  - uv.lock
+  - .gitlab-ci.yml
+
+.codeql_changes: &codeql_changes
+  - packages/agentsociety2/agentsociety2/**/*
+  - extension/src/**/*
+  - frontend/src/**/*
+  - .github/codeql/**/*
+  - .github/workflows/*.yml
+  - scripts/ci/**/*
+  - .gitlab-ci.yml
 
 # ---------------------------------------------------------------------------
 # Caches (layered by churn rate)
 # ---------------------------------------------------------------------------
 # Lockfiles change rarely → high hit rate across MR pushes and main.
-# Download caches only (not .venv / node_modules) so 3.11/3.12/3.13 share one
-# UV cache safely and npm ci remains deterministic.
+# Cache downloads only, not .venv / node_modules.
+# Separate UV caches by role/Python version; npm ci remains deterministic.
 .uv_download_cache: &uv_download_cache
   key:
+    prefix: "sdk-py${PYTHON_VERSION}"
+    files:
+      - uv.lock
+  paths:
+    - .cache/uv
+  policy: pull-push
+
+# Documentation uses its own cache so parallel SDK jobs keep their downloads.
+.uv_docs_cache: &uv_docs_cache
+  key:
+    prefix: "docs-py3.12"
+    files:
+      - uv.lock
+  paths:
+    - .cache/uv
+  policy: pull-push
+
+.uv_build_cache: &uv_build_cache
+  key:
+    prefix: "build-py3.12"
     files:
       - uv.lock
   paths:
@@ -79,9 +146,53 @@ variables:
     - .cache/npm
   policy: pull-push
 
+.npm_docs_browser_cache: &npm_docs_browser_cache
+  key:
+    prefix: "docs-browser"
+    files:
+      - frontend/package-lock.json
+  paths:
+    - .cache/npm
+  policy: pull-push
+
+.browser_cache: &browser_cache
+  key:
+    prefix: "chromium-linux-x64"
+    files:
+      - frontend/package-lock.json
+  paths:
+    - .cache/ms-playwright
+  policy: pull-push
+
+# Debian bookworm images need browser libraries and Graphviz from HTTPS mirrors.
+.debian-ci:
+  before_script:
+    - &prepare_debian |
+      for source_file in /etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources; do
+        if [ -f "$source_file" ]; then
+          sed -i \
+            -e 's|http://deb\.debian\.org/debian-security|https://mirrors.tuna.tsinghua.edu.cn/debian-security|g' \
+            -e 's|https://deb\.debian\.org/debian-security|https://mirrors.tuna.tsinghua.edu.cn/debian-security|g' \
+            -e 's|http://security\.debian\.org/debian-security|https://mirrors.tuna.tsinghua.edu.cn/debian-security|g' \
+            -e 's|https://security\.debian\.org/debian-security|https://mirrors.tuna.tsinghua.edu.cn/debian-security|g' \
+            -e 's|http://deb\.debian\.org/debian|https://mirrors.tuna.tsinghua.edu.cn/debian|g' \
+            -e 's|https://deb\.debian\.org/debian|https://mirrors.tuna.tsinghua.edu.cn/debian|g' "$source_file"
+        fi
+      done
+      printf 'Acquire::Retries "3";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' > /etc/apt/apt.conf.d/80agentsociety-ci
+
 # ---------------------------------------------------------------------------
 # Lint / test
 # ---------------------------------------------------------------------------
+release-check:
+  stage: lint
+  image: python:3.12-bookworm
+  interruptible: true
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^agentsociety2-v[0-9]+\.[0-9]+\.[0-9]+$/
+  script:
+    - make ci-release-check AS2_PYTHON=python
+
 lint:
   stage: lint
   image: python:3.12
@@ -89,61 +200,77 @@ lint:
   cache:
     <<: *uv_download_cache
   rules:
+    - if: $CI_COMMIT_TAG =~ /^agentsociety2-v[0-9]+\.[0-9]+\.[0-9]+$/
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       changes: *python_changes
-    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
       changes: *python_changes
   before_script:
-    - pip install uv
-    - cd packages/agentsociety2 && uv sync --extra dev
+    - pip install --disable-pip-version-check --index-url "$UV_INDEX_URL" "uv==$UV_VERSION"
+    - cd packages/agentsociety2 && uv sync --frozen --package agentsociety2 --no-default-groups --extra dev
   script:
-    - uv run ruff check .
-    - uv run mypy tests/ --follow-imports=skip
+    - make -C ../.. ci-config
+    - make -C ../.. ci-python-lint
 
 lint-extension:
   stage: lint
-  image: node:22
+  image: node:22.23.1-bookworm
   interruptible: true
   cache:
     <<: *npm_extension_cache
   rules:
+    - if: $CI_COMMIT_TAG =~ /^agentsociety2-v[0-9]+\.[0-9]+\.[0-9]+$/
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       changes:
         - extension/**/*
+        - scripts/ci/**/*
+        - Makefile
+        - .github/workflows/extension-ci.yml
         - .gitlab-ci.yml
-    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
       changes:
         - extension/**/*
+        - scripts/ci/**/*
+        - Makefile
+        - .github/workflows/extension-ci.yml
         - .gitlab-ci.yml
   before_script:
-    - cd extension && npm ci
+    - cd extension && npm ci --prefer-offline --no-audit --fund=false
   script:
-    - npm run lint
-    - npm run build
+    - make -C .. ci-extension
     # npmmirror does not implement the audit API; query the official registry only for audit.
     # Advisory failures (transitive deps) must not block the build.
     - npm audit --audit-level=high --registry=https://registry.npmjs.org || true
 
 lint-frontend:
   stage: lint
-  image: node:22
+  image: node:22.23.1-bookworm
   interruptible: true
   cache:
-    <<: *npm_frontend_cache
+    - *npm_frontend_cache
+    - *browser_cache
   rules:
+    - if: $CI_COMMIT_TAG =~ /^agentsociety2-v[0-9]+\.[0-9]+\.[0-9]+$/
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       changes:
         - frontend/**/*
+        - scripts/ci/**/*
+        - Makefile
+        - .github/workflows/frontend-ci.yml
         - .gitlab-ci.yml
-    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
       changes:
         - frontend/**/*
+        - scripts/ci/**/*
+        - Makefile
+        - .github/workflows/frontend-ci.yml
         - .gitlab-ci.yml
   before_script:
-    - cd frontend && npm ci
+    - *prepare_debian
+    - cd frontend && npm ci --prefer-offline --no-audit --fund=false
+    - npx --no-install playwright install --with-deps --only-shell chromium
   script:
-    - npm run lint
-    - npm run build
+    - make -C .. ci-frontend
     # npmmirror does not implement the audit API; query the official registry only for audit.
     # Advisory failures (transitive deps) must not block the build.
     - npm audit --audit-level=high --registry=https://registry.npmjs.org || true
@@ -156,23 +283,20 @@ test:
   cache:
     <<: *uv_download_cache
   rules:
+    - if: $CI_COMMIT_TAG =~ /^agentsociety2-v[0-9]+\.[0-9]+\.[0-9]+$/
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       changes: *python_changes
-    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
       changes: *python_changes
   parallel:
     matrix:
       - PYTHON_VERSION: ["3.11", "3.12", "3.13"]
   before_script:
-    - pip install uv
-    - cd packages/agentsociety2 && uv sync --extra dev
+    - pip install --disable-pip-version-check --index-url "$UV_INDEX_URL" "uv==$UV_VERSION"
+    - cd packages/agentsociety2 && uv sync --frozen --package agentsociety2 --no-default-groups --extra dev
   script:
     - |
-      uv run pytest -v \
-        -m "not network" \
-        --junitxml=junit.xml \
-        -o junit_family=xunit2 \
-        -o junit_suite_name="agentsociety2-py${PYTHON_VERSION}"
+      make -C ../.. ci-python-test AS2_PYTEST_ARGS="-v --junitxml=junit.xml -o junit_family=xunit2 -o junit_suite_name=agentsociety2-py${PYTHON_VERSION}"
   artifacts:
     when: always
     expire_in: 30 days
@@ -181,9 +305,122 @@ test:
     reports:
       junit: packages/agentsociety2/junit.xml
   variables:
-    AGENTSOCIETY_LLM_API_KEY: $AGENTSOCIETY_LLM_API_KEY
-    AGENTSOCIETY_LLM_API_BASE: $AGENTSOCIETY_LLM_API_BASE
-    AGENTSOCIETY_LLM_MODEL: glm-5
+    AGENTSOCIETY_LLM_API_KEY: test-key
+    AGENTSOCIETY_LLM_API_BASE: https://api.openai.com/v1
+    AGENTSOCIETY_LLM_MODEL: gpt-5.5
+
+# ---------------------------------------------------------------------------
+# Documentation
+# ---------------------------------------------------------------------------
+
+documentation:
+  stage: test
+  image: python:3.12-bookworm
+  interruptible: true
+  needs: []
+  timeout: 20m
+  cache:
+    <<: *uv_docs_cache
+  rules: &documentation_rules
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes: *documentation_changes
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
+      changes: *documentation_changes
+    - if: $CI_COMMIT_TAG =~ /^agentsociety2-v[0-9]+\.[0-9]+\.[0-9]+$/
+  before_script:
+    - *prepare_debian
+    - apt-get update && apt-get install -y --no-install-recommends graphviz nodejs
+    - pip install --disable-pip-version-check --index-url "$UV_INDEX_URL" "uv==$UV_VERSION"
+    - uv sync --frozen --package agentsociety2 --no-default-groups --extra docs
+  script:
+    - make ci-config ci-docs-build
+  artifacts:
+    when: always
+    expire_in: 7 days
+    paths:
+      - docs-preview/
+      - docs-doctest/
+    exclude:
+      - docs-preview/**/.doctrees/**/*
+      - docs-doctest/**/.doctrees/**/*
+
+documentation-browser:
+  stage: test
+  image: mcr.microsoft.com/playwright:v1.64.1-noble
+  timeout: 10m
+  interruptible: true
+  needs:
+    - job: documentation
+      artifacts: true
+  cache:
+    <<: *npm_docs_browser_cache
+  rules: *documentation_rules
+  variables:
+    DOCS_PYTHON_EXECUTABLE: python3
+    PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+  before_script:
+    - npm --prefix frontend ci --workspace tests/docs --include-workspace-root=false --prefer-offline --no-audit --fund=false
+  script:
+    - npm --prefix frontend run test:docs
+  artifacts:
+    when: on_failure
+    expire_in: 7 days
+    paths:
+      - frontend/test-results/
+
+codeql:
+  stage: test
+  image: python:3.12-bookworm
+  interruptible: true
+  needs: []
+  timeout: 20m
+  variables:
+    RUNNER_SCRIPT_TIMEOUT: 17m
+  cache:
+    key:
+      files:
+        - scripts/ci/codeql-bundle.json
+    paths:
+      - .cache/codeql/downloads/
+    when: always
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^agentsociety2-v[0-9]+\.[0-9]+\.[0-9]+$/
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes: *codeql_changes
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
+      changes: *codeql_changes
+  before_script:
+    - *prepare_debian
+    - apt-get update && apt-get install -y --no-install-recommends nodejs
+  script:
+    - python scripts/ci/codeql.py --language all --download-total-timeout 300
+  artifacts:
+    when: always
+    expire_in: 7 days
+    paths:
+      - codeql-results/
+
+build-package:
+  stage: build
+  image: python:3.12
+  interruptible: true
+  needs: [lint]
+  cache:
+    <<: *uv_build_cache
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^agentsociety2-v[0-9]+\.[0-9]+\.[0-9]+$/
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes: *python_changes
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
+      changes: *python_changes
+  before_script:
+    - pip install --disable-pip-version-check --index-url "$UV_INDEX_URL" "uv==$UV_VERSION"
+  script:
+    - make ci-package
+  artifacts:
+    expire_in: 7 days
+    paths:
+      - packages/agentsociety2/dist/
 
 # ---------------------------------------------------------------------------
 # Docker: speculative build, promote only when every required gate is green
@@ -198,17 +435,18 @@ test:
 
 .docker_build_script: &docker_build_script
   - export TIME=$(date +%s)
+  - printf '%s' "$CI_REGISTRY_PASSWORD" | docker login --username "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
   - docker pull ${CI_REGISTRY_IMAGE}:v2 || true
   - |
     docker build \
       --cache-from ${CI_REGISTRY_IMAGE}:v2 \
+      --build-arg BUILDKIT_INLINE_CACHE=1 \
       -t "${DOCKER_PIPELINE_IMAGE}" \
       -t "${CI_REGISTRY_IMAGE}:mr-${CI_MERGE_REQUEST_IID:-local}" \
       .
   - |
     if [[ "$CI_COMMIT_BRANCH" == "main" ]]; then
       echo "Pushing speculative pipeline tag (promote to :v2 only after all gates)"
-      docker login -u ${CI_REGISTRY_USER} -p ${CI_REGISTRY_PASSWORD} ${CI_REGISTRY}
       docker push "${DOCKER_PIPELINE_IMAGE}"
     else
       echo "MR pipeline — build validated locally; not pushing :v2"
@@ -216,7 +454,7 @@ test:
 
 .docker_publish_script: &docker_publish_script
   - export TIME=$(date +%s)
-  - docker login -u ${CI_REGISTRY_USER} -p ${CI_REGISTRY_PASSWORD} ${CI_REGISTRY}
+  - printf '%s' "$CI_REGISTRY_PASSWORD" | docker login --username "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
   - docker pull "${DOCKER_PIPELINE_IMAGE}"
   - docker tag "${DOCKER_PIPELINE_IMAGE}" "${CI_REGISTRY_IMAGE}:v2-${CI_COMMIT_SHORT_SHA}-${TIME}"
   - docker tag "${DOCKER_PIPELINE_IMAGE}" "${CI_REGISTRY_IMAGE}:v2"
@@ -231,11 +469,13 @@ docker-build:
   interruptible: true
   needs:
     - job: test
+      artifacts: false
       parallel:
         matrix:
           - PYTHON_VERSION: "3.12"
     # When this MR/push also touches extension/, wait for its lint job if present.
     - job: lint-extension
+      artifacts: false
       optional: true
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
@@ -252,6 +492,7 @@ docker-build-extension:
   interruptible: true
   needs:
     - job: lint-extension
+      artifacts: false
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       changes: *docker_python_changes
@@ -295,12 +536,16 @@ docker-build-dockerfile:
         - .dockerignore
         - README.md
         - LICENSE
+        - packages/agentsociety2/README*.md
+        - packages/agentsociety2/LICENSE
     - if: $CI_COMMIT_BRANCH == "main"
       changes:
         - Dockerfile
         - .dockerignore
         - README.md
         - LICENSE
+        - packages/agentsociety2/README*.md
+        - packages/agentsociety2/LICENSE
   script: *docker_build_script
 
 # Main only: retag speculative image → :v2 after the full test matrix is green.
@@ -309,9 +554,27 @@ docker-publish:
     - dind
   stage: release
   interruptible: false
+  resource_group: agentsociety2-runtime-image
   needs:
+    - job: lint-frontend
+      artifacts: false
+      optional: true
+    - job: codeql
+      artifacts: false
+      optional: true
+    - job: build-package
+      artifacts: false
+      optional: true
     - job: test
+      artifacts: false
     - job: docker-build
+      artifacts: false
+    - job: documentation
+      artifacts: false
+      optional: true
+    - job: documentation-browser
+      artifacts: false
+      optional: true
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
       changes: *docker_python_changes
@@ -322,8 +585,28 @@ docker-publish-extension:
     - dind
   stage: release
   interruptible: false
+  resource_group: agentsociety2-runtime-image
   needs:
+    - job: lint-frontend
+      artifacts: false
+      optional: true
+    - job: test
+      artifacts: false
+      optional: true
+    - job: codeql
+      artifacts: false
+      optional: true
+    - job: build-package
+      artifacts: false
+      optional: true
     - job: docker-build-extension
+      artifacts: false
+    - job: documentation
+      artifacts: false
+      optional: true
+    - job: documentation-browser
+      artifacts: false
+      optional: true
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
       changes: *docker_python_changes
@@ -338,8 +621,31 @@ docker-publish-dockerfile:
     - dind
   stage: release
   interruptible: false
+  resource_group: agentsociety2-runtime-image
   needs:
+    - job: lint-extension
+      artifacts: false
+      optional: true
+    - job: lint-frontend
+      artifacts: false
+      optional: true
+    - job: test
+      artifacts: false
+      optional: true
+    - job: codeql
+      artifacts: false
+      optional: true
+    - job: build-package
+      artifacts: false
+      optional: true
     - job: docker-build-dockerfile
+      artifacts: false
+    - job: documentation
+      artifacts: false
+      optional: true
+    - job: documentation-browser
+      artifacts: false
+      optional: true
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
       changes: *docker_python_changes
@@ -354,16 +660,19 @@ docker-publish-dockerfile:
         - .dockerignore
         - README.md
         - LICENSE
+        - packages/agentsociety2/README*.md
+        - packages/agentsociety2/LICENSE
   script: *docker_publish_script
 
 mirror-to-github:
   stage: release
+  dependencies: []
   image:
     name: alpine/git:v2.54.0@sha256:e8ceedc73bd80992ae8d58a7d24c58b8322146c354f1d2e81a97db4452068ec0
     entrypoint: [""]
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
-    - if: $CI_COMMIT_TAG =~ /^agentsociety2-v[0-9]+/
+    - if: $CI_COMMIT_TAG =~ /^agentsociety2-v[0-9]+\.[0-9]+\.[0-9]+$/
   variables:
     GIT_STRATEGY: clone
     GIT_DEPTH: 0
@@ -408,21 +717,12 @@ mirror-to-github:
 
 generate-changelog:
   stage: release
-  image: rust:slim
+  dependencies: []
+  image: python:3.12-bookworm
   rules:
-    - if: $CI_COMMIT_TAG =~ /^agentsociety2-v[0-9]+/
-  variables:
-    GIT_STRATEGY: clone
-    GIT_DEPTH: 0
-  before_script:
-    - apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
-    - cargo install git-cliff
+    - if: $CI_COMMIT_TAG =~ /^agentsociety2-v[0-9]+\.[0-9]+\.[0-9]+$/
   script:
-    - |
-      CHANGELOG_BODY=$(git-cliff --latest --strip header --config cliff.toml)
-      echo "$CHANGELOG_BODY" > release_notes.md
-      echo "=== Generated Release Notes ==="
-      head -50 release_notes.md
+    - python scripts/ci/release.py notes --release --output release_notes.md
   artifacts:
     paths:
       - release_notes.md
@@ -431,13 +731,36 @@ generate-changelog:
 create-release:
   stage: release
   image: registry.gitlab.com/gitlab-org/release-cli:latest
-  needs: [generate-changelog]
+  needs:
+    - job: release-check
+      artifacts: false
+    - job: lint
+      artifacts: false
+    - job: lint-extension
+      artifacts: false
+    - job: lint-frontend
+      artifacts: false
+    - job: test
+      artifacts: false
+    - job: codeql
+      artifacts: false
+      optional: true
+    - job: build-package
+      artifacts: false
+      optional: true
+    - job: generate-changelog
+    - job: documentation
+      artifacts: false
+      optional: true
+    - job: documentation-browser
+      artifacts: false
+      optional: true
   rules:
-    - if: $CI_COMMIT_TAG =~ /^agentsociety2-v[0-9]+/
+    - if: $CI_COMMIT_TAG =~ /^agentsociety2-v[0-9]+\.[0-9]+\.[0-9]+$/
   script:
     - echo "Creating GitLab release for ${CI_COMMIT_TAG}"
   release:
     name: "AgentSociety2 ${CI_COMMIT_TAG}"
-    description: "$(cat release_notes.md)"
+    description: "./release_notes.md"
     tag_name: "${CI_COMMIT_TAG}"
     ref: "${CI_COMMIT_SHA}"

@@ -1,0 +1,259 @@
+# English translations for AgentSociety 2.
+# Copyright (C) 2026 FIBLAB
+# This file is distributed under the same license as the AgentSociety 2 project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: AgentSociety 2 2.10.1\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2026-11-10 12:10+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: en\n"
+"Language-Team: en <LL@li.org>\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:2
+msgid "组织一次研究"
+msgstr "Organize a research project"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:4
+msgid "本页说明怎样把研究问题推进到实验和报告。工作台安装见 :doc:`user_guide`，具体技能与 Python 接口见 :doc:`skills`。"
+msgstr ""
+"This page explains how to move from a research question to experiments and reports. "
+"See :doc:`user_guide` for workbench setup and :doc:`skills` for individual skills and"
+" Python interfaces."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:7
+msgid "协作角色"
+msgstr "Collaborating roles"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:9
+msgid "AgentSociety 2 将研究助手、仿真参与者与研究者连接在同一个研究工作区中：研究助手组织任务，仿真参与者产生行为响应，研究者审阅关键决策与证据。"
+msgstr ""
+"AgentSociety 2 brings research assistants, simulation participants, and researchers into a shared"
+" workspace. The assistant coordinates tasks, participants generate behavioral responses, and "
+"researchers review key decisions and evidence."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:15
+msgid "角色"
+msgstr "Role"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:16
+msgid "在工作区中做什么"
+msgstr "Work in the shared workspace"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:17
+msgid "人类研究者"
+msgstr "Human researcher"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:18
+msgid "明确研究问题，确认假设、实验设计与结论；检查中间产物并决定如何修订。"
+msgstr ""
+"Define the question and confirm hypotheses, design, and conclusions; inspect "
+"intermediate artifacts and decide how to revise them."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:19
+msgid "AI Social Scientist"
+msgstr "AI Social Scientist"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:20
+msgid "通过研究技能整理文献、准备数据、配置和执行实验、分析结果并整理报告。"
+msgstr ""
+"Use research skills to organize literature, prepare data, configure and run "
+"experiments, analyze results, and produce reports."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:21
+msgid "Silicon Participants"
+msgstr "Silicon Participants"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:22
+msgid "仿真中的 Agent；按画像、技能与环境规则行动，留下可检查的运行记录。"
+msgstr ""
+"Simulation agents that act according to their profiles, skills, and environment "
+"rules, leaving inspectable run records."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:25
+msgid "从问题到产物"
+msgstr "From question to artifacts"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:31
+msgid "阶段"
+msgstr "Stage"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:32
+msgid "核对内容"
+msgstr "What to check"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:33
+msgid "工作区入口"
+msgstr "Workspace entry point"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:34
+msgid "界定范围"
+msgstr "Define scope"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:35
+msgid "研究对象、比较目标、数据来源，以及人数、步数和运行预算"
+msgstr "Research population, comparisons, data sources, agent count, steps, and runtime budget"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:36
+msgid "``TOPIC.md``"
+msgstr "``TOPIC.md``"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:37
+msgid "文献与假设"
+msgstr "Literature and hypotheses"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:38
+msgid "理论依据、可检验关系、对照与处理条件"
+msgstr "Theoretical basis, testable relationships, control and treatment conditions"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:39
+msgid "``papers/``、``hypothesis_*/HYPOTHESIS.md``"
+msgstr "``papers/``, ``hypothesis_*/HYPOTHESIS.md``"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:40
+msgid "设计实验"
+msgstr "Design experiments"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:41
+msgid "变量、测量方式、干预与所需 Agent / 环境模块"
+msgstr "Variables, measurements, interventions, and required agent/environment modules"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:42
+msgid "``SIM_SETTINGS.json``、``EXPERIMENT.md``"
+msgstr "``SIM_SETTINGS.json``, ``EXPERIMENT.md``"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:43
+msgid "配置仿真"
+msgstr "Configure simulations"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:44
+msgid "数据到画像或状态的映射、模块参数与执行步骤"
+msgstr "Mapping data to profiles or state, module parameters, and execution steps"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:45
+msgid "``init/init_config.json``、``init/steps.yaml``"
+msgstr "``init/init_config.json``, ``init/steps.yaml``"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:46
+msgid "执行实验"
+msgstr "Run experiments"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:47
+msgid "运行状态、失败步骤、数据是否写出"
+msgstr "Run status, failed steps, and whether data was written"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:48
+msgid "``run/pid.json``、``run/output.log``、``run/replay/``"
+msgstr "``run/pid.json``, ``run/output.log``, ``run/replay/``"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:49
+msgid "分析结果"
+msgstr "Analyze results"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:50
+msgid "发现与证据的对应关系、图表、局限与跨实验比较"
+msgstr "Findings and supporting evidence, charts, limitations, and comparisons"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:51
+msgid "``presentation/``、``synthesis/``"
+msgstr "``presentation/``, ``synthesis/``"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:52
+msgid "整理论文"
+msgstr "Prepare a paper"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:53
+msgid "已核对的结论、引用及报告资源"
+msgstr "Verified conclusions, citations, and report resources"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:54
+msgid "外部 ``paper-toolkit`` 的 ``paper/``"
+msgstr "``paper/`` from the external ``paper-toolkit``"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:56
+msgid "研究过程中可以回到先前阶段修订。范围记录在 ``TOPIC.md``，进度由研究管线管理。修改假设、数据或配置后，检查并重新生成受影响的运行记录与报告。"
+msgstr ""
+"Revisit earlier stages as research develops. Record the scope in ``TOPIC.md`` and use the "
+"research pipeline to track progress. After changing hypotheses, data, or configuration, check and"
+" regenerate the affected runs and reports."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:59
+msgid "在工作台中推进"
+msgstr "Work in the research workbench"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:61
+msgid "打开具体研究文件夹，完成模型配置并初始化工作区。"
+msgstr "Open the specific research folder, configure models, and initialize the workspace."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:62
+msgid "在技能管理的 **Claude** 标签页同步研究管线及所需技能；在 **AI 对话** 中说明当前任务，并附带相关文件。"
+msgstr ""
+"Sync the research pipeline and required skills from the **Claude** tab in skill "
+"management. Describe the current task in **AI Chat** and attach relevant files."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:63
+msgid "助手提出下一步方案后，核对输入和目标，再执行对应研究步骤。"
+msgstr ""
+"After the assistant proposes the next step, check its inputs and goals, then execute "
+"the appropriate research step."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:64
+msgid "在项目树检查产物；需要更改研究方向时，从相关假设或配置阶段修订。"
+msgstr ""
+"Inspect artifacts in the project tree. To change direction, revise the relevant "
+"hypothesis or configuration."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:66
+msgid "使用外部数据时，先阅读 :doc:`datasets`；执行方法见 :doc:`cli`；结果检查见 :doc:`results`。"
+msgstr ""
+"For external data, start with :doc:`datasets`; see :doc:`cli` for execution and "
+":doc:`results` for inspecting results."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:69
+msgid "继续已有工作"
+msgstr "Resume existing work"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:71
+msgid "在已初始化且同步了 ``agentsociety-research-pipeline`` 的工作区根目录，使用安装 SDK 的 Python 环境查看当前位置："
+msgstr ""
+"From the root of an initialized workspace with ``agentsociety-research-pipeline`` "
+"synced, use the Python environment containing the SDK to inspect your current "
+"position:"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:73
+msgid "python .agentsociety/bin/ags.py research-pipeline where-am-i --json"
+msgstr "python .agentsociety/bin/ags.py research-pipeline where-am-i --json"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:77
+msgid ""
+"管线状态保存在 ``.agentsociety/progress.json``。研究技能脚本通过 ``.agentsociety/bin/ags.py`` "
+"启动；该入口不会替代技能同步或 Python 依赖安装。缺少脚本时，回到技能管理页同步对应技能，再按 :doc:`user_guide` 检查 Python 配置。"
+msgstr ""
+"Pipeline state is stored in ``.agentsociety/progress.json``. Research skill scripts "
+"are launched through ``.agentsociety/bin/ags.py``; this entry point does not replace "
+"skill synchronization or Python dependency installation. If a script is missing, sync"
+" its skill in the management page and check the Python configuration using "
+":doc:`user_guide`."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:80
+msgid "衔接分析与写作"
+msgstr "Continue from analysis to writing"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/research_workflow.rst:82
+msgid ""
+"实验完成后，使用分析技能整理数据、图表与结论，并检查每项结论对应的证据。确认分析结果后，可通过 ``paper-toolkit`` 继续组织引用、撰写稿件和排版。分析产物与报告入口见 "
+":doc:`results`；需要扩展参与者行为时，阅读 :doc:`agent_skills`。"
+msgstr ""
+"After an experiment, use analysis skills to organize data, figures, and findings, and check the "
+"evidence behind each conclusion. Once the results have been reviewed, use ``paper-toolkit`` to "
+"organize citations, draft a manuscript, and typeset it. See :doc:`results` for analysis artifacts"
+" and reports, or :doc:`agent_skills` to extend participant behavior."

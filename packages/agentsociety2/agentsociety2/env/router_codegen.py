@@ -1,6 +1,4 @@
-"""
-代码生成式 Router 实现
-通过代码生成的方式调用环境模块中的@tool标记的接口
+"""代码生成式 Router 实现通过代码生成的方式调用环境模块中的@tool标记的接口
 
 架构说明:
 - AskContext: 一次ask调用所需的所有状态
@@ -427,8 +425,7 @@ def _compute_code_variable_reads(code: str) -> frozenset[str] | None:
 def _code_variable_reads(code: str) -> frozenset[str] | None:
     """静态提取代码必读的 ``ctx['variables']`` 键。
 
-    返回 ``None`` 表示代码以无法静态分析的形态使用了 variables（动态下标、
-    迭代、别名逃逸等），调用方需退回保守判据。
+    返回 ``None`` 表示代码以无法静态分析的形态使用了 variables（动态下标、迭代、别名逃逸等），调用方需退回保守判据。
     """
     if code in _code_reads_memo:
         return _code_reads_memo[code]
@@ -442,8 +439,7 @@ def _code_variable_reads(code: str) -> frozenset[str] | None:
 def _entry_usable_with(entry: CacheEntry, current_keys: set[str]) -> bool:
     """缓存条目的代码能否在当前这组 variables 下复用。
 
-    首选“代码必读变量 ⊆ 当前变量”（多带的无关键不构成障碍，缺必读键才
-    否决）；代码不可静态分析时退回“variable_keys ⊆ 当前变量”的保守旧判据。
+    首选“代码必读变量 ⊆ 当前变量”（多带的无关键不构成障碍，缺必读键才否决）；代码不可静态分析时退回“``variable_keys`` ⊆ 当前变量”的保守旧判据。
     """
     reads = _code_variable_reads(entry.code)
     if reads is None:
@@ -459,8 +455,7 @@ def _entry_usable_with(entry: CacheEntry, current_keys: set[str]) -> bool:
 def _collect_async_tool_names(router: "CodeGenRouter") -> set[str]:
     """收集所有 env 模块中 async ``@tool`` 方法的方法名。
 
-    供 :func:`_ensure_await_async_calls` 判断 LLM 生成代码中哪些调用
-    需要 ``await``。
+    供 :func:`_ensure_await_async_calls` 判断 LLM 生成代码中哪些调用需要 ``await`` 。
     """
     names: set[str] = set()
     for module in router._modules.values():
@@ -478,12 +473,9 @@ class _EnsureAwaitTransformer(ast.NodeTransformer):
     """把对已知 async 函数的调用包进 ``Await`` 节点。
 
     若 LLM 忘记在 async 工具调用前加 ``await``(如
-    ``person = get_person(agent_id)``),本 transformer 会在 AST 层面
-    把它改写成 ``person = await get_person(agent_id)``——不用正则、
-    无误报。
+    ``person = get_person(agent_id)``),本 transformer 会在 AST 层面把它改写成 ``person = await get_person(agent_id)``——不用正则、无误报。
 
-    已 await 的调用保持原样(``visit_Await`` 跳过直接子级 Call,但仍会
-    访问其参数,以处理嵌套的未 await 调用)。
+    已 await 的调用保持原样(``visit_Await`` 跳过直接子级 Call,但仍会访问其参数,以处理嵌套的未 await 调用)。
     """
 
     def __init__(self, async_names: set[str]) -> None:
@@ -515,7 +507,7 @@ class _EnsureAwaitTransformer(ast.NodeTransformer):
 
 
 def _ensure_await_async_calls(code: str, async_names: set[str]) -> str:
-    """对生成代码做 AST 变换,使 async 工具调用带上 ``await``。
+    """对生成代码做 AST 变换,使 async 工具调用带上 ``await`` 。
 
     多层防护(Layer 1):
     - 解析代码 → AST。
@@ -623,10 +615,7 @@ def _get_debug_info(description: str = "") -> str:
 
 
 async def clean_coroutines_from_results(results: dict) -> dict:
-    """
-    递归检查 results 中的未 await 的 coroutine 并 await 获取其值。
-    供 CodeStage 使用。
-    """
+    """递归检查 results 中的未 await 的 coroutine 并 await 获取其值。供 CodeStage 使用。"""
     visited: set[int] = set()
 
     async def clean_value(value: Any) -> Any:
@@ -661,11 +650,7 @@ async def clean_coroutines_from_results(results: dict) -> dict:
 
 
 def _get_env_class_type_key(env_modules: list) -> str:
-    """
-    根据 env module classes 生成可读的标识字符串。
-    相同 env 配置（模块类型和名称）产生相同 key，用于缓存隔离。
-    返回 human-readable 的 JSON，便于直接查看缓存内容。
-    """
+    """根据 env module classes 生成可读的标识字符串。相同 env 配置（模块类型和名称）产生相同 key，用于缓存隔离。返回 human-readable 的 JSON，便于直接查看缓存内容。"""
     keys = []
     for m in env_modules:
         cls = m.__class__
@@ -740,11 +725,7 @@ def _cache_secret() -> bytes:
 
 
 class TemplateCacheDB:
-    """
-    持久化模板缓存，支持跨运行共用。
-    使用 pickle 文件存储，FAISS 进行 embedding 相似度搜索。
-    缓存按 env_class_type 隔离，仅 env 类型一致时才能命中。
-    """
+    """持久化模板缓存，支持跨运行共用。使用 pickle 文件存储，FAISS 进行 embedding 相似度搜索。缓存按 ``env_class_type`` 隔离，仅 env 类型一致时才能命中。"""
 
     def __init__(
         self,
@@ -762,9 +743,7 @@ class TemplateCacheDB:
 
         反序列化 pickle 等价于执行任意代码——缓存文件若被篡改即 RCE
         入口(bandit B301,2026-10-19 安全审计)。改用 HMAC 帧格式:
-        ``MAGIC + hmac_sha256(payload) + payload``;签名不匹配即拒绝
-        加载(视为损坏,回退空缓存),密钥为安装期生成的本机随机密钥。
-        旧格式(裸 pickle)首次加载即弃,重建新格式缓存。
+        ``MAGIC + hmac_sha256(payload) + payload``;签名不匹配即拒绝加载(视为损坏,回退空缓存),密钥为安装期生成的本机随机密钥。旧格式(裸 pickle)首次加载即弃,重建新格式缓存。
         """
         if not os.path.exists(self._cache_path):
             return {"next_id": 1, "by_env": {}}
@@ -806,9 +785,8 @@ class TemplateCacheDB:
     def load_entries(
         self, env_class_type: str
     ) -> tuple[list[CacheEntry], Optional["faiss.Index"], list[int]]:
-        """
-        加载指定 env_class_type 的缓存条目并构建 FAISS 索引。
-        :returns: (entries, faiss_index, faiss_entry_indices)
+        """加载指定 ``env_class_type`` 的缓存条目并构建 FAISS 索引。
+        :returns: (entries, ``faiss_index``, ``faiss_entry_indices``)
         """
         data = self._load_data()
         raw = data.get("by_env", {}).get(env_class_type, [])
@@ -879,7 +857,7 @@ class TemplateCacheDB:
         self._save_data(data)
 
     def clear_env_cache(self, env_class_type: str) -> None:
-        """清空指定 env_class_type 的所有缓存条目。"""
+        """清空指定 ``env_class_type`` 的所有缓存条目。"""
         data = self._load_data()
         data.setdefault("by_env", {}).pop(env_class_type, None)
         self._save_data(data)
@@ -889,7 +867,7 @@ class TemplateCacheDB:
         env_class_type: str,
         instruction_template: str,
     ) -> CacheEntry | None:
-        """按 instruction_template 查找已有条目（用于更新而非新增）。"""
+        """按 ``instruction_template`` 查找已有条目（用于更新而非新增）。"""
         data = self._load_data()
         lst = data.get("by_env", {}).get(env_class_type, [])
         for e in lst:
@@ -916,7 +894,7 @@ class CodeProvider(Protocol):
 
     @property
     def name(self) -> str:
-        """提供者名称，用于 context.code_source"""
+        """提供者名称，用于 ``context.code_source``"""
         ...
 
     async def get_code(
@@ -1133,10 +1111,9 @@ _NORMALIZE_RULES: list[tuple[str, "re.Pattern[str]", str]] = [
 def normalize_env_instruction(instruction: str) -> tuple[str | None, str]:
     """高频语义类指令归一(L0 验证:batchJ 357 条回放 llm 58→9)。
 
-    :param instruction: agent 提交的原始 ask_env 指令。
+    :param instruction: agent 提交的原始 ``ask_env`` 指令。
     :returns: (规范化模板串, 语义类);未命中 (None, "unmatched")。
-        规范化串是该类既有缓存模板的语义同构形态——交给 Cache 精确
-        匹配快路径,变量覆盖由既有 variable_keys 检查把关。
+        规范化串是该类既有缓存模板的语义同构形态——交给 Cache 精确匹配快路径,变量覆盖由既有 ``variable_keys`` 检查把关。
     """
     text = instruction.strip()
     if text.lower() in ("<observe>", "<statistics>", "observe", "statistics"):
@@ -1158,10 +1135,8 @@ class NormalizedInstructionProvider:
     """指令归一提供者(优先级第二,Predefined 后 Cache 前)。
 
     自由措辞 × FAISS 相似度阈值的系统性失配是 codegen 长尾主因
-    (57/65 miss 为 below_similarity_threshold,语义 96% 已有模板)。
-    本 provider 不产出代码——命中语义类时把 ``context.instruction``
-    改写为规范化模板串并返回 None,让 CacheCodeProvider 用归一串走
-    精确匹配快路径(复用 variable_keys 检查);类内无模板则照旧走
+    (57/65 miss 为 ``below_similarity_threshold``,语义 96% 已有模板)。本 provider 不产出代码——命中语义类时把 ``context.instruction``
+    改写为规范化模板串并返回 None,让 CacheCodeProvider 用归一串走精确匹配快路径(复用 ``variable_keys`` 检查);类内无模板则照旧走
     FAISS/LLM(归一层不吞新语义)。
 
     开关:``AGENTSOCIETY_ENV_INSTRUCTION_NORMALIZE=0`` 关闭(L1 A/B
@@ -1501,7 +1476,7 @@ Please generate the corrected code:"""
 
 
 class InitStage:
-    """初始化：添加时间到 ctx，检查 env_modules"""
+    """初始化：添加时间到 ctx，检查 ``env_modules``"""
 
     async def process(self, context: AskContext, router: "CodeGenRouter") -> AskContext:
         router._add_current_time_to_ctx(context.ctx)
@@ -1617,10 +1592,8 @@ class CodeStage:
             def _dunder_attr_name(node: ast.Attribute) -> str | None:
                 """属性访问的 dunder 名;非 dunder 返回 None。
 
-                审计修复(2026-11-04):``print.__globals__['os']`` 一类属性链
-                直通宿主模块全局(os/sys/pickle 都在本模块顶层导入),而
-                ``getattr``/``type`` 又在 ALLOWED_BUILTINS——静态检查此前对
-                属性访问零检查,三类逃逸载荷实测全部通过。dunder 属性一律
+                审计修复(2026-11-04):``print.__globals__['os']`` 一类属性链直通宿主模块全局(os/sys/pickle 都在本模块顶层导入),而
+                ``getattr``/``type`` 又在 ``ALLOWED_BUILTINS``——静态检查此前对属性访问零检查,三类逃逸载荷实测全部通过。dunder 属性一律
                 拒绝:沙箱内合法生成的代码没有理由访问 ``__globals__``/
                 ``__class__``/``__init__``/``__builtins__`` 等。
                 """
@@ -1631,8 +1604,7 @@ class CodeStage:
             def _dunder_string_arg(node: ast.Call) -> str | None:
                 """``getattr(x, '__globals__')`` 一类以 dunder 字符串为名的动态访问。
 
-                审计修复补充:dunder 名可以经 getattr/hasattr 的**字符串常量**
-                传入,不走 Attribute 节点——只拦属性访问会漏这条变体。
+                审计修复补充:dunder 名可以经 getattr/hasattr 的**字符串常量**传入,不走 Attribute 节点——只拦属性访问会漏这条变体。
                 """
                 if (
                     isinstance(node.func, ast.Name)
@@ -2406,11 +2378,10 @@ class CodeGenRouter(RouterBase):
         trace_id: str | None = None,
         parent_span_id: str | None = None,
     ) -> tuple[dict, str]:
-        """
-        使用代码生成方式处理指令。通过管道-过滤器架构执行。
+        """使用代码生成方式处理指令。通过管道-过滤器架构执行。
 
         :param ctx: 上下文字典（在template模式下，应包含'variables'键）
-        :param instruction: 指令字符串（在template模式下，为模板指令，包含{variable_name}占位符）
+        :param instruction: 指令字符串（在template模式下，为模板指令，包含``{variable_name}``占位符）
         :param readonly: 是否只读模式
         :param template_mode: 是否启用模板模式（启用后使用缓存机制）
 
@@ -2467,9 +2438,7 @@ class CodeGenRouter(RouterBase):
     ) -> None:
         """为一次完整 env ask 发 ``env.ask`` span(best-effort)。
 
-        此前 trace 里只有 env 侧的 ``llm.completion`` 子调用,缓存命中
-        的 ask(无 LLM 调用)完全不可见,无法回答"这次 ask 走的哪条
-        路、重试了几轮"。span 聚合 code_source/cache 命中/重试/成败,
+        此前 trace 里只有 env 侧的 ``llm.completion`` 子调用,缓存命中的 ask(无 LLM 调用)完全不可见,无法回答"这次 ask 走的哪条路、重试了几轮"。span 聚合 ``code_source/cache`` 命中/重试/成败,
         填上这块观测盲区。sink 或 trace 上下文缺失时静默跳过。
 
         :param context: 管道走完(或异常中断)后的 ask 状态。
@@ -2521,10 +2490,9 @@ class CodeGenRouter(RouterBase):
             get_logger().debug("Failed to append env.ask span", exc_info=True)
 
     def _persist_cache_stats(self) -> None:
-        """把缓存统计快照原子落盘到 ``run_dir/env/cache_stats.json``。
+        """把缓存统计快照原子落盘到 ``run_dir/env/cache_stats.json`` 。
 
-        统计此前只活在 actor 内存,进程退出即失,driver 也无从读取。
-        每 ask 后写一次小 JSON(原子替换);失败仅 debug 记录,不影响
+        统计此前只活在 actor 内存,进程退出即失,driver 也无从读取。每 ask 后写一次小 JSON(原子替换);失败仅 debug 记录,不影响
         ask 主流程。
 
         :returns: 无返回值。
@@ -2544,11 +2512,9 @@ class CodeGenRouter(RouterBase):
             get_logger().debug("Failed to persist cache stats", exc_info=True)
 
     async def init(self, start_datetime: datetime) -> bool:
-        """
-        以起始时间初始化 router,并用 LLM 生成代码。
-        从本地缓存数据库加载当前 env 类型的缓存集，构建 FAISS 索引。
+        """以起始时间初始化 router,并用 LLM 生成代码。从本地缓存数据库加载当前 env 类型的缓存集，构建 FAISS 索引。
 
-        :returns: 是否有 env 模块恢复了 checkpoint（透传自 ``RouterBase.init``）。
+        :returns: 是否有 env 模块恢复了 checkpoint（透传自 ``RouterBase.init`` ）。
         :raises ValueError: 初始化代码输出被截断，或未通过生成及执行校验。
         """
         restored = await super().init(start_datetime)
@@ -2707,9 +2673,7 @@ class CodeGenRouter(RouterBase):
         raise ValueError(f"Failed to generate {kind} code after retries.")
 
     async def _generate_observe_code(self) -> str:
-        """
-        使用LLM生成观察代码，用于调用所有observe类型的工具并以自然语言汇报。
-        使用与其他普通文本相同的代码生成逻辑，失败时通过多轮对话让LLM修正。
+        """使用LLM生成观察代码，用于调用所有observe类型的工具并以自然语言汇报。使用与其他普通文本相同的代码生成逻辑，失败时通过多轮对话让LLM修正。
 
         :returns: 生成的Python代码字符串，如果生成失败则返回空字符串
         """
@@ -2726,9 +2690,7 @@ class CodeGenRouter(RouterBase):
         )
 
     async def _generate_statistics_code(self) -> str:
-        """
-        使用LLM生成统计代码，用于调用所有statistics类型的工具。
-        使用与其他普通文本相同的代码生成逻辑，失败时通过多轮对话让LLM修正。
+        """使用LLM生成统计代码，用于调用所有statistics类型的工具。使用与其他普通文本相同的代码生成逻辑，失败时通过多轮对话让LLM修正。
 
         :returns: 生成的Python代码字符串，如果生成失败则返回空字符串
         """
@@ -2747,7 +2709,7 @@ class CodeGenRouter(RouterBase):
         )
 
     def _load_cache_from_db(self) -> None:
-        """从本地缓存数据库加载当前 env_class_type 的缓存集，构建 FAISS 索引。"""
+        """从本地缓存数据库加载当前 ``env_class_type`` 的缓存集，构建 FAISS 索引。"""
         entries, index, indices = self._cache_db.load_entries(self._env_class_type_key)
         self._cache_entries = entries
         self._cache_faiss_index = index

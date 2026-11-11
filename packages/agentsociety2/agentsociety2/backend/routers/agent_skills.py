@@ -1,25 +1,6 @@
-"""
-Agent Skills API 路由
+"""管理可发现的智能体行为技能。
 
-提供 agent skill 的列表、扫描自定义 skill、导入/创建/上传 skill 的 API 端点。
-
-本路由基于 v2 skill 注册表 (:mod:`agentsociety2.agent.base.skill_registry`)，它是一个
-**只读元数据注册表**：skill 是"始终存在"的目录，PersonAgent 在运行时按目录选择激活。
-因此本路由**没有** enable/disable/reload/remove 端点（v2 模型无此概念）。
-
-关联文件：
-- @packages/agentsociety2/agentsociety2/agent/base/skill_registry.py - Skill 注册表
-- @extension/src/apiClient.ts - VSCode 扩展 API 客户端
-- @frontend/src/pages/Skills/index.tsx - Web 前端 Skill 管理页
-
-API 端点：
-- GET  /api/v1/agent-skills/list       — 列出所有已发现的 agent skill（built-in + custom + env）
-- POST /api/v1/agent-skills/scan       — 扫描 workspace/custom/skills/ 下的自定义 skill
-- POST /api/v1/agent-skills/import     — 从工作区内路径导入 skill 目录
-- POST /api/v1/agent-skills/create     — 在线创建新 skill（SKILL.md + 可选脚本）
-- POST /api/v1/agent-skills/upload     — 上传 zip 包导入 skill
-- GET  /api/v1/agent-skills/{skill_id}/info — 获取 SKILL.md 内容
-"""
+提供技能列表、工作区扫描、目录导入、创建、ZIP 上传与内容查询。元数据由 :mod:`agentsociety2.agent.base.skill_registry` 管理；技能的激活与执行发生在仿真运行时，见 :doc:`/agent_skills`。"""
 
 from __future__ import annotations
 
@@ -300,7 +281,7 @@ async def upload_skill(
 async def get_skill_info(skill_id: str) -> dict[str, Any]:
     """获取 Skill 的详细信息（含 SKILL.md 内容）。
 
-    ``skill_id`` 形如 ``built-in@daily-guidance`` 或 ``custom@my-skill``，由
+    ``skill_id`` 形如 ``built-in@daily-guidance`` 或 ``custom@my-skill`` ，由
     :meth:`SkillRegistry.list_all` 返回。
     """
     reg = get_skill_registry()

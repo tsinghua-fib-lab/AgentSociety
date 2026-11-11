@@ -1,8 +1,6 @@
-"""Module discovery utility for Skills
+"""Skills 的模块发现工具
 
-Provides functions to discover and validate available agents and environment modules.
-This bridges the gap between the registry and Skills by providing easy access to
-available modules for validation and selection guidance.
+提供发现与校验可用 agent 及环境模块的函数，在注册表与 Skills 之间架起桥梁，便于获取可用模块用于校验和选择引导。
 """
 
 from __future__ import annotations
@@ -19,9 +17,9 @@ logger = get_logger()
 
 
 def get_available_env_modules() -> dict[str, str]:
-    """Get available environment modules with their descriptions
+    """获取可用环境模块及其描述
 
-    :returns: Dictionary mapping module_type to description
+    :returns: ``module_type`` 到描述的映射字典
     """
     try:
         env_modules_info = {}
@@ -43,9 +41,9 @@ def get_available_env_modules() -> dict[str, str]:
 
 
 def get_available_agent_modules() -> dict[str, str]:
-    """Get available agent modules with their descriptions
+    """获取可用 agent 模块及其描述
 
-    :returns: Dictionary mapping agent_type to description
+    :returns: ``agent_type`` 到描述的映射字典
     """
     try:
         agents_info = {}
@@ -65,9 +63,9 @@ def get_available_agent_modules() -> dict[str, str]:
 
 
 def get_modules_summary() -> str:
-    """Get a formatted summary of available modules for LLM prompts
+    """获取面向 LLM 提示词的可用模块摘要
 
-    :returns: Formatted string with available modules
+    :returns: 包含可用模块的格式化字符串
     """
     env_modules = get_available_env_modules()
     agent_modules = get_available_agent_modules()
@@ -96,12 +94,12 @@ def validate_module_selection(
     agent_classes: list[str] | None = None,
     env_modules: list[str] | None = None,
 ) -> tuple[bool, list[str]]:
-    """Validate that at least one agent and one environment module are selected
+    """校验至少选择了一个 agent 模块和一个环境模块
 
-    :param agent_classes: List of agent class types
-    :param env_modules: List of environment module types
+    :param agent_classes: agent 类类型列表
+    :param env_modules: 环境模块类型列表
 
-    :returns: Tuple of (is_valid, list of error messages)
+    :returns: ``(is_valid, 错误消息列表)`` 元组
     """
     errors = []
 
@@ -142,13 +140,13 @@ def get_module_selection_guidance(
     agent_classes: list[str] | None = None,
     env_modules: list[str] | None = None,
 ) -> str:
-    """Generate guidance text for module selection
+    """生成模块选择引导文本
 
-    :param topic: Research topic for context
-    :param agent_classes: Currently selected agent classes
-    :param env_modules: Currently selected environment modules
+    :param topic: 提供上下文的研究主题
+    :param agent_classes: 当前已选的 agent 类
+    :param env_modules: 当前已选的环境模块
 
-    :returns: Guidance text for helping with module selection
+    :returns: 辅助模块选择的引导文本
     """
     available_agents = get_available_agent_modules()
     available_envs = get_available_env_modules()
@@ -197,11 +195,11 @@ def get_module_selection_guidance(
 def validate_hypothesis_modules(
     hypothesis_data: dict[str, Any],
 ) -> tuple[bool, list[str], dict[str, Any] | None]:
-    """Validate that a hypothesis has required modules
+    """校验 hypothesis 是否具备必需模块
 
-    :param hypothesis_data: Hypothesis data dictionary
+    :param hypothesis_data: hypothesis 数据字典
 
-    :returns: Tuple of (is_valid, error_messages, guidance_dict)
+    :returns: ``(is_valid, 错误消息列表, 引导信息字典)`` 元组
     """
     errors = []
     guidance = {

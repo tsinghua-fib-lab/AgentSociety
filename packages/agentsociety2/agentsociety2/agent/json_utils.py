@@ -342,7 +342,7 @@ def loads_llm_json(
     """解析并修复 LLM 产出的 JSON 文本。
 
     :param text: 原始模型输出（可含围栏、标签、轻微截断）。
-    :param expect: 期望顶层类型；不满足时抛 ``ValueError``。
+    :param expect: 期望顶层类型；不满足时抛 ``ValueError`` 。
     :param normalize_tools: 是否归一化工具调用键名。
     :returns: Python 对象。
     :raises ValueError: 无法可靠解析，或结果仅为散文引号包装。

@@ -1,6 +1,6 @@
 """环境路由器基类模块。
 
-本模块提供环境路由器的抽象基类 :class:`RouterBase`，用于协调智能体与环境模块之间的交互。
+本模块提供环境路由器的抽象基类 :class:`RouterBase` ，用于协调智能体与环境模块之间的交互。
 
 路由器负责：
 
@@ -120,10 +120,9 @@ class TokenUsageStats(BaseModel):
 
 
 class FinalAnswerResponse(BaseModel):
-    """
-    LLM 最终答案响应的 Pydantic 模型。
+    """LLM 最终答案响应的 Pydantic 模型。
 
-    :ivar status: 执行状态(success、in_progress、fail、error)。
+    :ivar status: 执行状态(success、``in_progress``、fail、error)。
     :ivar summary: 已完成内容或出错原因的摘要。
     """
 
@@ -168,10 +167,10 @@ ToolsInfoDict = dict[str, ModuleToolsInfo]
 class RouterBase(ABC):
     """环境路由器抽象基类。
 
-    Router 用于协调 agent 与环境模块（:class:`~agentsociety2.env.base.EnvBase`）的交互，职责包括：
+    Router 用于协调 agent 与环境模块（:class:`~agentsociety2.env.base.EnvBase` ）的交互，职责包括：
 
     - 聚合并过滤环境工具（函数调用 schema）
-    - 接收编排器推送的仿真时钟（:meth:`set_current_time`），供 env 模块在 agent 阶段读取
+    - 接收编排器推送的仿真时钟（:meth:`set_current_time` ），供 env 模块在 agent 阶段读取
     - 提供统一 LLM 调用封装（重试）
     - 生成 world description（可选，用于 PersonAgent 的提示词）
     """
@@ -191,7 +190,7 @@ class RouterBase(ABC):
         :param max_llm_call_retry: LLM 调用最大重试次数下限（至少为 1）。
         :param replay_writer: 可选回放写入器；若提供会自动注入到各 env module。
         :param llm_clients_spec: 可选。注入的 :class:`LLMClient` 句柄映射，
-            例如 ``{"coder": "LLMClient", "default": "LLMClient"}``。提供时
+            例如 ``{"coder": "LLMClient", "default": "LLMClient"}`` 。提供时
             router 使用注入的 client；为空时按配置构建本地 client。
         """
         # Get model names from environment-based configuration
@@ -217,7 +216,7 @@ class RouterBase(ABC):
         self.max_llm_call_retry = max(max_llm_call_retry, 1)
         self._replay_writer = replay_writer
         self.run_dir: Path | None = None  # 由 cli.py 设置
-        # 各 env 模块 workspace 的根（``<run_dir>/env``）。
+        # 各 env 模块 workspace 的根（``<run_dir>/env`` ）。
         self._env_workspace_root: Path | None = None
         if replay_writer is not None:
             for env_module in env_modules:
@@ -247,8 +246,7 @@ class RouterBase(ABC):
 
         :param sink: 暴露 ``append_record(record_dict)``(可选再暴露
             ``flush()``)的对象,例如由
-            :func:`~agentsociety2.trace.build_local_sink` 构建的适配器。
-            传 ``None`` 可禁用追踪。
+            :func:`~agentsociety2.trace.build_local_sink` 构建的适配器。传 ``None`` 可禁用追踪。
         """
         self._trace_sink = sink
 
@@ -334,11 +332,8 @@ class RouterBase(ABC):
     def set_current_time(self, t: datetime) -> None:
         """把 society 当前时钟推送给 router 与 env 模块。
 
-        这不是时间推进——society 在 ``step()`` 中推进自己的时钟并调用本
-        方法,使 env 模块在 agent 阶段(先于 :meth:`step` 运行)观察到正确
-        的仿真时间。部分 env 模块会在 ``@tool`` 方法内读取 ``self.t``
-        (如事件调度、社交媒体发帖时间戳),因此时间必须在 agent 开始查询
-        环境之前设置好。
+        这不是时间推进——society 在 ``step()`` 中推进自己的时钟并调用本方法,使 env 模块在 agent 阶段(先于 :meth:`step` 运行)观察到正确的仿真时间。部分 env 模块会在 ``@tool`` 方法内读取 ``self.t``
+        (如事件调度、社交媒体发帖时间戳),因此时间必须在 agent 开始查询环境之前设置好。
         """
         self.t = t
         for env_module in self.env_modules:
@@ -356,13 +351,13 @@ class RouterBase(ABC):
     ) -> tuple[dict, str]:
         """与环境交互的统一入口（由子类实现具体路由策略）。
 
-        :param ctx: 上下文字典。模板模式下可包含 ``variables``，用于 ``{var}`` 替换。
+        :param ctx: 上下文字典。模板模式下可包含 ``variables`` ，用于 ``{var}`` 替换。
         :param instruction: 指令文本。模板模式下会进行变量替换后再执行。
         :param readonly: 是否只读（只读时应避免改变环境状态）。
         :param template_mode: 是否启用模板模式。
         :param trace_id: OTel trace ID（UUID hex），用于跨 agent/env 的追踪关联。
         :param parent_span_id: OTel parent span ID，用于构建 span 层级。
-        :returns: ``(ctx, answer)``，其中 ctx 可能被环境更新。
+        :returns: ``(ctx, answer)`` ，其中 ctx 可能被环境更新。
         """
         raise NotImplementedError
 
@@ -397,10 +392,9 @@ class RouterBase(ABC):
     # ==================== workspace 持久化（无状态 resume） ====================
 
     def bind_env_workspaces(self, root: Path, module_types: list[str]) -> None:
-        """把每个 env 模块绑定到 root/module_type（幂等）。
+        """把每个 env 模块绑定到 ``root/module_type``（幂等）。
 
-        ``module_types`` 与 ``env_modules`` 按位置对应，同时作为目录键
-        （与 ``env_kwargs`` 对齐，避免同类多实例冲突）。
+        ``module_types`` 与 ``env_modules`` 按位置对应，同时作为目录键（与 ``env_kwargs`` 对齐，避免同类多实例冲突）。
         """
         self._env_workspace_root = Path(root)
         self._env_workspace_root.mkdir(parents=True, exist_ok=True)
@@ -411,10 +405,7 @@ class RouterBase(ABC):
     async def from_workspaces(self) -> bool:
         """恢复各已绑定模块的状态（存在快照时）。
 
-        默认严格模式：任一模块 ``restore()`` 抛错则中止整个 resume（所有模块先
-        尝试恢复、汇总失败后统一抛错，便于一次看清全部损坏点）。静默降级——失败
-        模块以初始状态继续跑——会让模块状态与 ``SOCIETY_STEP.json`` 记录的步数
-        脱钩，损坏只会在下游指标才暴露。设置 ``AGENTSOCIETY_ENV_RESTORE_ALLOW_FRESH=1``
+        默认严格模式：任一模块 ``restore()`` 抛错则中止整个 resume（所有模块先尝试恢复、汇总失败后统一抛错，便于一次看清全部损坏点）。静默降级——失败模块以初始状态继续跑——会让模块状态与 ``SOCIETY_STEP.json`` 记录的步数脱钩，损坏只会在下游指标才暴露。设置 ``AGENTSOCIETY_ENV_RESTORE_ALLOW_FRESH=1``
         可恢复旧的降级行为：失败模块 fresh 启动并 ERROR 汇总告警，其余模块照常恢复。
 
         :returns: 是否有任一模块加载了快照（即 resume）。
@@ -458,8 +449,7 @@ class RouterBase(ABC):
     async def to_workspaces(self) -> None:
         """把每个模块的动态状态写入其 workspace。
 
-        用 ``return_exceptions=True`` 收集结果，单个模块落盘失败不会让本步其它
-        模块的持久化全部丢失；收集结束后抛错，禁止提交不完整的总进度。
+        用 ``return_exceptions=True`` 收集结果，单个模块落盘失败不会让本步其它模块的持久化全部丢失；收集结束后抛错，禁止提交不完整的总进度。
         """
         if self._env_workspace_root is None:
             return
@@ -510,8 +500,8 @@ class RouterBase(ABC):
         Router 子类应在 ``ask`` 入口处调用此方法，使 ``@tool``
         装饰器能将 ``trace_id`` 写入 tool call history。
 
-        :param trace_id: OTel trace ID（UUID hex）。
-        :param parent_span_id: OTel parent span ID。
+        :param trace_id: OpenTelemetry 追踪 ID（十六进制 UUID）。
+        :param parent_span_id: 父追踪片段的 ID。
         """
         ctx = {"trace_id": trace_id, "parent_span_id": parent_span_id}
         for env_module in self.env_modules:
@@ -580,13 +570,13 @@ class RouterBase(ABC):
     ):
         """封装 LLM 调度（Dispatcher 负责并发控制与 HTTP 重试）。
 
-        :param model: ``coder`` 或 ``summary``。
-        :param messages: 消息列表（不自动追加 system prompt；若需要请用 :meth:`acompletion_with_system_prompt`）。
+        :param model: ``coder`` 或 ``summary`` 。
+        :param messages: 消息列表（不自动追加 system prompt；若需要请用 :meth:`acompletion_with_system_prompt` ）。
         :param stream: 是否流式返回。
-        :param max_retries: 可选。最大重试次数；为空则使用 ``self.max_llm_call_retry``。
+        :param max_retries: 可选。最大重试次数；为空则使用 ``self.max_llm_call_retry`` 。
         :param base_delay: 429 类错误的指数退避基准延迟。
         :param max_delay: 指数退避最大延迟。
-        :returns: LLM 响应对象（stream=False 时为 :class:`litellm.types.utils.ModelResponse`）。
+        :returns: LLM 响应对象（stream=False 时为 :class:`litellm.types.utils.ModelResponse` ）。
         :raises ValueError: 超过重试次数仍失败时抛出。
         """
         if max_retries is None:
@@ -628,7 +618,7 @@ class RouterBase(ABC):
     ):
         """发送补全请求并自动在最前追加 router system prompt。
 
-        :param model: ``coder`` 或 ``summary``。
+        :param model: ``coder`` 或 ``summary`` 。
         :param messages: 消息列表。
         :returns: LLM 响应对象。
         """
@@ -658,7 +648,7 @@ class RouterBase(ABC):
     ) -> T:
         """发送补全并校验为指定 Pydantic 模型（失败时自动反馈并重试）。
 
-        :param model: ``coder`` 或 ``summary``。
+        :param model: ``coder`` 或 ``summary`` 。
         :param model_type: 用于校验的 Pydantic 模型类型。
         :param messages: 消息列表（会自动追加 system prompt）。
         :param max_retries: 最大重试次数（不含首次尝试）。
@@ -802,8 +792,7 @@ Your corrected response:
     def get_token_usages(self):
         """返回本 router 各 LLM client 聚合的 token 用量。
 
-        每个 dispatcher(:class:`LLMClient`)各自跟踪自己每循环的用量;此处
-        做快照(不清零)。返回 ``{model: TokenUsageStats}``。
+        每个 dispatcher(:class:`LLMClient`)各自跟踪自己每循环的用量;此处做快照(不清零)。返回 ``{model: TokenUsageStats}`` 。
         """
         from agentsociety2.config.llm_dispatcher import merge_token_stats
 
@@ -830,25 +819,19 @@ Your corrected response:
 
     @staticmethod
     def get_status_descriptions() -> dict[str, str]:
-        """
-        获取标准状态描述。
+        """获取标准状态描述。
 
-        状态指示用户指令是否已在环境模块中有效完成,还是需要等待一段时间
-        后由用户主动检查完成情况。
+        状态指示用户指令是否已在环境模块中有效完成,还是需要等待一段时间后由用户主动检查完成情况。
 
-        :returns: 状态值到描述文本的映射字典:
+        :returns: 状态值到描述文本的映射字典(描述文本为面向 LLM 的英文
+            提示词,语义如下):
 
-            - success: The task has been completed successfully. All required
-              operations finished without errors.
-            - in_progress: The task is still being executed or more steps are
-              needed. The agent need to check whether it is done in the next
-              steps.
-            - fail: The task could not be completed (e.g., unsupported
-              instruction, missing data, invalid input). Include detailed
-              reason in results.
-            - error: An error occurred during code execution. Must include
-              error details in results['error'].
-            - unknown: Execution status unknown
+            - success: 任务已成功完成,所有必需操作均无错误结束。
+            - ``in_progress``: 任务仍在执行或需要更多步骤;agent 需在后续步骤检查是否完成。
+            - fail: 任务无法完成(如不支持的指令、数据缺失、输入无效);
+              需在 results 中给出详细原因。
+            - error: 代码执行过程中发生错误;必须在 results['error'] 中包含错误详情。
+            - unknown: 执行状态未知
         """
         return {
             "success": "The task has been completed successfully. All required operations finished without errors.",
@@ -873,10 +856,9 @@ Your corrected response:
     async def generate_world_description_from_tools(
         self, max_retries: int | None = None
     ) -> str:
-        """
-        根据环境路由器的模块信息生成简短世界描述。
+        """根据环境路由器的模块信息生成简短世界描述。
 
-        world_description 只承担“这个仿真世界大概是什么、如何通过 ask_env
+        ``world_description`` 只承担“这个仿真世界大概是什么、如何通过 ``ask_env``
         与环境交互”的轻量背景说明。模块级细节应由 env skill、工具 schema 或
         router 自身处理，避免 world section 挤占 prompt 中 env skill 的空间。
 
@@ -997,10 +979,7 @@ Generated world description:"""
             )
 
     def _collect_tools_info(self) -> ToolsInfoDict:
-        """
-        收集所有环境模块的工具信息，按模块组织。
-        返回所有工具，不进行任何过滤。
-        同时收集所有工具函数的参数类型和返回值类型中的 Pydantic BaseModel。
+        """收集所有环境模块的工具信息，按模块组织。返回所有工具，不进行任何过滤。同时收集所有工具函数的参数类型和返回值类型中的 Pydantic BaseModel。
 
         :returns: 按模块组织的工具信息字典，使用 Pydantic 模型定义
         """
@@ -1099,10 +1078,9 @@ Generated world description:"""
         return filtered_info
 
     def get_collected_pydantic_models(self) -> dict[type[BaseModel], str]:
-        """
-        获取已收集的所有 Pydantic BaseModel 类型及其源代码。
+        """获取已收集的所有 Pydantic BaseModel 类型及其源代码。
 
-        这些模型是在调用 _collect_tools_info() 时从工具函数的参数类型和返回值类型中收集的。
+        这些模型是在调用 ``_collect_tools_info``() 时从工具函数的参数类型和返回值类型中收集的。
 
         :returns: 字典，key 是 BaseModel 类型，value 是其源代码
         """
@@ -1195,9 +1173,7 @@ Generated world description:"""
     ) -> str:
         """将工具信息格式化为保留缩减函数体的 pyi 代码。
 
-        与 ``_format_tools_pyi`` 不同，函数体以实际代码形式呈现（非注释），
-        超出 ``max_body_code_lines`` 的部分用 ``...`` 裁剪标记替代。
-        在工具描述头部添加裁剪说明。
+        与 ``_format_tools_pyi`` 不同，函数体以实际代码形式呈现（非注释），超出 ``max_body_code_lines`` 的部分用 ``...`` 裁剪标记替代。在工具描述头部添加裁剪说明。
         """
         pydantic_models = self.get_collected_pydantic_models()
 
@@ -1402,12 +1378,9 @@ Generated world description:"""
         status: str = "unknown",
         error: str | None = None,
     ) -> tuple[str, str]:
-        """
-        根据用户输入和Router输出生成最终答案。
+        """根据用户输入和Router输出生成最终答案。
 
-        这个方法接收用户输入（ctx, instruction）和Router输出（results和过程文本），
-        使用LLM总结为一个answer，并确定执行状态。
-        使用JSON格式返回，通过Pydantic model验证。
+        这个方法接收用户输入（ctx, instruction）和Router输出（results和过程文本），使用LLM总结为一个answer，并确定执行状态。使用JSON格式返回，通过Pydantic model验证。
 
         :param ctx: 上下文字典，包含环境变量等信息
         :param instruction: 用户的原始指令
@@ -1416,7 +1389,7 @@ Generated world description:"""
         :param status: 初步的执行状态（可能被LLM更新）
         :param error: 错误信息（如果有）
 
-        :returns: Tuple[str, str]: (final_answer, determined_status) - final_answer: LLM生成的最终答案（summary文本） - determined_status: 确定的执行状态（success/in_progress/fail/error）
+        :returns: Tuple[str, str]: (``final_answer``, ``determined_status``) - ``final_answer``: LLM生成的最终答案（summary文本） - ``determined_status``: 确定的执行状态（``success/in_progress/fail/error``）
         """
         # logger.debug(
         #     f"RouterBase: Generating final answer - instruction: {instruction[:100]}..., "

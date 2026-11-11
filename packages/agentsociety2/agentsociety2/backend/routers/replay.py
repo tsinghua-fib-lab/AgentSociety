@@ -1,10 +1,6 @@
-"""
-Replay data query API for simulation playback.
+"""查询实验回放数据。
 
-关联文件：
-- @extension/src/replayWebviewProvider.ts - VSCode Replay Webview provider
-- @extension/src/webview/replay/ - VSCode Replay Webview React app
-"""
+为回放界面提供实验元信息、数据集目录与记录查询。底层读取接口见 :class:`agentsociety2.storage.ReplayReader`，数据布局见 :doc:`/storage`。"""
 
 from __future__ import annotations
 

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="250" viewBox="0 0 1040 250" role="img" aria-labelledby="title desc">
+  <title id="title">Local AI Gateway</title>
+  <desc id="desc">Claude Code and Codex CLI connect through the local gateway to configured model providers.</desc>
+  <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="m0 0 10 5-10 5" fill="#91a1b2"/></marker></defs>
+  <rect width="1040" height="250" rx="14" fill="#f7f9fc"/>
+  <g fill="none" stroke="#a5b5c5" stroke-width="2" marker-end="url(#arrow)">
+    <path d="M248 65h65v40h97M248 185h65v-40h97M630 105h96V65h66M630 145h96v40h66"/>
+  </g>
+  <g fill="white" stroke="#d5dfe9" stroke-width="1.5">
+    <rect x="24" y="30" width="224" height="70" rx="12"/><rect x="24" y="150" width="224" height="70" rx="12"/>
+    <rect x="792" y="30" width="224" height="70" rx="12"/><rect x="792" y="150" width="224" height="70" rx="12"/>
+    <rect x="410" y="70" width="220" height="110" rx="16" fill="#edf4fb" stroke="#b1cce4"/>
+  </g>
+  <g fill="#25374c" font-family="Arial, Helvetica, sans-serif" font-size="23" font-weight="600" text-anchor="middle">
+    <text x="136" y="74">Claude Code</text><text x="136" y="194">Codex CLI</text><text x="520" y="134" fill="#1a66ad">Gateway</text>
+    <text x="904" y="74" font-size="18">Anthropic-compatible</text><text x="904" y="194" font-size="18">OpenAI-compatible</text>
+  </g>
+</svg>

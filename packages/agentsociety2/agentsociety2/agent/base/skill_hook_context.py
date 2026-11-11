@@ -4,7 +4,7 @@
 English: Runtime context for no-arg skill lifecycle-hook functions.
 
 当 skill 运行时在 skill 脚本模块中检测到 hook 函数(如 ``pre_step``)时,会在
-调用该函数前通过 contextvar 激活一个 :class:`HookContext`。函数用
+调用该函数前通过 contextvar 激活一个 :class:`HookContext` 。函数用
 :func:`get_hook_context` 读取它,而非接收参数,从而保持无入参签名
 (sync 或 async)。
 """
@@ -25,8 +25,8 @@ class HookContext:
     :param skill_dir: skill 包根目录(取代 SKILL_DIR)。
     :param skill_id: 注册表 skill id(``namespace@name``)。
     :param hook_type: 生命周期 hook 名(``pre_step`` / ``post_step``)。
-    :param payload: 生命周期 payload dict(``time``、``agent_id``、
-        ``step_count``、``tick``、...)。
+    :param payload: 生命周期 payload dict(``time`` 、``agent_id`` 、
+        ``step_count`` 、``tick`` 、...)。
     """
 
     workspace_root: Path
@@ -44,7 +44,7 @@ _hook_ctx: contextvars.ContextVar[HookContext | None] = contextvars.ContextVar(
 def get_hook_context() -> HookContext:
     """返回激活中的 hook 上下文(在 hook 之外调用会抛错)。
 
-    :returns: 激活中的 :class:`HookContext`。
+    :returns: 激活中的 :class:`HookContext` 。
     :raises RuntimeError: 没有 hook 处于激活状态时抛出。
     """
     ctx = _hook_ctx.get()

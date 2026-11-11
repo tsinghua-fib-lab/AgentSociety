@@ -312,7 +312,7 @@ description: One-line description of what this skill does.
 
 #### Script
 
-声明 `script: scripts/my-skill.py`。agent 调用 `execute_skill_script` 时，框架优先在进程内调用脚本的 `entrypoint(argv, ctx)`，没有 `entrypoint` 时才回退到动态包装器或子进程：
+声明 `script: scripts/my-skill.py`。agent 调用 `execute_skill_script` 时，框架经 `skill_worker.py` 隔离子进程调用脚本的 `entrypoint(argv, ctx)`（custom 技能不走进程内执行），没有可调用函数时以普通子进程执行：
 
 - 参数：`--args-json '{...}'`
 - 上下文：`ctx.workspace_root` / `ctx.skill_dir` / `ctx.skill_id`

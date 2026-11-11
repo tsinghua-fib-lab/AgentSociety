@@ -1,17 +1,15 @@
-"""Per-loop LLM dispatcher (no module-global cache).
+"""按事件循环(per-loop)的 LLM 调度器(无模块级全局缓存)。
 
-An :class:`LLMClient` carries the raw connection params (model_name, base_url,
-api_key) so it can travel across Ray task boundaries. Each consumer — each agent
-Ray task, the env-router actor, the driver — builds its OWN litellm ``Router`` +
-:class:`AdaptiveSemaphore` (AIMD) fresh, in its OWN event loop, on first
-``call()``. There is no module-global Router/semaphore cache: the previous
-process-global cache bound asyncio primitives to the first event loop that
-touched them and broke under Ray's ``asyncio.run``-per-task model ("bound to a
-different event loop"). Building per-loop removes that class of bug entirely.
+:class:`LLMClient` 携带原始连接参数(model_name、base_url、api_key),因此可以跨
+Ray task 边界传输。每个消费者——每个 agent Ray task、env-router actor、driver——
+都在首次 ``call()`` 时在自己的事件循环里全新构建 litellm ``Router`` 与
+:class:`AdaptiveSemaphore`(AIMD)。模块级没有 Router/信号量缓存: 之前的进程级
+全局缓存会把 asyncio 原语绑定到第一个触碰它们的事件循环,在 Ray 每 task 一次
+``asyncio.run`` 的模型下直接出错("bound to a different event loop")。按循环
+构建彻底消灭了这一类 bug。
 
-Token usage is tracked per :class:`LLMClient` instance and drained back to the
-driver via Ray Task return values (:func:`merge_token_stats` is a pure helper —
-no global aggregate, no actor).
+token 用量按 :class:`LLMClient` 实例统计,经 Ray Task 返回值回汇到 driver
+(:func:`merge_token_stats` 是纯函数工具——没有全局聚合,也没有 actor)。
 """
 
 from __future__ import annotations
@@ -155,7 +153,7 @@ def _release_shared_quota() -> None:
 
 
 class LLMDispatchError(RuntimeError):
-    """LLM request failed after retries."""
+    """LLM 请求在重试耗尽后失败。"""
 
     def __init__(self, message: str, *, rate_limit_like: bool = False) -> None:
         super().__init__(message)
@@ -163,7 +161,7 @@ class LLMDispatchError(RuntimeError):
 
 
 def is_rate_limit_like_error(error: Exception) -> bool:
-    """Whether an exception looks like a rate-limit (429)."""
+    """判断异常是否形似限流(429)。"""
     if isinstance(error, RateLimitError):
         return True
     if RouterRateLimitError is not None and isinstance(error, RouterRateLimitError):
@@ -179,10 +177,10 @@ def is_rate_limit_like_error(error: Exception) -> bool:
 
 
 def rate_limit_retry_seconds(error: Exception, fallback: float) -> float:
-    """Extract provider-requested wait from a rate-limit error, else ``fallback``.
+    """从限流错误中提取服务方要求的等待秒数,取不到则用 ``fallback`` 。
 
-    DeepSeek / OpenAI-compatible gateways often say ``Try again in N seconds``.
-    Ignoring that and sleeping 1–4s burns retries into guaranteed failure.
+    DeepSeek / OpenAI 兼容网关常返回 ``Try again in N seconds`` 。无视它而只睡
+    1–4 秒会把重试烧成必然失败。
     """
     match = re.search(r"[Tt]ry again in (\d+(?:\.\d+)?)\s*seconds?", str(error))
     if match:
@@ -191,12 +189,11 @@ def rate_limit_retry_seconds(error: Exception, fallback: float) -> float:
 
 
 def is_context_limit_error(error: Exception) -> bool:
-    """Whether the request can never succeed at its current size.
+    """判断请求在当前规模下是否永远不可能成功。
 
-    Context-window-exceeded errors are deterministic: retrying re-sends the
-    same oversized prompt (the most expensive request in the run) for a
-    guaranteed-identical failure. ``call`` fails fast on these instead of
-    burning ``max_retries`` extra attempts.
+    上下文超限错误是确定性的: 重试只会把同一个超长 prompt(整个运行中最贵的
+    请求)再发一遍,换来一次必然相同的失败。``call`` 对这类错误直接快速失败,
+    而不是烧掉 ``max_retries`` 次额外尝试。
     """
     if isinstance(error, ContextWindowExceededError):
         return True
@@ -222,10 +219,10 @@ def is_context_limit_error(error: Exception) -> bool:
 
 
 class _AdjustableSemaphore:
-    """Capacity-adjustable semaphore retaining debt while requests are in flight.
+    """容量可调的信号量,在请求仍在途时保留欠账。
 
-    ``_available`` may be negative after shrinking below the number of holders.
-    Releases repay this debt before waking a new request.
+    容量收缩到低于持有者数量后,``_available`` 可能为负。release 会先偿还
+    欠账,再唤醒新的请求。
     """
 
     def __init__(self, capacity: int) -> None:
@@ -263,13 +260,11 @@ class _AdjustableSemaphore:
 
 
 class AdaptiveSemaphore:
-    """TCP-style AIMD adaptive concurrency semaphore (one per process).
+    """TCP 风格的 AIMD 自适应并发信号量(每进程一个)。
 
-    ``max_limit=None`` means unbounded — AIMD probes freely (additive
-    increase / multiplicative decrease) with no artificial cap, relying on
-    latency slowdown and rate-limit errors to back off. Use this for LLM
-    I/O where the remote API is the real ceiling. Pass a finite
-    ``max_limit`` for CPU/local work that must not overrun a single process.
+    ``max_limit=None`` 表示不设上限——AIMD(加性增/乘性减)自由探测,没有人为
+    封顶,靠延迟变慢与限流错误来退避。LLM I/O 这类远端 API 才是真实天花板的
+    场景应这样用;CPU/本地工作不得压垮单进程时,请传入有限的 ``max_limit`` 。
     """
 
     def __init__(
@@ -427,14 +422,12 @@ class AdaptiveSemaphore:
 def _build_router(
     base_url: str, api_key: str, model: str, api_type: str = "openai"
 ) -> Any:
-    """Build a litellm :class:`Router` for one model from raw connection params.
+    """从原始连接参数为单个模型构建 litellm :class:`Router` 。
 
-    Takes explicit params instead of reading them from process config/env, so a
-    :class:`LLMClient` that crossed a Ray task boundary can rebuild its Router
-    in the worker without depending on worker env state. ``num_retries=0``: the
-    dispatcher's own retry loop (rate-limit backoff + bounded attempts) is
-    authoritative; litellm's internal retries are disabled to keep the total
-    attempt count predictable.
+    接受显式参数而非读取进程配置/env,使跨过 Ray task 边界的
+    :class:`LLMClient` 能在 worker 内重建 Router 而不依赖 worker 的 env 状态。
+    ``num_retries=0``: 调度器自身的重试循环(限流退避 + 有界尝试)才是权威;
+    关闭 litellm 内部重试,使总尝试次数可预测。
     """
     from litellm import Router
 
@@ -465,11 +458,10 @@ def _build_router(
 
 
 def _usage_field(obj: Any, key: str) -> Any:
-    """Read ``key`` off a usage object that may be a model or a plain mapping.
+    """从 usage 对象读取 ``key``;该对象可能是模型,也可能是普通映射。
 
-    litellm returns pydantic-ish usage objects, but gateways that bypass its
-    normalization hand back dicts. Never raises — a missing/unreadable field
-    is ``None``.
+    litellm 返回 pydantic 风格的 usage 对象,但绕过其规范化的网关会直接回传
+    dict。永不抛异常——缺失或不可读的字段返回 ``None`` 。
     """
     if obj is None:
         return None
@@ -488,20 +480,20 @@ def _usage_field(obj: Any, key: str) -> Any:
 
 
 def extract_cached_tokens(response: Any) -> int:
-    """Prompt tokens served from the provider's prefix cache, or 0.
+    """由服务方前缀缓存命中的 prompt token 数,否则为 0。
 
-    Prompt-prefix caching is provider-side, and gateways disagree on where the
-    hit count lands. Tolerate every shape we have seen, in priority order:
+    prompt 前缀缓存是服务方行为,各网关对命中计数落在哪里并无共识。按优先级
+    兼容我们见过的所有形态:
 
-    - ``usage.prompt_tokens_details.cached_tokens`` — canonical. litellm folds
-      DeepSeek's ``prompt_cache_hit_tokens`` and Anthropic's
-      ``cache_read_input_tokens`` into this, so it holds for those too.
+    - ``usage.prompt_tokens_details.cached_tokens`` —— 规范字段。litellm 已把
+      DeepSeek 的 ``prompt_cache_hit_tokens`` 与 Anthropic 的
+      ``cache_read_input_tokens`` 折叠进该字段,对二者同样成立。
     - ``usage.cached_tokens`` / ``usage.prompt_cache_hit_tokens`` /
-      ``usage.cache_read_input_tokens`` — fallbacks for gateways that pass the
-      raw upstream usage through without litellm's normalization.
+      ``usage.cache_read_input_tokens`` —— 供不经 litellm 规范化、直接透传
+      上游 usage 的网关回退使用。
 
-    Called on the hot path for every completion, so it swallows any error and
-    returns 0 rather than risk failing a request.
+    它在每次补全的热路径上被调用,因此吞掉一切错误并返回 0,而不是冒险让请求
+    失败。
     """
     usage = _usage_field(response, "usage")
     if usage is None:
@@ -525,16 +517,14 @@ def extract_cached_tokens(response: Any) -> int:
 
 
 def merge_token_stats(*deltas: dict[str, dict[str, int]]) -> dict[str, dict[str, int]]:
-    """Pure merge of token-stats deltas into a fresh dict (no global state).
+    """把多份 token 统计增量纯函数式地合并进新 dict(无全局状态)。
 
-    Each agent Ray Task returns its :meth:`LLMClient.take_token_stats` delta;
-    the driver folds them together with this helper. Pass the running aggregate
-    as the first arg to accumulate across ticks, e.g.
-    ``self._token_stats = merge_token_stats(self._token_stats, delta)``.
+    每个 agent Ray Task 返回自己的 :meth:`LLMClient.take_token_stats` 增量,
+    driver 用本函数把它们汇总。把累计值作为第一个参数传入即可跨 tick 累加,
+    例如 ``self._token_stats = merge_token_stats(self._token_stats, delta)`` 。
 
-    Every key is read with ``.get(..., 0)`` so a delta produced by an older
-    build (``calls``/``input``/``output`` only) still merges cleanly across a
-    mixed-version Ray cluster.
+    所有键都用 ``.get(..., 0)`` 读取,因此旧版本产出的增量(只有
+    ``calls``/``input``/``output``)在混合版本的 Ray 集群里仍能干净合并。
     """
     merged: dict[str, dict[str, int]] = {}
     for delta in deltas:
@@ -550,18 +540,16 @@ def merge_token_stats(*deltas: dict[str, dict[str, int]]) -> dict[str, dict[str,
 
 
 def cache_hit_rate(stats: dict[str, dict[str, int]]) -> float:
-    """Prompt-cache hit rate over token stats: ``cached_input / input``.
+    """token 统计上的 prompt 缓存命中率: ``cached_input / input`` 。
 
-    Clamped to ``[0, 1]``: Anthropic-shaped usage reports ``prompt_tokens``
-    *excluding* cache reads, so a naive ratio can exceed 1 for gateways that
-    pass that shape through. Raw counters are kept in the stats, so a caller
-    who knows their gateway's convention can recompute it themselves.
+    结果夹在 ``[0, 1]``: Anthropic 形态的 usage 上报的 ``prompt_tokens``
+    *不含*缓存读取,直接透传该形态的网关会让朴素比值超过 1。原始计数保留在
+    统计里,了解自己网关约定的调用方可以自行重算。
 
-    Note the denominator is *all* billed input tokens, including one-shot
-    utility calls (world description, memory consolidation) and ask-mode turns
-    that are structurally prefix-unique and always read 0%. An aggregate rate
-    therefore understates the ReAct loop's own hit rate — prefer the per-turn
-    trace spans when judging a prompt-layout change.
+    注意分母是*全部*计费输入 token,包括一次性工具调用(世界描述、记忆整理)
+    以及结构上就是前缀唯一、命中率恒为 0% 的 ask 模式轮次。因此聚合命中率会
+    低估 ReAct 循环自身的命中率——评估 prompt 布局改动时,请优先看逐轮的
+    trace span。
     """
     total_input = sum(int(s.get("input", 0)) for s in stats.values())
     if total_input <= 0:
@@ -571,15 +559,14 @@ def cache_hit_rate(stats: dict[str, dict[str, int]]) -> float:
 
 
 def build_client_for_role(role: str) -> LLMClient:
-    """Build a serializable :class:`LLMClient` carrying one role's connection params.
+    """构建携带某角色连接参数的可序列化 :class:`LLMClient` 。
 
-    Resolves ``(base_url, api_key, model_name)`` from :class:`Config` for the
-    role and returns a client that crosses Ray task boundaries carrying only
-    params; each consumer builds its own Router + AIMD semaphore in its own
-    event loop on first call.
+    从 :class:`Config` 解析该角色的 ``(base_url, api_key, model_name)``,返回
+    只携带参数、可跨 Ray task 边界的 client;每个消费者在首次调用时于自己的
+    事件循环里构建自己的 Router + AIMD 信号量。
 
-    Also resolves the role's reasoning (thinking) settings — see
-    :func:`agentsociety2.config.config.get_llm_thinking`.
+    同时解析该角色的推理(thinking)设置——见
+    :func:`agentsociety2.config.config.get_llm_thinking` 。
     """
     from agentsociety2.config.config import (
         get_llm_api_type,
@@ -604,9 +591,9 @@ def build_client_for_role(role: str) -> LLMClient:
 
 
 def reasoning_fields(response: Any) -> dict[str, Any]:
-    """Replay reasoning for native Messages or explicitly enabled reasoning.
+    """对原生 Messages 或显式开启推理的情形回放推理内容。
 
-    Default Chat Completions keeps its original history encoding and token cost.
+    默认 Chat Completions 保持其原有的历史编码与 token 开销。
     """
     metadata = getattr(response, "_hidden_params", {})
     if not isinstance(metadata, dict) or not metadata.get(
@@ -624,14 +611,12 @@ def reasoning_fields(response: Any) -> dict[str, Any]:
 
 @dataclass(frozen=True)
 class ThinkingSettings:
-    """One role's reasoning (thinking) request parameters.
+    """单个角色的推理(thinking)请求参数。
 
-    Resolved once per role from the environment by
-    :func:`agentsociety2.config.config.get_llm_thinking` and carried on the
-    :class:`LLMClient` so it survives the Ray task boundary.
+    由 :func:`agentsociety2.config.config.get_llm_thinking` 按角色从环境解析
+    一次,并挂在 :class:`LLMClient` 上携带,从而穿越 Ray task 边界。
 
-    The selected protocol determines the wire parameters. Model names are
-    passed through unchanged. ``inherit`` contributes no request parameters.
+    所选协议决定线上参数。模型名原样透传。``inherit`` 不产生任何请求参数。
     """
 
     policy: str = "inherit"
@@ -642,7 +627,7 @@ class ThinkingSettings:
     def request_kwargs(
         self, api_type: str = "openai", *, policy: str | None = None
     ) -> dict[str, Any]:
-        """Generate a real on/off instruction, retaining custom body fields."""
+        """生成真实的开/关指令,同时保留自定义 body 字段。"""
         selected = policy or self.policy
         if selected == "inherit":
             return {}
@@ -749,18 +734,16 @@ class ThinkingSettings:
 
 @dataclass
 class LLMClient:
-    """Serializable LLM connection config that builds its runtime per-loop.
+    """可序列化的 LLM 连接配置,按事件循环构建自己的运行时。
 
-    Carries the raw connection params (``model_name``/``base_url``/``api_key``)
-    so it can cross Ray task boundaries. On first ``call()`` in a given event
-    loop it builds its OWN litellm ``Router`` + :class:`AdaptiveSemaphore`
-    (both loop-bound asyncio objects), cached on the instance and **rebuilt if
-    the running loop changes**. ``__getstate__`` strips the runtime so every
-    deserialized copy rebuilds fresh in its own loop — no module-global cache,
-    no cross-event-loop binding.
+    携带原始连接参数(``model_name``/``base_url``/``api_key``)以跨 Ray task
+    边界。在某个事件循环里首次 ``call()`` 时,构建自己的 litellm ``Router`` 与
+    :class:`AdaptiveSemaphore` (两者都是绑定该循环的 asyncio 对象),缓存在实例
+    上,且 **运行循环改变时重建** 。 ``__getstate__`` 剥离运行时,使每个反序列化
+    副本都在自己的循环里全新构建——没有模块级缓存,没有跨事件循环绑定。
 
-    Token usage accumulates in a per-instance dict drained via
-    :meth:`take_token_stats` (returned through Ray Task results).
+    token 用量累积在实例级 dict 中,经 :meth:`take_token_stats` 取走(通过
+    Ray Task 返回值带回)。
     """
 
     model_name: str
@@ -807,7 +790,7 @@ class LLMClient:
         self._thinking_off_warning = False
 
     def _ensure_runtime(self) -> None:
-        """Build (or rebuild) the Router + semaphore for the current event loop."""
+        """为当前事件循环构建(或重建)Router 与信号量。"""
         try:
             loop = asyncio.get_running_loop()
         except RuntimeError:
@@ -835,7 +818,7 @@ class LLMClient:
         self._loop = loop
 
     def _record_tokens(self, model: str, response: Any) -> None:
-        """Accumulate one call's token usage into this client's local stats."""
+        """把一次调用的 token 用量累加进本 client 的本地统计。"""
         usage = getattr(response, "usage", None)
         if usage is None:
             return
@@ -850,7 +833,7 @@ class LLMClient:
     def _resolve_thinking_kwargs(
         self, thinking: str, kwargs: dict[str, Any]
     ) -> dict[str, Any]:
-        """Apply role or per-call policy, then caller-supplied overrides."""
+        """先应用角色级或本次调用的策略,再叠加调用方传入的覆盖项。"""
         settings = self.thinking or ThinkingSettings()
         effective = settings.request_kwargs(
             self.api_type, policy=None if thinking == "inherit" else thinking
@@ -878,13 +861,13 @@ class LLMClient:
         return merged
 
     def take_token_stats(self) -> dict[str, dict[str, int]]:
-        """Return and clear this client's token stats (a delta)."""
+        """返回并清空本 client 的 token 统计(一份增量)。"""
         snapshot = {model: dict(s) for model, s in self._token_stats.items()}
         self._token_stats.clear()
         return snapshot
 
     def snapshot_token_stats(self) -> dict[str, dict[str, int]]:
-        """Return a copy of this client's token stats without clearing."""
+        """返回本 client token 统计的副本,不清空。"""
         return {model: dict(s) for model, s in self._token_stats.items()}
 
     async def call(
@@ -898,17 +881,15 @@ class LLMClient:
         thinking: str = "inherit",
         **kwargs: Any,
     ) -> ModelResponse:
-        """Send a completion request with per-loop AIMD gating + retry.
+        """发送补全请求,带按循环的 AIMD 门控与重试。
 
-        ``thinking`` is consumed here and never forwarded: ``"inherit"`` (the
-        default) applies this client's role-level :class:`ThinkingSettings`,
-        ``"on"`` and ``"off"`` send explicit instructions for this call.
-        Built-in utility calls inherit the configured policy so models that
-        require thinking remain usable when no off policy was selected.
+        ``thinking`` 在此消费、绝不转发: ``"inherit"`` (默认)应用本 client 的
+        角色级 :class:`ThinkingSettings` ，``"on"`` 与 ``"off"`` 则为本次调用
+        发送显式指令。内置工具调用继承所配置的策略,使必须思考的模型在未选择
+        关闭策略时仍可用。
 
-        Any caller-supplied ``reasoning_effort`` / ``extra_body`` in ``kwargs``
-        **replaces** the role-level value wholesale — no deep merge, so what
-        gets sent is always predictable.
+        调用方在 ``kwargs`` 里传入的 ``reasoning_effort`` / ``extra_body`` 会
+        **整体替换** 角色级取值——不做深合并,因此实际发送内容始终可预测。
         """
         if stream:
             raise NotImplementedError(
@@ -1105,7 +1086,7 @@ class LLMClient:
 
 
 def _build_ray_job_config() -> Any:
-    """Build a Ray job config that does not package the local workspace."""
+    """构建不打包本地工作区的 Ray job 配置。"""
     import ray
 
     source_paths = [
@@ -1124,13 +1105,12 @@ def _build_ray_job_config() -> Any:
 
 
 async def init_dispatchers() -> None:
-    """Initialize Ray (for the env-router actor / agent Ray tasks).
+    """初始化 Ray(供 env-router actor / agent Ray task 使用)。
 
-    No pool is created — LLM calls are per-process. Ray is needed only for the
-    actor/task execution model (env router, step_agent_batch). When launching
-    via ``uv run``, Ray's uv-runtime-env packaging is disabled
-    (RAY_ENABLE_UV_RUN_RUNTIME_ENV=0, set at import) so workers inherit the
-    driver environment instead of re-building the package.
+    不创建任何池——LLM 调用是每进程独立的。Ray 只用于 actor/task 执行模型
+    (env router、step_agent_batch)。经 ``uv run`` 启动时会禁用 Ray 的
+    uv-runtime-env 打包(import 时设 RAY_ENABLE_UV_RUN_RUNTIME_ENV=0),让
+    worker 继承 driver 环境而非重新构建包。
     """
     import ray
 
@@ -1160,6 +1140,5 @@ async def init_dispatchers() -> None:
 
 
 async def shutdown_dispatchers() -> None:
-    """No-op (no pool / workers to shut down). Per-process Routers are released
-    when their process exits."""
+    """空操作(没有池/worker 需要关闭)。每进程的 Router 随其进程退出而释放。"""
     return

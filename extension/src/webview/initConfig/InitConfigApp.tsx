@@ -506,6 +506,7 @@ export const InitConfigApp: React.FC<InitConfigAppProps> = ({ vscode, initialCon
                     {
                       title: '名称',
                       dataIndex: ['kwargs', 'name'],
+                      render: (text, record) => text || record.kwargs?.profile?.name || '—',
                       ellipsis: true,
                     },
                     {

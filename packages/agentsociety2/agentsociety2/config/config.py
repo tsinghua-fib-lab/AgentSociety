@@ -2,11 +2,11 @@
 
 该模块集中管理 AgentSociety2 的 LLM 相关配置，并提供若干便捷函数：
 
-- :class:`~agentsociety2.config.config.Config`：从环境变量读取各类 API Key / base_url / model name 等。
-- :func:`~agentsociety2.config.config.get_llm_router`：获取（并缓存）指定用途的 LiteLLM :class:`litellm.router.Router`。
-- :func:`~agentsociety2.config.config.get_llm_router_and_model`：同时返回 Router 与模型名。
-- :func:`~agentsociety2.config.config.get_model_name`：获取指定用途的模型名。
-- :func:`~agentsociety2.config.config.extract_json`：从 LLM 响应文本中提取 JSON 片段。
+- :class:`~agentsociety2.config.config.Config` ：从环境变量读取各类 API Key / ``base_url`` / model name 等。
+- :func:`~agentsociety2.config.config.get_llm_router` ：获取（并缓存）指定用途的 LiteLLM :class:`litellm.router.Router` 。
+- :func:`~agentsociety2.config.config.get_llm_router_and_model` ：同时返回 Router 与模型名。
+- :func:`~agentsociety2.config.config.get_model_name` ：获取指定用途的模型名。
+- :func:`~agentsociety2.config.config.extract_json` ：从 LLM 响应文本中提取 JSON 片段。
 
 .. important::
    ``AGENTSOCIETY_LLM_API_KEY`` 与 ``AGENTSOCIETY_LLM_API_BASE`` 在模块导入时校验；未配置会直接抛出异常。
@@ -40,26 +40,25 @@ logger = get_logger()
 
 
 def _env_int(name: str, default: int) -> int:
-    """Read an int env var, falling back to ``default`` when unset/empty."""
+    """读取整型环境变量；未设置或为空时回退到 ``default`` 。"""
     raw = os.getenv(name)
     return int(raw) if raw and raw.strip() else default
 
 
 def _env_int_or_cpu(name: str) -> int:
-    """Read an int env var, falling back to the machine logical CPU count."""
+    """读取整型环境变量；未设置或为空时回退到机器逻辑 CPU 核数。"""
     raw = os.getenv(name)
     return int(raw) if raw and raw.strip() else (os.cpu_count() or 1)
 
 
 def _env_str(name: str) -> str | None:
-    """Read a stripped env var, treating unset/blank as ``None``."""
+    """读取去除首尾空白的环境变量；未设置或为空白时视为 ``None`` 。"""
     raw = os.getenv(name)
     return raw.strip() if raw and raw.strip() else None
 
 
 def _env_bool(name: str, default: bool) -> bool:
-    """Read a bool env var (``1``/``true``/``yes`` → True), falling back to
-    ``default`` when unset/empty/unrecognized."""
+    """读取布尔环境变量（``1``/``true``/``yes`` 视为 True）；未设置、为空或无法识别时回退到 ``default`` 。"""
     raw = os.getenv(name)
     if raw is None or not raw.strip():
         return default
@@ -67,10 +66,10 @@ def _env_bool(name: str, default: bool) -> bool:
 
 
 def _env_json_obj(name: str) -> dict[str, Any] | None:
-    """Parse an env var holding a JSON object; warn and ignore if malformed.
+    """解析持有 JSON 对象的环境变量；格式非法时告警并忽略。
 
-    A malformed env var must never abort a run, so every failure path here is a
-    warning plus ``None`` rather than an exception.
+    非法的环境变量绝不能中断一次运行，因此这里的所有失败路径都是记一条
+    warning 并返回 ``None`` ，而不是抛异常。
     """
     raw = _env_str(name)
     if raw is None:
@@ -93,7 +92,7 @@ _THINKING_OFF = {"off", "0", "false", "no", "disable", "disabled"}
 
 
 def get_llm_api_type(role: str = "default") -> str:
-    """Select the wire protocol explicitly; model aliases do not identify it."""
+    """显式选择接口协议；模型别名并不能标识所用协议。"""
     if role == "embedding":
         return "openai"
     value = (
@@ -110,14 +109,11 @@ def get_llm_api_type(role: str = "default") -> str:
 def get_llm_thinking(role: str = "default") -> dict[str, Any]:
     """解析某角色的推理（thinking）开关，返回构造 ``ThinkingSettings`` 的参数。
 
-    环境变量（``coder`` 角色优先读 ``AGENTSOCIETY_CODER_LLM_*``，未设时回退到
-    默认组；其他角色只读默认组）：
+    环境变量（``coder`` 角色优先读 ``AGENTSOCIETY_CODER_LLM_*`` ，未设时回退到默认组；其他角色只读默认组）：
 
-    - ``AGENTSOCIETY_LLM_THINKING``：``on`` / ``off`` （兼容 ``1/0/true/false``）。
-      **未设 = 不发送任何新参数**，出站请求与不启用该功能时逐字节相同。
-    - ``AGENTSOCIETY_LLM_REASONING_EFFORT``：作为 ``reasoning_effort`` 发送。
-    - ``AGENTSOCIETY_LLM_EXTRA_BODY``：JSON 对象，合并进 ``extra_body``，用于
-      网关私有开关（如 ``{"enable_thinking": false}``）。
+    - ``AGENTSOCIETY_LLM_THINKING`` ：``on`` / ``off`` （兼容 ``1/0/true/false`` ）。**未设 = 不发送任何新参数**，出站请求与不启用该功能时逐字节相同。
+    - ``AGENTSOCIETY_LLM_REASONING_EFFORT`` ：作为 ``reasoning_effort`` 发送。
+    - ``AGENTSOCIETY_LLM_EXTRA_BODY`` ：JSON 对象，合并进 ``extra_body`` ，用于网关私有开关（如 ``{"enable_thinking": false}`` ）。
 
     ``ThinkingSettings`` 按实际接口生成开启或关闭参数；关闭不使用推理强度。
     ``extra_body`` 可提供网关原生的推理开关，其他字段继续保留。
@@ -125,7 +121,7 @@ def get_llm_thinking(role: str = "default") -> dict[str, Any]:
     这里刻意在**调用时**读 ``os.getenv`` （而非只在 import 时读），以便测试用
     monkeypatch 覆盖；``Config`` 上的同名类属性仅作文档用途。
 
-    :param role: ``default`` / ``coder`` / ``embedding``。
+    :param role: ``default`` / ``coder`` / ``embedding`` 。
     :returns: ``{"policy": "inherit"|"on"|"off", "reasoning_effort": str|None,
         "extra_body": dict|None}``。
     """
@@ -209,7 +205,7 @@ def _redact_router_config_for_log(obj: Any) -> Any:
 
 @cache
 def _initialize_litellm_logging() -> None:
-    """Configure LiteLLM logging once per process."""
+    """每进程配置一次 LiteLLM 日志。"""
     setup_litellm_logging()
 
 
@@ -220,63 +216,51 @@ class Config:
 
     主要环境变量（节选）：
 
-    - ``AGENTSOCIETY_HOME_DIR``：数据目录
-    - ``AGENTSOCIETY_LLM_API_KEY`` / ``AGENTSOCIETY_LLM_API_BASE`` / ``AGENTSOCIETY_LLM_MODEL``：默认模型配置
-    - ``AGENTSOCIETY_CODER_LLM_*``：代码生成模型配置
-    - ``AGENTSOCIETY_EMBEDDING_*``：embedding 配置
+    - ``AGENTSOCIETY_HOME_DIR`` ：数据目录
+    - ``AGENTSOCIETY_LLM_API_KEY`` / ``AGENTSOCIETY_LLM_API_BASE`` / ``AGENTSOCIETY_LLM_MODEL`` ：默认模型配置
+    - ``AGENTSOCIETY_CODER_LLM_*`` ：代码生成模型配置
+    - ``AGENTSOCIETY_EMBEDDING_*`` ：embedding 配置
     """
 
     HOME_DIR: str = os.getenv("AGENTSOCIETY_HOME_DIR", "./agentsociety_data")
-    """
-    Base directory path for storing agent data, memories, and persistent files.
+    """存储 agent 数据、记忆与持久化文件的基础目录路径。
 
-    Environment variable: AGENTSOCIETY_HOME_DIR
-    Default: "./agentsociety_data"
+    环境变量：``AGENTSOCIETY_HOME_DIR``
+    默认："``./agentsociety_data``"
 
-    This directory will contain subdirectories for memories, agent states, and other
-    persistent data. The path can be absolute or relative to the current working directory.
+    该目录下会包含记忆、agent 状态等持久化数据的子目录。路径可为绝对路径，也可以是相对当前工作目录的相对路径。
     """
 
     # Default LLM settings
     # These are used for general-purpose language model operations throughout the system.
 
     LLM_API_KEY: str | None = os.getenv("AGENTSOCIETY_LLM_API_KEY")
-    """
-    API key for authenticating with the default LLM service.
+    """默认 LLM 服务的认证 API key。
 
-    Environment variable: AGENTSOCIETY_LLM_API_KEY
-    Default: None (must be set for the system to function)
+    环境变量：``AGENTSOCIETY_LLM_API_KEY``
+    默认：None（系统要正常运行必须设置）
 
-    This is the primary API key used for most LLM operations. If not set, the system
-    will raise an error when attempting to create LLM routers. Other specialized LLM
-    configurations (coder, embedding) will fall back to this key if their specific
-    keys are not provided.
+    这是大多数 LLM 操作使用的主 API key。若未设置，系统在创建 LLM Router 时会抛出异常。其他专用 LLM 配置（coder、embedding）在未提供各自 key 时会回退到该 key。
     """
 
     LLM_API_BASE: str = os.getenv(
         "AGENTSOCIETY_LLM_API_BASE", "https://api.openai.com/v1"
     )
-    """
-    Base URL endpoint for the default LLM API service.
+    """默认 LLM API 服务的基础 URL 端点。
 
-    Environment variable: AGENTSOCIETY_LLM_API_BASE
-    Default: "https://api.openai.com/v1"
+    环境变量：``AGENTSOCIETY_LLM_API_BASE``
+    默认：``https://api.openai.com/v1``。
 
-    This should point to the API endpoint expected by the selected LiteLLM provider.
-    For OpenAI-compatible gateways, include the protocol (https://) and base path,
-    but not the specific model endpoint (e.g., /chat/completions).
+    应指向所选 LiteLLM provider 所要求的 API 端点。对 OpenAI 兼容网关，需包含协议（``https://``）与基础路径，但不包含具体模型端点（如 ``/chat/completions``）。
     """
 
     LLM_MODEL: str = os.getenv("AGENTSOCIETY_LLM_MODEL", "gpt-5.5")
-    """
-    Model identifier for the default LLM used in general operations.
+    """通用操作所用默认 LLM 的模型标识。
 
-    Environment variable: AGENTSOCIETY_LLM_MODEL
-    Default: "gpt-5.5"
+    环境变量：``AGENTSOCIETY_LLM_MODEL``
+    默认："gpt-5.5"
 
-    This model is used for most language understanding and generation tasks that don't
-    require specialized models. The model name should match the LiteLLM provider/model id
-    used by your API provider; "gpt-5.5" is only the default OpenAI example.
+    该模型用于大多数无需专用模型的语言理解与生成任务。模型名应与 API 供应商处 LiteLLM 的 provider/model id 一致；"gpt-5.5" 只是默认的 OpenAI 示例。
     """
 
     # Coder LLM settings
@@ -285,42 +269,32 @@ class Config:
     CODER_LLM_API_KEY: str | None = (
         os.getenv("AGENTSOCIETY_CODER_LLM_API_KEY") or LLM_API_KEY
     )
-    """
-    API key for the code generation LLM service.
+    """代码生成 LLM 服务的 API key。
 
-    Environment variable: AGENTSOCIETY_CODER_LLM_API_KEY
-    Default: Falls back to LLM_API_KEY if not set
+    环境变量：``AGENTSOCIETY_CODER_LLM_API_KEY``
+    默认：未设置时回退到 ``LLM_API_KEY``
 
-    This key is used specifically for code-related operations. If not provided, the system
-    will use the default LLM_API_KEY. Setting a separate key allows you to use a different
-    API provider or account for code generation tasks, which may have different rate limits
-    or pricing structures.
+    该 key 专用于代码相关操作。若未提供，系统会使用默认的 ``LLM_API_KEY``。单独设置该 key 可为代码生成任务使用不同的 API 供应商或账户，其速率限制或计费结构可能不同。
     """
 
     CODER_LLM_API_BASE: str = (
         os.getenv("AGENTSOCIETY_CODER_LLM_API_BASE") or LLM_API_BASE
     )
-    """
-    Base URL endpoint for the code generation LLM API.
+    """代码生成 LLM API 的基础 URL 端点。
 
-    Environment variable: AGENTSOCIETY_CODER_LLM_API_BASE
-    Default: Falls back to LLM_API_BASE if not set
+    环境变量：``AGENTSOCIETY_CODER_LLM_API_BASE``
+    默认：未设置时回退到 ``LLM_API_BASE``
 
-    Allows you to use a different API endpoint specifically for code generation tasks.
-    This is useful if you want to route code generation requests to a different service
-    or region for better performance or cost optimization.
+    允许为代码生成任务单独使用不同的 API 端点。若希望把代码生成请求路由到其他服务或区域，以获得更好的性能或成本优化，会很有用。
     """
 
     CODER_LLM_MODEL: str = os.getenv("AGENTSOCIETY_CODER_LLM_MODEL") or LLM_MODEL
-    """
-    Model identifier for code generation and programming tasks.
+    """代码生成与编程任务的模型标识。
 
-    Environment variable: AGENTSOCIETY_CODER_LLM_MODEL
-    Default: Falls back to LLM_MODEL if not set
+    环境变量：``AGENTSOCIETY_CODER_LLM_MODEL``
+    默认：未设置时回退到 ``LLM_MODEL``
 
-    This model is specifically used for code generation, code analysis, and other
-    programming-related operations. Choose a model that is optimized for code understanding
-    and generation, such as models trained on codebases.
+    该模型专用于代码生成、代码分析等编程相关操作。请选择针对代码理解与生成优化过的模型，例如在代码库上训练过的模型。
     """
 
     # Embedding model settings
@@ -329,57 +303,44 @@ class Config:
     EMBEDDING_API_KEY: str | None = (
         os.getenv("AGENTSOCIETY_EMBEDDING_API_KEY") or LLM_API_KEY
     )
-    """
-    API key for the embedding model service.
+    """Embedding 模型服务的 API key。
 
-    Environment variable: AGENTSOCIETY_EMBEDDING_API_KEY
-    Default: Falls back to LLM_API_KEY if not set
+    环境变量：``AGENTSOCIETY_EMBEDDING_API_KEY``
+    默认：未设置时回退到 ``LLM_API_KEY``
 
-    This key is used specifically for embedding operations, which convert text into
-    high-dimensional vectors for semantic search, similarity matching, and memory
-    operations. Some providers offer separate embedding services with different pricing.
+    该 key 专用于 embedding 操作——把文本转换为高维向量，用于语义搜索、相似度匹配与记忆操作。部分供应商提供计费不同的独立 embedding 服务。
     """
 
     EMBEDDING_API_BASE: str = (
         os.getenv("AGENTSOCIETY_EMBEDDING_API_BASE") or LLM_API_BASE
     )
-    """
-    Base URL endpoint for the embedding API service.
+    """Embedding API 服务的基础 URL 端点。
 
-    Environment variable: AGENTSOCIETY_EMBEDDING_API_BASE
-    Default: Falls back to LLM_API_BASE if not set
+    环境变量：``AGENTSOCIETY_EMBEDDING_API_BASE``
+    默认：未设置时回退到 ``LLM_API_BASE``
 
-    Allows you to use a different API endpoint specifically for embedding operations.
-    Some providers have dedicated embedding endpoints that may offer better performance
-    or different pricing models for embedding tasks.
+    允许为 embedding 操作单独使用不同的 API 端点。部分供应商提供专用的
+    embedding 端点，可能为 embedding 任务提供更好的性能或不同的计费模式。
     """
 
     EMBEDDING_MODEL: str = os.getenv(
         "AGENTSOCIETY_EMBEDDING_MODEL", "text-embedding-3-large"
     )
-    """
-    Model identifier for text embedding generation.
+    """文本 embedding 生成的模型标识。
 
-    Environment variable: AGENTSOCIETY_EMBEDDING_MODEL
-    Default: "text-embedding-3-large"
+    环境变量：``AGENTSOCIETY_EMBEDDING_MODEL``
+    默认："text-embedding-3-large"
 
-    This model is used to convert text into dense vector representations (embeddings).
-    The embeddings are used for semantic search, similarity matching, and storing
-    memories in vector databases. Choose a model that produces high-quality embeddings
-    for your use case and language.
+    该模型用于把文本转换为稠密向量表示（embedding）。embedding 用于语义搜索、相似度匹配以及把记忆存入向量数据库。请选择在你的使用场景与语言下能产出高质量 embedding 的模型。
     """
 
     EMBEDDING_DIMS: int = int(os.getenv("AGENTSOCIETY_EMBEDDING_DIMS", "1024"))
-    """
-    Dimensionality of the embedding vectors produced by the embedding model.
+    """Embedding 模型产出的向量维度。
 
-    Environment variable: AGENTSOCIETY_EMBEDDING_DIMS
-    Default: 1024
+    环境变量：``AGENTSOCIETY_EMBEDDING_DIMS``
+    默认：1024
 
-    This specifies the size of the vector space for embeddings. Higher dimensions
-    can capture more nuanced semantic information but require more storage and computation.
-    The value must match the actual output dimensionality of the selected embedding model.
-    Common values are 384, 512, 768, 1024, or 1536 depending on the model.
+    指定 embedding 的向量空间大小。维度越高能捕捉越细腻的语义信息，但存储与计算开销也更大。该值必须与所选 embedding 模型的实际输出维度一致；常见取值为 384、512、768、1024 或 1536，取决于具体模型。
     """
 
     # Env Ray actor concurrency ceiling (static, NOT AIMD). Only takes effect
@@ -410,195 +371,159 @@ class Config:
     LLM_LATENCY_DEGRADE_FACTOR: float = float(
         os.getenv("AGENTSOCIETY_LLM_LATENCY_DEGRADE_FACTOR", "4.0")
     )
-    """
-    Relative latency backoff factor for AIMD. A non-error LLM call is counted
-    as "slow" (and contributes to an AIMD decrease) when its latency exceeds
-    ``baseline * factor``, where ``baseline`` is a rolling low-percentile
-    (P25) of recent healthy latencies.
+    """AIMD 的相对延迟退避因子。一次无错误的 LLM 调用，当延迟超过
+    ``baseline * factor`` 时记为“慢”（并计入一次 AIMD 降并发），其中
+    ``baseline`` 是近期健康延迟的滚动低分位数（P25）。
 
-    Environment variable: AGENTSOCIETY_LLM_LATENCY_DEGRADE_FACTOR
-    Default: 4.0
+    环境变量：``AGENTSOCIETY_LLM_LATENCY_DEGRADE_FACTOR``
+    默认：4.0
 
-    The baseline tracks the fast path, so this triggers when calls are
-    genuinely slow relative to recent good performance — robust to the
-    initial concurrent burst. Set to a very large value (or ``inf``) to
-    disable relative latency backoff and rely on rate-limit (429) errors
-    alone (the previous behavior).
+    baseline 跟踪快路径，因此只有调用相对近期良好表现确实变慢时才触发——对初始并发突发具有鲁棒性。设为很大的值（或 ``inf`` ）可禁用相对延迟退避，仅依赖限流（429）错误（即旧行为）。
     """
 
     LLM_SLOW_LATENCY_MS: float | None = (
         float(v) if (v := os.getenv("AGENTSOCIETY_LLM_SLOW_LATENCY_MS")) else None
     )
-    """
-    Optional absolute SLO ceiling in milliseconds. A non-error LLM call slower
-    than this counts as "slow" regardless of the rolling baseline. Catches
-    pathological tails even when sustained contention has pushed the whole
-    baseline up (where the relative factor goes blind).
+    """可选的绝对 SLO 上限（毫秒）。无错误的 LLM 调用只要慢于该值即记为“慢”，与滚动 baseline 无关。即便持续争用已把整体 baseline 抬高（此时相对因子失明），也能捕捉到病态长尾。
 
-    Environment variable: AGENTSOCIETY_LLM_SLOW_LATENCY_MS
-    Default: unset (relative-factor backoff only)
+    环境变量：``AGENTSOCIETY_LLM_SLOW_LATENCY_MS``
+    默认：未设置（仅启用相对因子退避）
     """
 
     LLM_ROUND_SAMPLE_CAP: int = int(
         os.getenv("AGENTSOCIETY_LLM_ROUND_SAMPLE_CAP", "64")
     )
-    """
-    Upper bound on AIMD round size (completions evaluated per adjustment).
-    Without this cap, round size grows with the limit, so a large limit makes
-    adaptation sluggish (e.g. limit 400 → 400 completions before any adjust).
+    """AIMD 轮次规模的上限（每次调整评估的补全数）。不设上限时轮次规模会随并发上限增长，上限很大时自适应会变得迟钝（如上限 400 → 需 400 次补全才调整一次）。
 
-    Environment variable: AGENTSOCIETY_LLM_ROUND_SAMPLE_CAP
-    Default: 64
+    环境变量：``AGENTSOCIETY_LLM_ROUND_SAMPLE_CAP``
+    默认：64
     """
 
     # Ray / local LLM dispatch configuration. Clients build litellm Routers in
     # their own process / event loop.
     LLM_RAY_MAX_WORKERS: int = _env_int_or_cpu("AGENTSOCIETY_LLM_RAY_MAX_WORKERS")
-    """
-    Upper bound used as the Ray CPU budget hint (``ray.init(num_cpus=...)``).
+    """作为 Ray CPU 预算提示的上限（``ray.init(num_cpus=...)`` ）。
 
-    Environment variable: AGENTSOCIETY_LLM_RAY_MAX_WORKERS
-    Default: machine logical CPU count (``os.cpu_count()``).
+    环境变量：``AGENTSOCIETY_LLM_RAY_MAX_WORKERS``
+    默认：机器逻辑 CPU 核数（``os.cpu_count()`` ）。
 
-    Caps how many ``step_agent_batch`` Ray Tasks run concurrently per tick
-    (one task per ``BATCH_SIZE`` chunk of agents). Lower this below the
-    physical core count to leave headroom for the driver, the env-router
-    actor, and the trace/replay actors.
+    限制每个 tick 并发运行的 ``step_agent_batch`` Ray Task 数（每个
+    ``BATCH_SIZE`` 大小的 agent 分片一个 task）。可将其调低到物理核数之下，为 driver、env-router actor 以及 trace/replay actor 留出余量。
     """
 
     LLM_RAY_CONCURRENCY: int = _env_int("AGENTSOCIETY_LLM_RAY_CONCURRENCY", 16)
-    """
-    Initial per-process concurrency for local LLM dispatching.
+    """本地 LLM 调度的每进程初始并发。
 
-    Environment variable: AGENTSOCIETY_LLM_RAY_CONCURRENCY
-    Default: 16
+    环境变量：``AGENTSOCIETY_LLM_RAY_CONCURRENCY``
+    默认：16
 
-    The starting concurrency each local ``LLMClient`` AIMD semaphore tunes
-    from. There is no hard upper/lower cap — each process adjusts its
-    concurrency freely via AIMD (additive increase / multiplicative
-    decrease) based on observed latency and rate-limit errors.
+    每个本地 ``LLMClient`` 的 AIMD 信号量由此初始并发出发进行调优。没有硬性上下限——各进程基于观测到的延迟与限流错误，通过 AIMD（加性增 / 乘性减）自由调整并发。
     """
 
     CODE_EXEC_TIMEOUT: int = _env_int("AGENTSOCIETY_CODE_EXEC_TIMEOUT", 10)
-    """
-    Execution limit for generated code and tools, in seconds. The process backend
-    enforces a hard wall-clock limit; inprocess uses cooperative Python checks.
+    """生成的代码与工具的执行时限（秒）。process 后端强制硬性墙钟时限；
+    inprocess 使用协作式 Python 检查。
 
-    Environment variable: AGENTSOCIETY_CODE_EXEC_TIMEOUT
+    环境变量：``AGENTSOCIETY_CODE_EXEC_TIMEOUT``
     """
 
     CODE_EXEC_BACKEND: str = os.getenv("AGENTSOCIETY_CODE_EXEC_BACKEND", "inprocess")
-    """Full Python backend: inprocess by default; process enables worker isolation.
+    """完整 Python 执行后端：默认 inprocess；process 启用 worker 隔离。
 
-    Inprocess uses cooperative Python deadlines and deployment resource limits.
-    Environment variable: AGENTSOCIETY_CODE_EXEC_BACKEND
+    Inprocess 使用协作式 Python 截止时间与部署级资源限制。环境变量：``AGENTSOCIETY_CODE_EXEC_BACKEND``
     """
 
     CODE_EXEC_MEMORY_MIB: int = _env_int("AGENTSOCIETY_CODE_EXEC_MEMORY_MIB", 512)
-    """Address-space limit per numerical worker, including its Python/NumPy runtime.
+    """单个数值计算 worker 的地址空间上限（含其 Python/NumPy 运行时）。
 
-    Environment variable: AGENTSOCIETY_CODE_EXEC_MEMORY_MIB
+    环境变量：``AGENTSOCIETY_CODE_EXEC_MEMORY_MIB``
     """
 
     CODE_EXEC_WORKERS: int = _env_int("AGENTSOCIETY_CODE_EXEC_WORKERS", 4)
-    """Maximum numerical workers shared by routers on the same event loop.
+    """同一事件循环上各 router 共享的数值计算 worker 数上限。
 
-    Environment variable: AGENTSOCIETY_CODE_EXEC_WORKERS
+    环境变量：``AGENTSOCIETY_CODE_EXEC_WORKERS``
     """
 
     BATCH_SIZE: int = _env_int("AGENTSOCIETY_BATCH_SIZE", 256)
-    """
-    Number of agents per ``step_agent_batch`` Ray Task.
+    """每个 ``step_agent_batch`` Ray Task 处理的 agent 数。
 
-    Environment variable: AGENTSOCIETY_BATCH_SIZE
-    Default: 256
+    环境变量：``AGENTSOCIETY_BATCH_SIZE``
+    默认：256
 
-    Each simulation tick chunks the agent id list into batches of this size
-    and submits one Ray Task per chunk (``tasks = ceil(N / BATCH_SIZE)``).
-    At most ``LLM_RAY_MAX_WORKERS`` tasks run concurrently, so choose a size
-    where ``ceil(N / BATCH_SIZE) >= LLM_RAY_MAX_WORKERS`` to saturate the
-    workers; otherwise some workers sit idle. Smaller batches add scheduling
-    overhead; larger batches mean one slow agent can stall its whole batch.
+    每个仿真 tick 把 agent id 列表按该大小分片，每片提交一个 Ray Task
+    （``tasks = ceil(N / BATCH_SIZE)`` ）。并发运行的 task 至多
+    ``LLM_RAY_MAX_WORKERS`` 个，因此应选取满足
+    ``ceil(N / BATCH_SIZE) >= LLM_RAY_MAX_WORKERS`` 的取值以喂饱 worker；否则部分 worker 会闲置。分片过小增加调度开销；过大则一个慢 agent 会拖住整个分片。
     """
 
     WORKSPACE_READ_MAX_BYTES: int = _env_int(
         "AGENTSOCIETY_WORKSPACE_READ_MAX_BYTES", 65536
     )
-    """
-    Hard cap on bytes returned by the agent ``read`` tool.
+    """agent ``read`` 工具返回字节数的硬上限。
 
-    The observation joins the react thread and is re-sent (uncached tail)
-    on every subsequent turn, so one huge file balloons both context and
-    cost for the rest of the step. Larger reads are truncated with a
-    marker; the model is pointed at ``grep`` for targeted extraction.
+    观测结果会并入 react 线程，并在后续每一轮重发（无缓存尾部），因此一个大文件会在本 step 余下的轮次中同时推高上下文与成本。超限的读取会被截断并附带标记；模型会被引导改用 ``grep`` 做定向提取。
 
-    Environment variable: AGENTSOCIETY_WORKSPACE_READ_MAX_BYTES
-    Default: 65536 (64 KiB)
+    环境变量：``AGENTSOCIETY_WORKSPACE_READ_MAX_BYTES``
+    默认：65536（64 KiB）
     """
 
     # 推理（thinking）开关。这些类属性只是文档用途：实际解析发生在
     # :func:`get_llm_thinking` 调用时（读取 os.getenv），以便按角色回退与测试覆盖。
     LLM_THINKING: str | None = os.getenv("AGENTSOCIETY_LLM_THINKING")
-    """
-    是否启用模型推理（thinking）：``on`` / ``off`` （兼容 ``1/0/true/false``）。
+    """是否启用模型推理（thinking）：``on`` / ``off`` （兼容 ``1/0/true/false`` ）。
 
-    Environment variable: AGENTSOCIETY_LLM_THINKING
-    Default: unset（**不发送任何新参数**，行为与未启用该功能时完全一致）
+    环境变量：``AGENTSOCIETY_LLM_THINKING``
+    默认：未设置（**不发送任何新参数**，行为与未启用该功能时完全一致）
 
-    OpenAI 接口关闭时发送 ``reasoning_effort="none"``，开启时默认 ``medium``。
+    OpenAI 接口关闭时发送 ``reasoning_effort="none"`` ，开启时默认 ``medium`` 。
     Anthropic Messages 接口发送显式 ``thinking`` 开关，开启默认预算 1024 tokens。
-    ``AGENTSOCIETY_LLM_EXTRA_BODY`` 可声明其他网关的原生开关。
-    接口协议由 ``AGENTSOCIETY_LLM_API_TYPE`` 选择，默认 ``openai``。
+    ``AGENTSOCIETY_LLM_EXTRA_BODY`` 可声明其他网关的原生开关。接口协议由 ``AGENTSOCIETY_LLM_API_TYPE`` 选择，默认 ``openai`` 。
     """
 
     LLM_REASONING_EFFORT: str | None = os.getenv("AGENTSOCIETY_LLM_REASONING_EFFORT")
-    """
-    显式的 ``reasoning_effort`` 取值（``minimal`` / ``low`` / ``medium`` / ``high`` / ``xhigh`` / ``max``）。
+    """显式的 ``reasoning_effort`` 取值（``minimal`` / ``low`` / ``medium`` / ``high`` / ``xhigh`` / ``max`` ）。
 
-    Environment variable: AGENTSOCIETY_LLM_REASONING_EFFORT
-    Default: unset（OpenAI 接口 ``on`` 默认 ``medium``；关闭不使用推理强度）
+    环境变量：``AGENTSOCIETY_LLM_REASONING_EFFORT``
+    默认：未设置（OpenAI 接口 ``on`` 默认 ``medium`` ；关闭不使用推理强度）
     """
 
     LLM_EXTRA_BODY: str | None = os.getenv("AGENTSOCIETY_LLM_EXTRA_BODY")
-    """
-    网关私有的 OpenAI 兼容开关，JSON 对象字符串，合并进请求的 ``extra_body``。
+    """网关私有的 OpenAI 兼容开关，JSON 对象字符串，合并进请求的 ``extra_body`` 。
 
-    Environment variable: AGENTSOCIETY_LLM_EXTRA_BODY
-    Default: unset
+    环境变量：``AGENTSOCIETY_LLM_EXTRA_BODY``
+    默认：未设置
 
-    例：``{"enable_thinking": false}``、``{"thinking": {"type": "disabled"}}``、
-    ``{"chat_template_kwargs": {"enable_thinking": false}}``。JSON 解析失败只记
+    例：``{"enable_thinking": false}`` 、``{"thinking": {"type": "disabled"}}`` 、
+    ``{"chat_template_kwargs": {"enable_thinking": false}}`` 。JSON 解析失败只记
     warning 并忽略，不会中断实验。
     """
 
     CODER_LLM_THINKING: str | None = (
         os.getenv("AGENTSOCIETY_CODER_LLM_THINKING") or LLM_THINKING
     )
-    """
-    ``AGENTSOCIETY_LLM_THINKING`` 的 coder 角色覆盖（env router 的代码生成）。
+    """``AGENTSOCIETY_LLM_THINKING`` 的 coder 角色覆盖（env router 的代码生成）。
 
-    Environment variable: AGENTSOCIETY_CODER_LLM_THINKING
-    Default: 回退到 ``AGENTSOCIETY_LLM_THINKING``
+    环境变量：``AGENTSOCIETY_CODER_LLM_THINKING``
+    默认：回退到 ``AGENTSOCIETY_LLM_THINKING``
     """
 
     CODER_LLM_REASONING_EFFORT: str | None = (
         os.getenv("AGENTSOCIETY_CODER_LLM_REASONING_EFFORT") or LLM_REASONING_EFFORT
     )
-    """
-    ``AGENTSOCIETY_LLM_REASONING_EFFORT`` 的 coder 角色覆盖。
+    """``AGENTSOCIETY_LLM_REASONING_EFFORT`` 的 coder 角色覆盖。
 
-    Environment variable: AGENTSOCIETY_CODER_LLM_REASONING_EFFORT
-    Default: 回退到 ``AGENTSOCIETY_LLM_REASONING_EFFORT``
+    环境变量：``AGENTSOCIETY_CODER_LLM_REASONING_EFFORT``
+    默认：回退到 ``AGENTSOCIETY_LLM_REASONING_EFFORT``
     """
 
     CODER_LLM_EXTRA_BODY: str | None = (
         os.getenv("AGENTSOCIETY_CODER_LLM_EXTRA_BODY") or LLM_EXTRA_BODY
     )
-    """
-    ``AGENTSOCIETY_LLM_EXTRA_BODY`` 的 coder 角色覆盖。
+    """``AGENTSOCIETY_LLM_EXTRA_BODY`` 的 coder 角色覆盖。
 
-    Environment variable: AGENTSOCIETY_CODER_LLM_EXTRA_BODY
-    Default: 回退到 ``AGENTSOCIETY_LLM_EXTRA_BODY``
+    环境变量：``AGENTSOCIETY_CODER_LLM_EXTRA_BODY``
+    默认：回退到 ``AGENTSOCIETY_LLM_EXTRA_BODY``
     """
 
     # Web Search API settings
@@ -607,26 +532,24 @@ class Config:
         os.getenv("LITERATURE_SEARCH_MCP_URL", "").strip()
         or "https://llmapi.fiblab.net/mcp/"
     )
-    """
-    MCP gateway URL for academic literature search (Streamable HTTP).
+    """学术文献检索的 MCP 网关 URL（Streamable HTTP）。
 
-    Environment variable: LITERATURE_SEARCH_MCP_URL
-    Default: "https://llmapi.fiblab.net/mcp/"
+    环境变量：``LITERATURE_SEARCH_MCP_URL``
+    默认：``https://llmapi.fiblab.net/mcp/``。
     """
 
     LITERATURE_SEARCH_API_KEY: str = os.getenv("LITERATURE_SEARCH_API_KEY", "").strip()
-    """
-    Bearer token for literature MCP authentication.
+    """文献 MCP 鉴权使用的 Bearer token。
 
-    Environment variable: LITERATURE_SEARCH_API_KEY
-    Default: "" (empty, must be set for authenticated requests)
+    环境变量：``LITERATURE_SEARCH_API_KEY``
+    默认：""（为空；发起鉴权请求前必须设置）
     """
 
     @classmethod
     def get_router(cls, model_type: Literal["default", "coder"] = "default") -> Router:
         """获取指定用途的 LLM Router（不做全局缓存）。
 
-        :param model_type: ``default`` / ``coder``。
+        :param model_type: ``default`` / ``coder`` 。
         :returns: LiteLLM :class:`litellm.router.Router` 实例。
         :raises ValueError: 当所需 API key 未配置时抛出。
         """
@@ -720,9 +643,9 @@ class Config:
 
     @classmethod
     def get_literature_search_mcp_url(cls) -> str:
-        """Return the normalized academic literature MCP gateway URL.
+        """返回规范化后的学术文献 MCP 网关 URL。
 
-        :returns: URL from ``LITERATURE_SEARCH_MCP_URL`` (environment overrides class default).
+        :returns: 取自 ``LITERATURE_SEARCH_MCP_URL`` 的 URL（环境变量优先于类默认值）。
         """
         from agentsociety2.skills.literature.mcp_client import (
             normalize_literature_mcp_url,
@@ -736,9 +659,9 @@ class Config:
 
     @classmethod
     def get_literature_search_api_key(cls) -> str:
-        """Return the Bearer token for the literature MCP gateway.
+        """返回文献 MCP 网关的 Bearer token。
 
-        :returns: Key from ``LITERATURE_SEARCH_API_KEY`` (environment overrides class default).
+        :returns: 取自 ``LITERATURE_SEARCH_API_KEY`` 的 key（环境变量优先于类默认值）。
         """
         return (
             os.getenv("LITERATURE_SEARCH_API_KEY", "").strip()
@@ -772,7 +695,7 @@ _coder_router: Router | None = None
 def get_llm_router(model_type: str = "default") -> Router:
     """获取（并缓存）指定用途的 LLM Router。
 
-    :param model_type: ``default`` / ``coder``。
+    :param model_type: ``default`` / ``coder`` 。
     :returns: LiteLLM :class:`litellm.router.Router` 实例（进程内单例缓存）。
     """
     global _default_router, _coder_router
@@ -790,7 +713,7 @@ def get_llm_router(model_type: str = "default") -> Router:
 def get_model_name(model_type: str = "default") -> str:
     """获取指定用途的模型名。
 
-    :param model_type: ``default`` / ``coder``。
+    :param model_type: ``default`` / ``coder`` 。
     :returns: 模型名字符串。
     """
     if model_type == "coder":
@@ -802,15 +725,12 @@ def get_model_name(model_type: str = "default") -> str:
 def get_llm_connection(
     model_type: str = "default",
 ) -> tuple[str, str | None, str]:
-    """返回某用途 LLM 的原始连接参数 ``(base_url, api_key, model_name)``。
+    """返回某用途 LLM 的原始连接参数 ``(base_url, api_key, model_name)`` 。
 
-    与 :func:`get_llm_router_and_model` 不同，这里不构建 Router，只返回连接
-    参数，供 :class:`agentsociety2.config.llm_dispatcher.LLMClient` 携带跨 Ray 任务
-    边界、在各 worker 进程内按需重建 Router。``coder``/``embedding`` 未单独配置时
-    自动回退到 default（与 :class:`Config` 的回退语义一致）。
+    与 :func:`get_llm_router_and_model` 不同，这里不构建 Router，只返回连接参数，供 :class:`agentsociety2.config.llm_dispatcher.LLMClient` 携带跨 Ray 任务边界、在各 worker 进程内按需重建 Router。``coder``/``embedding`` 未单独配置时自动回退到 default（与 :class:`Config` 的回退语义一致）。
 
-    :param model_type: ``default`` / ``coder`` / ``embedding``。
-    :returns: ``(base_url, api_key, model_name)``；未配置的用途 ``api_key`` 可能为 ``None``。
+    :param model_type: ``default`` / ``coder`` / ``embedding`` 。
+    :returns: ``(base_url, api_key, model_name)`` ；未配置的用途 ``api_key`` 可能为 ``None`` 。
     """
     if model_type == "coder":
         return (
@@ -830,8 +750,8 @@ def get_llm_connection(
 def get_llm_router_and_model(model_type: str = "default") -> tuple[Router, str]:
     """同时获取 Router 与模型名（Router 使用缓存）。
 
-    :param model_type: ``default`` / ``coder``。
-    :returns: ``(router, model_name)``。
+    :param model_type: ``default`` / ``coder`` 。
+    :returns: ``(router, model_name)`` 。
     """
     router = get_llm_router(model_type)
     model_name = get_model_name(model_type)
@@ -844,7 +764,7 @@ def extract_json(text: str) -> str | None:
     该函数只做“截取”，不负责修复不合法 JSON；若需要修复，请配合 ``json_repair`` 等工具。
 
     :param text: 可能包含 JSON 的文本（例如 LLM 输出，可能夹杂 Markdown code fences）。
-    :returns: 提取出的 JSON 文本；若未找到则返回 ``None``。
+    :returns: 提取出的 JSON 文本；若未找到则返回 ``None`` 。
     """
     if not text:
         return None

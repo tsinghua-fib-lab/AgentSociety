@@ -1,8 +1,8 @@
 """env router 的 Ray-only proxy。
 
 society、agent 与 helper 和本 proxy 交互的方式与进程内 ``CodeGenRouter``
-完全相同(同名方法:``ask``、``init``、``step``、``close``、
-``to_workspaces``、``from_workspaces``、``set_current_time``、
+完全相同(同名方法:``ask`` 、``init`` 、``step`` 、``close`` 、
+``to_workspaces`` 、``from_workspaces`` 、``set_current_time`` 、
 ``set_replay_writer``)。proxy 把每次调用转发给在独立进程中持有真正
 router 的 Ray actor,因此 env 代码生成执行(及其原先的 ``_execute_lock``
 串行化)不再阻塞 agent 事件循环。
@@ -23,7 +23,7 @@ class EnvRouterProxy:
     """面向 agent/society 的句柄,委托给持有 env router 的 Ray actor。
 
     与进程内 router 不同,本 proxy 不持有具体的 env 模块实例(它们位于
-    actor 进程中),因此无法暴露 ``env_modules``。为了让 agent 侧仍能发现
+    actor 进程中),因此无法暴露 ``env_modules`` 。为了让 agent 侧仍能发现
     env 提供的 skill,proxy 携带 ``env_skill_dirs``——构造时从 registry
     解析出的全部已配置 env 模块 ``skill_dirs()`` 的并集,每项配对模块类名
     (用作 ``env:{ClassName}`` 命名空间)。``AgentBase.discover_skill_sources``
@@ -123,13 +123,13 @@ async def create_env_router_proxy(
     构建 env actor,并返回可序列化的 proxy。
 
     :param env_module_types: registry 键(通常是 env 类名)。
-    :param env_kwargs: 各类型的构造 kwargs;默认每类型为 ``{}``。
+    :param env_kwargs: 各类型的构造 kwargs;默认每类型为 ``{}`` 。
     :param run_dir: 实验 run 目录(env workspace 位于 ``run_dir/env`` 下)。
     :param max_concurrency: Ray actor 并发度。``None`` 表示当每个模块都声明
         ``is_concurrency_safe()`` 时取 ``Config.ENV_ACTOR_MAX_CONCURRENCY``,
-        否则取 ``1``。
-    :param final_summary_enabled: 转发给 ``CodeGenRouter``。
-    :returns: 可供 ``AgentSociety`` 使用的可序列化 :class:`EnvRouterProxy`。
+        否则取 ``1`` 。
+    :param final_summary_enabled: 转发给 ``CodeGenRouter`` 。
+    :returns: 可供 ``AgentSociety`` 使用的可序列化 :class:`EnvRouterProxy` 。
     """
     from agentsociety2.config import Config
     from agentsociety2.config.llm_dispatcher import (
@@ -187,9 +187,9 @@ async def create_env_router_proxy(
 def _resolve_env_skill_dirs(
     env_module_types: list[str],
 ) -> list[tuple[str, str]]:
-    """为给定 env 模块类型收集 ``(module_class_name, skill_dir)``。
+    """为给定 env 模块类型收集 ``(module_class_name, skill_dir)`` 。
 
-    从全局 registry 解析各类型的类并读取其 ``skill_dirs()``。无法解析类型
+    从全局 registry 解析各类型的类并读取其 ``skill_dirs()`` 。无法解析类型
     或读取目录时记录日志并跳过——发现过程绝不能因缺失 skill 源而让 agent
     构建崩溃。重复的 ``(name, dir)`` 对会被去除。
 

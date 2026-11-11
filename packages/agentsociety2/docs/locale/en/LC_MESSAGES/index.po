@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: AgentSociety 2 2.6.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-23 12:38+0800\n"
+"POT-Creation-Date: 2026-11-10 12:10+0800\n"
 "PO-Revision-Date: 2026-03-05 23:50+0800\n"
 "Last-Translator: AgentSociety Team\n"
 "Language: en\n"
@@ -19,255 +19,319 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: ../../index.rst:67
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:92
 msgid "入门指南:"
 msgstr "Getting Started:"
 
-#: ../../index.rst:79
-msgid "用户指南:"
-msgstr "User Guide:"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:102
+msgid "仿真与数据:"
+msgstr "Simulation and data:"
 
-#: ../../index.rst:90
-msgid "开发者指南:"
-msgstr "Developer Guide:"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:115
+msgid "研究与扩展:"
+msgstr "Research and extensions:"
 
-#: ../../index.rst:98
-msgid "参考:"
-msgstr "Reference:"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:125
+msgid "开发与参考:"
+msgstr "Development and reference:"
 
-#: ../../index.rst:2
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:2
 msgid "AgentSociety 2"
 msgstr "AgentSociety 2"
 
-#: ../../index.rst:4
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:4
 msgid ""
-"**AgentSociety 2** 是面向计算社会科学的现代化、LLM "
-"原生智能体模拟与科研平台：在统一的异步框架中创建与管理智能体、环境模块与研究技能，并支持从 CLI、REST API 到集成研究环境的多入口协作。"
+"**AgentSociety 2** 是面向计算社会科学的现代化、LLM 原生智能体模拟与科研平台：在统一的异步框架中创建与管理智能体、环境模块与研究技能，并支持从 "
+"CLI、REST API 到集成研究环境的多入口协作。"
 msgstr ""
 "**AgentSociety 2** is a modern, LLM-native agent simulation and research-"
-"orchestration platform for computational social science. It provides a "
-"unified async framework for agents, environment modules, and research "
-"skills, with multiple entry points from the CLI and REST API to "
-"integrated research environments."
+"orchestration platform for computational social science. It provides a unified async "
+"framework for agents, environment modules, and research skills, with multiple entry "
+"points from the CLI and REST API to integrated research environments."
 
-#: ../../index.rst:6
-msgid "PyPI Version"
-msgstr "PyPI Version"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:8
+msgid "`PyPI <https://pypi.org/project/agentsociety2/>`_"
+msgstr "`PyPI <https://pypi.org/project/agentsociety2/>`_"
 
-#: ../../index.rst:10
-msgid "Python Versions"
-msgstr "Python Versions"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:10
+msgid "Python 3.11–3.13"
+msgstr "Python 3.11–3.13"
 
-#: ../../index.rst:14
-msgid "License"
-msgstr "License"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:12
+msgid "`Apache 2.0 <https://github.com/tsinghua-fib-lab/AgentSociety/blob/main/LICENSE>`_"
+msgstr "`Apache 2.0 <https://github.com/tsinghua-fib-lab/AgentSociety/blob/main/LICENSE>`_"
 
-#: ../../index.rst:19
-msgid "研究背景与平台定位"
-msgstr "Research Background and Platform Positioning"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:15
+msgid "从这里开始"
+msgstr "Start here"
 
-#: ../../index.rst:21
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:21
+msgid "使用科研工作台"
+msgstr "Use the research workbench"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:21
+msgid "配置工作区、模型与后端，开始交互式研究。"
+msgstr "Configure your workspace, models, and backend for interactive research."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:28
+msgid "运行 Python 示例"
+msgstr "Run a Python example"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:25
+msgid "从最小仿真开始，了解智能体与环境的交互。"
+msgstr "Start with a minimal simulation and see how agents interact with environments."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:35
+msgid "创建环境模块"
+msgstr "Create an environment module"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:29
+msgid "定义实验规则与工具，扩展自己的仿真环境。"
+msgstr "Define experiment rules and tools for your simulation environment."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:42
+msgid "理解运行架构"
+msgstr "Understand the runtime architecture"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:33
+msgid "查看执行、恢复、追踪与存储的工作方式。"
+msgstr "Learn how execution, recovery, tracing, and storage work."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:36
+msgid "研究工作区"
+msgstr "Research workspace"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:38
 msgid ""
-"科学探究在历史上依托 :strong:`经验、理论、计算与数据密集型` "
-"等范式不断扩展问题的范围、规模与深度；数字时代以来，大语言模型与自主智能体正在系统性地重塑知识生产与协作方式。对社会科学而言，智能体至少可以承担两类互补角色：其一，作为"
-" :strong:`智能体科学家`，参与文献整合、想法产生与实验编排等认知劳动；其二，作为可规模化、可重复的 "
-":strong:`硅基被试`，在可控仿真环境中开展问卷、访谈与干预的试点研究，从而在成本与伦理约束下探索反事实与机制。"
+"平台把两类智能体放进同一个研究工作区：AI Social Scientist "
+"协调文献、假设、实验和分析，硅基参与者在可配置环境中产生行为反馈。研究者负责明确问题、审阅设计并判断证据能支持哪些结论。"
 msgstr ""
-"Scientific inquiry has historically expanded the scope, scale, and depth "
-"of problems through paradigms such as :strong:`empirical, theoretical, "
-"computational, and data-intensive` research. In the digital era, large "
-"language models and autonomous agents are reshaping how knowledge is "
-"produced and how teams collaborate. For social science, agents can play "
-"two complementary roles: as :strong:`agent scientists` that support "
-"cognitive work such as literature synthesis, ideation, and experiment "
-"orchestration; and as scalable, repeatable :strong:`silicon subjects` for"
-" surveys, interviews, and interventions in controlled simulations, "
-"enabling counterfactual and mechanistic exploration under cost and "
-"ethical constraints."
+"Two agent roles share one workspace: the AI Social Scientist coordinates literature, "
+"hypotheses, experiments and analysis; Silicon Participants produce behavioral data in"
+" configurable environments. Researchers define the question, review designs and "
+"interpret the evidence."
 
-#: ../../index.rst:23
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:40
 msgid ""
-"**AgentSociety 2** 将上述思路落实为 "
-":strong:`端到端的智能体科研编排框架`：围绕四类范式组织协同工作的能力——面向经验范式的实验设计、执行与结果分析；面向理论范式的文献整合与假设构建（并可对接跨学科文献与结构化工作流）；面向计算范式的通用智能体–环境仿真（在"
-" AgentSociety 1 的模拟传统上扩展为更灵活的模块化架构）；以及面向数据密集型范式的数据获取、整合与统计推断支持。多类研究技能与 "
-"**AgentSociety** 编排器共同构成从文献与假设、到数据与计算实验、再到分析与文稿准备的 :strong:`闭环流水线`。"
+"工作从 ``TOPIC.md`` 开始，逐步形成假设、可执行配置、运行记录和报告。CLI、Python API 与工作台共享核心仿真能力；运行架构见 "
+":doc:`architecture`，智能体与技能见 :doc:`agents`、:doc:`agent_skills`。论文撰写通过外部 ``paper-"
+"toolkit`` 接续分析结果。"
 msgstr ""
-"**AgentSociety 2** implements this vision as an :strong:`end-to-end agent"
-" research orchestration framework`. Capabilities are organized around "
-"four paradigms: empirical experiment design, execution, and analysis; "
-"theoretical literature synthesis and hypothesis building (with optional "
-"cross-disciplinary workflows); computational agent–environment simulation"
-" (extending the AgentSociety 1 tradition with a more modular "
-"architecture); and data-intensive acquisition, integration, and "
-"inference. Research skills together with the **AgentSociety** "
-"orchestrator form a :strong:`closed-loop pipeline` from literature and "
-"hypotheses through computational experiments to analysis and manuscript "
-"preparation."
+"Work starts in ``TOPIC.md`` and produces hypotheses, executable configurations, run "
+"records and reports. The CLI, Python API and workbench share core simulation "
+"capabilities. See :doc:`architecture` for runtime details and :doc:`agents` / "
+":doc:`agent_skills` for agents and skills. External ``paper-toolkit`` continues from "
+"analysis outputs to manuscript writing."
 
-#: ../../index.rst:25
-msgid ""
-"与此同时，平台强调 "
-":strong:`有意义的科学洞见仍源于人类研究者`；挑战在于如何在降低工程负担的同时，使人与智能体能力对齐、协作可控。**AgentSociety"
-" 2** 通过 **IDE 式集成研究环境（IRE）** 与可视化/扩展入口（如后端 "
-"API、CLI、前端与扩展）提供结构化工作区，支持研究者与多智能体团队持续协同，在透明可控的前提下将初步想法落实为可复现的仿真实验。系统架构、路由与存储等实现细节见"
-" :doc:`concepts`；智能体与技能见 :doc:`agents` 与 :doc:`agent_skills`。"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:42
+msgid "完整步骤见 :doc:`research_workflow`；准备输入数据见 :doc:`datasets`；查看回放与研究产物见 :doc:`results`。"
 msgstr ""
-"The platform also stresses that :strong:`meaningful scientific insight "
-"still comes from human researchers`. The challenge is to reduce "
-"engineering burden while keeping human and agent capabilities aligned and"
-" collaboration controllable. **AgentSociety 2** provides structured "
-"workspaces through an **IDE-style Integrated Research Environment (IRE)**"
-" and visualization/extension entry points (backend API, CLI, frontend, "
-"and extensions), enabling researchers and multi-agent teams to iterate "
-"under transparent control and turn early ideas into reproducible "
-"simulations. See :doc:`concepts` for architecture, routing, and storage; "
-"see :doc:`agents` and :doc:`agent_skills` for agents and skills."
+"See :doc:`research_workflow` for the complete process, :doc:`datasets` for input data"
+" preparation, and :doc:`results` for replay and research artifacts."
 
-#: ../../index.rst:30
-msgid "核心特性"
-msgstr "Key Features"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:47
+msgid "功能与文档"
+msgstr "Features and documentation"
 
-#: ../../index.rst:32
-msgid "**LLM 驱动的智能体**: 创建具有个性、记忆和推理能力的智能体，由大语言模型驱动。"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:53
+msgid "想做什么"
+msgstr "Task"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:54
+msgid "功能"
+msgstr "Features"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:55
+msgid "阅读入口"
+msgstr "Where to start"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:56
+msgid "使用研究工作台"
+msgstr "Use the research workbench"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:57
+msgid "配置模型、管理文献与数据、组织假设和实验、分享工作区"
 msgstr ""
-"**LLM-Powered Agents**: Create intelligent agents with personalities, "
-"memories, and reasoning capabilities, powered by large language models."
+"Configure models, manage literature and data, organize hypotheses and experiments, "
+"and share workspaces"
 
-#: ../../index.rst:34
-msgid "**灵活的环境模块**: 使用可组合的工具和状态管理构建自定义模拟环境。"
-msgstr ""
-"**Flexible Environment Modules**: Build custom simulation environments "
-"with composable tools and state management."
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:58
+msgid ":doc:`user_guide`"
+msgstr ":doc:`user_guide`"
 
-#: ../../index.rst:36
-msgid "**异步优先设计**: 高性能异步架构，实现高效的多智能体模拟。"
-msgstr ""
-"**Async-First Design**: High-performance asynchronous architecture for "
-"efficient multi-agent simulations."
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:59
+msgid "配置参与者与环境"
+msgstr "Configure participants and environments"
 
-#: ../../index.rst:38
-msgid ""
-"**回放与分析**: append-only JSONL replay、``_schema.json`` catalog 与 DuckDB "
-"读侧，用于实验跟踪和分析。"
-msgstr ""
-"**Replay and analysis**: append-only JSONL replay, the ``_schema.json`` "
-"catalog, and a DuckDB read side for experiment tracking and analysis."
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:60
+msgid "人物画像、行为技能、环境工具与自定义模块"
+msgstr "Profiles, behavioral skills, environment tools, and custom modules"
 
-#: ../../index.rst:40
-msgid ""
-"**中断恢复**: agent、env 和 society 三层状态都会原子持久化，CLI ``--resume`` 可从中断处继续运行实验（见 "
-":doc:`cli`）。"
-msgstr ""
-"**Interrupt recovery**: agent, env, and society state are all persisted"
-" atomically, and CLI ``--resume`` can continue an experiment from the "
-"interruption point; see :doc:`cli`."
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:61
+msgid ":doc:`agents`、:doc:`env_modules`"
+msgstr ":doc:`agents`, :doc:`env_modules`"
 
-#: ../../index.rst:42
-msgid "**研究技能**: 内置文献检索、假设生成、实验设计与数据分析等 LLM 原生工作流；论文撰写由外部 ``paper-toolkit`` 承担。"
-msgstr ""
-"**Research Skills**: Built-in LLM-native workflows for literature search, "
-"hypothesis generation, experiment design, and data analysis; paper writing "
-"is handled by the external ``paper-toolkit``."
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:62
+msgid "执行与干预实验"
+msgstr "Run and intervene in experiments"
 
-#: ../../index.rst:44
-msgid "**REST API**: 基于 FastAPI 的独立后端服务，支持外部集成。"
-msgstr ""
-"**REST API**: Independent FastAPI-based backend service for external "
-"integrations."
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:63
+msgid "Python 交互、CLI 执行、进度日志与中断恢复"
+msgstr "Python interaction, CLI execution, progress logs, and checkpoint recovery"
 
-#: ../../index.rst:46
-msgid "**CLI 工具**: 强大的命令行界面，支持实验运行和进度跟踪。"
-msgstr ""
-"**CLI Tool**: Powerful command-line interface for experiment execution "
-"and progress tracking."
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:64
+msgid ":doc:`interaction`、:doc:`cli`"
+msgstr ":doc:`interaction`, :doc:`cli`"
 
-#: ../../index.rst:48
-msgid "**可扩展**: 轻松扩展自定义智能体、环境和工具。"
-msgstr "**Extensible**: Easily extend with custom agents, environments, and tools."
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:65
+msgid "检查数据与结果"
+msgstr "Inspect data and results"
 
-#: ../../index.rst:51
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:66
+msgid "时间步回放、数据集读取、分析与图表报告"
+msgstr "Step-by-step replay, dataset access, analysis, charts, and reports"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:67
+msgid ":doc:`storage`、:doc:`skills`"
+msgstr ":doc:`storage`, :doc:`skills`"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:68
+msgid "扩展研究能力"
+msgstr "Extend research capabilities"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:69
+msgid "研究助手技能、Agent 技能与自定义环境"
+msgstr "Research assistant skills, Agent skills, and custom environments"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:70
+msgid ":doc:`agent_skills`、:doc:`custom_modules`"
+msgstr ":doc:`agent_skills`, :doc:`custom_modules`"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:71
+msgid "集成自己的工具"
+msgstr "Integrate your own tools"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:72
+msgid "Python 接口、独立后端与配置模型"
+msgstr "Python interfaces, standalone backend, and configuration models"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:73
+msgid ":doc:`api/index`"
+msgstr ":doc:`api/index`"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:76
 msgid "安装"
 msgstr "Installation"
 
-#: ../../index.rst:57
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:92
+msgid "pip install agentsociety2"
+msgstr "pip install agentsociety2"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:82
 msgid "详细安装说明请参见 :doc:`installation`。"
 msgstr "See :doc:`installation` for detailed installation instructions."
 
-#: ../../index.rst:60
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:85
 msgid "快速开始"
 msgstr "Quick Start"
 
-#: ../../index.rst:62
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:87
 msgid ""
-"与智能体交互通过 :class:`~agentsociety2.society.AgentSociety` 的异步 API（如 ``ask`` /"
-" ``intervene``）完成，需使用 ``asyncio``。最小示意见 :doc:`quickstart`。"
+"与智能体交互通过 :class:`~agentsociety2.society.AgentSociety` 的异步 API（如 ``ask`` / "
+"``intervene``）完成，需使用 ``asyncio``。最小示意见 :doc:`quickstart`。"
 msgstr ""
 "Interact with agents through the async API on "
-":class:`~agentsociety2.society.AgentSociety` (e.g. ``ask`` / "
-"``intervene``) using ``asyncio``. See :doc:`quickstart` for a minimal "
-"example."
+":class:`~agentsociety2.society.AgentSociety` (e.g. ``ask`` / ``intervene``) using "
+"``asyncio``. See :doc:`quickstart` for a minimal example."
 
-#: ../../index.rst:65
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:90
 msgid "文档"
 msgstr "Documentation"
 
-#: ../../index.rst:106
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:136
 msgid "引用"
 msgstr "Citation"
 
-#: ../../index.rst:108
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:138
 msgid "如果您在研究中使用了 AgentSociety 2，请引用："
 msgstr "If you use AgentSociety 2 in your research, please cite:"
 
-#: ../../index.rst:123
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:154
+msgid ""
+"@misc{piao2026agentsociety2,\n"
+"  title        = {{AgentSociety} 2: An Integrated Research Environment for Executable Social "
+"Science},\n"
+"  author       = {Jinghua Piao and Jun Zhang and Haoyu Huang and Keming Zhang and Jing Yi Wang "
+"and Xinran Zhao and Songwei Li and Boyuan Sun and Jiayi Chang and Fengli Xu and Chunyan Wang and "
+"Fang Zhang and Ke Rong and Jun Su and Tianguang Meng and Yi Liu and Qingguo Meng and Yu Wang and "
+"Yong Li},\n"
+"  year         = {2026},\n"
+"  eprint       = {2607.11895},\n"
+"  archiveprefix= {arXiv},\n"
+"  primaryclass = {cs.CY},\n"
+"  doi          = {10.48550/arXiv.2607.11895},\n"
+"  url          = {https://arxiv.org/abs/2607.11895},\n"
+"}"
+msgstr ""
+"@misc{piao2026agentsociety2,\n"
+"  title        = {{AgentSociety} 2: An Integrated Research Environment for Executable Social "
+"Science},\n"
+"  author       = {Jinghua Piao and Jun Zhang and Haoyu Huang and Keming Zhang and Jing Yi Wang "
+"and Xinran Zhao and Songwei Li and Boyuan Sun and Jiayi Chang and Fengli Xu and Chunyan Wang and "
+"Fang Zhang and Ke Rong and Jun Su and Tianguang Meng and Yi Liu and Qingguo Meng and Yu Wang and "
+"Yong Li},\n"
+"  year         = {2026},\n"
+"  eprint       = {2607.11895},\n"
+"  archiveprefix= {arXiv},\n"
+"  primaryclass = {cs.CY},\n"
+"  doi          = {10.48550/arXiv.2607.11895},\n"
+"  url          = {https://arxiv.org/abs/2607.11895},\n"
+"}"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:153
 msgid "论文：https://arxiv.org/abs/2607.11895"
 msgstr "Paper: https://arxiv.org/abs/2607.11895"
 
-#: ../../index.rst:125
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:155
 msgid "仓库级引用文件："
 msgstr "Repository-wide citation files:"
 
-#: ../../index.rst:127
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:157
 msgid ""
-"``CITATION.cff``: "
-"https://github.com/tsinghua-fib-lab/AgentSociety/blob/main/CITATION.cff"
+"``CITATION.cff``: https://github.com/tsinghua-fib-"
+"lab/AgentSociety/blob/main/CITATION.cff"
 msgstr ""
-"``CITATION.cff``: "
-"https://github.com/tsinghua-fib-lab/AgentSociety/blob/main/CITATION.cff"
+"``CITATION.cff``: https://github.com/tsinghua-fib-"
+"lab/AgentSociety/blob/main/CITATION.cff"
 
-#: ../../index.rst:128
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:158
 msgid ""
-"``citations.bib``: "
-"https://github.com/tsinghua-fib-lab/AgentSociety/blob/main/citations.bib"
+"``citations.bib``: https://github.com/tsinghua-fib-"
+"lab/AgentSociety/blob/main/citations.bib"
 msgstr ""
-"``citations.bib``: "
-"https://github.com/tsinghua-fib-lab/AgentSociety/blob/main/citations.bib"
+"``citations.bib``: https://github.com/tsinghua-fib-"
+"lab/AgentSociety/blob/main/citations.bib"
 
-#: ../../index.rst:131
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:161
 msgid "链接"
 msgstr "Links"
 
-#: ../../index.rst:133
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:163
 msgid "**GitHub**: https://github.com/tsinghua-fib-lab/AgentSociety"
 msgstr "**GitHub**: https://github.com/tsinghua-fib-lab/AgentSociety"
 
-#: ../../index.rst:134
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:164
 msgid "**PyPI**: https://pypi.org/project/agentsociety2/"
 msgstr "**PyPI**: https://pypi.org/project/agentsociety2/"
 
-#: ../../index.rst:135
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:165
 msgid "**Issues**: https://github.com/tsinghua-fib-lab/AgentSociety/issues"
 msgstr "**Issues**: https://github.com/tsinghua-fib-lab/AgentSociety/issues"
 
-#: ../../index.rst:138
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:168
 msgid "搜索"
 msgstr "Search"
 
-#: ../../index.rst:140
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/index.rst:170
 msgid ":ref:`search`"
 msgstr ":ref:`search`"
-
-#~ msgid ""
-#~ "**中断恢复**: agent/env/society 三层状态原子持久化，CLI "
-#~ "``--resume`` 从中断处续跑（见 :doc:`cli`）。"
-#~ msgstr ""

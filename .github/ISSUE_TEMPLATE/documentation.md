@@ -14,6 +14,8 @@ assignees: ""
 
 - **Page / File**:
 - **Section**:
+- **Language / version**: English or Chinese; latest or a release version
+- **Display issue, if applicable**: light / dark / system theme, browser, screen size
 
 ## Problem
 

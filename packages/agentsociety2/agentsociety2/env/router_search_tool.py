@@ -19,12 +19,11 @@ __all__ = ["SearchToolRouter"]
 
 
 class SearchToolRouter(RouterBase):
-    """
-    Search Tool as Tool模式Router：增加一个search tool，先搜索合适的模块函数，然后调用候选函数。
+    """Search Tool as Tool模式Router：增加一个search tool，先搜索合适的模块函数，然后调用候选函数。
 
     工作流程：
-    1. 提供一个search_tool，可以搜索所有可用的工具
-    2. 使用LLM的function calling能力，先调用search_tool找到相关工具
+    1. 提供一个``search_tool``，可以搜索所有可用的工具
+    2. 使用LLM的function calling能力，先调用``search_tool``找到相关工具
     3. 然后使用function calling调用搜索到的候选工具
     4. 重复直到任务完成
     """
@@ -111,7 +110,7 @@ class SearchToolRouter(RouterBase):
         }
 
     def _create_set_status_tool_schema(self) -> dict[str, Any]:
-        """创建set_status工具的schema"""
+        """创建``set_status``工具的schema"""
         return {
             "type": "function",
             "function": {

@@ -7,12 +7,18 @@ on:
   push:
     branches: [main, develop]
     paths:
+      - "scripts/ci/**"
+      - "Makefile"
+      - ".gitlab-ci.yml"
       - "frontend/**"
       - "!frontend/**/*.md"
       - ".github/workflows/frontend-ci.yml"
   pull_request:
     branches: [main, develop]
     paths:
+      - "scripts/ci/**"
+      - "Makefile"
+      - ".gitlab-ci.yml"
       - "frontend/**"
       - "!frontend/**/*.md"
       - ".github/workflows/frontend-ci.yml"
@@ -23,7 +29,7 @@ concurrency:
 
 jobs:
   build:
-    name: Lint, build, audit
+    name: Frontend checks
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -41,15 +47,24 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps
+        run: npm ci --prefer-offline --no-audit --fund=false
 
-      - name: Lint
-        run: npm run lint
+      - name: Install browser
+        run: npx --no-install playwright install --with-deps --only-shell chromium
 
-      - name: Build
-        run: npm run build
+      - name: Lint, build and test production pages
+        run: make -C .. ci-frontend
 
-      - name: Audit
+      - name: Upload browser failure traces
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-browser-traces
+          path: frontend/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Audit dependencies (advisory)
         # Use the official registry: npmmirror does not implement the audit API.
         # Advisory failures (transitive deps) must not block the build;
         # matches .gitlab-ci.yml lint-frontend / extension-ci.

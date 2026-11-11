@@ -1,12 +1,9 @@
 """持有 ``CodeGenRouter`` 的 Ray actor(env router)。
 
 把 env router 移入专用 Ray actor,可使 env 代码生成执行(及其原先的
-``_execute_lock`` 串行化)离开 agent 的事件循环。单个 Ray actor 一次只处理
-一个方法(FIFO),与原锁提供相同的互斥,但在独立进程/事件循环中。
+``_execute_lock`` 串行化)离开 agent 的事件循环。单个 Ray actor 一次只处理一个方法(FIFO),与原锁提供相同的互斥,但在独立进程/事件循环中。
 
-actor 由可序列化 spec(env 模块类型 + kwargs + codegen kwargs)构建。LLM 以
-携带连接参数的可序列化 :class:`LLMClient` 句柄(coder + default)形式
-**注入**;每个 actor 进程在首次使用时自建 litellm Router。回放以可序列化
+actor 由可序列化 spec(env 模块类型 + kwargs + codegen kwargs)构建。LLM 以携带连接参数的可序列化 :class:`LLMClient` 句柄(coder + default)形式**注入**;每个 actor 进程在首次使用时自建 litellm Router。回放以可序列化
 :class:`ReplayProxy` 注入。actor 从不自行创建中心运行时服务,因此没有
 Ray-in-Ray(D8)。
 """
@@ -23,7 +20,7 @@ _cached_env_actor_classes: dict[int, Any] = {}
 
 
 def get_env_router_actor_class(max_concurrency: int = 1) -> Any:
-    """返回 Ray env-router actor 类(每个 max_concurrency 只创建一次)。
+    """返回 Ray env-router actor 类(每个 ``max_concurrency`` 只创建一次)。
 
     :param max_concurrency: Ray actor 并发度。``1`` 串行化 ask 调用(任一
         env 模块非并发安全时的默认值);``>1`` 仅当所有 env 模块声明
@@ -56,12 +53,12 @@ def get_env_router_actor_class(max_concurrency: int = 1) -> Any:
             :param codegen_kwargs: CodeGenRouter kwargs(如
                 ``final_summary_enabled``)。
             :param llm_clients_spec: 可选。含 ``coder`` / ``default`` 键的
-                dict,每个值为序列化的 :class:`LLMClient`。为 ``None`` 时
+                dict,每个值为序列化的 :class:`LLMClient` 。为 ``None`` 时
                 router 回退到每进程 dispatcher 的 client 工厂。
             :param replay_proxy: 可选。用于共享 sharded JSONL 回放的
-                :class:`ReplayProxy`。为 ``None`` / 未启用时,env 回放关闭。
+                :class:`ReplayProxy` 。为 ``None`` / 未启用时,env 回放关闭。
             :param trace_proxy: 可选。用于 env 侧 ``llm.completion`` span 的
-                :class:`TraceProxy`。为 ``None`` 时,env LLM 调用不被追踪。
+                :class:`TraceProxy` 。为 ``None`` 时,env LLM 调用不被追踪。
             """
             from agentsociety2.env.router_codegen import CodeGenRouter
             from agentsociety2.registry import get_registered_env_modules, get_registry
@@ -86,7 +83,7 @@ def get_env_router_actor_class(max_concurrency: int = 1) -> Any:
             if run_dir is not None:
                 self._router.run_dir = run_dir
                 # 模块状态只存在于本 actor 进程，故在此绑定各模块到
-                # ``<run_dir>/env/<module_type>``，供 RouterBase.init 恢复、
+                # ``<run_dir>/env/<module_type>`` ，供 RouterBase.init 恢复、
                 # society 每步 to_workspace。
                 self._router.bind_env_workspaces(
                     Path(run_dir) / "env", env_module_types
@@ -125,9 +122,8 @@ def get_env_router_actor_class(max_concurrency: int = 1) -> Any:
         def set_replay_writer(self, writer: Any) -> None:
             """向 router(及其模块)注入回放 writer/proxy。
 
-            ``writer`` 通常是可序列化的 :class:`ReplayProxy`。同时存到
-            ``self._replay_proxy``,以便 :meth:`init` 把 env 回放路由到共享
-            回放目录。
+            ``writer`` 通常是可序列化的 :class:`ReplayProxy` 。同时存到
+            ``self._replay_proxy``,以便 :meth:`init` 把 env 回放路由到共享回放目录。
             """
             self._replay_proxy = writer
             self._router.set_replay_writer(writer)

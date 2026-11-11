@@ -1,4 +1,4 @@
-"""Data models and path conventions for the analysis tool layer."""
+"""分析工具层的数据模型与路径约定。"""
 
 from datetime import datetime
 from enum import Enum
@@ -44,7 +44,7 @@ SUPPORTED_ASSET_FORMATS = SUPPORTED_IMAGE_FORMATS | {".pdf"}
 
 
 class ExperimentPaths(BaseModel):
-    """单实验在 workspace 下的约定路径（只读，由 utils.experiment_paths 构建）。"""
+    """单实验在 workspace 下的约定路径（只读，由 ``utils.experiment_paths`` 构建）。"""
 
     hypothesis_base: Path = Field(..., description="hypothesis_<id> directory")
     experiment_path: Path = Field(..., description="experiment_<id> directory")
@@ -64,7 +64,7 @@ class PresentationPaths(BaseModel):
 
     典型产物包括：
 
-    - ``output_dir/`` 下的双语报告、``README.md`` 与 ``data/analysis_summary.json``。
+    - ``output_dir/`` 下的双语报告、``README.md`` 与 ``data/analysis_summary.json`` 。
     - ``charts/`` 下的生成图表，以及复制到 ``assets/`` 的报告引用资源。
     """
 

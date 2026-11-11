@@ -1,67 +1,28 @@
 ## Summary
 
-<!-- Briefly describe what this PR does and why. One or two sentences. -->
+<!-- State the problem and resulting behavior. Link an issue if relevant; remove unused sections. -->
+<!-- GitLab is the primary remote. See CONTRIBUTING.md before submitting code changes. -->
 
-Closes #
+## Scope
 
-## Changes
+- [ ] Python SDK (`packages/agentsociety2/`)
+- [ ] VS Code extension (`extension/`)
+- [ ] Web UI (`frontend/`)
+- [ ] Documentation / translations
+- [ ] CI / repository configuration
 
-<!-- List the key changes. Be specific. -->
+## Validation
 
--
+<!-- List the checks you actually ran, their results, and anything not covered. -->
+<!-- SDK: make check, or uv run ruff check . && uv run pytest in packages/agentsociety2. -->
+<!-- Extension: npm run check. Frontend: npm run lint && npm run build && npm run test:e2e. -->
+<!-- Docs: strict Chinese and English builds; see READTHEDOCS.md. -->
+<!-- For UI changes, show the affected page or describe the interaction checked. -->
 
-## Type of Change
+## Compatibility and release notes
 
-<!-- Check all that apply. -->
+<!-- Breaking changes, configuration/data migration, known warnings, and remaining limitations. Write "None" if none. -->
 
-- [ ] Bug fix
-- [ ] New feature
-- [ ] Breaking change
-- [ ] Refactor
-- [ ] Performance improvement
-- [ ] Documentation update
-- [ ] CI / Build
-
-## Breaking Changes
-
-<!-- If this PR introduces breaking changes, list them here. Otherwise, write "None". -->
-
--
-
-## Affected Modules
-
-<!-- Check all that apply. -->
-
-- [ ] Agent (`agentsociety2/agent/`)
-- [ ] Agent Skills (`agentsociety2/agent/skills/`)
-- [ ] Environment Router (`agentsociety2/env/`)
-- [ ] Research Skills (`agentsociety2/skills/`)
-- [ ] Backend API (`agentsociety2/backend/`)
-- [ ] Storage (`agentsociety2/storage/`)
-- [ ] CLI (`agentsociety2/society/cli.py`)
-- [ ] Frontend (`frontend/`)
-- [ ] Extension (`extension/`)
-- [ ] Other: ___
-
-## Testing
-
-<!-- Describe how you verified your changes. -->
-
-- [ ] Ran `uv run pytest` in `packages/agentsociety2`
-- [ ] Ran `npm run lint` / `npm run build` in `extension` (if applicable)
-- [ ] Ran `npm run lint` / `npm run build` in `frontend` (if applicable)
-- [ ] Ran `npm audit --audit-level=high` (if JS deps changed)
-- [ ] Manually tested
-- [ ] Added / updated tests
-
-## Checklist
-
-- [ ] I have performed a self-review
-- [ ] I have added docstrings where needed (following project conventions)
-- [ ] I have updated relevant documentation
-- [ ] My changes generate no new warnings
-- [ ] I have checked for unintended breaking changes
-
-## Notes for Reviewers
-
-<!-- Anything reviewers should pay extra attention to? -->
+- [ ] Reviewed the diff for unrelated changes and credentials
+- [ ] Updated relevant docs / translations and CHANGELOG when needed
+- [ ] Included regression coverage for behavior changes, or explained why it is unnecessary

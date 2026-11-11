@@ -1,7 +1,7 @@
 环境模块
 ========
 
-本模块提供环境路由与环境模块的基类。
+本页用于查环境基类、路由器与代理接口。工具的只读属性、并发声明和持久化约定见 :doc:`/env_modules`；执行后端的限制见 :doc:`/codegen_execution`。
 
 RouterBase
 ----------
@@ -18,6 +18,11 @@ EnvBase
    :members:
    :undoc-members:
    :show-inheritance:
+
+工具装饰器
+----------
+
+.. autofunction:: agentsociety2.env.base.tool
 
 TokenUsageStats
 ---------------

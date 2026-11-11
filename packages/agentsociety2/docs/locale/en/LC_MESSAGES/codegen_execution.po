@@ -1,0 +1,328 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026, FIBLAB
+# This file is distributed under the same license as the AgentSociety 2
+# package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: AgentSociety 2 2.10.1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-11-09 11:56+0800\n"
+"PO-Revision-Date: 2026-03-05 23:55+0800\n"
+"Last-Translator: AgentSociety Team\n"
+"Language: en\n"
+"Language-Team: en <LL@li.org>\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/codegen_execution.rst:2
+msgid "生成代码执行与工具调用"
+msgstr "Generated Code Execution and Tool Calls"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/codegen_execution.rst:4
+msgid "本页用于选择执行后端和排查超时、写操作失败。先区分计算在哪个进程运行，再查看期限、数据传输与重试规则；环境工具仍在其所属进程执行。"
+msgstr ""
+"Use this page to select an execution backend and investigate timeouts or failed "
+"writes. First locate the compute process, then check deadlines, data transfer and "
+"retry rules. Environment tools run in their owning process."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/codegen_execution.rst:6
+msgid ""
+"生成代码在首次调用工具前完成静态验证和执行准备。默认 inprocess 直接执行预先验证、插入期限检查并编译的 Python 程序。process "
+"后端优先将数据表达式、条件分支、异常处理和已注册工具调用编译为受限操作计划，通过固定指令解释执行；其余完整 Python 程序和 NumPy 函数调用进入计算子进程。"
+msgstr ""
+"Generated code completes static validation and execution preparation before the first tool call. "
+"The default inprocess backend directly executes a Python program that has been pre-validated, had"
+" deadline checks inserted, and been compiled. The process backend prefers to compile data "
+"expressions, conditional branches, exception handling, and registered tool calls into a "
+"restricted operation plan executed by a fixed-instruction interpreter; the remaining full Python "
+"programs and NumPy function calls go to the compute subprocess."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/codegen_execution.rst:8
+msgid "这里的环境进程是运行环境模块、管理状态和调用工具的 Python 进程。如果仿真部署在容器里，计算子进程也在该容器里，两种后端都不创建新容器："
+msgstr ""
+"The environment process here is the Python process that runs environment modules, manages state, "
+"and calls tools. If the simulation is deployed in a container, the compute subprocess also lives "
+"in that container; neither backend creates a new container:"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/codegen_execution.rst:10
+msgid ""
+"process:   环境 Python → 传递数据 → 计算 Python 子进程 → 传回结果\n"
+"inprocess: 环境 Python → 直接使用已有数据计算 → 得到结果"
+msgstr ""
+"process:   Environment Python -> Transfer data -> Python compute worker -> Return results\n"
+"inprocess: Environment Python -> Compute with existing data -> Results"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/codegen_execution.rst:15
+msgid "子进程执行生成的完整 Python 计算代码；其中的环境工具调用交回工具所属进程执行。工作进程池按需启动和复用，进程数量与 Agent 数量分别管理。"
+msgstr ""
+"The subprocess executes the generated full Python computation code; environment tool calls inside"
+" it are handed back to the process that owns each tool. The worker process pool is started and "
+"reused on demand, and the number of processes is managed independently of the number of agents."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/codegen_execution.rst:17
+msgid ""
+"环境工具在所属事件循环运行。只读请求在调用端核验工具的 ``readonly`` "
+"元数据；工具名取自已注册接口。仅等待工具返回的操作计划直接使用原事件循环的并发能力，数值进程池约束计算程序的并发量。"
+msgstr ""
+"Environment tools run in the event loop that owns them. Read-only requests verify the tool's "
+"``readonly`` metadata on the calling side, and tool names are taken from registered interfaces. "
+"Operation plans that only wait for tools to return use the original event loop's concurrency "
+"directly, while the numeric process pool bounds the concurrency of computation programs."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/codegen_execution.rst:27
+msgid "自有容器的性能选择"
+msgstr "Performance Choices for Your Own Container"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/codegen_execution.rst:23
+msgid ""
+"``AGENTSOCIETY_CODE_EXEC_BACKEND`` 取 ``inprocess``（默认）或 ``process``。默认在环境进程内计算，避免频繁传递上下文。该后端将已验证的"
+" Python 程序编译并缓存，在环境所属事件循环直接执行，工具保留原有 Python 参数与返回对象，省去数值子进程、IPC 和数据协议往返。"
+msgstr ""
+"``AGENTSOCIETY_CODE_EXEC_BACKEND`` is either ``inprocess`` (default) or ``process``. By default, "
+"computation happens inside the environment process, avoiding frequent context transfers. This "
+"backend compiles and caches the validated Python program, executes it directly in the event loop "
+"that owns the environment, and keeps the original Python arguments and return objects of tools, "
+"saving numeric subprocesses, IPC, and data-protocol round trips."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/codegen_execution.rst:34
+msgid "需要独立终止计算、硬执行期限和工作进程内存上限时，显式开启进程隔离::"
+msgstr ""
+"When you need independent compute termination, hard execution deadlines, and a memory"
+" cap for worker processes, explicitly enable process isolation::"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/codegen_execution.rst:29
+msgid "AGENTSOCIETY_CODE_EXEC_BACKEND=process"
+msgstr "AGENTSOCIETY_CODE_EXEC_BACKEND=process"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/codegen_execution.rst:38
+msgid "关闭独立计算进程、恢复默认执行方式::"
+msgstr "To turn off the dedicated compute process and restore the default execution mode::"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/codegen_execution.rst:33
+msgid "AGENTSOCIETY_CODE_EXEC_BACKEND=inprocess"
+msgstr "AGENTSOCIETY_CODE_EXEC_BACKEND=inprocess"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/codegen_execution.rst:35
+msgid ""
+"两种后端共用静态许可、导入/属性限制、生成程序的 Python 循环期限检查、工具注册与只读约束，以及写入后停止整段纠错的规则。进程内路径使用协作式 Python 期限；NumPy "
+"等原生计算的资源与整场仿真期限由部署环境管理。``CODE_EXEC_MEMORY_MIB`` 与 ``CODE_EXEC_WORKERS`` 用于 process 后端；JSON "
+"消息与数组传输上限也用于进程边界。进程内执行共享宿主 Python 对象与进程权限，适用于运营者信任的仿真输入和环境工具。"
+msgstr ""
+"Both backends share static permissions, import/attribute restrictions, Python-loop deadline "
+"checks on generated programs, tool registration and read-only constraints, and the rule that "
+"whole-program error correction stops after a write. The in-process path uses a cooperative Python"
+" deadline; resources for native computation such as NumPy and the overall simulation deadline are"
+" managed by the deployment environment. ``CODE_EXEC_MEMORY_MIB`` and ``CODE_EXEC_WORKERS`` apply "
+"to the process backend; the JSON message and array transfer limits also apply at the process "
+"boundary. In-process execution shares the host's Python objects and process privileges and is "
+"suitable for simulation inputs and environment tools the operator trusts."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/codegen_execution.rst:39
+msgid ""
+"容器应按地图、智能体数量和计算负载配置 CPU、内存上限及作业总期限。 Docker 默认的资源行为见`资源约束文档 "
+"<https://docs.docker.com/engine/containers/resource_constraints/>`_。后端在执行开始前固定，准备缓存按后端和许可策略区分。"
+msgstr ""
+"Containers should be configured with CPU, memory caps, and an overall job deadline according to "
+"the map, the number of agents, and the compute load. Docker's default resource behavior is "
+"described in the `resource constraints documentation "
+"<https://docs.docker.com/engine/containers/resource_constraints/>`_. The backend is fixed before "
+"execution starts, and the preparation cache is keyed by backend and permission policy."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/codegen_execution.rst:55
+msgid "写操作与纠错"
+msgstr "Write Operations and Error Correction"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/codegen_execution.rst:45
+msgid ""
+"工具调用前记录写入尝试。写工具已经开始执行后，程序失败将返回 ``status=error`` 和 ``write_attempted=True``，并停止该次 ask "
+"内的整段代码纠错重试。已经发生的业务写入保留；调用者通过查询工具核对状态后决定后续操作。工具执行前的语法、策略错误，以及只调用读工具时的执行错误，继续使用配置的纠错次数。"
+msgstr ""
+"Write attempts are recorded before a tool call. Once a write tool has started executing, a "
+"program failure returns ``status=error`` and ``write_attempted=True``, and the whole-program code"
+" error-correction retries within that ask are stopped. Business writes that already happened are "
+"kept; the caller verifies state through query tools before deciding what to do next. Syntax and "
+"policy errors before tool execution, and execution errors when only read tools are called, "
+"continue to use the configured number of error-correction retries."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/codegen_execution.rst:48
+msgid "此行为覆盖工具先修改状态再抛出异常、后续 Python 表达式失败，以及结果或上下文无法传输等路径。事务、补偿和跨请求幂等键由业务工具实现。"
+msgstr ""
+"This behavior covers paths such as a tool that modifies state and then raises an exception, later"
+" Python expressions that fail, and results or contexts that cannot be transferred. Transactions, "
+"compensation, and cross-request idempotency keys are implemented by the business tools."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/codegen_execution.rst:67
+msgid "期限与内存"
+msgstr "Deadlines and Memory"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/codegen_execution.rst:53
+msgid ""
+"数值工作进程使用 Linux 资源限制：地址空间上限包含 Python、NumPy、程序数据与代码缓存；核心转储关闭，文件描述符上限为 "
+"64。父进程按执行期限终止并回收超时的工作进程，并取消该程序等待的异步工具调用。工作进程设置父进程退出信号与 ``no_new_privs``，父进程意外退出时终止计算。"
+msgstr ""
+"Numeric worker processes use Linux resource limits: the address-space cap covers Python, NumPy, "
+"program data, and the code cache; core dumps are disabled and the file descriptor limit is 64. "
+"The parent process terminates and reaps timed-out worker processes according to the execution "
+"deadline and cancels the asynchronous tool calls that the program is waiting on. Worker processes"
+" set the parent-death signal and ``no_new_privs`` so that computation is terminated if the parent"
+" process exits unexpectedly."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/codegen_execution.rst:77
+msgid "环境变量"
+msgstr "Environment variable"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/codegen_execution.rst:78
+msgid "默认值"
+msgstr "Default"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/codegen_execution.rst:79
+msgid "含义"
+msgstr "Meaning"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/codegen_execution.rst:80
+msgid "``AGENTSOCIETY_CODE_EXEC_TIMEOUT``"
+msgstr "``AGENTSOCIETY_CODE_EXEC_TIMEOUT``"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/codegen_execution.rst:81
+msgid "``10``"
+msgstr "``10``"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/codegen_execution.rst:82
+msgid "程序执行及工具等待的期限，秒"
+msgstr "Deadline for program execution and tool waits, in seconds"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/codegen_execution.rst:83
+msgid "``AGENTSOCIETY_CODE_EXEC_MEMORY_MIB``"
+msgstr "``AGENTSOCIETY_CODE_EXEC_MEMORY_MIB``"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/codegen_execution.rst:84
+msgid "``512``"
+msgstr "``512``"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/codegen_execution.rst:85
+msgid "每个数值工作进程的地址空间上限，MiB"
+msgstr "Address-space cap per numeric worker process, in MiB"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/codegen_execution.rst:86
+msgid "``AGENTSOCIETY_CODE_EXEC_WORKERS``"
+msgstr "``AGENTSOCIETY_CODE_EXEC_WORKERS``"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/codegen_execution.rst:87
+msgid "``4``"
+msgstr "``4``"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/codegen_execution.rst:88
+msgid "同一事件循环共享的数值工作进程数量上限"
+msgstr "Maximum number of numeric worker processes shared by one event loop"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/codegen_execution.rst:71
+msgid ""
+"工作进程懒启动并复用。首次启动的期限为 10 秒；进程槽位排队与启动时间单列于程序执行期限之外。超时、取消或协议异常导致进程退役，后续请求重新建立工作进程。``await "
+"router.close()`` 释放所属进程资源。"
+msgstr ""
+"Worker processes start lazily and are reused. The first start has a deadline of 10 seconds; "
+"process-slot queuing and startup time are accounted for separately from the program execution "
+"deadline. Timeouts, cancellations, or protocol exceptions retire a process, and subsequent "
+"requests establish a new worker process. ``await router.close()`` releases the process resources "
+"it owns."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/codegen_execution.rst:73
+msgid ""
+"工作进程按需加载 NumPy：普通数据和标量计算先使用标准库，数组传输或 NumPy 名称空间访问再加载数值库。同一工作进程继续复用已加载的 NumPy。冷启动计量分别记录首次标量请求、随后首次"
+" NumPy 请求及两者合计；直接使用 NumPy 的新工作进程另行计量。首次 NumPy 导入发生在程序执行或数组解码阶段，计入该执行请求的期限；短期限数值作业可提前预热工作进程。"
+msgstr ""
+"Worker processes load NumPy on demand: ordinary data and scalar computation use the standard "
+"library first, and the numeric library is loaded when arrays are transferred or the NumPy "
+"namespace is accessed. The same worker process keeps reusing the loaded NumPy. Cold-start metrics"
+" separately record the first scalar request, the first NumPy request that follows, and the sum of"
+" both; new worker processes that use NumPy directly are measured separately. The first NumPy "
+"import happens during program execution or array decoding and counts toward that execution "
+"request's deadline; short-deadline numeric jobs can warm up worker processes in advance."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/codegen_execution.rst:76
+msgid ""
+"环境工具保有宿主进程权限，其同步计算、文件访问和事务行为由工具实现控制。工作进程继承操作系统用户的文件权限；生成代码可见接口由导入、属性及数值库能力策略共同限制。执行帧、代码对象、回溯及生成器/协程公开的"
+" frame/code 属性在运行时拒绝访问。异常日志可读取 ``type(error).__name__``；运行时使用内置类型描述符取得名称字符串，绕过自定义元类 "
+"getter。其他私有属性继续由原有规则拒绝。 ``asyncio`` 名称空间提供 ``sleep`` 协作式等待；任务创建、线程和 I/O 操作通过环境工具与宿主调度器管理。 "
+"Future、执行循环及其类型对象的属性访问一并受限，阻止从等待对象取得执行循环或通过类型对象获取其方法。"
+msgstr ""
+"Environment tools keep the host process's privileges; their synchronous computation, file access,"
+" and transaction behavior are controlled by the tool implementations. Worker processes inherit "
+"the operating system user's file permissions; the interfaces visible to generated code are "
+"jointly restricted by the import, attribute, and numeric-library capability policies. Execution "
+"frames, code objects, tracebacks, and the frame/code attributes exposed by generators/coroutines "
+"are denied access at runtime. Exception logging may read ``type(error).__name__``; the runtime "
+"uses built-in type descriptors to obtain the name string, bypassing custom metaclass getters. "
+"Other private attributes continue to be denied by the existing rules. The ``asyncio`` namespace "
+"provides ``sleep`` for cooperative waiting; task creation, threads, and I/O operations are "
+"managed through environment tools and the host scheduler. Attribute access on Futures, event "
+"loops, and their type objects is also restricted, preventing retrieval of an event loop from a "
+"waitable object or of its methods through type objects."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/codegen_execution.rst:112
+msgid "数据边界与缓存"
+msgstr "Data Boundary and Caching"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/codegen_execution.rst:84
+msgid ""
+"工具参数、返回值、上下文和结果使用带类型标签的 JSON 数据协议，支持普通容器、整数键、日期时间、bytes、Decimal、Fraction、复数，以及非对象、非结构化 dtype 的 "
+"NumPy 数组。Pydantic 响应传递字段数据，程序通过字段属性或 ``model_dump()`` "
+"读取；宿主模型的方法保留在宿主。运行对象、可调用对象与未列出的数据类型返回明确的传输错误。"
+msgstr ""
+"Tool arguments, return values, contexts, and results use a type-tagged JSON data protocol that "
+"supports ordinary containers, integer keys, date-times, bytes, Decimal, Fraction, complex "
+"numbers, and NumPy arrays with non-object, non-structured dtypes. Pydantic responses transfer "
+"field data, which programs read through field attributes or ``model_dump()``; the host model's "
+"methods stay on the host. Live objects, callables, and data types that are not listed return an "
+"explicit transfer error."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/codegen_execution.rst:86
+msgid ""
+"普通字符串键字典直接编码为 JSON 对象；包含协议保留键 ``t`` 或非字符串键的字典使用带标签的键值对，保留原始键类型及字面内容。两种形式共用节点、深度和标量数据上限。完整 Python "
+"工作进程比较执行前后的上下文协议字节；上下文未变化时只返回结果，宿主保留原始上下文对象。类型、浮点符号、字典顺序或嵌套数据变化时返回完整上下文，并执行原有校验和回写。"
+msgstr ""
+"Dictionaries with plain string keys are encoded directly as JSON objects; dictionaries containing"
+" the protocol-reserved key ``t`` or non-string keys use tagged key-value pairs that preserve the "
+"original key type and literal content. Both forms share the node, depth, and scalar data limits. "
+"The full Python worker process compares the context protocol bytes before and after execution; "
+"when the context is unchanged, only the result is returned and the host keeps the original "
+"context object. When types, floating-point signs, dictionary order, or nested data change, the "
+"full context is returned and the original validation and write-back are performed."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/codegen_execution.rst:88
+msgid ""
+"单个消息上限为 8 MiB，单个数组传输上限为 4 MiB，数据节点上限为 65536、嵌套上限为 64。生成源码上限为 1 MiB；准备缓存最多保留 128 项，单份缓存源码上限为 65536"
+" 字节。输出上限为 65536 字符。受限操作计划最多包含 512 个 AST 节点；数据数组选择和比较的结果上限为 4 MiB。"
+msgstr ""
+"A single message is capped at 8 MiB, a single array transfer at 4 MiB, data nodes at 65536, and "
+"nesting at 64. Generated source code is capped at 1 MiB; the preparation cache keeps at most 128 "
+"items, and a single cached source is capped at 65536 bytes. Output is capped at 65536 characters."
+" A restricted operation plan contains at most 512 AST nodes, and the results of data array "
+"selection and comparison are capped at 4 MiB."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/codegen_execution.rst:91
+msgid ""
+"静态验证与准备结果按源码和策略缓存；工作进程复用最多 32 "
+"份策略绑定。每次执行创建独立上下文、结果、输出和期限。模块许可、数值库限制和验证器变化均在相应策略边界重新核验。受限工具计划直接进入计划执行器；数值库运行策略仅在执行完整 Python "
+"程序时构建。"
+msgstr ""
+"Static validation and preparation results are cached by source code and policy; worker processes "
+"reuse at most 32 policy bindings. Each execution creates an independent context, result, output, "
+"and deadline. Changes to module permissions, numeric-library restrictions, and validators are re-"
+"verified at the corresponding policy boundaries. Restricted tool plans go directly to the plan "
+"executor; the numeric-library runtime policy is built only when executing a full Python program."
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/codegen_execution.rst:94
+msgid ""
+"资源限制语义见 `Python resource 文档 "
+"<https://docs.python.org/3.12/library/resource.html>`_。关键实测指标及测量条件记录在对应代码提交中，完整实验材料保存在本地。"
+msgstr ""
+"For resource-limit semantics, see the `Python resource documentation "
+"<https://docs.python.org/3.12/library/resource.html>`_. Key measured metrics and their "
+"measurement conditions are recorded in the corresponding code commits, and complete experiment "
+"materials are kept locally."

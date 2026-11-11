@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: AgentSociety 2 2.6.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-23 12:39+0800\n"
+"POT-Creation-Date: 2026-11-09 19:28+0800\n"
 "PO-Revision-Date: 2026-03-06 00:10+0800\n"
 "Last-Translator: AgentSociety Team\n"
 "Language: en\n"
@@ -19,502 +19,722 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: ../../custom_modules.rst:2
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:2
 msgid "自定义模块"
 msgstr "Custom Modules"
 
-#: ../../custom_modules.rst:4
-msgid "AgentSociety 2 支持创建和注册自定义智能体和环境模块， 允许您使用自己的模拟组件扩展平台。"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:4
+msgid "AgentSociety 2 支持创建和注册自定义智能体和环境模块，允许您使用自己的模拟组件扩展平台。"
 msgstr ""
-"AgentSociety 2 supports creating and registering custom agent and "
-"environment modules, allowing you to extend the platform with your own "
-"simulation components."
+"AgentSociety 2 supports creating and registering custom agent and environment modules, allowing "
+"you to extend the platform with your own simulation components."
 
-#: ../../custom_modules.rst:8
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:8
 msgid "概述"
 msgstr "Overview"
 
-#: ../../custom_modules.rst:10
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:10
 msgid "自定义模块系统允许您："
 msgstr "The custom module system allows you to:"
 
-#: ../../custom_modules.rst:12
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:12
 msgid "创建具有专门行为的自定义智能体类"
 msgstr "Create custom agent classes with specialized behaviors"
 
-#: ../../custom_modules.rst:13
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:13
 msgid "创建具有特定领域工具的自定义环境模块"
 msgstr "Create custom environment modules with domain-specific tools"
 
-#: ../../custom_modules.rst:14
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:14
 msgid "通过 API 自动发现和注册模块"
 msgstr "Automatically discover and register modules through API"
 
-#: ../../custom_modules.rst:15
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:15
 msgid "使用自动生成的测试脚本测试自定义模块"
 msgstr "Test custom modules with auto-generated test scripts"
 
-#: ../../custom_modules.rst:16
-msgid "与现有 AgentSociety 框架无缝集成"
-msgstr "Seamlessly integrate with existing AgentSociety framework"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:16
+msgid "通过注册表接入现有 AgentSociety 仿真"
+msgstr "Integrate with AgentSociety simulations through the registry"
 
-#: ../../custom_modules.rst:17
-msgid "通过 Progressive Disclosure workflow 持久化需求、设计和验证产物"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:17
+msgid ""
+"通过扩展技能 ``agentsociety-create-env-module`` 的 Progressive Disclosure workflow "
+"持久化需求、设计和验证产物"
 msgstr ""
-"Persist requirements, design, and validation artifacts through the "
-"Progressive Disclosure workflow"
+"Persist requirements, design, and validation artifacts through the Progressive "
+"Disclosure workflow of the extension skill ``agentsociety-create-env-module``"
 
-#: ../../custom_modules.rst:20
+msgid "AI 助手生成 Python 模块后，需要扫描、验证并检查状态恢复，再通过标准工具接口接入路由器。"
+msgstr "After an AI assistant generates a Python module, scan and validate it and check state recovery before connecting it to the router through standard tool interfaces."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:30
 msgid "目录结构"
 msgstr "Directory Structure"
 
-#: ../../custom_modules.rst:22
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:32
 msgid "自定义模块放置在工作区内的 ``custom/`` 目录中::"
-msgstr ""
-"Custom modules are placed in the ``custom/`` directory within your "
-"workspace::"
+msgstr "Custom modules are placed in the ``custom/`` directory within your workspace::"
 
-#: ../../custom_modules.rst:37
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:25
+msgid ""
+"workspace/\n"
+"├── custom/                    # User-created directory\n"
+"│   ├── agents/                # Custom agent classes\n"
+"│   │   └── my_agent.py\n"
+"│   └── envs/                  # Custom environment modules\n"
+"│       └── my_env.py\n"
+"└── .agentsociety/             # Auto-generated configuration\n"
+"    ├── agent_classes/\n"
+"    ├── env_modules/\n"
+"    └── custom_env_skill/\n"
+"        └── runs/"
+msgstr ""
+"workspace/\n"
+"├── custom/                    # User-created directory\n"
+"│   ├── agents/                # Custom agent classes\n"
+"│   │   └── my_agent.py\n"
+"│   └── envs/                  # Custom environment modules\n"
+"│       └── my_env.py\n"
+"└── .agentsociety/             # Auto-generated configuration\n"
+"    ├── agent_classes/\n"
+"    ├── env_modules/\n"
+"    └── custom_env_skill/\n"
+"        └── runs/"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:47
 msgid "创建自定义智能体"
 msgstr "Create Custom Agents"
 
-#: ../../custom_modules.rst:39
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:49
 msgid ""
-"所有自定义智能体必须继承 ``AgentBase``。智能体是 workspace 绑定的无状态 record：状态在 ``restore()``"
-" 里恢复、在 ``to_workspace()`` 里写回；详见 :doc:`agents`。"
+"所有自定义智能体必须继承 ``AgentBase``。智能体是 workspace 绑定的无状态 record：状态在 ``restore()`` 里恢复、在 "
+"``to_workspace()`` 里写回；详见 :doc:`agents`。"
 msgstr ""
-"All custom agents must inherit from ``AgentBase``. Agents are workspace-"
-"bound stateless records: state is restored in ``restore()`` and written "
-"back in ``to_workspace()``; see :doc:`agents`."
+"All custom agents must inherit from ``AgentBase``. Agents are workspace-bound "
+"stateless records: state is restored in ``restore()`` and written back in "
+"``to_workspace()``; see :doc:`agents`."
 
-#: ../../custom_modules.rst:79
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:43
+#, python-brace-format
+msgid ""
+"from pathlib import Path\n"
+"from agentsociety2.agent.base import AgentBase\n"
+"from datetime import datetime\n"
+"from typing import Any\n"
+"\n"
+"class MyAgent(AgentBase):\n"
+"    \"\"\"My custom Agent\"\"\"\n"
+"\n"
+"    @classmethod\n"
+"    def description(cls) -> str:\n"
+"        return \"MyAgent: A custom agent for specific tasks\"\n"
+"\n"
+"    async def restore(self, workspace_path: Path, service_proxy: Any) -> None:\n"
+"        \"\"\"恢复 workspace / 服务 / 技能，再追加自定义状态。\"\"\"\n"
+"        await super().restore(workspace_path, service_proxy)\n"
+"        import json\n"
+"        state_file = self.workspace_root_path() / \"state/custom.json\"\n"
+"        self._custom_state = json.loads(state_file.read_text()) if state_file.exists() else {}\n"
+"\n"
+"    async def ask(self, message: str, readonly: bool = True, *, t=None) -> str:\n"
+"        \"\"\"Respond to questions from the environment\"\"\"\n"
+"        prompt = f\"Question: {message}\\nPlease answer:\"\n"
+"        response = await self.acompletion([{\"role\": \"user\", \"content\": prompt}])\n"
+"        return response.choices[0].message.content or \"\"\n"
+"\n"
+"    async def step(self, tick: int, t: datetime) -> str:\n"
+"        \"\"\"Execute one simulation step\"\"\"\n"
+"        self._current_time = t\n"
+"        return f\"Agent {self.id} executing step {tick}\"\n"
+"\n"
+"    async def to_workspace(self, workspace_path: Path) -> None:\n"
+"        \"\"\"把动态状态写回 workspace（AGENT.json 等）。\"\"\"\n"
+"        import json\n"
+"        from agentsociety2.storage.workspace_state import atomic_write_text\n"
+"        atomic_write_text(\n"
+"            self.workspace_root_path() / \"state/custom.json\",\n"
+"            json.dumps(self._custom_state, ensure_ascii=False),\n"
+"        )\n"
+"        self.persist_agent_json(tick=None, t=self._current_time)"
+msgstr ""
+"from pathlib import Path\n"
+"from agentsociety2.agent.base import AgentBase\n"
+"from datetime import datetime\n"
+"from typing import Any\n"
+"\n"
+"class MyAgent(AgentBase):\n"
+"    \"\"\"My custom Agent\"\"\"\n"
+"\n"
+"    @classmethod\n"
+"    def description(cls) -> str:\n"
+"        return \"MyAgent: A custom agent for specific tasks\"\n"
+"\n"
+"    async def restore(self, workspace_path: Path, service_proxy: Any) -> None:\n"
+"        \"\"\"Restore the workspace, services, and skills, then add custom state.\"\"\"\n"
+"        await super().restore(workspace_path, service_proxy)\n"
+"        import json\n"
+"        state_file = self.workspace_root_path() / \"state/custom.json\"\n"
+"        self._custom_state = json.loads(state_file.read_text()) if state_file.exists() else {}\n"
+"\n"
+"    async def ask(self, message: str, readonly: bool = True, *, t=None) -> str:\n"
+"        \"\"\"Respond to questions from the environment\"\"\"\n"
+"        prompt = f\"Question: {message}\\nPlease answer:\"\n"
+"        response = await self.acompletion([{\"role\": \"user\", \"content\": prompt}])\n"
+"        return response.choices[0].message.content or \"\"\n"
+"\n"
+"    async def step(self, tick: int, t: datetime) -> str:\n"
+"        \"\"\"Execute one simulation step\"\"\"\n"
+"        self._current_time = t\n"
+"        return f\"Agent {self.id} executing step {tick}\"\n"
+"\n"
+"    async def to_workspace(self, workspace_path: Path) -> None:\n"
+"        \"\"\"Write dynamic state back to the workspace, including AGENT.json.\"\"\"\n"
+"        import json\n"
+"        from agentsociety2.storage.workspace_state import atomic_write_text\n"
+"        atomic_write_text(\n"
+"            self.workspace_root_path() / \"state/custom.json\",\n"
+"            json.dumps(self._custom_state, ensure_ascii=False),\n"
+"        )\n"
+"        self.persist_agent_json(tick=None, t=self._current_time)"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:95
 msgid "必需方法"
 msgstr "Required Methods"
 
-#: ../../custom_modules.rst:84 ../../custom_modules.rst:237
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:100
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:243
 msgid "Method"
 msgstr "Method"
 
-#: ../../custom_modules.rst:85 ../../custom_modules.rst:175
-#: ../../custom_modules.rst:238
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:101
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:189
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:244
 msgid "Description"
 msgstr "Description"
 
-#: ../../custom_modules.rst:86
-msgid "``mcp_description()``"
-msgstr "``mcp_description()``"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:102
+msgid "``description()``"
+msgstr "``description()``"
 
-#: ../../custom_modules.rst:87
-msgid "返回模块描述（类方法，建议覆盖；``AgentBase``/``EnvBase`` 有默认描述）"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:103
+msgid "返回模块简短描述（类方法，默认取类 docstring 首行，可不覆盖；可选覆盖 ``init_description()`` 提供更完整的初始化指引）"
 msgstr ""
-"Return module description (class method, recommended to override; "
-"``AgentBase``/``EnvBase`` has default description)"
+"Return a short description of the module (a class method that defaults to the first "
+"line of the class docstring and need not be overridden; optionally override "
+"``init_description()`` to provide fuller initialization guidance)"
 
-#: ../../custom_modules.rst:88
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:105
 msgid "``ask()``"
 msgstr "``ask()``"
 
-#: ../../custom_modules.rst:89
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:106
 msgid "回答环境的问题（必须实现）"
 msgstr "Answer questions from the environment"
 
-#: ../../custom_modules.rst:90
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:107
 msgid "``step()``"
 msgstr "``step()``"
 
-#: ../../custom_modules.rst:91
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:108
 msgid "执行一个模拟步骤（必须实现）"
 msgstr "Execute one simulation step"
 
-#: ../../custom_modules.rst:92
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:109
 msgid "``to_workspace()``"
-msgstr ""
+msgstr "``to_workspace()``"
 
-#: ../../custom_modules.rst:93
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:110
 msgid "把动态状态写回 workspace（必须实现）"
 msgstr "Write dynamic state back to the workspace (required)."
 
-#: ../../custom_modules.rst:94
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:111
 msgid "``restore()``"
-msgstr "``step()``"
+msgstr "``restore()``"
 
-#: ../../custom_modules.rst:95
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:112
 msgid "在 ``await super().restore(...)`` 之后恢复自定义状态（推荐覆盖）"
-msgstr ""
-"Restore custom state after ``await super().restore(...)`` (recommended "
-"override)."
+msgstr "Restore custom state after ``await super().restore(...)`` (recommended override)."
 
-#: ../../custom_modules.rst:98
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:115
 msgid "创建自定义环境"
 msgstr "Create Custom Environments"
 
-#: ../../custom_modules.rst:100
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:117
 msgid "自定义环境必须继承 ``EnvBase`` 并使用 ``@tool`` 装饰器注册方法："
 msgstr ""
-"Custom environments must inherit from ``EnvBase`` and use the ``@tool`` "
-"decorator to register methods:"
+"Custom environments must inherit from ``EnvBase`` and use the ``@tool`` decorator to "
+"register methods:"
 
-#: ../../custom_modules.rst:146
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:110
+#, python-brace-format
+msgid ""
+"from agentsociety2.env import EnvBase, tool\n"
+"from datetime import datetime\n"
+"\n"
+"class MyEnv(EnvBase):\n"
+"    \"\"\"My custom environment\"\"\"\n"
+"\n"
+"    def __init__(self, config=None):\n"
+"        super().__init__()\n"
+"        # Initialize your environment state\n"
+"\n"
+"    @classmethod\n"
+"    def description(cls) -> str:\n"
+"        return \"MyEnv: A custom environment\"\n"
+"\n"
+"    @tool(readonly=True, kind=\"observe\")\n"
+"    async def get_state(self, agent_id: int) -> dict:\n"
+"        \"\"\"Get current environment state (observation tool)\"\"\"\n"
+"        return {\"agent_id\": agent_id, \"state\": \"normal\"}\n"
+"\n"
+"    @tool(readonly=False)\n"
+"    async def do_action(self, agent_id: int, action: str) -> dict:\n"
+"        \"\"\"Perform an action (modification tool)\"\"\"\n"
+"        return {\"agent_id\": agent_id, \"action\": action, \"result\": \"success\"}\n"
+"\n"
+"    async def step(self, tick: int, t: datetime):\n"
+"        \"\"\"Environment step\"\"\"\n"
+"        self.t = t\n"
+"\n"
+"    async def to_workspace(self, workspace_path=None) -> None:\n"
+"        \"\"\"把动态状态写入 workspace；覆盖此方法可支持 resume，详见 :doc:`env_modules`。\"\"\"\n"
+"        if workspace_path is not None:\n"
+"            self._bind_workspace(workspace_path)\n"
+"\n"
+"    async def restore(self, workspace_path) -> bool:\n"
+"        \"\"\"从 workspace 恢复动态状态；resume 时调用，默认返回 False。\"\"\"\n"
+"        self._bind_workspace(workspace_path)\n"
+"        return False"
+msgstr ""
+"from agentsociety2.env import EnvBase, tool\n"
+"from datetime import datetime\n"
+"\n"
+"class MyEnv(EnvBase):\n"
+"    \"\"\"My custom environment\"\"\"\n"
+"\n"
+"    def __init__(self, config=None):\n"
+"        super().__init__()\n"
+"        # Initialize your environment state\n"
+"\n"
+"    @classmethod\n"
+"    def description(cls) -> str:\n"
+"        return \"MyEnv: A custom environment\"\n"
+"\n"
+"    @tool(readonly=True, kind=\"observe\")\n"
+"    async def get_state(self, agent_id: int) -> dict:\n"
+"        \"\"\"Get current environment state (observation tool)\"\"\"\n"
+"        return {\"agent_id\": agent_id, \"state\": \"normal\"}\n"
+"\n"
+"    @tool(readonly=False)\n"
+"    async def do_action(self, agent_id: int, action: str) -> dict:\n"
+"        \"\"\"Perform an action (modification tool)\"\"\"\n"
+"        return {\"agent_id\": agent_id, \"action\": action, \"result\": \"success\"}\n"
+"\n"
+"    async def step(self, tick: int, t: datetime):\n"
+"        \"\"\"Environment step\"\"\"\n"
+"        self.t = t\n"
+"\n"
+"    async def to_workspace(self, workspace_path=None) -> None:\n"
+"        \"\"\"Persist dynamic state to support resume; see :doc:`env_modules`.\"\"\"\n"
+"        if workspace_path is not None:\n"
+"            self._bind_workspace(workspace_path)\n"
+"\n"
+"    async def restore(self, workspace_path) -> bool:\n"
+"        \"\"\"Restore dynamic state from the workspace; called on resume, returns False by "
+"default.\"\"\"\n"
+"        self._bind_workspace(workspace_path)\n"
+"        return False"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:160
 msgid "现实兼容约束"
 msgstr "reality compatibility constraints"
 
-#: ../../custom_modules.rst:148
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:162
 msgid "生成的自定义环境模块仍然必须遵循当前仓库的真实兼容约束："
 msgstr ""
-"The generated custom environment module must still follow the actual "
-"compatibility constraints of the current repository:"
+"The generated custom environment module must still follow the actual compatibility "
+"constraints of the current repository:"
 
-#: ../../custom_modules.rst:150
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:164
 msgid "文件必须位于 ``custom/envs/*.py``"
 msgstr "File must be located at ``custom/envs/*.py``"
 
-#: ../../custom_modules.rst:151
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:165
 msgid "类定义必须直接位于该文件中，不能只做 re-export"
 msgstr ""
-"The class definition must be located directly in this file, it cannot "
-"just be re-exported"
+"The class definition must be located directly in this file, it cannot just be re-"
+"exported"
 
-#: ../../custom_modules.rst:152
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:166
 msgid "注册 key 继续使用 ``class_name``"
 msgstr "Register key to continue using ``class_name``"
 
-#: ../../custom_modules.rst:153
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:167
 msgid "至少存在一个合法 ``@tool``"
 msgstr "There is at least one legal ``@tool``"
 
-#: ../../custom_modules.rst:154
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:168
 msgid "``step()`` 必须存在"
 msgstr "``step()`` must be present"
 
-#: ../../custom_modules.rst:155
-msgid "默认应支持无参实例化 ``cls()``"
-msgstr "Parameterless instantiation should be supported by default ``cls()``"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:169
+msgid "构造参数应与实验配置中的 ``kwargs`` 一致；示例可使用无参构造以便检查"
+msgstr ""
+"Constructor parameters must match experiment ``kwargs``; examples can use a no-"
+"argument constructor for inspection"
 
-#: ../../custom_modules.rst:156
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:170
 msgid "若模块需要观察能力，应提供 ``@tool(readonly=True, kind='observe')`` 观察工具"
 msgstr ""
-"If the module needs observation capability, provide an "
-"``@tool(readonly=True, kind='observe')`` observation tool"
+"If the module needs observation capability, provide an ``@tool(readonly=True, "
+"kind='observe')`` observation tool"
 
-#: ../../custom_modules.rst:157
-msgid "建议提供信息完整的 ``mcp_description()`` ；未覆盖时会显示基类默认描述"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:171
+msgid "建议提供信息完整的 ``description()`` （或直接写好类 docstring 首行）；未覆盖时会显示基类默认描述"
 msgstr ""
-"Providing an informative ``mcp_description()`` is recommended; if not "
-"overridden, the base class default description is displayed"
+"Providing an informative ``description()`` (or simply writing a good first line for "
+"the class docstring) is recommended; if not overridden, the base class default "
+"description is displayed"
 
-#: ../../custom_modules.rst:158
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:163
 msgid ""
-"若模块带动态内存态且希望支持中断续跑，应覆盖 ``to_workspace`` 和 ``restore``。使用 ``--resume`` "
-"时，模块应能从 ``state/ENV_STATE.json`` 恢复状态（见 :doc:`env_modules` 的 「状态持久化与 "
-"resume」）。"
+"若模块带动态内存态且希望支持中断续跑，应覆盖 ``to_workspace`` 和 ``restore``。使用 ``--resume`` 时，模块应能从 "
+"``state/ENV_STATE.json`` 恢复状态（见 :doc:`env_modules` 的「状态持久化与 resume」）。"
 msgstr ""
-"If the module has dynamic in-memory state and should support interrupted "
-"runs, override ``to_workspace`` and ``restore``. When ``--resume`` is "
-"used, the module should be able to restore state from "
-"``state/ENV_STATE.json``; see \"State persistence and resume\" in "
-":doc:`env_modules`."
+"If the module has dynamic in-memory state and should support interrupted runs, override "
+"``to_workspace`` and ``restore``. When ``--resume`` is used, the module should be able to restore"
+" state from ``state/ENV_STATE.json``; see \"State persistence and resume\" in :doc:`env_modules`."
 
-#: ../../custom_modules.rst:164
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:178
 msgid "扫描器会跳过路径中包含 ``examples/`` 的文件（示例仅供参考，不参与注册）。"
 msgstr ""
-"The scanner will skip files containing ``examples/`` in the path (the "
-"example is for reference only and does not participate in registration)."
+"The scanner will skip files containing ``examples/`` in the path (the example is for "
+"reference only and does not participate in registration)."
 
-#: ../../custom_modules.rst:167
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:181
 msgid "@tool 装饰器"
 msgstr "@tool Decorator"
 
-#: ../../custom_modules.rst:169
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:183
 msgid "``@tool`` 装饰器将方法注册为智能体可访问的工具："
 msgstr "The ``@tool`` decorator registers methods as tools accessible to agents:"
 
-#: ../../custom_modules.rst:174
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:188
 msgid "Parameter"
 msgstr "Parameter"
 
-#: ../../custom_modules.rst:176
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:190
 msgid "``readonly=True``"
 msgstr "``readonly=True``"
 
-#: ../../custom_modules.rst:177
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:191
 msgid "工具不修改环境状态"
 msgstr "Tool does not modify environment state"
 
-#: ../../custom_modules.rst:178
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:192
 msgid "``readonly=False``"
 msgstr "``readonly=False``"
 
-#: ../../custom_modules.rst:179
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:193
 msgid "工具可以修改环境状态"
 msgstr "Tool can modify environment state"
 
-#: ../../custom_modules.rst:180
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:194
 msgid "``kind=\"observe\"``"
 msgstr "``kind=\"observe\"``"
 
-#: ../../custom_modules.rst:181
-msgid "观察工具（单个 agent_id 参数，readonly=True）"
-msgstr "Observation tool (single agent_id parameter, readonly=True)"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:185
+msgid "观察工具（单个 ``agent_id`` 参数，readonly=True）"
+msgstr "Observation tool (single ``agent_id`` parameter, readonly=True)"
 
-#: ../../custom_modules.rst:182
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:196
 msgid "``kind=\"statistics\"``"
 msgstr "``kind=\"statistics\"``"
 
-#: ../../custom_modules.rst:183
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:197
 msgid "统计工具（无参数，readonly=True）"
 msgstr "Statistics tool (no parameters, readonly=True)"
 
-#: ../../custom_modules.rst:184
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:198
 msgid "``kind=None``"
 msgstr "``kind=None``"
 
-#: ../../custom_modules.rst:185
-msgid "常规工具（任何参数，可以是 readonly=False）"
-msgstr "Regular tool (any parameters, can be readonly=False)"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:199
+msgid "常规工具（任何参数，可以只读或读写）"
+msgstr "Regular tools with arbitrary parameters, read-only or read-write"
 
-#: ../../custom_modules.rst:188
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:202
 msgid "注册自定义模块"
 msgstr "Registering Custom Modules"
 
-#: ../../custom_modules.rst:190
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:204
 msgid "创建自定义模块后，使用 API 注册它们："
 msgstr "After creating custom modules, register them using the API:"
 
-#: ../../custom_modules.rst:192
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:206
 msgid "**扫描并注册**"
 msgstr "**Scan and Register**"
 
-#: ../../custom_modules.rst:200
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:198
+#, python-brace-format
+msgid ""
+"curl -X POST http://localhost:8001/api/v1/custom/scan \\\n"
+"  -H \"Content-Type: application/json\" \\\n"
+"  -d '{\"workspace_path\": \"/path/to/workspace\"}'"
+msgstr ""
+"curl -X POST http://localhost:8001/api/v1/custom/scan \\\n"
+"  -H \"Content-Type: application/json\" \\\n"
+"  -d '{\"workspace_path\": \"/path/to/workspace\"}'"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:214
 msgid "**列出已注册的模块**"
 msgstr "**List Registered Modules**"
 
-#: ../../custom_modules.rst:206
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:206
+msgid "curl \"http://localhost:8001/api/v1/custom/list?workspace_path=/path/to/workspace\""
+msgstr "curl \"http://localhost:8001/api/v1/custom/list?workspace_path=/path/to/workspace\""
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:220
 msgid "**测试自定义模块**"
 msgstr "**Test Custom Modules**"
 
-#: ../../custom_modules.rst:214
-msgid "**创建或恢复 workflow run**"
-msgstr "**Create or restore workflow run**"
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:212
+#, python-brace-format
+msgid ""
+"curl -X POST http://localhost:8001/api/v1/custom/test \\\n"
+"  -H \"Content-Type: application/json\" \\\n"
+"  -d '{\"workspace_path\": \"/path/to/workspace\"}'"
+msgstr ""
+"curl -X POST http://localhost:8001/api/v1/custom/test \\\n"
+"  -H \"Content-Type: application/json\" \\\n"
+"  -d '{\"workspace_path\": \"/path/to/workspace\"}'"
 
-#: ../../custom_modules.rst:222
-msgid "**验证 workflow run**"
-msgstr "**Validate workflow run**"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:228
+msgid "**生成自定义环境（扩展技能）**"
+msgstr "**Generating Custom Environments (Extension Skill)**"
 
-#: ../../custom_modules.rst:231
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:220
+msgid ""
+"自定义环境的生成流程不走后端 HTTP，而是由扩展内置的 Claude Code 技能 ``agentsociety-create-env-module`` 驱动：经 intake → "
+"clarify → design → generate → validate 五个 stage（``stages/``）推进，并由 ``scripts/validate.py`` 做 "
+"scanner / tester / registry 端到端校验。运行产物（需求、设计、``validation_report.json`` 等）落在工作区的 "
+"``.agentsociety/custom_env_skill/runs/<run_id>/`` 下。"
+msgstr ""
+"Custom environment generation does not go through the backend HTTP API; it is driven by the "
+"Claude Code skill ``agentsociety-create-env-module`` built into the extension. It advances "
+"through five stages (``stages/``) — intake → clarify → design → generate → validate — and "
+"``scripts/validate.py`` performs end-to-end scanner / tester / registry validation. Run artifacts"
+" (requirements, design, ``validation_report.json``, etc.) land under "
+"``.agentsociety/custom_env_skill/runs/<run_id>/`` in the workspace."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:237
 msgid "API 端点"
 msgstr "API Endpoints"
 
-#: ../../custom_modules.rst:236
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:242
 msgid "Endpoint"
 msgstr "Endpoint"
 
-#: ../../custom_modules.rst:239
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:245
 msgid "``/api/v1/custom/scan``"
 msgstr "``/api/v1/custom/scan``"
 
-#: ../../custom_modules.rst:240 ../../custom_modules.rst:243
-#: ../../custom_modules.rst:246 ../../custom_modules.rst:255
-#: ../../custom_modules.rst:258
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:246
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:249
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:252
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:264
 msgid "POST"
 msgstr "POST"
 
-#: ../../custom_modules.rst:241
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:247
 msgid "扫描并注册自定义模块"
 msgstr "Scan and register custom modules"
 
-#: ../../custom_modules.rst:242
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:248
 msgid "``/api/v1/custom/test``"
 msgstr "``/api/v1/custom/test``"
 
-#: ../../custom_modules.rst:244
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:250
 msgid "测试自定义模块"
 msgstr "Test custom modules"
 
-#: ../../custom_modules.rst:245
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:251
 msgid "``/api/v1/custom/clean``"
 msgstr "``/api/v1/custom/clean``"
 
-#: ../../custom_modules.rst:247
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:253
 msgid "清理自定义模块配置"
 msgstr "Clean custom module configuration"
 
-#: ../../custom_modules.rst:248
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:254
 msgid "``/api/v1/custom/list``"
 msgstr "``/api/v1/custom/list``"
 
-#: ../../custom_modules.rst:249 ../../custom_modules.rst:252
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:255
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:258
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:261
 msgid "GET"
 msgstr "GET"
 
-#: ../../custom_modules.rst:250
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:256
 msgid "列出已注册的自定义模块"
 msgstr "List registered custom modules"
 
-#: ../../custom_modules.rst:251
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:257
 msgid "``/api/v1/custom/status``"
 msgstr "``/api/v1/custom/status``"
 
-#: ../../custom_modules.rst:253
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:259
 msgid "获取模块状态概述"
 msgstr "Get module status overview"
 
-#: ../../custom_modules.rst:254
-msgid "``/api/v1/custom/workflow/runs``"
-msgstr "``/api/v1/custom/workflow/runs``"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:260
+msgid "``/api/v1/custom/classes``"
+msgstr "``/api/v1/custom/classes``"
 
-#: ../../custom_modules.rst:256
-msgid "创建或恢复自定义环境 workflow run"
-msgstr "Create or restore a custom environment workflow run"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:262
+msgid "列出可用的 Agent 与环境模块类（含 ``has_prefill`` 标记）"
+msgstr "List available agent and environment module classes (with the ``has_prefill`` flag)"
 
-#: ../../custom_modules.rst:257
-#, python-brace-format
-msgid "``/api/v1/custom/workflow/runs/{run_id}/validate``"
-msgstr "``/api/v1/custom/workflow/runs/{run_id}/validate``"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:263
+msgid "``/api/v1/custom/rescan``"
+msgstr "``/api/v1/custom/rescan``"
 
-#: ../../custom_modules.rst:259
-msgid "执行 scanner/tester/registry 的端到端校验"
-msgstr "Perform end-to-end verification of scanner/tester/registry"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:265
+msgid "清除内存中的旧自定义模块并重新扫描工作区"
+msgstr "Clear stale in-memory custom modules and rescan the workspace"
 
-#: ../../custom_modules.rst:262
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:268
 msgid "示例"
 msgstr "Examples"
 
-#: ../../custom_modules.rst:264
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:270
 msgid "示例智能体和环境可在 ``custom/`` 目录中找到："
 msgstr "Example agents and environments can be found in the ``custom/`` directory:"
 
-#: ../../custom_modules.rst:266
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:272
 msgid "``custom/agents/examples/simple_agent.py`` - 基本智能体示例"
 msgstr "``custom/agents/examples/simple_agent.py`` - Basic agent example"
 
-#: ../../custom_modules.rst:267
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:273
 msgid "``custom/agents/examples/advanced_agent.py`` - 具有记忆和情绪的智能体"
-msgstr ""
-"``custom/agents/examples/advanced_agent.py`` - Agent with memory and "
-"emotions"
+msgstr "``custom/agents/examples/advanced_agent.py`` - Agent with memory and emotions"
 
-#: ../../custom_modules.rst:268
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:274
 msgid "``custom/envs/examples/simple_env.py`` - 计数器环境"
 msgstr "``custom/envs/examples/simple_env.py`` - Counter environment"
 
-#: ../../custom_modules.rst:269
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:275
 msgid "``custom/envs/examples/advanced_env.py`` - 资源管理环境"
 msgstr "``custom/envs/examples/advanced_env.py`` - Resource management environment"
 
-#: ../../custom_modules.rst:271
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:277
 msgid "这些示例演示了创建自定义模块的最佳实践。"
 msgstr "These examples demonstrate best practices for creating custom modules."
 
-#: ../../custom_modules.rst:274
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:280
 msgid "配置"
 msgstr "Configuration"
 
-#: ../../custom_modules.rst:276
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:282
 msgid "设置 ``WORKSPACE_PATH`` 环境变量以指向您的工作区："
-msgstr ""
-"Set the ``WORKSPACE_PATH`` environment variable to point to your "
-"workspace:"
+msgstr "Set the ``WORKSPACE_PATH`` environment variable to point to your workspace:"
 
-#: ../../custom_modules.rst:282
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:273
+msgid "export WORKSPACE_PATH=/path/to/workspace"
+msgstr "export WORKSPACE_PATH=/path/to/workspace"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:288
 msgid "或添加到您的 ``.env`` 文件："
 msgstr "Or add to your ``.env`` file:"
 
-#: ../../custom_modules.rst:288
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:279
+msgid "WORKSPACE_PATH=/path/to/workspace"
+msgstr "WORKSPACE_PATH=/path/to/workspace"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:294
 msgid "此设置告诉系统在哪里找到 ``custom/`` 目录。"
 msgstr "This setting tells the system where to find the ``custom/`` directory."
 
-#: ../../custom_modules.rst:291
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:297
 msgid "最佳实践"
 msgstr "Best Practices"
 
-#: ../../custom_modules.rst:293
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:299
 msgid "**命名约定**"
 msgstr "**Naming Conventions**"
 
-#: ../../custom_modules.rst:295
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:301
 msgid "智能体类名应以 ``Agent`` 结尾"
 msgstr "Agent class names should end with ``Agent``"
 
-#: ../../custom_modules.rst:296
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:302
 msgid "环境类名应以 ``Env`` 结尾"
 msgstr "Environment class names should end with ``Env``"
 
-#: ../../custom_modules.rst:297
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:303
 msgid "文件名应使用小写字母和下划线：``my_agent.py``"
 msgstr "File names should use lowercase letters and underscores: ``my_agent.py``"
 
-#: ../../custom_modules.rst:299
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:305
 msgid "**错误处理**"
 msgstr "**Error Handling**"
 
-#: ../../custom_modules.rst:301
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:307
 msgid "返回有意义的错误消息"
 msgstr "Return meaningful error messages"
 
-#: ../../custom_modules.rst:302
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:308
 msgid "对关键路径保留必要日志，便于复盘与定位问题"
-msgstr ""
-"Keep necessary logs on critical paths to facilitate review and problem "
-"location."
+msgstr "Keep necessary logs on critical paths to facilitate review and problem location."
 
-#: ../../custom_modules.rst:304
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:310
 msgid "**状态管理**"
 msgstr "**State Management**"
 
-#: ../../custom_modules.rst:306
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:312
 msgid "使用 ``restore()`` 从 workspace 恢复状态，使用 ``to_workspace()`` 写回动态状态"
 msgstr ""
-"Use ``restore()`` to restore state from the workspace and "
-"``to_workspace()`` to write dynamic state back."
+"Use ``restore()`` to restore state from the workspace and ``to_workspace()`` to write"
+" dynamic state back."
 
-#: ../../custom_modules.rst:307
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:313
 msgid ""
 "自定义 Agent 覆盖 ``restore()`` 时应先调用 ``await super().restore(...)``，以绑定 "
 "workspace、技能运行时和服务句柄"
 msgstr ""
-"When a custom Agent overrides ``restore()``, it should first call ``await"
-" super().restore(...)`` to bind the workspace, skill runtime, and service"
-" handles."
+"When a custom Agent overrides ``restore()``, it should first call ``await "
+"super().restore(...)`` to bind the workspace, skill runtime, and service handles."
 
-#: ../../custom_modules.rst:308
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:314
 msgid "在回放中记录重要的状态更改"
 msgstr "Record important state changes in replay"
 
-#: ../../custom_modules.rst:309
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:315
 msgid "保持状态可序列化（JSON 兼容）"
 msgstr "Keep state serializable (JSON compatible)"
 
-#: ../../custom_modules.rst:311
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:317
 msgid "**工具设计**"
 msgstr "**Tool Design**"
 
-#: ../../custom_modules.rst:313
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:319
 msgid "对只读观察使用 ``kind=\"observe\"``"
 msgstr "Use ``kind=\"observe\"`` for read-only observations"
 
-#: ../../custom_modules.rst:314
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:320
 msgid "对聚合数据使用 ``kind=\"statistics\"``"
 msgstr "Use ``kind=\"statistics\"`` for aggregated data"
 
-#: ../../custom_modules.rst:315
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:321
 msgid "对操作使用 ``kind=None`` 和 ``readonly=False``"
 msgstr "Use ``kind=None`` and ``readonly=False`` for operations"
 
-#: ../../custom_modules.rst:316
-msgid "生成后优先通过 workflow 产物中的 ``validation_report.json`` 定位失败原因"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/custom_modules.rst:322
+msgid ""
+"生成后优先通过技能 run 产物（``.agentsociety/custom_env_skill/runs/<run_id>/``）中的 "
+"``validation_report.json`` 定位失败原因"
 msgstr ""
-"After generation, priority is given to locating the failure reason "
-"through ``validation_report.json`` in the workflow product."
-
-#~ msgid ""
-#~ "若模块带动态内存态且希望支持中断续跑（``--resume``），应覆盖 "
-#~ "``to_workspace()``/``restore()`` 写入 "
-#~ "``state/ENV_STATE.json``（见 :doc:`env_modules` 的「状态持久化与 "
-#~ "resume」）"
-#~ msgstr ""
-
-#~ msgid ""
-#~ "若模块带动态内存态且希望支持中断续跑（``--resume``），应覆盖 ``to_workspace()`` 和"
-#~ " ``restore()``，并把状态写入 ``state/ENV_STATE.json``（见 "
-#~ ":doc:`env_modules` 的 「状态持久化与 resume」）"
-#~ msgstr ""
+"After generation, prefer locating the failure cause via ``validation_report.json`` in"
+" the skill run artifacts (``.agentsociety/custom_env_skill/runs/<run_id>/``)"

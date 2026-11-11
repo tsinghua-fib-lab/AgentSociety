@@ -1,7 +1,6 @@
-"""Literature search core module.
+"""文献检索核心模块。
 
-Search academic literature via the MCP gateway, with optional Chinese translation
-and multi-query splitting.
+通过 MCP 网关检索学术文献，支持可选的中文翻译与多查询拆分。
 """
 
 from __future__ import annotations
@@ -360,25 +359,25 @@ async def search_literature(
     api_key: str | None = None,
     timeout: int = 120,
 ) -> dict[str, Any] | None:
-    """Search academic literature through the MCP gateway.
+    """通过 MCP 网关检索学术文献。
 
-    :param query: Search query; Chinese text is translated to English when detected.
-    :param limit: Maximum number of articles per sub-query (default 10).
-    :param router: LLM router for translation and query splitting.
-    :param year_from: Optional start publication year filter.
-    :param year_to: Optional end publication year filter.
-    :param sources: Optional source list (``local``, ``arxiv``, ``crossref``, ``openalex``); default all.
-    :param similarity_threshold: Local index similarity threshold (0.0–1.0).
-    :param vector_similarity_weight: Vector weight for hybrid local search (0.0–1.0).
-    :param chunk_content_limit: Max characters per chunk in the response.
-    :param relevant_content_limit: Max characters of relevant content per article.
-    :param max_chunks_per_article: Max chunks returned per article.
-    :param return_chunks: Whether to include chunk text in results.
-    :param enable_multi_query: Split complex queries into subtopics and merge results.
-    :param mcp_url: MCP gateway URL; uses ``Config.get_literature_search_mcp_url()`` when omitted.
-    :param api_key: Bearer API key; uses ``Config.get_literature_search_api_key()`` when omitted.
-    :param timeout: MCP request timeout in seconds.
-    :returns: Dict with ``articles``, ``total``, ``query``, and optional ``sources``; ``None`` on failure.
+    :param query: 检索词；检测到中文时会先翻译成英文。
+    :param limit: 每个子查询返回的文章数上限（默认 10）。
+    :param router: 用于翻译与查询拆分的 LLM router。
+    :param year_from: 可选的起始发表年份过滤。
+    :param year_to: 可选的结束发表年份过滤。
+    :param sources: 可选数据源列表（``local`` 、``arxiv`` 、``crossref`` 、``openalex`` ）；默认全部。
+    :param similarity_threshold: 本地索引相似度阈值（0.0–1.0）。
+    :param vector_similarity_weight: 本地混合检索的向量权重（0.0–1.0）。
+    :param chunk_content_limit: 响应中每个 chunk 的最大字符数。
+    :param relevant_content_limit: 每篇文章相关内容的最大字符数。
+    :param max_chunks_per_article: 每篇文章返回的 chunk 数上限。
+    :param return_chunks: 结果中是否包含 chunk 文本。
+    :param enable_multi_query: 是否将复杂查询拆分为子主题并合并结果。
+    :param mcp_url: MCP 网关 URL；省略时使用 ``Config.get_literature_search_mcp_url()`` 。
+    :param api_key: Bearer API key；省略时使用 ``Config.get_literature_search_api_key()`` 。
+    :param timeout: MCP 请求超时时间（秒）。
+    :returns: 含 ``articles`` 、``total`` 、``query`` 及可选 ``sources`` 的字典；失败时返回 ``None`` 。
     """
     if not mcp_url:
         mcp_url = Config.get_literature_search_mcp_url()
@@ -485,23 +484,23 @@ async def _search_literature_single(
     api_key: str,
     timeout: int,
 ) -> dict[str, Any] | None:
-    """Run a single MCP literature search request.
+    """执行单次 MCP 文献检索请求。
 
-    :param query: English search query sent to the gateway.
-    :param limit: Maximum number of articles to return.
-    :param year_from: Optional start publication year.
-    :param year_to: Optional end publication year.
-    :param sources: Optional data source names.
-    :param similarity_threshold: Local index similarity threshold.
-    :param vector_similarity_weight: Vector weight for hybrid local search.
-    :param chunk_content_limit: Max characters per chunk.
-    :param relevant_content_limit: Max relevant content length per article.
-    :param max_chunks_per_article: Max chunks per article (0 when ``return_chunks`` is false).
-    :param return_chunks: Whether to request chunk payloads.
-    :param mcp_url: MCP gateway URL.
-    :param api_key: Bearer API key.
-    :param timeout: Request timeout in seconds.
-    :returns: Normalized result dict or ``None`` on timeout or error.
+    :param query: 发送给网关的英文检索词。
+    :param limit: 返回的文章数上限。
+    :param year_from: 可选的起始发表年份。
+    :param year_to: 可选的结束发表年份。
+    :param sources: 可选的数据源名称列表。
+    :param similarity_threshold: 本地索引相似度阈值。
+    :param vector_similarity_weight: 本地混合检索的向量权重。
+    :param chunk_content_limit: 每个 chunk 的最大字符数。
+    :param relevant_content_limit: 每篇文章相关内容的最大长度。
+    :param max_chunks_per_article: 每篇文章的 chunk 数上限（``return_chunks`` 为假时取 0）。
+    :param return_chunks: 是否请求 chunk 数据。
+    :param mcp_url: MCP 网关 URL。
+    :param api_key: Bearer API key。
+    :param timeout: 请求超时时间（秒）。
+    :returns: 规范化后的结果字典；超时或出错时返回 ``None`` 。
     """
     payload: dict[str, Any] = {
         "query": query,
@@ -552,11 +551,11 @@ async def _search_literature_single(
 
 
 def _convert_api_response(response: dict[str, Any], query: str) -> dict[str, Any]:
-    """Map MCP search JSON (``results``) to the internal ``articles`` shape.
+    """将 MCP 检索 JSON（``results`` ）映射为内部的 ``articles`` 结构。
 
-    :param response: Raw MCP search response.
-    :param query: Original user query string.
-    :returns: Dict with ``articles``, ``total``, ``query``, and optional ``sources``.
+    :param response: 原始 MCP 检索响应。
+    :param query: 用户的原始查询字符串。
+    :returns: 含 ``articles`` 、``total`` 、``query`` 及可选 ``sources`` 的字典。
     """
     results = response.get("results", [])
     articles = []

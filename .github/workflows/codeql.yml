@@ -7,21 +7,35 @@ permissions:
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
     paths:
-      - "packages/agentsociety2/**"
+      - "packages/agentsociety2/agentsociety2/**"
       - "extension/src/**"
       - "frontend/src/**"
       - ".github/codeql/**"
       - ".github/workflows/codeql.yml"
+      - ".github/workflows/ci.yml"
+      - ".github/workflows/extension-ci.yml"
+      - ".github/workflows/frontend-ci.yml"
+      - ".github/workflows/docs-ci.yml"
+      - ".github/workflows/dependency-review.yml"
+      - ".github/workflows/agentsociety2-publish.yml"
+      - "scripts/ci/**"
   pull_request:
-    branches: [main]
+    branches: [main, develop]
     paths:
-      - "packages/agentsociety2/**"
+      - "packages/agentsociety2/agentsociety2/**"
       - "extension/src/**"
       - "frontend/src/**"
       - ".github/codeql/**"
       - ".github/workflows/codeql.yml"
+      - ".github/workflows/ci.yml"
+      - ".github/workflows/extension-ci.yml"
+      - ".github/workflows/frontend-ci.yml"
+      - ".github/workflows/docs-ci.yml"
+      - ".github/workflows/dependency-review.yml"
+      - ".github/workflows/agentsociety2-publish.yml"
+      - "scripts/ci/**"
   schedule:
     - cron: "0 6 * * 1"
 
@@ -50,12 +64,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Read shared CodeQL version
+        id: bundle
+        run: python3 scripts/ci/codeql.py --github-output "$GITHUB_OUTPUT"
+
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
           config-file: .github/codeql/codeql-config.yml
+          tools: ${{ steps.bundle.outputs.url }}
+          threads: 2
+          ram: 4096
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4

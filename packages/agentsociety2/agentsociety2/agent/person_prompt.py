@@ -281,7 +281,7 @@ def skill_content_xml(
 def _render_skill_hooks_xml(hooks: list[dict[str, Any]]) -> str:
     """把 pre_step hook 输出渲染为专用 ``<skill_hooks>`` 块。
 
-    :param hooks: 含 ``skill``、``hook``、``ok``、``output`` 的 hook 输出 dict。
+    :param hooks: 含 ``skill`` 、``hook`` 、``ok`` 、``output`` 的 hook 输出 dict。
     :returns: XML 风格的块字符串。
     """
     lines = ["<skill_hooks>"]
@@ -301,7 +301,7 @@ def json_block(tag: str, payload: Any) -> str:
     """渲染内容为确定性 JSON 的 XML 块。
 
     ``sort_keys=True`` 对 prompt 缓存是关键:没有它,dict 插入序(走过不同
-    ``json.loads`` 路径的 ``profile``、模型自写的 ``metadata`` dict)会泄入请求
+    ``json.loads`` 路径的 ``profile`` 、模型自写的 ``metadata`` dict)会泄入请求
     字节,在不改变任何 token 语义的情况下悄悄打爆 provider 的前缀缓存。
 
     公开的原因:ReAct 循环会为文本解析的轮次自行追加

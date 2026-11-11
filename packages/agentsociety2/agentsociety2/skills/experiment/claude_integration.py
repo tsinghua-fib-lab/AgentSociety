@@ -1,9 +1,8 @@
-"""Claude Code integration helpers for Skills
+"""Skills 的 Claude Code 集成辅助工具
 
-This module provides convenience functions for Claude Code to use when
-working with AgentSociety skills. These functions bridge the gap between
-the skill scripts (which handle validation) and Claude Code (which handles
-coding/implementation in the main loop).
+本模块为 Claude Code 操作 AgentSociety skills 提供便捷函数，在
+skill 脚本（负责校验）与 Claude Code（在主循环中负责编码实现）之间
+架起桥梁。
 """
 
 from __future__ import annotations
@@ -13,14 +12,14 @@ from typing import Any
 
 
 def suggest_modules_for_topic(topic: str) -> dict[str, Any]:
-    """Suggest appropriate agent and environment modules for a research topic
+    """根据研究主题推荐合适的 agent 与环境模块
 
-    This function analyzes the research topic and suggests suitable
-    agent types and environment modules based on keywords and common patterns.
+    分析研究主题，基于关键词与常见模式推荐适配的 agent 类型与
+    环境模块。
 
-    :param topic: Research topic or description
+    :param topic: 研究主题或描述
 
-    :returns: Dictionary with suggested modules and rationale
+    :returns: 包含推荐模块与理由的字典
     """
     from agentsociety2.skills.experiment.module_discovery import (
         get_available_agent_modules,
@@ -109,19 +108,19 @@ def generate_hypothesis_config(
     agent_classes: list[str] | None = None,
     env_modules: list[str] | None = None,
 ) -> dict[str, Any]:
-    """Generate a complete hypothesis configuration
+    """生成完整的 hypothesis 配置
 
-    This function creates a properly formatted hypothesis configuration
-    that can be passed to add_hypothesis_with_validation().
+    构造格式正确、可直接传给 ``add_hypothesis_with_validation()`` 的
+    hypothesis 配置。
 
-    :param topic: Research topic
-    :param description: Hypothesis description
-    :param rationale: Theoretical basis
-    :param groups: List of experiment groups
-    :param agent_classes: Agent types (optional, will suggest if not provided)
-    :param env_modules: Environment modules (optional, will suggest if not provided)
+    :param topic: 研究主题
+    :param description: 假设描述
+    :param rationale: 理论依据
+    :param groups: 实验分组列表
+    :param agent_classes: agent 类型（可选，未提供时自动推荐）
+    :param env_modules: 环境模块（可选，未提供时自动推荐）
 
-    :returns: Complete hypothesis configuration dictionary
+    :returns: 完整的 hypothesis 配置字典
     """
     # Suggest modules if not provided
     if not agent_classes or not env_modules:
@@ -148,16 +147,15 @@ def validate_experiment_ready(
     hypothesis_id: str,
     experiment_id: str,
 ) -> tuple[bool, list[str], dict[str, Any]]:
-    """Check if an experiment is ready to run
+    """检查实验是否具备运行条件
 
-    This function validates that all necessary configuration is in place
-    for an experiment to be executed.
+    校验执行实验所需的全部配置是否就绪。
 
-    :param workspace_path: Path to workspace directory
-    :param hypothesis_id: Hypothesis ID
-    :param experiment_id: Experiment ID
+    :param workspace_path: 工作区目录路径
+    :param hypothesis_id: 假设 ID
+    :param experiment_id: 实验 ID
 
-    :returns: Tuple of (is_ready, missing_items, context)
+    :returns: ``(is_ready, missing_items, context)`` 三元组
     """
     from agentsociety2.skills.experiment.config import (
         get_experiment_paths,
@@ -219,16 +217,15 @@ def get_experiment_template(
     hypothesis_id: str,
     experiment_id: str,
 ) -> dict[str, Any]:
-    """Get a template for experiment configuration
+    """获取实验配置模板
 
-    This function provides a template structure that Claude Code can
-    use to generate the full experiment configuration.
+    提供模板结构，供 Claude Code 据此生成完整的实验配置。
 
-    :param workspace_path: Path to workspace directory
-    :param hypothesis_id: Hypothesis ID
-    :param experiment_id: Experiment ID
+    :param workspace_path: 工作区目录路径
+    :param hypothesis_id: 假设 ID
+    :param experiment_id: 实验 ID
 
-    :returns: Template dictionary with structure to fill in
+    :returns: 待填充结构的模板字典
     """
     from agentsociety2.skills.experiment.config import (
         get_experiment_paths,
@@ -270,11 +267,11 @@ def get_experiment_template(
 
 
 def format_module_suggestion_message(suggestions: dict[str, Any]) -> str:
-    """Format module suggestions into a helpful message
+    """将模块推荐结果格式化为提示消息
 
-    :param suggestions: Dictionary from suggest_modules_for_topic()
+    :param suggestions: ``suggest_modules_for_topic()`` 返回的字典
 
-    :returns: Formatted message string
+    :returns: 格式化后的消息字符串
     """
     lines = []
     lines.append("# Suggested Modules")

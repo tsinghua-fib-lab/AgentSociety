@@ -59,7 +59,7 @@ class SkillRegistryLike(Protocol):
     def get(self, skill_id: str) -> SkillDescriptor | None:
         """按 id 返回一个 skill 描述符。
 
-        :param skill_id: registry skill id。
+        :param skill_id: 技能注册表中的技能 ID。
         :returns: 匹配的描述符,无匹配时为 None。
         """
         return None
@@ -75,7 +75,7 @@ class SkillRegistryLike(Protocol):
     def read_skill_doc(self, skill_id: str) -> str:
         """读取一个 skill 的 SKILL.md。
 
-        :param skill_id: registry skill id。
+        :param skill_id: 技能注册表中的技能 ID。
         :returns: skill 文档文本,失败时为空字符串。
         """
         return ""
@@ -83,7 +83,7 @@ class SkillRegistryLike(Protocol):
     def read_skill_file(self, skill_id: str, relative_path: str) -> str:
         """读取 skill 目录内的一个文件。
 
-        :param skill_id: registry skill id。
+        :param skill_id: 技能注册表中的技能 ID。
         :param relative_path: 相对 skill 根目录的路径。
         :returns: 文件文本,失败时为空字符串。
         """
@@ -194,8 +194,7 @@ class AgentSkillRuntime:
     def set_visible_skills(self, tokens: Iterable[str]) -> None:
         """设置本 agent 的可见 skill。
 
-        每项可以是 registry skill id(``namespace@name``)或显示名;两种
-        形式都面向整个 registry 解析。
+        每项可以是 registry skill id(``namespace@name``)或显示名;两种形式都面向整个 registry 解析。
 
         :param tokens: 候选 skill id 或显示名。
         :returns: 无返回值。
@@ -249,8 +248,7 @@ class AgentSkillRuntime:
     def set_activated_skills(self, tokens: Iterable[str]) -> None:
         """从可见 skill 中设置已激活的 skill。
 
-        每项可以是 skill id(``namespace@name``)或显示名;两种形式都
-        面向可见 skill 解析。
+        每项可以是 skill id(``namespace@name``)或显示名;两种形式都面向可见 skill 解析。
 
         :param tokens: 要激活的候选 skill id 或显示名。
         :returns: 无返回值。
@@ -296,16 +294,14 @@ class AgentSkillRuntime:
         return ""
 
     def resolve_skill_id(self, token: str, *, visible_only: bool = True) -> str:
-        """将 skill id 或显示名解析为 registry skill id。
+        """将技能 ID 或显示名称解析为注册表中的技能 ID。
 
         接受 registry skill id(``namespace@name``)或裸显示名 ``name``
-        ——本 runtime 的每个公开 skill API 都取同样的 ``token`` 并兼容
-        两种形式。``visible_only`` 为 True(默认)时解析限于可见 skill;
+        ——本 runtime 的每个公开 skill API 都取同样的 ``token`` 并兼容两种形式。``visible_only`` 为 True(默认)时解析限于可见 skill;
         为 False 时搜索整个 registry(用于尚未可见的 skill,如
         :meth:`set_visible_skills` 中)。
 
-        有歧义的显示名(多于一个匹配)只在恰有一个候选当前已激活时
-        才能解析。
+        有歧义的显示名(多于一个匹配)只在恰有一个候选当前已激活时才能解析。
 
         :param token: 来自工具参数 / agent config 的 skill id
             (``namespace@name``)或显示名。
@@ -408,7 +404,7 @@ class AgentSkillRuntime:
     def load_skill_doc(self, skill_id: str) -> str:
         """读取一个可见 skill 的文档。
 
-        :param skill_id: registry skill id。
+        :param skill_id: 技能注册表中的技能 ID。
         :returns: SKILL.md 文本,失败时为空字符串。
         """
         if not self._is_visible(skill_id):
@@ -418,7 +414,7 @@ class AgentSkillRuntime:
     def read_skill_file(self, skill_id: str, relative_path: str) -> str:
         """读取一个可见 skill 内部的文件。
 
-        :param skill_id: registry skill id。
+        :param skill_id: 技能注册表中的技能 ID。
         :param relative_path: 相对 skill 根目录的路径。
         :returns: 文件文本,失败时为空字符串。
         """
@@ -427,25 +423,21 @@ class AgentSkillRuntime:
         return self._registry.read_skill_file(skill_id, relative_path)
 
     def resolve_skill_path(self, path: str | Path) -> tuple[str, str] | None:
-        """将一个路径映射为可见 skill 内的 ``(skill_id, relative_path)``。
+        """将一个路径映射为可见 skill 内的 ``(skill_id, relative_path)`` 。
 
         用于兜底恢复:agent 经由通用 workspace ``read`` 工具尝试 ``read``
-        一个 skill 内嵌文件(如 ``references/examples.md``)时,该工具只
-        能看到 agent workspace,会把这类路径当作"越界"拒绝。返回映射使
-        调用方可以透明转交给 :meth:`read_skill_file`,而非直接失败。
+        一个 skill 内嵌文件(如 ``references/examples.md``)时,该工具只能看到 agent workspace,会把这类路径当作"越界"拒绝。返回映射使调用方可以透明转交给 :meth:`read_skill_file`,而非直接失败。
 
         两种匹配策略,按顺序:
 
         1. 直接包含——解析后的绝对路径位于某个可见 skill 根目录内。
         2. skill 名段——某个路径分量等于某个可见 skill 的 ``skill_id``
            或 ``name``(如模型生成的
-           ``.../skills/daily-guidance/references/examples.md``)。该段之后
-           的分量被当作 skill 相对路径,且必须能解析到 skill 根下确实
-           存在的文件。
+           ``.../skills/daily-guidance/references/examples.md``)。该段之后的分量被当作 skill 相对路径,且必须能解析到 skill 根下确实存在的文件。
 
         :param path: 待测试路径(绝对路径,或按段匹配的相对路径)。
         :returns: 命中可见 skill 文件时为 ``(skill_id, posix_relative_path)``,
-            否则为 ``None``。
+            否则为 ``None`` 。
         """
         descriptors = self.list_visible_skills()
         by_root: list[tuple[str, Path]] = [
@@ -493,7 +485,7 @@ class AgentSkillRuntime:
     ) -> ScriptRunResult:
         """运行可见 skill 内的一个脚本。
 
-        :param skill_id: registry skill id。
+        :param skill_id: 技能注册表中的技能 ID。
         :param script_path: 相对 skill 根目录的路径;留空则使用默认脚本。
         :param argv: 命令行参数。
         :param timeout_sec: 执行超时秒数。
@@ -538,7 +530,7 @@ class AgentSkillRuntime:
     ) -> ScriptRunResult:
         """运行可见 skill 的一个生命周期 hook。
 
-        :param skill_id: registry skill id。
+        :param skill_id: 技能注册表中的技能 ID。
         :param hook_type: 生命周期 hook 名。
         :param argv: 命令行参数。
         :param timeout_sec: 执行超时秒数。
@@ -571,7 +563,7 @@ class AgentSkillRuntime:
     def _is_visible(self, skill_id: str) -> bool:
         """返回一个 skill 是否可见。
 
-        :param skill_id: registry skill id。
+        :param skill_id: 技能注册表中的技能 ID。
         :returns: skill 可见时为 True。
         """
         return skill_id in self._visible_skill_ids
@@ -766,7 +758,7 @@ class AgentSkillRuntime:
         """直接调用无参的生命周期 hook 函数(同步或异步)。
 
         完全避免运行脚本 / argparse / exec,使热路径 hook(如
-        daily-guidance 的 pre_step)不阻塞事件循环。
+        daily-guidance 的 ``pre_step``)不阻塞事件循环。
 
         :param fn: hook 可调用对象(无参;可为 async)。
         :param info: skill 描述符。
@@ -888,10 +880,8 @@ class AgentSkillRuntime:
     def _source_defines_callable(self, script_path: Path, name: str) -> bool:
         """静态判断脚本顶层是否定义了给定名字的可调用,不执行代码。
 
-        决定"是否值得 import 该模块"的前置检查:entrypoint-less 脚本的
-        顶层代码即副作用本体,``exec_module`` 会在导入时把它跑一遍
-        (且在事件循环线程上、不受任何超时保护),随后动态执行又跑第
-        二遍——顶层副作用双执行 + 挂死即冻结事件循环。有此静态检查后,
+        决定"是否值得 import 该模块"的前置检查:entrypoint-less 脚本的顶层代码即副作用本体,``exec_module`` 会在导入时把它跑一遍
+        (且在事件循环线程上、不受任何超时保护),随后动态执行又跑第二遍——顶层副作用双执行 + 挂死即冻结事件循环。有此静态检查后,
         无 entrypoint 的脚本完全不 import，只在子进程中执行一次。
 
         :param script_path: 脚本绝对路径。
@@ -946,12 +936,11 @@ class AgentSkillRuntime:
         *,
         timeout_sec: int = 30,
     ) -> CommandResult:
-        """直接调用技能的进程内 ``entrypoint``。
+        """直接调用技能的进程内 ``entrypoint`` 。
 
-        仅用于内置技能。自定义技能的导入与执行由子进程负责。
-        异步入口使用协作式超时，同步入口保持内联热路径。
+        仅用于内置技能。自定义技能的导入与执行由子进程负责。异步入口使用协作式超时，同步入口保持内联热路径。
 
-        :param entrypoint: 可调用 ``entrypoint(argv[, ctx]) -> str``。
+        :param entrypoint: 可调用 ``entrypoint(argv[, ctx]) -> str`` 。
         :param argv: 脚本路径之后的命令行参数。
         :param ctx: 每次调用的技能上下文(workspace、env 快照)。
         :param timeout_sec: 非内联路径的执行超时秒数。

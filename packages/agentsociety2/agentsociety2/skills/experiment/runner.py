@@ -1,8 +1,7 @@
-"""Experiment runner module
+"""实验运行器模块
 
-Provides functionality for starting, stopping, and monitoring experiments.
-This is a minimal implementation - actual experiment execution is handled
-by the agent society framework and extension scripts.
+提供实验的启动、停止与状态监控功能。这里是最小实现——实际执行由
+agent society 框架与扩展脚本完成。
 """
 
 from __future__ import annotations
@@ -24,16 +23,16 @@ async def start_experiment(
     init_config_path: Path | None = None,
     steps_path: Path | None = None,
 ) -> dict[str, Any]:
-    """Start an experiment
+    """启动一个实验
 
-    :param workspace_path: Path to workspace directory
-    :param hypothesis_id: Hypothesis ID (e.g., '1', '2')
-    :param experiment_id: Experiment ID (e.g., '1', '2')
-    :param run_id: Run ID (default: 'run')
-    :param init_config_path: Optional path to init_config.json (default: init/init_config.json)
-    :param steps_path: Optional path to steps.yaml (default: init/steps.yaml)
+    :param workspace_path: 工作区目录路径
+    :param hypothesis_id: 假设 ID（如 '1'、'2'）
+    :param experiment_id: 实验 ID（如 '1'、'2'）
+    :param run_id: 运行 ID（默认 'run'）
+    :param init_config_path: ``init_config.json`` 的可选路径（默认 ``init/init_config.json``）
+    :param steps_path: steps.yaml 的可选路径（默认 init/steps.yaml）
 
-    :returns: Result dictionary with status and info
+    :returns: 包含状态与信息的结果字典
     """
     from agentsociety2.skills.experiment.config import get_experiment_paths
 
@@ -96,14 +95,14 @@ async def stop_experiment(
     experiment_id: str,
     run_id: str = "run",
 ) -> dict[str, Any]:
-    """Stop a running experiment
+    """停止正在运行的实验
 
-    :param workspace_path: Path to workspace directory
-    :param hypothesis_id: Hypothesis ID
-    :param experiment_id: Experiment ID
-    :param run_id: Run ID (default: 'run')
+    :param workspace_path: 工作区目录路径
+    :param hypothesis_id: 假设 ID
+    :param experiment_id: 实验 ID
+    :param run_id: 运行 ID（默认 'run'）
 
-    :returns: Result dictionary with status
+    :returns: 包含状态的结果字典
     """
     from agentsociety2.skills.experiment.config import get_experiment_paths
 
@@ -151,14 +150,14 @@ async def get_experiment_status(
     experiment_id: str,
     run_id: str = "run",
 ) -> ExperimentStatus:
-    """Get experiment status
+    """获取实验状态
 
-    :param workspace_path: Path to workspace directory
-    :param hypothesis_id: Hypothesis ID
-    :param experiment_id: Experiment ID
-    :param run_id: Run ID (default: 'run')
+    :param workspace_path: 工作区目录路径
+    :param hypothesis_id: 假设 ID
+    :param experiment_id: 实验 ID
+    :param run_id: 运行 ID（默认 'run'）
 
-    :returns: ExperimentStatus object
+    :returns: ExperimentStatus 对象
     """
     from agentsociety2.skills.experiment.config import get_experiment_paths
 
@@ -246,14 +245,14 @@ async def list_experiments(
     workspace_path: Path,
     hypothesis_id: str | None = None,
 ) -> list[ExperimentInfo]:
-    """List experiments
+    """列出实验
 
-    :param workspace_path: Path to workspace directory
-    :param hypothesis_id: Optional hypothesis ID to filter by
-    :returns: List of ExperimentInfo objects
+    :param workspace_path: 工作区目录路径
+    :param hypothesis_id: 可选的过滤用假设 ID
+    :returns: ExperimentInfo 对象列表
 
     Note:
-        Uses simplified init structure: init/init_config.json, init/steps.yaml
+        使用简化 init 结构：``init/init_config.json``、init/steps.yaml
     """
     experiments: list[ExperimentInfo] = []
 
@@ -266,9 +265,9 @@ async def list_experiments(
         六元组。
 
         Note:
-            - has_init: checks init/init_config.json (simplified structure)
-            - has_run: checks run/ directory exists
-            - is_completed: checks run/replay/_schema.json exists
+            - ``has_init``: 检查 ``init/init_config.json``（简化结构）
+            - ``has_run``: 检查 run/ 目录是否存在
+            - ``is_completed``: 检查 ``run/replay/_schema.json`` 是否存在
         """
         # Check for init_config.json directly in init/ (simplified structure)
         has_init = (exp_dir / "init" / "init_config.json").exists()

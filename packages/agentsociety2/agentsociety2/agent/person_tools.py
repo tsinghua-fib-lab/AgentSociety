@@ -4,8 +4,8 @@
 English: Defines PersonAgent-specific memory extraction / consolidation
 OpenAI function/tool schemas.
 
-通用 ReAct 工具 schema（``react_tool_schemas`` / ``readonly_tool_names``）
-已移至 :mod:`agentsociety2.agent.base.tool_schema`。
+通用 ReAct 工具 schema（``react_tool_schemas`` / ``readonly_tool_names`` ）
+已移至 :mod:`agentsociety2.agent.base.tool_schema` 。
 Generic ReAct tool schemas (``react_tool_schemas`` / ``readonly_tool_names``)
 have moved to :mod:`agentsociety2.agent.base.tool_schema`.
 """
@@ -105,7 +105,7 @@ def finish_ask_tool_schema() -> dict[str, Any]:
 def finish_step_tool_schema() -> dict[str, Any]:
     """step 模式的 ``finish`` 工具:仅内联 step 记忆。
 
-    PersonAgent 在 step 模式下用此 schema 覆盖基类 ``finish``。step 的结果
+    PersonAgent 在 step 模式下用此 schema 覆盖基类 ``finish`` 。step 的结果
     完全以记忆 episode 形式记入 ``memories``(没有单独的 ``final`` 文本、也
     没有单独的抽取流程),因此 ``memories`` 是唯一必填参数;仅当本 tick 没有
     值得记录的事情时才传空列表。

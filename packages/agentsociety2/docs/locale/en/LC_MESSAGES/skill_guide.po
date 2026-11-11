@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: AgentSociety 2 2.6.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-18 09:27+0800\n"
+"POT-Creation-Date: 2026-11-09 11:56+0800\n"
 "PO-Revision-Date: 2026-05-19 00:00+0800\n"
 "Last-Translator: AgentSociety Team\n"
 "Language: en\n"
@@ -19,467 +19,145 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: ../../skill_guide.md:1
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skill_guide.md:1
 msgid "Skill 编写指南"
 msgstr "Skill Authoring Guide"
 
-#: ../../skill_guide.md:3
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skill_guide.md:3
+msgid "先让一个最小技能被发现并产生可检查的文件，再增加脚本、依赖与 hook。"
+msgstr ""
+"First make a minimal skill discoverable and produce an inspectable file, then add "
+"scripts, dependencies and hooks."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skill_guide.md:5
+#, python-brace-format
+msgid "本页保留从零编写技能的最短流程。发现、激活、脚本执行与 hook 契约统一维护在 {doc}`agent_skills`，避免两份说明随实现变化而不一致。"
+msgstr ""
+"This page keeps the shortest path to authoring a skill. Discovery, activation, script"
+" execution and hook contracts are maintained in {doc}`agent_skills` to keep "
+"implementation details consistent."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skill_guide.md:7
+msgid "创建最小技能"
+msgstr "Create a Minimal Skill"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skill_guide.md:9
+msgid "在研究工作区创建目录："
+msgstr "Create a directory in the research workspace:"
+
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skill_guide.md:11
 msgid ""
-"本文档介绍如何为 `PersonAgent` 编写自定义 Skill。Skill "
-"的目标不是把所有逻辑写成复杂插件，而是把一种能力的触发条件、输入文件、执行步骤和输出文件说明清楚，让智能体在合适的时候调用它。"
+"custom/skills/social-reflection/\n"
+"└── SKILL.md\n"
 msgstr ""
-"This document describes how to write a custom Skill for `PersonAgent`. "
-"The goal of Skill is not to write all logic as complex plug-ins, but to "
-"clearly explain the trigger conditions, input files, execution steps and "
-"output files of a capability so that the agent can call it at the "
-"appropriate time."
+"custom/skills/social-reflection/\n"
+"└── SKILL.md\n"
 
-#: ../../skill_guide.md:5
-msgid "概述"
-msgstr "Overview"
-
-#: ../../skill_guide.md:7
-msgid "Skill 是 `PersonAgent` 的行为模块。常见写法有两种："
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skill_guide.md:16
+msgid "`SKILL.md` 同时包含用于发现的元数据和激活后读取的行为说明："
 msgstr ""
-"Skill is `PersonAgent`’s behavioral module. There are two common ways of "
-"writing:"
+"`SKILL.md` contains both discovery metadata and the instructions read after "
+"activation:"
 
-#: ../../skill_guide.md:9
-msgid "**Prompt-only（推荐）**：只写 `SKILL.md`，适合判断、反思、总结、计划等开放任务。"
-msgstr ""
-"**Prompt-only**: Only write `SKILL.md`, suitable for open tasks such as "
-"judgment, reflection, summary, and planning."
-
-#: ../../skill_guide.md:10
+#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skill_guide.md:18
 msgid ""
-"**带脚本**：额外提供 Python 脚本，适合确定性计算、格式转换、批处理和可重复的数据维护。 脚本默认**在 agent 进程内**经 "
-"`entrypoint(argv, ctx)` 执行（毫秒级、并发安全）；无 `entrypoint` 时回退到动态包装器，最后才回退到子进程。"
+"---\n"
+"name: social-reflection\n"
+"description: Reflect on a recent social interaction and record a short explanation.\n"
+"---\n"
+"\n"
+"# Social Reflection\n"
+"\n"
+"## When to use\n"
+"After a meaningful social interaction.\n"
+"\n"
+"## Inputs\n"
+"Use the current step context. Read state/relationships.json if it exists.\n"
+"\n"
+"## Steps\n"
+"1. Read the available relationship state; use an empty state if the file is absent.\n"
+"2. Explain how the interaction may change trust, using evidence from the current step.\n"
+"3. Write a short reflection to state/social_reflection.json.\n"
+"\n"
+"## Outputs\n"
+"state/social_reflection.json, containing reflection and supporting evidence.\n"
 msgstr ""
-"**With scripts**: provide additional Python scripts for deterministic "
-"computation, format conversion, batch processing, and repeatable data "
-"maintenance. Scripts execute by default **inside the agent process** "
-"through `entrypoint(argv, ctx)`, which is millisecond-level and "
-"concurrency-safe. Without `entrypoint`, runtime falls back to the dynamic"
-" wrapper, and only then to a subprocess."
+"---\n"
+"name: social-reflection\n"
+"description: Reflect on a recent social interaction and record a short explanation.\n"
+"---\n"
+"\n"
+"# Social Reflection\n"
+"\n"
+"## When to use\n"
+"After a meaningful social interaction.\n"
+"\n"
+"## Inputs\n"
+"Use the current step context. Read state/relationships.json if it exists.\n"
+"\n"
+"## Steps\n"
+"1. Read the available relationship state; use an empty state if the file is absent.\n"
+"2. Explain how the interaction may change trust, using evidence from the current step.\n"
+"3. Write a short reflection to state/social_reflection.json.\n"
+"\n"
+"## Outputs\n"
+"state/social_reflection.json, containing reflection and supporting evidence.\n"
 
-#: ../../skill_guide.md:14
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skill_guide.md:41
+msgid "在工作台的“技能管理 → 运行时”扫描工作区。技能出现在目录中后，由智能体在运行时按需激活；目录可见不代表已经执行。"
+msgstr ""
+"Scan the workspace under Skill Management → Runtime. Once discovered, the skill can "
+"be activated by an agent as needed; appearing in the catalog does not mean it has "
+"run."
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skill_guide.md:43
+msgid "何时添加脚本"
+msgstr "When to Add a Script"
+
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skill_guide.md:45
+#, python-brace-format
 msgid ""
-"与环境交互时，不需要在 frontmatter 里声明特殊 executor；在正文中说明何时使用 `ask_env` 工具即可。 "
-"完整的设计说明见 `agentsociety2/agent/skills/README.md` 与 :doc:`/agent_skills`。"
+"确定性计算、格式转换和数据校验适合脚本；开放判断可先使用纯提示技能。脚本的 `entrypoint(argv, "
+"ctx)`、`ctx.workspace_root`、返回值和超时规则见 {doc}`agent_skills`，API 见 {doc}`api/skills`。"
 msgstr ""
-"For environment interaction, no special executor needs to be declared in "
-"frontmatter; explain in the body when to use the `ask_env` tool. For the "
-"full design, see `agentsociety2/agent/skills/README.md` and "
-":doc:`/agent_skills`."
+"Scripts suit deterministic calculations, format conversion and data validation; start"
+" with prompt-only skills for open-ended judgments. See {doc}`agent_skills` for "
+"`entrypoint(argv, ctx)`, `ctx.workspace_root`, return values and timeouts, and "
+"{doc}`api/skills` for the API."
 
-#: ../../skill_guide.md:17
-msgid "快速开始"
-msgstr "Quick Start"
-
-#: ../../skill_guide.md:19
-msgid "创建一个简单的Skill"
-msgstr "Create a simple Skill"
-
-#: ../../skill_guide.md:21
-msgid "在`custom/skills/`目录下创建新文件夹："
-msgstr "Create a new folder in the `custom/skills/` directory:"
-
-#: ../../skill_guide.md:28
-msgid "编写SKILL.md："
-msgstr "Write SKILL.md:"
-
-#: ../../skill_guide.md:75
-msgid "无需编程，模型会根据你的描述读取文件、调用工具并写入输出。写得越具体，行为越稳定。"
-msgstr ""
-"No programming required, the model reads files, calls tools, and writes "
-"output based on your description. The more specific it is written, the "
-"more stable the behavior will be."
-
-#: ../../skill_guide.md:77
-msgid "SKILL.md结构详解"
-msgstr "Detailed explanation of SKILL.md structure"
-
-#: ../../skill_guide.md:79
-msgid "Frontmatter（必需）"
-msgstr "Frontmatter (required)"
-
-#: ../../skill_guide.md:81
-msgid "Frontmatter是YAML格式的元数据块，位于文件开头："
-msgstr ""
-"Frontmatter is a YAML formatted metadata block located at the beginning "
-"of the file:"
-
-#: ../../skill_guide.md:90
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skill_guide.md:47
 msgid ""
-"可选：在同目录下放置 ``scripts/<name>.py``。推荐在脚本顶层定义 ``def entrypoint(argv, ctx) ->"
-" str``，运行时会优先在进程内调用它（缓存 import、无 fork）； 无 ``entrypoint`` 时回退到动态包装器 / "
-"子进程。依赖关系写在正文里，由模型按需 ``activate_skill``。"
+"`SKILL.md` 只声明受支持的 `name`、`description`、可选 `script` 与 "
+"`hooks`。依赖、输入、输出和环境交互步骤写在正文中，不添加没有解析器支持的配置字段。"
 msgstr ""
-"Optional: place ``scripts/<name>.py`` in the same directory. Define ``def"
-" entrypoint(argv, ctx) -> str`` at script top level; runtime calls it in-"
-"process first with cached imports and no fork. Without ``entrypoint``, it"
-" falls back to the dynamic wrapper / subprocess. Put dependencies in the "
-"body so the model can ``activate_skill`` on demand."
+"Only declare supported `name`, `description`, optional `script` and `hooks` fields in"
+" `SKILL.md`. Put dependencies, inputs, outputs and environment interactions in the "
+"body rather than inventing configuration fields."
 
-#: ../../skill_guide.md:94
-msgid "Body（必需）"
-msgstr "Body (required)"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skill_guide.md:49
+msgid "检查与调试"
+msgstr "Check and Debug"
 
-#: ../../skill_guide.md:96
-msgid "Body是Markdown格式的行为指南，告诉LLM："
-msgstr "Body is a Markdown-formatted behavioral guide that tells LLM:"
-
-#: ../../skill_guide.md:98
-msgid "**何时使用**：触发条件"
-msgstr "**When to use**: trigger conditions"
-
-#: ../../skill_guide.md:99
-msgid "**输入**：读取哪些文件"
-msgstr "**Input**: which files to read"
-
-#: ../../skill_guide.md:100
-msgid "**做什么**：执行步骤"
-msgstr "**What it does**: execution steps"
-
-#: ../../skill_guide.md:101
-msgid "**输出**：产生什么文件"
-msgstr "**Output**: files produced"
-
-#: ../../skill_guide.md:103
-msgid "可用的内置工具"
-msgstr "Available built-in tools"
-
-#: ../../skill_guide.md:105
-msgid "Skill 的 Markdown body 中可以指导 LLM 使用 ``PersonAgent`` 的 ReAct 工具（注意实际工具名）："
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skill_guide.md:51
+msgid "用独立测试工作区放置输入，检查缺失输入和重复执行时的行为。"
 msgstr ""
-"The Markdown body of the Skill can instruct LLM to use the following "
-"tools:"
+"Use a separate test workspace with sample inputs, and check missing inputs and "
+"repeated execution."
 
-#: ../../skill_guide.md
-msgid "工具"
-msgstr "Tool"
-
-#: ../../skill_guide.md
-msgid "用途"
-msgstr "Usage"
-
-#: ../../skill_guide.md
-msgid "示例"
-msgstr "Examples"
-
-#: ../../skill_guide.md
-msgid "`read`"
-msgstr "`grep`"
-
-#: ../../skill_guide.md
-msgid "读取工作区文件"
-msgstr "Read workspace files"
-
-#: ../../skill_guide.md
-msgid "`read(\"state/needs.json\")`"
-msgstr "`workspace_write(\"state/result.json\", content)`"
-
-#: ../../skill_guide.md
-msgid "`write`"
-msgstr "`grep`"
-
-#: ../../skill_guide.md
-msgid "写入工作区文件"
-msgstr "Write file"
-
-#: ../../skill_guide.md
-msgid "`write(\"state/result.json\", content)`"
-msgstr "`workspace_write(\"state/result.json\", content)`"
-
-#: ../../skill_guide.md
-msgid "`append`"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skill_guide.md:52
+msgid "对照实际工具名编写步骤；与环境交互使用 `ask_env`。"
 msgstr ""
+"Use actual tool names in the instructions; interact with the environment through "
+"`ask_env`."
 
-#: ../../skill_guide.md
-msgid "追加内容"
-msgstr "Append content"
-
-#: ../../skill_guide.md
-msgid "`append(\"state/notes.jsonl\", line)`"
-msgstr "`workspace_write(\"state/result.json\", content)`"
-
-#: ../../skill_guide.md
-msgid "`list`"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skill_guide.md:53
+msgid "检查输出文件与 `<run_dir>/trace/trace_*.jsonl`，区分“技能被发现”“技能被激活”和“脚本已完成”。"
 msgstr ""
+"Inspect output files and `<run_dir>/trace/trace_*.jsonl`, distinguishing discovery, "
+"activation and completed script execution."
 
-#: ../../skill_guide.md
-msgid "列出目录文件"
-msgstr "List files"
-
-#: ../../skill_guide.md
-msgid "`list(\".\")`"
-msgstr "`workspace_list(\".\")`"
-
-#: ../../skill_guide.md
-msgid "`grep`"
-msgstr "`grep`"
-
-#: ../../skill_guide.md
-msgid "在工作区文件中搜索"
-msgstr "Search workspace files"
-
-#: ../../skill_guide.md
-msgid "`grep(\"pattern\", \".\")`"
-msgstr "`grep(\"pattern\", \".\")`"
-
-#: ../../skill_guide.md
-msgid "`ask_env`"
+#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skill_guide.md:54
+msgid "需要维护运行时或内置技能时，阅读源码中的 `agentsociety2/agent/skills/README.md`。"
 msgstr ""
-
-#: ../../skill_guide.md
-msgid "向环境路由器发请求"
-msgstr "Send a request to the environment router"
-
-#: ../../skill_guide.md
-msgid "`ask_env(\"<observe>\")`"
-msgstr "`codegen(\"<observe>\")`"
-
-#: ../../skill_guide.md
-msgid "`activate_skill` / `read_skill_file` / `execute_skill_script`"
-msgstr ""
-
-#: ../../skill_guide.md
-msgid "激活/读取/执行其它 skill"
-msgstr "Activate / read / execute another skill"
-
-#: ../../skill_guide.md
-msgid "见 :doc:`/agent_skills`"
-msgstr "See :doc:`/agent_skills`"
-
-#: ../../skill_guide.md
-msgid "`finish`"
-msgstr ""
-
-#: ../../skill_guide.md
-msgid "结束当前仿真步"
-msgstr "End the current simulation step"
-
-#: ../../skill_guide.md
-msgid "带可选 summary"
-msgstr "With an optional summary"
-
-#: ../../skill_guide.md:118
-msgid "没有 `bash` / `glob` / `codegen` / `batch` 工具；环境交互统一走 `ask_env`。"
-msgstr ""
-"There are no `bash` / `glob` / `codegen` / `batch` tools; environment "
-"interaction always goes through `ask_env`."
-
-#: ../../skill_guide.md:120
-msgid "Skill类型"
-msgstr "Skill type"
-
-#: ../../skill_guide.md:122
-msgid "类型1：纯Prompt驱动（推荐）"
-msgstr "Type 1: Pure prompt-driven (recommended)"
-
-#: ../../skill_guide.md:124
-msgid "大多数Skill不需要编程，只需要清晰的描述："
-msgstr "Most skills do not require programming, just clear description:"
-
-#: ../../skill_guide.md:152
-msgid "类型2：带Python脚本"
-msgstr "Type 2: With Python script"
-
-#: ../../skill_guide.md:154
-msgid "当需要确定性计算时，添加Python脚本："
-msgstr "When deterministic calculations are required, add a Python script:"
-
-#: ../../skill_guide.md:163
-msgid "SKILL.md:"
-msgstr "SKILL.md:"
-
-#: ../../skill_guide.md:172
-msgid "calc.py（提供 ``entrypoint``，进程内执行；CLI 与 entrypoint 共用同一派发）："
-msgstr ""
-"calc.py, providing ``entrypoint`` for in-process execution; CLI and "
-"entrypoint share the same dispatcher:"
-
-#: ../../skill_guide.md:231 ../../skill_guide.md:413
-msgid "与环境交互"
-msgstr "Interact with the environment"
-
-#: ../../skill_guide.md:233
-msgid ""
-"在 SKILL 正文里说明何时调用内置 **`ask_env`** 工具即可；不要在 frontmatter 里写 "
-"``executor``（框架不解析）。"
-msgstr ""
-"Just state in the SKILL body when to call the built-in **`codegen`** "
-"tool; do not write ``executor`` in the frontmatter (the framework will "
-"not parse it)."
-
-#: ../../skill_guide.md:235
-msgid "最佳实践"
-msgstr "Best practices"
-
-#: ../../skill_guide.md:237
-msgid "1. 保持单一职责"
-msgstr "1. Maintain a single responsibility"
-
-#: ../../skill_guide.md:239
-msgid "每个 Skill 只做一件事："
-msgstr "Each Skill only does one thing:"
-
-#: ../../skill_guide.md:241
-msgid "✅ `mood-check`: 只更新当前情绪状态"
-msgstr "✅ `mood-check`: updates only current mood state"
-
-#: ../../skill_guide.md:242
-msgid "✅ `social-reflection`: 只更新社交关系"
-msgstr "✅ `social-reflection`: updates only social relationships"
-
-#: ../../skill_guide.md:243
-msgid "❌ `mood_and_plan`: 做太多事情"
-msgstr "❌ `needs_and_emotion`: Doing too many things"
-
-#: ../../skill_guide.md:245
-msgid "2. 在正文写清产出文件"
-msgstr "2. Write the output file clearly in the text"
-
-#: ../../skill_guide.md:247
-msgid ""
-"在 Markdown 里列出会写入的路径（如 ``state/result.json``）；frontmatter 不解析 "
-"``outputs``、``inputs``、``requires`` 等扩展字段。"
-msgstr ""
-"List the paths that will be written in Markdown (such as "
-"``state/result.json``); frontmatter does not parse extension fields such "
-"as ``outputs``, ``inputs``, ``requires``, etc."
-
-#: ../../skill_guide.md:249
-msgid "3. 处理缺失文件"
-msgstr "3. Handle missing files"
-
-#: ../../skill_guide.md:251
-msgid "Skill应该优雅处理输入文件不存在的情况："
-msgstr ""
-"The skill should handle gracefully the case where the input file does not"
-" exist:"
-
-#: ../../skill_guide.md:259
-msgid "4. 提供示例"
-msgstr "4. Provide examples"
-
-#: ../../skill_guide.md:261
-msgid "示例帮助LLM理解预期行为："
-msgstr "Examples help LLM understand expected behavior:"
-
-#: ../../skill_guide.md:281
-msgid "5. 避免冗余描述"
-msgstr "5. Avoid redundant descriptions"
-
-#: ../../skill_guide.md:283
-msgid "不需要告诉LLM\"仔细思考\"或\"认真分析\"，它会自然地做这些。"
-msgstr ""
-"There is no need to tell LLM to \"think carefully\" or \"analyze "
-"carefully\", it will do this naturally."
-
-#: ../../skill_guide.md:285
-msgid "文件结构约定"
-msgstr "File structure convention"
-
-#: ../../skill_guide.md:287
-msgid "推荐使用以下目录结构："
-msgstr "It is recommended to use the following directory structure:"
-
-#: ../../skill_guide.md:300
-msgid "调试技巧"
-msgstr "Debugging Tips"
-
-#: ../../skill_guide.md:302
-msgid "**查看workspace文件**：检查输出文件是否正确生成"
-msgstr ""
-"**Check workspace files**: Check whether the output file is generated "
-"correctly"
-
-#: ../../skill_guide.md:303
-msgid "**检查tool_calls.jsonl**：查看LLM调用了哪些工具"
-msgstr "**Check tool_calls.jsonl**: Check which tools are called by LLM"
-
-#: ../../skill_guide.md:304
-msgid "**简化描述**：如果Skill行为异常，尝试简化描述"
-msgstr ""
-"**Simplify description**: If the Skill behaves abnormally, try to "
-"simplify the description"
-
-#: ../../skill_guide.md:305
-msgid "**添加示例**：示例通常能显著改善LLM理解"
-msgstr "**Add examples**: Examples often significantly improve LLM understanding"
-
-#: ../../skill_guide.md:307
-msgid "示例：完整的Skill"
-msgstr "Example: Complete Skill"
-
-#: ../../skill_guide.md:381
-msgid "常见问题"
-msgstr "FAQ"
-
-#: ../../skill_guide.md:383
-msgid "**Q: Skill之间如何通信？**"
-msgstr "**Q: How do Skills communicate with each other?**"
-
-#: ../../skill_guide.md:385
-msgid "A: 通过workspace文件。一个Skill写入文件，另一个Skill读取。"
-msgstr ""
-"A: Through the workspace file. One Skill writes to the file and another "
-"Skill reads."
-
-#: ../../skill_guide.md:387
-msgid "**Q: 如何控制Skill执行顺序？**"
-msgstr "**Q: How to control Skill execution order?**"
-
-#: ../../skill_guide.md:389
-msgid ""
-"A: 由主模型在工具循环里决定先 ``activate_skill`` 哪一个；若有硬依赖，在 SKILL.md 正文写清并引导先激活依赖 "
-"skill。"
-msgstr ""
-"A: The main model decides which ``activate_skill`` to use first in the "
-"tool loop; if there is a hard dependency, write it clearly in the "
-"SKILL.md text and guide the dependent skill to be activated first."
-
-#: ../../skill_guide.md:391
-msgid "**Q: Skill可以调用其他Skill吗？**"
-msgstr "**Q: Can a Skill call other Skills?**"
-
-#: ../../skill_guide.md:393
-msgid "A: 不直接调用。通过workspace文件松耦合，LLM决定何时激活哪个Skill。"
-msgstr ""
-"A: Not called directly. Loosely coupled through workspace files, LLM "
-"decides when to activate which Skill."
-
-#: ../../skill_guide.md:395
-msgid "**Q: 如何测试Skill？**"
-msgstr "**Q: How to test a Skill?**"
-
-#: ../../skill_guide.md:397
-msgid "A: 创建测试workspace，放置输入文件，运行agent，检查输出文件。"
-msgstr ""
-"A: Create a test workspace, place input files, run the agent, and check "
-"the output files."
-
-#: ../../skill_guide.md:399
-msgid "进阶主题"
-msgstr "Advanced topics"
-
-#: ../../skill_guide.md:401
-msgid "状态管理"
-msgstr "State management"
-
-#: ../../skill_guide.md:403
-msgid "如果Skill需要维护状态，写入JSON文件："
-msgstr "If the Skill needs to maintain state, write to the JSON file:"
-
-#: ../../skill_guide.md:415
-msgid "使用`ask_env`工具与环境交互："
-msgstr "Use `codegen` tools to interact with the environment:"
-
-#: ../../skill_guide.md:425
-msgid "时间感知"
-msgstr "Time awareness"
-
-#: ../../skill_guide.md:427
-msgid "Skill可以接收时间信息："
-msgstr "Skill can receive time information:"
+"For runtime or built-in skill maintenance, read "
+"`agentsociety2/agent/skills/README.md` in the source tree."

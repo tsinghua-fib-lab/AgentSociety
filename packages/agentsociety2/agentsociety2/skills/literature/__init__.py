@@ -1,6 +1,6 @@
-"""Literature search and management.
+"""文献检索与管理。
 
-Academic literature search (MCP), workspace indexing, formatting, and full-text helpers.
+学术文献检索（MCP）、工作区索引、格式化以及全文辅助工具。
 """
 
 from agentsociety2.skills.literature.core import (
