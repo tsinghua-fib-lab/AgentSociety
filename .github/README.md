@@ -24,8 +24,8 @@ Keep legacy tag rules separate from the AS2 release namespace. Consider enabling
 
 - SDK CI runs lint, type checking, tests, and package builds with frozen project dependencies. SDK and documentation installs use official PyPI on GitHub runners; local index configuration is unchanged.
 - Extension CI runs `npm run check`, including regression tests.
-- Frontend CI tests the production build in Chromium, including map, plot, questionnaire, and skill interactions.
-- Documentation CI builds Chinese and English with `-n -W`, checks local assets and generated HTML links, tests real search and documentation controls in Chromium, and uploads a short-lived preview artifact.
+- Frontend CI runs lint, TypeScript checking and a production build. Run `make check-frontend` locally for browser regressions covering map, plot, questionnaire and skill interactions.
+- Documentation CI builds Chinese and English with `-n -W`, checks translations, offline examples, local assets and generated HTML links, and uploads a short-lived preview artifact. Run `make ci-docs-browser` locally for search, mobile navigation and theme interactions. CI and tag releases do not install or run browsers.
 
 GitHub Actions 与 GitLab CI 共用根目录的 `make ci-*` 入口，配置一致性检查覆盖命令、Node 版本、离线测试环境与 CodeQL 语言矩阵。CodeQL 两处使用同一版本清单和查询配置；本地复现方法见 [scripts/ci/README.md](../scripts/ci/README.md)。GitLab 保留现有清华源设置，本地源配置也不作调整。
 - Dependency audits remain advisory; the dependency-review workflow blocks high-severity dependency changes on applicable PRs.

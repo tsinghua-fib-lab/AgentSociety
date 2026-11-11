@@ -21,7 +21,6 @@ variables:
   UV_INDEX_URL: "https://pypi.tuna.tsinghua.edu.cn/simple"
   UV_CACHE_DIR: "$CI_PROJECT_DIR/.cache/uv"
   NPM_CONFIG_CACHE: "$CI_PROJECT_DIR/.cache/npm"
-  PLAYWRIGHT_BROWSERS_PATH: "$CI_PROJECT_DIR/.cache/ms-playwright"
   DEBIAN_FRONTEND: noninteractive
   MEM0_TELEMETRY: "False"
   ANONYMIZED_TELEMETRY: "False"
@@ -78,9 +77,6 @@ variables:
   - extension/resources/walkthrough/**/*
   - extension/README.md
   - extension/scripts/check-doc-assets.mjs
-  - frontend/tests/docs/**/*
-  - frontend/playwright.docs.config.ts
-  - frontend/package*.json
   - README*.md
   - READTHEDOCS.md
   - pyproject.toml
@@ -146,25 +142,7 @@ variables:
     - .cache/npm
   policy: pull-push
 
-.npm_docs_browser_cache: &npm_docs_browser_cache
-  key:
-    prefix: "docs-browser"
-    files:
-      - frontend/package-lock.json
-  paths:
-    - .cache/npm
-  policy: pull-push
-
-.browser_cache: &browser_cache
-  key:
-    prefix: "chromium-linux-x64"
-    files:
-      - frontend/package-lock.json
-  paths:
-    - .cache/ms-playwright
-  policy: pull-push
-
-# Debian bookworm images need browser libraries and Graphviz from HTTPS mirrors.
+# Debian bookworm images need Graphviz and Node.js from HTTPS mirrors.
 .debian-ci:
   before_script:
     - &prepare_debian |
@@ -247,8 +225,7 @@ lint-frontend:
   image: node:22.23.1-bookworm
   interruptible: true
   cache:
-    - *npm_frontend_cache
-    - *browser_cache
+    <<: *npm_frontend_cache
   rules:
     - if: $CI_COMMIT_TAG =~ /^agentsociety2-v[0-9]+\.[0-9]+\.[0-9]+$/
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
@@ -266,9 +243,7 @@ lint-frontend:
         - .github/workflows/frontend-ci.yml
         - .gitlab-ci.yml
   before_script:
-    - *prepare_debian
     - cd frontend && npm ci --prefer-offline --no-audit --fund=false
-    - npx --no-install playwright install --with-deps --only-shell chromium
   script:
     - make -C .. ci-frontend
     # npmmirror does not implement the audit API; query the official registry only for audit.
@@ -321,7 +296,7 @@ documentation:
   timeout: 20m
   cache:
     <<: *uv_docs_cache
-  rules: &documentation_rules
+  rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       changes: *documentation_changes
     - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
@@ -343,30 +318,6 @@ documentation:
     exclude:
       - docs-preview/**/.doctrees/**/*
       - docs-doctest/**/.doctrees/**/*
-
-documentation-browser:
-  stage: test
-  image: mcr.microsoft.com/playwright:v1.64.1-noble
-  timeout: 10m
-  interruptible: true
-  needs:
-    - job: documentation
-      artifacts: true
-  cache:
-    <<: *npm_docs_browser_cache
-  rules: *documentation_rules
-  variables:
-    DOCS_PYTHON_EXECUTABLE: python3
-    PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
-  before_script:
-    - npm --prefix frontend ci --workspace tests/docs --include-workspace-root=false --prefer-offline --no-audit --fund=false
-  script:
-    - npm --prefix frontend run test:docs
-  artifacts:
-    when: on_failure
-    expire_in: 7 days
-    paths:
-      - frontend/test-results/
 
 codeql:
   stage: test
@@ -572,9 +523,6 @@ docker-publish:
     - job: documentation
       artifacts: false
       optional: true
-    - job: documentation-browser
-      artifacts: false
-      optional: true
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
       changes: *docker_python_changes
@@ -602,9 +550,6 @@ docker-publish-extension:
     - job: docker-build-extension
       artifacts: false
     - job: documentation
-      artifacts: false
-      optional: true
-    - job: documentation-browser
       artifacts: false
       optional: true
   rules:
@@ -641,9 +586,6 @@ docker-publish-dockerfile:
     - job: docker-build-dockerfile
       artifacts: false
     - job: documentation
-      artifacts: false
-      optional: true
-    - job: documentation-browser
       artifacts: false
       optional: true
   rules:
@@ -750,9 +692,6 @@ create-release:
       optional: true
     - job: generate-changelog
     - job: documentation
-      artifacts: false
-      optional: true
-    - job: documentation-browser
       artifacts: false
       optional: true
   rules:

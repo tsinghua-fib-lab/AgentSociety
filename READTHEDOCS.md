@@ -202,7 +202,7 @@ node extension/scripts/check-doc-assets.mjs --html-root packages/agentsociety2/d
 
 GitHub 的 `Documentation CI` 从官方 PyPI 按冻结锁文件安装依赖，分别严格构建中英文并上传预览产物；Read the Docs 也启用 `fail_on_warning`。修改主题时，请检查浅色、深色以及系统自动模式、键盘焦点和窄屏表格滚动。主题样式位于 `_static/custom.css`；`_static/docs-ui.js` 维护中英文控件名称、手机导航键盘操作，以及溢出表格和代码块的焦点。
 
-浏览器回归使用 `frontend` 的 `npm run test:docs`，文档任务通过 `npm ci --workspace tests/docs --include-workspace-root=false` 只安装测试所需依赖，并与前端共用锁文件。它默认读取仓库根目录的 `docs-preview/{zh,en}`，也可以通过 `DOCS_PREVIEW_URL` 指向已启动、包含 `/zh/` 与 `/en/` 的本地预览地址。测试覆盖实际中英文搜索、手机导航、卡片点击与主题记忆；`npm run test:e2e` 继续只运行仪表盘测试。
+浏览器交互回归在本地开发时运行，使用 `frontend` 的 `npm run test:docs`，可通过 `npm ci --workspace tests/docs --include-workspace-root=false` 只安装测试所需依赖，并与前端共用锁文件。它默认读取仓库根目录的 `docs-preview/{zh,en}`，也可以通过 `DOCS_PREVIEW_URL` 指向已启动、包含 `/zh/` 与 `/en/` 的本地预览地址。测试覆盖实际中英文搜索、手机导航、卡片点击与主题记忆；`npm run test:e2e` 继续只运行仪表盘测试。
 
 中文构建参数 `zh` 会使用标准 `zh_CN` 语言目录，包含搜索进度、结果等浏览器端提示的中文翻译。中文搜索依赖 `jieba` 和 `search-terms.dict` 中的领域词；新增较长的中文功能名称时，可在词典中补充，并检查搜索结果。Python 3.12 及以上使用已修复中文词干器引用的 Sphinx 9.1.1，Python 3.11 保留兼容的 8.2 系列。
 
@@ -265,7 +265,7 @@ ls packages/agentsociety2/docs/_static/
 
 ## 文档质量检查
 
-GitHub 的 `Documentation CI` 在相关 PR 和 main/develop 更新时执行，并支持手动运行；GitLab 的 `documentation` 与 `documentation-browser` 在相关合并请求、main/develop 更新和 AS2 发布标签上执行。两处使用 `make ci-docs-build` 构建，并通过共享的 `npm --prefix frontend run test:docs` 运行浏览器检查（本地也可执行 `make ci-docs-browser`）：检查中英文严格构建、gettext 翻译完整度、英文页面文本（包括示例注释和可访问性标签）、本地链接与资源，以及明确标记的离线示例，并在 Chromium 中验证搜索和页面控件。两处均保留可下载的双语构建产物。工作流文件修改后仍需推送并触发流水线，才有远程检查结果。
+GitHub 的 `Documentation CI` 在相关 PR 和 main/develop 更新时执行，并支持手动运行；GitLab 的 `documentation` 在相关合并请求、main/develop 更新和 AS2 发布标签上执行。两处使用 `make ci-docs-build` 检查中英文严格构建、gettext 翻译完整度、英文页面文本（包括示例注释和可访问性标签）、本地链接与资源，以及明确标记的离线示例，并保留可下载的双语构建产物。搜索、手机导航、主题和复制按钮的浏览器交互检查放在本地开发阶段，使用 `make ci-docs-browser` 执行；普通流水线和标签发布流程均不下载或运行浏览器。
 
 在仓库根目录安装 docs 依赖后，可复现核心检查：
 

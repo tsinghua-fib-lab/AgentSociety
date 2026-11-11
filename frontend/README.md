@@ -23,7 +23,7 @@ The dev server defaults to `http://localhost:5173`. The current `/api` developme
 
 `npm run test:docs` checks the separately built bilingual documentation, including search and mobile controls. It serves `../docs-preview` by default; set `DOCS_PREVIEW_URL` to reuse a running preview. `DOCS_PYTHON_EXECUTABLE` selects the Python interpreter used for the static server; the default is `../.venv/bin/python`.
 
-From the repository root, `make ci-frontend` runs the same lint/build/browser checks as GitHub and GitLab. After building the documentation with `make ci-docs-build`, use `make ci-docs-browser` for its browser checks. Chromium must be installed first as shown above.
+From the repository root, `make ci-frontend` runs the lint and production build used by GitHub and GitLab. Before pushing UI changes, run `make check-frontend` locally to include browser regressions. After building the documentation with `make ci-docs-build`, use `make ci-docs-browser` locally for its browser checks. These browser checks require Chromium as shown above; CI does not install or run browsers.
 
 Browser regressions use fixtures; they verify rendering and interactions, not a live experiment. `PLAYWRIGHT_CHROMIUM_EXECUTABLE` can select a locally installed Chromium. For extension documentation assets, see [the extension development guide](../extension/docs/DEVELOPMENT.md#文档配图维护).
 

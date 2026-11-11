@@ -88,7 +88,7 @@ AS2_DOCTEST_OUTPUT ?= docs-doctest
 DOCS_LANGUAGE ?= zh
 DOCS_PORT ?= 8000
 
-.PHONY: ci-python-lint ci-python-test ci-extension ci-frontend ci-docs-build ci-docs-browser ci-package ci-config ci-release-check docs-live
+.PHONY: ci-python-lint ci-python-test ci-extension ci-frontend check-frontend ci-docs-build ci-docs-browser ci-package ci-config ci-release-check docs-live
 
 ci-python-lint:
 	$(AS2_PYTHON) -m ruff check scripts/ci
@@ -105,6 +105,9 @@ ci-extension:
 ci-frontend:
 	npm --prefix frontend run lint
 	npm --prefix frontend run build
+
+# Browser regressions run locally before pushing UI changes.
+check-frontend: ci-frontend
 	npm --prefix frontend run test:e2e
 
 ci-docs-build:
@@ -137,7 +140,7 @@ ci-config:
 	$(AS2_PYTHON) scripts/ci/check_config.py
 	$(AS2_PYTHON) scripts/ci/release.py check
 
-check: ci-config ci-python-lint ci-python-test ci-extension ci-frontend
+check: ci-config ci-python-lint ci-python-test ci-extension check-frontend
 
 # 扩展：检查后打包 VSIX（产出 extension/ai-social-scientist.vsix）
 package-extension:

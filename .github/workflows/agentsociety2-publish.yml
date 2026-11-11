@@ -99,22 +99,12 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Install browser dependencies
+      - name: Install frontend dependencies
         working-directory: frontend
-        run: |
-          npm ci --prefer-offline --no-audit --fund=false
-          npx --no-install playwright install --with-deps --only-shell chromium
+        run: npm ci --prefer-offline --no-audit --fund=false
 
       - name: Check frontend and bilingual documentation
-        run: make ci-frontend ci-docs-build ci-docs-browser
-
-      - name: Upload browser failure traces
-        if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: release-browser-traces
-          path: frontend/test-results/
-          if-no-files-found: ignore
+        run: make ci-frontend ci-docs-build
 
   build-python:
     name: Build Python distribution

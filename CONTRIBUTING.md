@@ -165,7 +165,7 @@ make check
 make ci-docs-build ci-docs-browser
 ```
 
-`make check` runs CI configuration checks, Python lint/types/offline tests, extension checks, and frontend lint/build/browser tests. Network tests are opt-in; the default suite uses no model credentials. `AS2_PYTHON` selects an existing Python environment, while `PLAYWRIGHT_CHROMIUM_EXECUTABLE` selects an existing Chromium installation. Run `make ci-package` separately to check the SDK distributions.
+`make check` runs CI configuration checks, Python lint/types/offline tests, extension checks, and frontend lint/build/browser tests. Browser regressions run locally during development; GitHub and GitLab CI retain frontend lint/build, SDK and extension checks, strict bilingual documentation builds, and release validation. CI does not install or run browsers. Use `make check-frontend` for frontend-only checks and `make ci-docs-browser` after changing documentation interactions. Network tests are opt-in; the default suite uses no model credentials. `AS2_PYTHON` selects an existing Python environment, while `PLAYWRIGHT_CHROMIUM_EXECUTABLE` selects an existing Chromium installation. Run `make ci-package` separately to check the SDK distributions.
 
 Extension-only iteration: `make dev` / `make rebuild` (see `make help`). Frontend has aggregate `make lint-frontend` / `make build-frontend` targets but no dev-watch target — run `npm run dev` inside `frontend/`.
 

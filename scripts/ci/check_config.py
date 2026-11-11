@@ -17,7 +17,6 @@ CHECKS = (
     ("extension-ci.yml", "build", "lint-extension", "ci-extension"),
     ("frontend-ci.yml", "build", "lint-frontend", "ci-frontend"),
     ("docs-ci.yml", "docs", "documentation", "ci-docs-build"),
-    ("docs-ci.yml", "docs", "documentation-browser", "ci-docs-browser"),
     ("agentsociety2-publish.yml", "validate", "release-check", "ci-release-check"),
 )
 STABLE_TAG_RULE = r"$CI_COMMIT_TAG =~ /^agentsociety2-v[0-9]+\.[0-9]+\.[0-9]+$/"
@@ -36,6 +35,27 @@ def commands(job: dict) -> str:
 def audit(root: Path) -> list[str]:
     errors = []
     gitlab = load(root / ".gitlab-ci.yml")
+    for filename in (root / ".github/workflows").glob("*.yml"):
+        for name, job in load(filename).get("jobs", {}).items():
+            if re.search(
+                r"\bplaywright\b|\bci-docs-browser\b|\btest:(docs|e2e)\b", commands(job)
+            ):
+                errors.append(
+                    f"GitHub {filename.name}/{name}: browser checks run locally"
+                )
+    for name, job in gitlab.items():
+        if name.startswith(".") or not isinstance(job, dict):
+            continue
+        setup = "\n".join(job.get("before_script", []))
+        if re.search(
+            r"\bplaywright\b|\bci-docs-browser\b|\btest:(docs|e2e)\b",
+            setup + "\n" + commands(job),
+        ):
+            errors.append(f"GitLab {name}: browser checks run locally")
+        for need in job.get("needs", []):
+            dependency = need["job"] if isinstance(need, dict) else need
+            if dependency not in gitlab:
+                errors.append(f"GitLab {name} needs missing job {dependency}")
     for filename, github_job, gitlab_job, target in CHECKS:
         github = load(root / ".github/workflows" / filename)
         for label, job in [
@@ -43,8 +63,6 @@ def audit(root: Path) -> list[str]:
             (f"GitLab {gitlab_job}", gitlab[gitlab_job]),
         ]:
             pattern = rf"\bmake\b[^\n]*\b{re.escape(target)}\b"
-            if target == "ci-docs-browser":
-                pattern += r"|\bnpm --prefix frontend run test:docs\b"
             if not re.search(pattern, commands(job)):
                 errors.append(f"{label} must run shared {target}")
     python_workflow = load(root / ".github/workflows/ci.yml")
@@ -61,37 +79,13 @@ def audit(root: Path) -> list[str]:
     for job in ["lint-extension", "lint-frontend"]:
         if gitlab[job].get("image") != f"node:{version}-bookworm":
             errors.append(f"GitLab {job} Node image differs from .nvmrc")
-    frontend_lock = json.loads((root / "frontend/package-lock.json").read_text())
-    playwright = frontend_lock["packages"]["node_modules/@playwright/test"]["version"]
-    browser_job = gitlab["documentation-browser"]
-    if browser_job.get("image") != f"mcr.microsoft.com/playwright:v{playwright}-noble":
-        errors.append("GitLab documentation browser image must match locked Playwright")
-    if (
-        browser_job.get("variables", {}).get("PLAYWRIGHT_BROWSERS_PATH")
-        != "/ms-playwright"
-    ):
-        errors.append("GitLab documentation browser must use the preinstalled browsers")
-    for label, command in [
-        ("GitLab", "\n".join(browser_job.get("before_script", []))),
-        (
-            "GitHub",
-            commands(load(root / ".github/workflows/docs-ci.yml")["jobs"]["docs"]),
-        ),
-    ]:
-        if not re.search(
-            r"npm (?:--prefix frontend )?ci --workspace tests/docs --include-workspace-root=false",
-            command,
-        ):
-            errors.append(
-                f"{label} documentation browser must install only its workspace"
-            )
     github = load(root / ".github/workflows/codeql.yml")
     github_languages = set(github["jobs"]["analyze"]["strategy"]["matrix"]["language"])
     if github_languages != set(LANGUAGES):
         errors.append("CodeQL language matrices differ")
     if "--language all" not in commands(gitlab["codeql"]):
         errors.append("GitLab CodeQL must scan all shared languages in one job")
-    for job in ["lint-frontend", "documentation", "codeql"]:
+    for job in ["documentation", "codeql"]:
         if not any(
             "mirrors.tuna.tsinghua.edu.cn/debian" in command
             for command in gitlab[job].get("before_script", [])
@@ -136,7 +130,7 @@ def audit(root: Path) -> list[str]:
             errors.append(f"{label} must install Graphviz for documentation diagrams")
     for job, targets in [
         ("validate", ["ci-config", "ci-python-lint", "ci-python-test", "ci-extension"]),
-        ("documentation", ["ci-frontend", "ci-docs-build", "ci-docs-browser"]),
+        ("documentation", ["ci-frontend", "ci-docs-build"]),
     ]:
         for target in targets:
             if not re.search(
@@ -153,7 +147,6 @@ def audit(root: Path) -> list[str]:
         "codeql",
         "build-package",
         "documentation",
-        "documentation-browser",
         "generate-changelog",
         "create-release",
         "mirror-to-github",

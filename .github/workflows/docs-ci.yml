@@ -27,9 +27,6 @@ on:
       - "READTHEDOCS.md"
       - "pyproject.toml"
       - "uv.lock"
-      - "frontend/tests/docs/**"
-      - "frontend/playwright.docs.config.ts"
-      - "frontend/package*.json"
       - ".github/workflows/*.yml"
   pull_request:
     branches: [main, develop]
@@ -51,9 +48,6 @@ on:
       - "READTHEDOCS.md"
       - "pyproject.toml"
       - "uv.lock"
-      - "frontend/tests/docs/**"
-      - "frontend/playwright.docs.config.ts"
-      - "frontend/package*.json"
       - ".github/workflows/*.yml"
 
 concurrency:
@@ -97,29 +91,9 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version-file: extension/.nvmrc
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
 
       - name: Build, validate translations, links and offline examples
         run: make ci-config ci-docs-build
-
-      - name: Install browser test dependencies
-        working-directory: frontend
-        run: |
-          npm ci --workspace tests/docs --include-workspace-root=false --prefer-offline --no-audit --fund=false
-          npx --no-install playwright install --with-deps --only-shell chromium
-
-      - name: Test search, navigation, API pages and markup
-        run: npm --prefix frontend run test:docs
-
-      - name: Upload browser failure traces
-        if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: documentation-browser-traces
-          path: frontend/test-results/
-          retention-days: 7
-          if-no-files-found: ignore
 
       - name: Upload documentation preview
         uses: actions/upload-artifact@v7

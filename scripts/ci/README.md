@@ -7,9 +7,10 @@ GitLab 和 GitHub 共用根目录 Makefile 与 npm 脚本的检查入口。修�
 | `make ci-python-lint` | SDK 与 CI 脚本 Ruff、SDK 测试代码 mypy |
 | `make ci-python-test` | 无需真实模型的 SDK 回归，排除 `network` 用例 |
 | `make ci-extension` | 扩展 lint、测试、类型检查与构建 |
-| `make ci-frontend` | 前端 lint、生产构建与浏览器回归 |
+| `make ci-frontend` | 前端 lint、类型检查与生产构建 |
+| `make check-frontend` | 本地前端 lint、构建与浏览器回归 |
 | `make ci-docs-build` | 双语严格构建、翻译与英文页面、离线示例、本地资源与链接 |
-| `make ci-docs-browser` | 中英文搜索、导航、复制、主题和关键布局的六项烟雾检查 |
+| `make ci-docs-browser` | 本地中英文搜索、导航、复制、主题和关键布局的六项检查 |
 | `make ci-release-check` | 标签发版前校验 SDK、运行时、锁文件、插件版本和 CHANGELOG；读取 `AS2_RELEASE_TAG` 或 `CI_COMMIT_TAG` |
 | `make ci-package` | SDK 源码包与 wheel 构建、Twine 元数据校验 |
 
@@ -21,7 +22,7 @@ Python 环境默认使用根目录 `.venv`，可用 `AS2_PYTHON=/absolute/path/t
 | --- | --- |
 | 合并请求、main/develop 更新 | 根据路径选择 Python、插件、前端、文档与 CodeQL 检查 |
 | Python 变更 | lint → 三版本测试和分发包构建并行 |
-| 文档变更 | 中英文严格构建、翻译/链接/示例检查 → 六项浏览器检查 |
+| 文档变更 | 中英文严格构建、翻译、链接与离线示例检查 |
 | 镜像输入变更 | SDK 输入等待 Python 3.12，插件输入等待插件检查，镜像元数据直接构建；每次只选一个镜像构建入口 |
 | main 镜像发布 | 先保存本次流水线的候选镜像，再等待所有已触发的相关检查通过，最后更新 `:v2`；发布入口共用资源组 |
 | main 同步 GitHub | 前序阶段成功后同步 main；镜像发布与同步属于同一阶段 |
@@ -57,7 +58,7 @@ uv sync --frozen --package agentsociety2 --no-default-groups --extra dev
 uv sync --frozen --package agentsociety2 --no-default-groups --extra docs
 ```
 
-uv 缓存按用途、Python 版本与锁文件分开，npm 下载与 Chromium 文件分别缓存；仅缓存下载内容，环境仍按锁文件重新创建。npm 安装使用 `--prefer-offline --no-audit --fund=false`，安全审计保留独立步骤。
+uv 缓存按用途、Python 版本与锁文件分开，npm 下载单独缓存；仅缓存下载内容，环境仍按锁文件重新创建。npm 安装使用 `--prefer-offline --no-audit --fund=false`，安全审计保留独立步骤。
 
 普通文档修改只触发文档相关任务；SDK 源码、示例和运行时 Skill 变化会触发相应检查。SDK 打包在 lint 后与测试并行，正式发布仍等待完整检查。仅需要等待检查结果的任务通过 `artifacts: false` 避免下载文档预览和测试报告。
 
@@ -71,21 +72,22 @@ Runner 日志出现 `No URL provided` 表示没有配置共享缓存服务，任
 
 单元测试使用占位凭据，不依赖 CI Secret 或付费模型。需要公网的测试单独执行 `pytest -m network`，不参与普通合并请求的确定性检查。Python 与 npm 沿用现有源配置；不要为对齐检查擅自更换镜像。
 
-## 文档浏览器性能
+## 本地浏览器检查
 
-文档测试是 `frontend/tests/docs` 的轻量 npm workspace，与仪表盘共用 `frontend/package-lock.json`。只安装 Playwright 及其依赖：
+浏览器交互回归在开发阶段完成，GitHub、GitLab 和标签发布任务均不下载或运行 Playwright 浏览器。`make check` 仍包含前端浏览器回归；修改文档交互后，先运行 `make ci-docs-build`，再运行 `make ci-docs-browser`。
+
+只检查文档时，可安装轻量 workspace，与仪表盘共用 `frontend/package-lock.json`：
 
 ```bash
 cd frontend
 npm ci --workspace tests/docs --include-workspace-root=false --prefer-offline --no-audit --fund=false
+npx --no-install playwright install --with-deps --only-shell chromium
 npm run test:docs
 ```
 
-GitLab 使用与锁文件版本匹配的 [Playwright 官方镜像](https://playwright.dev/docs/docker)，直接复用 `/ms-playwright` 中的浏览器与系统库。镜像首次拉取较大，适合在 Runner 预拉取；常规任务只恢复轻量 npm 缓存，不再传输浏览器缓存。升级 Playwright 后同时更新镜像版本，`ci-config` 会检查二者是否一致。
+前端检查使用完整的 `npm ci` 和 `make check-frontend`。浏览器安装只需在首次使用或升级 Playwright 后执行，也可通过 `PLAYWRIGHT_CHROMIUM_EXECUTABLE` 复用本机已有的 Chromium。文档测试覆盖中英文搜索、手机导航、复制与主题，套件总时限为两分钟。
 
-GitHub 的文档任务同样只安装此 workspace；宿主机使用 `--only-shell` 安装 Chromium 的无头运行组件。两端直接调用共享的 `npm --prefix frontend run test:docs`；本地 `make ci-docs-browser` 也委托给同一脚本。仪表盘构建与回归仍使用完整的 `npm ci`。
-
-HTML 与 doctest 复用按语言隔离的 Sphinx doctrees，缓存存放在 `docs-gettext/.doctrees/{zh,en}`。上传产物只保留页面、资源及示例检查报告，减少浏览器任务下载与解压内容；六项功能检查和失败追踪保持启用，测试套件总时限为两分钟。
+HTML 与 doctest 继续复用按语言隔离的 Sphinx doctrees，缓存位于 `docs-gettext/.doctrees/{zh,en}`，不随网页预览产物上传。
 
 ## CodeQL
 
@@ -109,6 +111,6 @@ SDK 与插件分别使用语义化版本，当前发布流程仅支持稳定标�
 
 ## CI 范围
 
-日常 CI 保留业务回归、构建、双语文档、资源检查、六项文档烟雾检查和发版校验。全站屏宽矩阵、下载故障注入及检查器自身的测试在本地维护排障时运行。定期外链和 API 覆盖报告合并在 `docs-ci.yml` 的计划任务中。
+日常 CI 保留 SDK 与插件回归、静态检查、构建、双语文档、资源检查、安全扫描和发版校验。前端和文档浏览器回归、全站屏宽矩阵、下载故障注入及检查器自身的测试在本地开发和维护排障时运行。定期外链和 API 覆盖报告合并在 `docs-ci.yml` 的计划任务中。
 
-GitLab 的 Debian bookworm 容器共用清华 HTTPS 软件源设置，安装前端浏览器依赖、Graphviz 与 CodeQL 的 Node.js；自定义源配置保持原样。浏览器文件与 npm 下载分别保存在 `.cache/ms-playwright` 与 `.cache/npm`。Runner 缺少分布式缓存时会从空缓存开始，缓存缺失本身不影响检查逻辑。
+GitLab 的 Debian bookworm 容器共用清华 HTTPS 软件源设置，安装 Graphviz 与 CodeQL 的 Node.js；自定义源配置保持原样。npm 下载保存在 `.cache/npm`。Runner 缺少分布式缓存时会从空缓存开始，缓存缺失本身不影响检查逻辑。

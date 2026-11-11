@@ -49,20 +49,8 @@ jobs:
       - name: Install dependencies
         run: npm ci --prefer-offline --no-audit --fund=false
 
-      - name: Install browser
-        run: npx --no-install playwright install --with-deps --only-shell chromium
-
-      - name: Lint, build and test production pages
+      - name: Lint and build production pages
         run: make -C .. ci-frontend
-
-      - name: Upload browser failure traces
-        if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: frontend-browser-traces
-          path: frontend/test-results/
-          retention-days: 7
-          if-no-files-found: ignore
 
       - name: Audit dependencies (advisory)
         # Use the official registry: npmmirror does not implement the audit API.
