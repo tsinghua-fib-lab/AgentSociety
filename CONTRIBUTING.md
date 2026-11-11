@@ -75,7 +75,7 @@ npm audit --audit-level=high
 
 Use a short, lowercase purpose prefix and a descriptive slug: `feat/<topic>`, `fix/<topic>`, `docs/<topic>`, or `chore/<topic>`. Use `release/X.Y.Z` for release branches. For example: `docs/as2-release-polish`. Avoid temporary status names such as `ready` or `final`; keep local recovery branches separate from review branches.
 
-GitHub is a mirror of the primary GitLab repository. Repository rules and CI maintenance are described in [the GitHub guide](./.github/README.md).
+GitHub is a mirror of the primary GitLab repository. Repository rules and CI maintenance are described in [the GitHub guide](./.github/MAINTENANCE.md).
 
 ## Commit conventions
 

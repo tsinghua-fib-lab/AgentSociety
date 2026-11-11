@@ -34,6 +34,13 @@ def commands(job: dict) -> str:
 
 def audit(root: Path) -> list[str]:
     errors = []
+    if any(
+        path.is_file() and path.stem.lower() == "readme"
+        for path in (root / ".github").iterdir()
+    ):
+        errors.append(
+            "Keep GitHub maintenance notes in MAINTENANCE.md; .github/README overrides the project homepage"
+        )
     gitlab = load(root / ".gitlab-ci.yml")
     for filename in (root / ".github/workflows").glob("*.yml"):
         for name, job in load(filename).get("jobs", {}).items():

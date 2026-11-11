@@ -53,18 +53,26 @@ async def test_native_computation_is_killed_without_blocking_parent_loop(monkeyp
 
 
 async def test_worker_memory_limit_rejects_large_native_allocation(monkeypatch):
-    monkeypatch.setattr(Config, "CODE_EXEC_MEMORY_MIB", 128)
+    # The address-space limit includes Python and NumPy, not only array data.
+    # Leave room for imports across Python builds; test allocation rejection
+    # separately from cold imports and keep deadline enforcement in its own test.
+    monkeypatch.setattr(Config, "CODE_EXEC_MEMORY_MIB", 256)
+    monkeypatch.setattr(Config, "CODE_EXEC_TIMEOUT", 30)
     router = CodeGenRouter(env_modules=[], template_cache_enabled=False)
-    source = "values = np.empty(128*1024*1024, dtype=np.uint8)\nresults['status'] = 'success'"
+    small = "results['value'] = int(np.sum([1, 2]))\nresults['status'] = 'success'"
+    warmup = await CodeStage._execute_code(router, small, {}, True)
+    assert warmup["success"] and warmup["results"]["value"] == 3
+    worker = router._codegen_pool.idle[-1]
+    source = "values = np.empty(512*1024*1024, dtype=np.uint8)\nresults['status'] = 'success'"
     result = await CodeStage._execute_code(router, source, {}, True)
     assert not result["success"]
     assert (
         "allocat" in result["error"].lower()
         or result.get("error_type") == "MemoryError"
     )
-    assert (
-        await CodeStage._execute_code(router, "results['status'] = 'success'", {}, True)
-    )["success"]
+    recovered = await CodeStage._execute_code(router, small, {}, True)
+    assert recovered["success"] and recovered["results"]["value"] == 3
+    assert router._codegen_pool.idle[-1] is worker
 
 
 async def test_worker_returns_nested_context_updates_with_literal_type_tags():

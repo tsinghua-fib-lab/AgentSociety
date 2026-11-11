@@ -1,4 +1,4 @@
-# GitHub maintenance
+# GitHub repository maintenance
 
 GitLab is the primary repository; `.gitlab-ci.yml` mirrors `main` and `agentsociety2-v*` tags to GitHub with a deploy key. GitHub hosts public issues, dependency updates, and additional checks. Active code scope is defined in [agentsociety2-scope.yml](./agentsociety2-scope.yml).
 
