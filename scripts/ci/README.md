@@ -25,17 +25,22 @@ Python 环境默认使用根目录 `.venv`，可用 `AS2_PYTHON=/absolute/path/t
 | 文档变更 | 中英文严格构建、翻译、链接与离线示例检查 |
 | 镜像输入变更 | SDK 输入等待 Python 3.12，插件输入等待插件检查，镜像元数据直接构建；每次只选一个镜像构建入口 |
 | main 镜像发布 | 先保存本次流水线的候选镜像，再等待所有已触发的相关检查通过，最后更新 `:v2`；发布入口共用资源组 |
+| develop 镜像发布 | 复用相同构建和检查流程，通过后更新 `:v2-beta`，供 Coder 测试模板使用 |
 | main 同步 GitHub | 前序阶段成功后同步 main；镜像发布与同步属于同一阶段 |
 | 人工推送 `agentsociety2-vX.Y.Z` | 校验版本与变更日志，运行发布检查并创建 GitLab Release；同步标签后由 GitHub 打包、发布 PyPI 和 GitHub Release |
 
 创建 MR 触发检查和构建；合并到 main 后，配置中的镜像发布与 GitHub 同步会自动执行。版本号与标签由维护者决定；推送发布标签会启动正式发版流程。
+
+Coder 正式模板使用 `registry.fiblab.net/llmsim/agentsociety:v2`，测试模板使用 `registry.fiblab.net/llmsim/agentsociety:v2-beta`。镜像发布标签由 `DOCKER_RELEASE_TAG` 统一控制：默认值为 `v2`，develop 分支流水线通过 `workflow:rules:variables` 覆盖为 `v2-beta`。两条分支均先推送独立的 `pipeline-${CI_PIPELINE_ID}` 候选标签，通过检查后再发布对应的滚动标签和包含提交短 SHA、时间戳的版本标签；MR 只验证构建，不推送镜像。develop 不触发 GitHub 同步或正式 Release。
+
+镜像仍按输入路径变化构建，仅修改 `.gitlab-ci.yml` 不会触发镜像构建；新建 develop 分支时，GitLab 的 `rules:changes` 会匹配并触发首次构建。测试镜像发布成功后，停止并重新启动 Coder 测试工作区，使新容器按 `image_pull_policy = "Always"` 使用当前镜像。
 
 ## 平台配置
 
 | 配置 | 何时需要 | 配置位置 |
 | --- | --- | --- |
 | 普通 Runner 与带 `dind` 标签的 Docker 构建 Runner | 常规检查、镜像构建 | GitLab Runner；镜像构建任务需要能调用 Docker |
-| 项目 Container Registry | 候选镜像、镜像缓存及 `:v2` 发布 | GitLab 项目设置；`CI_REGISTRY_*` 使用平台内置凭据 |
+| 项目 Container Registry | 候选镜像、镜像缓存及 `:v2` / `:v2-beta` 发布 | GitLab 项目设置；`CI_REGISTRY_*` 使用平台内置凭据 |
 | `GITHUB_DEPLOY_KEY` | main 和版本标签同步到 GitHub | GitLab CI/CD 变量，建议使用文件类型；对应 GitHub 仓库 Deploy key 需启用写权限 |
 | main 与 `agentsociety2-v*` 的保护规则 | 限制正式发布入口、向发布任务提供 protected 变量 | GitLab 受保护分支与标签设置 |
 | PyPI Trusted Publisher | 正式标签发版后发布 Python 包 | PyPI 配置 GitHub owner/repository、`agentsociety2-publish.yml`、环境 `pypi` |
@@ -62,7 +67,7 @@ uv 缓存按用途、Python 版本与锁文件分开，npm 下载单独缓存；
 
 普通文档修改只触发文档相关任务；SDK 源码、示例和运行时 Skill 变化会触发相应检查。SDK 打包在 lint 后与测试并行，正式发布仍等待完整检查。仅需要等待检查结果的任务通过 `artifacts: false` 避免下载文档预览和测试报告。
 
-镜像构建按变动范围只选择一条路径：SDK 变更等待 Python 3.12 测试，插件变更等待插件检查，镜像元数据变更直接构建。正式镜像发布统一等待本次实际触发的 Python 全版本测试、前端、CodeQL、分发包及文档检查；因此混合变更也会等待相关检查完成。三个镜像发布入口共用一个 [resource group](https://docs.gitlab.com/ci/resource_groups/)，串行更新共享的 `:v2` 标签。资源组默认不保证按流水线新旧排序；需要严格发布顺序时，应在 GitLab 设置相应 process mode。
+镜像构建按变动范围只选择一条路径：SDK 变更等待 Python 3.12 测试，插件变更等待插件检查，镜像元数据变更直接构建。正式与测试镜像发布统一等待本次实际触发的 Python 全版本测试、前端、CodeQL、分发包及文档检查；因此混合变更也会等待相关检查完成。三个镜像发布入口共用一个 [resource group](https://docs.gitlab.com/ci/resource_groups/)，串行更新 main 的 `:v2` 与 develop 的 `:v2-beta` 标签。资源组默认不保证按流水线新旧排序；需要严格发布顺序时，应在 GitLab 设置相应 process mode。
 
 Docker 使用锁文件内的本地 vsce；翻译文本位于 npm 依赖层之后。构建前登录镜像仓库，读取现有 `:v2` 缓存，构建时写入 inline cache 元数据。构建上下文排除独立构建的前端、SDK 文档与测试；APT、uv 和 npm 的 BuildKit 缓存分别复用下载。 Python 依赖安装位于 Node/Claude/Codex 文件复制之前，使 CLI 更新复用 Python 依赖层。
 

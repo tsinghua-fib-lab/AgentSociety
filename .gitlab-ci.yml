@@ -13,6 +13,8 @@ workflow:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "main"
     - if: $CI_COMMIT_BRANCH == "develop"
+      variables:
+        DOCKER_RELEASE_TAG: "v2-beta"
     - if: $CI_COMMIT_TAG
 
 variables:
@@ -25,6 +27,8 @@ variables:
   MEM0_TELEMETRY: "False"
   ANONYMIZED_TELEMETRY: "False"
   DOCKER_BUILDKIT: "1"
+  # Main publishes :v2; the develop workflow overrides this with :v2-beta.
+  DOCKER_RELEASE_TAG: "v2"
   # Temporary image tag for speculative build → promote only after all gates pass.
   DOCKER_PIPELINE_IMAGE: "${CI_REGISTRY_IMAGE}:pipeline-${CI_PIPELINE_ID}"
 
@@ -396,21 +400,21 @@ build-package:
       -t "${CI_REGISTRY_IMAGE}:mr-${CI_MERGE_REQUEST_IID:-local}" \
       .
   - |
-    if [[ "$CI_COMMIT_BRANCH" == "main" ]]; then
-      echo "Pushing speculative pipeline tag (promote to :v2 only after all gates)"
+    if [[ "$CI_COMMIT_BRANCH" == "main" || "$CI_COMMIT_BRANCH" == "develop" ]]; then
+      echo "Pushing speculative pipeline tag (promote to :${DOCKER_RELEASE_TAG} only after all gates)"
       docker push "${DOCKER_PIPELINE_IMAGE}"
     else
-      echo "MR pipeline — build validated locally; not pushing :v2"
+      echo "MR pipeline — build validated locally; not publishing runtime images"
     fi
 
 .docker_publish_script: &docker_publish_script
   - export TIME=$(date +%s)
   - printf '%s' "$CI_REGISTRY_PASSWORD" | docker login --username "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
   - docker pull "${DOCKER_PIPELINE_IMAGE}"
-  - docker tag "${DOCKER_PIPELINE_IMAGE}" "${CI_REGISTRY_IMAGE}:v2-${CI_COMMIT_SHORT_SHA}-${TIME}"
-  - docker tag "${DOCKER_PIPELINE_IMAGE}" "${CI_REGISTRY_IMAGE}:v2"
-  - docker push "${CI_REGISTRY_IMAGE}:v2-${CI_COMMIT_SHORT_SHA}-${TIME}"
-  - docker push "${CI_REGISTRY_IMAGE}:v2"
+  - docker tag "${DOCKER_PIPELINE_IMAGE}" "${CI_REGISTRY_IMAGE}:${DOCKER_RELEASE_TAG}-${CI_COMMIT_SHORT_SHA}-${TIME}"
+  - docker tag "${DOCKER_PIPELINE_IMAGE}" "${CI_REGISTRY_IMAGE}:${DOCKER_RELEASE_TAG}"
+  - docker push "${CI_REGISTRY_IMAGE}:${DOCKER_RELEASE_TAG}-${CI_COMMIT_SHORT_SHA}-${TIME}"
+  - docker push "${CI_REGISTRY_IMAGE}:${DOCKER_RELEASE_TAG}"
 
 # AS2 / lockfile changed → wait until test 3.12 passes, then build.
 docker-build:
@@ -431,7 +435,7 @@ docker-build:
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       changes: *docker_python_changes
-    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
       changes: *docker_python_changes
   script: *docker_build_script
 
@@ -448,13 +452,13 @@ docker-build-extension:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       changes: *docker_python_changes
       when: never
-    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
       changes: *docker_python_changes
       when: never
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       changes:
         - extension/**/*
-    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
       changes:
         - extension/**/*
   script: *docker_build_script
@@ -470,14 +474,14 @@ docker-build-dockerfile:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       changes: *docker_python_changes
       when: never
-    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
       changes: *docker_python_changes
       when: never
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       changes:
         - extension/**/*
       when: never
-    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
       changes:
         - extension/**/*
       when: never
@@ -489,7 +493,7 @@ docker-build-dockerfile:
         - LICENSE
         - packages/agentsociety2/README*.md
         - packages/agentsociety2/LICENSE
-    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
       changes:
         - Dockerfile
         - .dockerignore
@@ -499,7 +503,7 @@ docker-build-dockerfile:
         - packages/agentsociety2/LICENSE
   script: *docker_build_script
 
-# Main only: retag speculative image → :v2 after the full test matrix is green.
+# Main → :v2, develop → :v2-beta, after the full test matrix is green.
 docker-publish:
   tags:
     - dind
@@ -524,7 +528,7 @@ docker-publish:
       artifacts: false
       optional: true
   rules:
-    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
       changes: *docker_python_changes
   script: *docker_publish_script
 
@@ -553,10 +557,10 @@ docker-publish-extension:
       artifacts: false
       optional: true
   rules:
-    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
       changes: *docker_python_changes
       when: never
-    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
       changes:
         - extension/**/*
   script: *docker_publish_script
@@ -589,14 +593,14 @@ docker-publish-dockerfile:
       artifacts: false
       optional: true
   rules:
-    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
       changes: *docker_python_changes
       when: never
-    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
       changes:
         - extension/**/*
       when: never
-    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
       changes:
         - Dockerfile
         - .dockerignore
