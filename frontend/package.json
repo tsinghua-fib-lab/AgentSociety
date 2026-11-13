@@ -52,7 +52,7 @@
     "survey-core": "3.2.2",
     "survey-react-ui": "^3.2.2",
     "typescript": "~5.6.2",
-    "typescript-eslint": "^8.65.0",
+    "typescript-eslint": "^8.72.1",
     "vite": "^8.3.5",
     "@vitejs/plugin-react": "^6.1.2",
     "@playwright/test": "^1.64.1",
