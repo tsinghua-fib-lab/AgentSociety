@@ -19,7 +19,7 @@
     "antd": "^6.6.5",
     "casdoor-js-sdk": "^0.21.1",
     "dayjs": "^1.11.21",
-    "i18next": "~26.5.12",
+    "i18next": "~27.0.1",
     "i18next-browser-languagedetector": "~8.2.4",
     "jwt-decode": "^4.0.0",
     "mapbox-gl": "^3.9.0",
