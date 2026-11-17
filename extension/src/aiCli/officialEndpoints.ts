@@ -15,6 +15,7 @@ const OPENAI_COMPATIBLE_DOMAINS = [
   'dashscope.aliyuncs.com',
   'groq.com',
   'stepfun.com',
+  'teapotrouter.com',
 ];
 
 function parseBaseUrl(baseUrl: string): URL | null {
