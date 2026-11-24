@@ -90,7 +90,7 @@ async def _acquire_shared_quota() -> None:
     deadline = time.monotonic() + _SHARED_QUOTA_WAIT
     while True:
         acquired = False
-        fd = os.open(_SHARED_QUOTA_FILE, os.O_RDWR | os.O_CREAT, 0o644)
+        fd = os.open(_SHARED_QUOTA_FILE, os.O_RDWR | os.O_CREAT, 0o600)
         try:
             try:
                 fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -131,7 +131,7 @@ def _release_shared_quota() -> None:
         return
     import fcntl
 
-    fd = os.open(_SHARED_QUOTA_FILE, os.O_RDWR | os.O_CREAT, 0o644)
+    fd = os.open(_SHARED_QUOTA_FILE, os.O_RDWR | os.O_CREAT, 0o600)
     try:
         fcntl.flock(fd, fcntl.LOCK_EX)
         try:

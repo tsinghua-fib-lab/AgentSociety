@@ -2,7 +2,6 @@
 
 from .chart_export import export_altair_html, export_plotly_html, export_pygwalker_html
 from .data import ContextLoader, DatabaseSchema, DataReader, DataStats, DataSummary
-from .executor import ExecutionResult, ToolInfo, ToolResult
 from .models import (
     AnalysisResult,
     ExperimentContext,
@@ -34,7 +33,6 @@ __all__ = [
     "DataSummary",
     "DatabaseSchema",
     "EDAGenerator",
-    "ExecutionResult",
     "ExperimentContext",
     "ExperimentDesign",
     "ExperimentPaths",
@@ -45,8 +43,6 @@ __all__ = [
     "ReportContent",
     "ReportPaths",
     "SynthesisPaths",
-    "ToolInfo",
-    "ToolResult",
     "collect_experiment_files",
     "experiment_paths",
     "export_altair_html",

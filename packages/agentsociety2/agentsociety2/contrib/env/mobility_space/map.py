@@ -3,13 +3,13 @@
 import logging
 import os
 import pickle
+import re
 from copy import deepcopy
 from typing import Any, Literal, TypeVar
 
 import numpy as np
 import pyproj
 import shapely
-import stringcase
 from geojson import Feature
 from google.protobuf import json_format
 from google.protobuf.json_format import MessageToDict, ParseDict
@@ -111,7 +111,11 @@ class Map:
                 ) from None
             jsons = []
             for field in pb.DESCRIPTOR.fields:
-                class_name = stringcase.spinalcase(field.message_type.name)
+                # Protobuf message names use ASCII identifiers (e.g. PublicTransportSubline).
+                name = field.message_type.name
+                class_name = (
+                    re.sub(r"(?<!^)(?=[A-Z])", "-", name).replace("_", "-").lower()
+                )
                 if field.label == field.LABEL_REPEATED:
                     for pb_field in getattr(pb, field.name):
                         data = MessageToDict(

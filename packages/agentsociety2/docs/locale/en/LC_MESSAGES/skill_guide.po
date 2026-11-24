@@ -19,17 +19,17 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skill_guide.md:1
+#: ../../skill_guide.md:1
 msgid "Skill 编写指南"
 msgstr "Skill Authoring Guide"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skill_guide.md:3
+#: ../../skill_guide.md:3
 msgid "先让一个最小技能被发现并产生可检查的文件，再增加脚本、依赖与 hook。"
 msgstr ""
 "First make a minimal skill discoverable and produce an inspectable file, then add "
 "scripts, dependencies and hooks."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skill_guide.md:5
+#: ../../skill_guide.md:5
 #, python-brace-format
 msgid "本页保留从零编写技能的最短流程。发现、激活、脚本执行与 hook 契约统一维护在 {doc}`agent_skills`，避免两份说明随实现变化而不一致。"
 msgstr ""
@@ -37,15 +37,15 @@ msgstr ""
 " execution and hook contracts are maintained in {doc}`agent_skills` to keep "
 "implementation details consistent."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skill_guide.md:7
+#: ../../skill_guide.md:7
 msgid "创建最小技能"
 msgstr "Create a Minimal Skill"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skill_guide.md:9
+#: ../../skill_guide.md:9
 msgid "在研究工作区创建目录："
 msgstr "Create a directory in the research workspace:"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skill_guide.md:11
+#: ../../skill_guide.md:11
 msgid ""
 "custom/skills/social-reflection/\n"
 "└── SKILL.md\n"
@@ -53,13 +53,13 @@ msgstr ""
 "custom/skills/social-reflection/\n"
 "└── SKILL.md\n"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skill_guide.md:16
+#: ../../skill_guide.md:16
 msgid "`SKILL.md` 同时包含用于发现的元数据和激活后读取的行为说明："
 msgstr ""
 "`SKILL.md` contains both discovery metadata and the instructions read after "
 "activation:"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skill_guide.md:18
+#: ../../skill_guide.md:18
 msgid ""
 "---\n"
 "name: social-reflection\n"
@@ -103,18 +103,18 @@ msgstr ""
 "## Outputs\n"
 "state/social_reflection.json, containing reflection and supporting evidence.\n"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skill_guide.md:41
+#: ../../skill_guide.md:41
 msgid "在工作台的“技能管理 → 运行时”扫描工作区。技能出现在目录中后，由智能体在运行时按需激活；目录可见不代表已经执行。"
 msgstr ""
 "Scan the workspace under Skill Management → Runtime. Once discovered, the skill can "
 "be activated by an agent as needed; appearing in the catalog does not mean it has "
 "run."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skill_guide.md:43
+#: ../../skill_guide.md:43
 msgid "何时添加脚本"
 msgstr "When to Add a Script"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skill_guide.md:45
+#: ../../skill_guide.md:45
 #, python-brace-format
 msgid ""
 "确定性计算、格式转换和数据校验适合脚本；开放判断可先使用纯提示技能。脚本的 `entrypoint(argv, "
@@ -125,7 +125,7 @@ msgstr ""
 "`entrypoint(argv, ctx)`, `ctx.workspace_root`, return values and timeouts, and "
 "{doc}`api/skills` for the API."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skill_guide.md:47
+#: ../../skill_guide.md:47
 msgid ""
 "`SKILL.md` 只声明受支持的 `name`、`description`、可选 `script` 与 "
 "`hooks`。依赖、输入、输出和环境交互步骤写在正文中，不添加没有解析器支持的配置字段。"
@@ -134,29 +134,29 @@ msgstr ""
 " `SKILL.md`. Put dependencies, inputs, outputs and environment interactions in the "
 "body rather than inventing configuration fields."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skill_guide.md:49
+#: ../../skill_guide.md:49
 msgid "检查与调试"
 msgstr "Check and Debug"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skill_guide.md:51
+#: ../../skill_guide.md:51
 msgid "用独立测试工作区放置输入，检查缺失输入和重复执行时的行为。"
 msgstr ""
 "Use a separate test workspace with sample inputs, and check missing inputs and "
 "repeated execution."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skill_guide.md:52
+#: ../../skill_guide.md:52
 msgid "对照实际工具名编写步骤；与环境交互使用 `ask_env`。"
 msgstr ""
 "Use actual tool names in the instructions; interact with the environment through "
 "`ask_env`."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skill_guide.md:53
+#: ../../skill_guide.md:53
 msgid "检查输出文件与 `<run_dir>/trace/trace_*.jsonl`，区分“技能被发现”“技能被激活”和“脚本已完成”。"
 msgstr ""
 "Inspect output files and `<run_dir>/trace/trace_*.jsonl`, distinguishing discovery, "
 "activation and completed script execution."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/skill_guide.md:54
+#: ../../skill_guide.md:54
 msgid "需要维护运行时或内置技能时，阅读源码中的 `agentsociety2/agent/skills/README.md`。"
 msgstr ""
 "For runtime or built-in skill maintenance, read "

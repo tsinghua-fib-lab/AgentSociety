@@ -1,22 +1,16 @@
 from __future__ import annotations
 
 import importlib.util
+import json
+import subprocess
 import sys
 from pathlib import Path
 from types import ModuleType
 
 from agentsociety2.skills.analysis import output as output_module
-from agentsociety2.skills.analysis.chart_export import brand_icon_source_path
 from agentsociety2.skills.analysis.harness import state as harness_state
 from agentsociety2.skills.analysis.harness.cli import cmd_record_phase_artifacts
 from agentsociety2.skills.analysis.harness.execution import _safe_result_summary
-from agentsociety2.skills.analysis.harness.preparation import _canonical_report_html
-from agentsociety2.skills.analysis.harness.report_eda_embed import (
-    EDA_INTERACTIVE_BEGIN,
-    EDA_INTERACTIVE_END,
-    build_interactive_eda_section,
-    embed_interactive_eda_in_html,
-)
 from agentsociety2.skills.analysis.harness.validators.report_quality import (
     validate_report_quality,
 )
@@ -31,7 +25,6 @@ def _load_extension_analysis_script() -> ModuleType:
         / "extension"
         / "skills"
         / "agentsociety-analysis"
-        / "v1.0.0"
         / "scripts"
         / "analysis.py"
     )
@@ -100,113 +93,6 @@ def _valid_report_html(*, zh: bool) -> str:
 </body></html>"""
 
 
-def test_brand_icon_resolves_from_installed_workspace_skill(
-    tmp_path: Path,
-    monkeypatch,
-) -> None:
-    workspace = tmp_path / "workspace"
-    skill_asset = (
-        workspace
-        / ".codex"
-        / "skills"
-        / "agentsociety-analysis"
-        / "assets"
-        / "agentsociety_icon.svg"
-    )
-    skill_asset.parent.mkdir(parents=True)
-    skill_asset.write_text("<svg></svg>", encoding="utf-8")
-    launcher = workspace / ".agentsociety" / "bin" / "ags.py"
-    launcher.parent.mkdir(parents=True)
-    launcher.touch()
-    other_cwd = tmp_path / "other"
-    other_cwd.mkdir()
-    monkeypatch.delenv("AGENTSOCIETY_ANALYSIS_SKILL_ROOT", raising=False)
-    monkeypatch.setattr(sys, "argv", [str(launcher)])
-    monkeypatch.chdir(other_cwd)
-
-    assert brand_icon_source_path() == skill_asset.resolve()
-
-
-def test_brand_icon_resolves_without_workspace(tmp_path: Path, monkeypatch) -> None:
-    from importlib.resources import files
-    from xml.etree import ElementTree
-
-    monkeypatch.delenv("AGENTSOCIETY_ANALYSIS_SKILL_ROOT", raising=False)
-    monkeypatch.setattr(sys, "argv", [str(tmp_path / "standalone.py")])
-    monkeypatch.chdir(tmp_path)
-    packaged = files("agentsociety2.skills.analysis").joinpath(
-        "assets", "agentsociety_icon.svg"
-    )
-    resolved = brand_icon_source_path()
-    assert resolved == Path(str(packaged)).resolve()
-    assert ElementTree.fromstring(resolved.read_bytes()).tag == (
-        "{http://www.w3.org/2000/svg}svg"
-    )
-
-
-def test_empty_eda_is_an_id_free_child_fragment(tmp_path: Path) -> None:
-    fragment = build_interactive_eda_section(tmp_path, lang="en")
-
-    assert fragment.startswith('<div class="eda-interactive')
-    assert 'id="data"' not in fragment
-    assert "<section" not in fragment
-    assert "<h2" not in fragment
-
-
-def test_eda_embed_preserves_authored_data_section_and_is_idempotent() -> None:
-    original = """<main>
-<section id="data" class="eda-interactive"><h2>Data and methods</h2>
-<p>Preserve this reconciliation narrative and its real values.</p>
-<table><tr><td>1600</td><td>35.7</td></tr></table>
-</section>
-<h2 id="findings">Findings</h2>
-</main>"""
-    fragment = (
-        '<div class="eda-interactive eda-interactive--empty" '
-        'data-eda-interactive="empty"><p>No interactive EDA yet.</p></div>'
-    )
-
-    merged = embed_interactive_eda_in_html(original, fragment)
-    merged_again = embed_interactive_eda_in_html(merged, fragment)
-
-    assert "Preserve this reconciliation narrative" in merged
-    assert "<table>" in merged
-    assert merged.count('id="data"') == 1
-    assert merged.count(EDA_INTERACTIVE_BEGIN) == 1
-    assert merged.count(EDA_INTERACTIVE_END) == 1
-    assert merged_again == merged
-    assert _canonical_report_html(merged) == _canonical_report_html(original)
-
-
-def test_eda_embed_upgrades_marker_wrapped_legacy_data_section() -> None:
-    legacy = f"""<main>{EDA_INTERACTIVE_BEGIN}
-<section class="eda-interactive" id="data"><h2>Data exploration</h2></section>
-{EDA_INTERACTIVE_END}<h2 id="findings">Findings</h2></main>"""
-    fragment = '<div class="eda-interactive">New child</div>'
-
-    merged = embed_interactive_eda_in_html(legacy, fragment)
-
-    assert merged.count('id="data"') == 1
-    assert merged.count(EDA_INTERACTIVE_BEGIN) == 1
-    assert "New child" in merged
-
-
-def test_eda_embed_relocates_top_level_marker_into_authored_data_section() -> None:
-    original = f"""<main>{EDA_INTERACTIVE_BEGIN}<div>Old EDA</div>{EDA_INTERACTIVE_END}
-<section id="data"><h2>Data</h2><p>Keep this authored text.</p></section>
-<h2 id="findings">Findings</h2></main>"""
-    fragment = '<div class="eda-interactive">New child</div>'
-
-    merged = embed_interactive_eda_in_html(original, fragment)
-    data_start = merged.index('<section id="data">')
-    data_end = merged.index("</section>", data_start)
-    marker_start = merged.index(EDA_INTERACTIVE_BEGIN)
-
-    assert data_start < marker_start < data_end
-    assert merged.count('id="data"') == 1
-    assert "Keep this authored text" in merged
-
-
 def test_report_validator_blocks_duplicate_ids_and_lost_data_section(
     tmp_path: Path,
 ) -> None:
@@ -241,6 +127,21 @@ def test_report_validator_accepts_preserved_static_data_sections(
         (tmp_path / f"report_{language}.html").write_text(
             _valid_report_html(zh=zh), encoding="utf-8"
         )
+    (tmp_path / "data").mkdir()
+    (tmp_path / "data" / "analysis_summary.json").write_text(
+        json.dumps(
+            {
+                "limitations": (
+                    "Simulation results may not generalize beyond the tested "
+                    "scenario and agent population."
+                ),
+                "key_findings": [
+                    "Treatment agents show a higher mean value than control agents."
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
 
     result = validate_report_quality(tmp_path)
 
@@ -332,3 +233,213 @@ def test_asset_manager_can_omit_base64_and_receipt_keeps_summary(
         "assets_dir": str(report_dir / "assets"),
         "embedded_data_included": False,
     }
+
+
+def test_dry_run_preflight_rejects_malformed_json_inputs(tmp_path: Path) -> None:
+    analysis_script = _load_extension_analysis_script()
+    argparse = __import__("argparse")
+
+    malformed_payload = analysis_script._operation_preflight(
+        argparse.Namespace(
+            command="record-attestation",
+            workspace=str(tmp_path),
+            hypothesis_id="1",
+            payload="{not json",
+        )
+    )
+    malformed_artifacts = analysis_script._operation_preflight(
+        argparse.Namespace(
+            command="record-phase-artifacts",
+            workspace=str(tmp_path),
+            hypothesis_id="1",
+            phase="explore",
+            artifacts='["data/explore.md", 3]',
+        )
+    )
+    missing_spec = analysis_script._operation_preflight(
+        argparse.Namespace(
+            command="compose-figure",
+            workspace=str(tmp_path),
+            hypothesis_id="1",
+            spec=str(tmp_path / "missing_spec.json"),
+        )
+    )
+
+    assert malformed_payload.status == "INVALID_INPUT"
+    assert "payload" in malformed_payload.reasons[0]
+    assert malformed_artifacts.status == "INVALID_INPUT"
+    assert "artifacts" in malformed_artifacts.reasons[0]
+    assert missing_spec.status == "INVALID_INPUT"
+    assert "spec" in missing_spec.reasons[0]
+
+
+def _write_report_fixture(
+    tmp_path: Path,
+    *,
+    zh_html_figure: str | None = None,
+    en_html_figure: str | None = None,
+    markdown_asset: str = "chart_01.png",
+) -> None:
+    figure_md = f"![Mean value by condition](assets/{markdown_asset})\nMean value by condition with 95% CI.\n\n"
+    for language, zh in (("zh", True), ("en", False)):
+        markdown = _report_markdown(zh=zh).replace("## 3", figure_md + "## 3")
+        (tmp_path / f"report_{language}.md").write_text(markdown, encoding="utf-8")
+    default_figure = (
+        '<figure class="figure-block">\n'
+        '<img src="assets/chart_01.png" alt="Mean value by condition">\n'
+        "<figcaption>Mean value by condition with 95% CI.</figcaption>\n"
+        "</figure>\n<p>Scoped conclusion.</p>"
+    )
+    for language, zh, override in (
+        ("zh", True, zh_html_figure),
+        ("en", False, en_html_figure),
+    ):
+        html = _valid_report_html(zh=zh).replace(
+            "<p>Scoped conclusion.</p>", override or default_figure
+        )
+        (tmp_path / f"report_{language}.html").write_text(html, encoding="utf-8")
+    (tmp_path / "data").mkdir()
+    (tmp_path / "data" / "analysis_summary.json").write_text(
+        json.dumps(
+            {
+                "limitations": (
+                    "Simulation results may not generalize beyond the tested "
+                    "scenario and agent population."
+                ),
+                "key_findings": [
+                    "Treatment agents show a higher mean value than control agents."
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
+def test_report_validator_requires_captioned_figure_blocks_in_html(
+    tmp_path: Path,
+) -> None:
+    _write_report_fixture(
+        tmp_path,
+        zh_html_figure='<img src="assets/chart_01.png">\n<p>Scoped conclusion.</p>',
+    )
+
+    result = validate_report_quality(tmp_path)
+    codes = {item.code for item in result.issues}
+
+    assert result.status == "BLOCKED"
+    assert "html_image_alt_missing" in codes
+    assert "html_figure_wrapper_missing" in codes
+
+
+def test_report_validator_requires_per_language_figure_parity(
+    tmp_path: Path,
+) -> None:
+    _write_report_fixture(
+        tmp_path,
+        zh_html_figure=(
+            '<figure class="figure-block">\n'
+            '<img src="assets/chart_99.png" alt="Other chart">\n'
+            "<figcaption>Another chart.</figcaption>\n"
+            "</figure>\n<p>Scoped conclusion.</p>"
+        ),
+    )
+
+    result = validate_report_quality(tmp_path)
+    codes = {item.code for item in result.issues}
+
+    assert result.status == "BLOCKED"
+    assert "report_figure_parity" in codes
+
+
+def test_report_validator_accepts_captioned_html_figures(tmp_path: Path) -> None:
+    _write_report_fixture(tmp_path)
+
+    result = validate_report_quality(tmp_path)
+
+    assert result.status == "PASS", result.model_dump(mode="json")
+
+
+def test_chart_scaffold_reference_runs_and_writes_png(tmp_path: Path) -> None:
+    script_path = (
+        Path(__file__).resolve().parents[3]
+        / "extension/skills/agentsociety-analysis/assets/chart_scaffold.reference.py"
+    )
+
+    completed = subprocess.run(
+        [sys.executable, str(script_path)],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    png = tmp_path / "charts" / "chart_01_example_trend.png"
+    assert png.is_file() and png.stat().st_size > 0
+
+
+def test_report_validator_accepts_dense_cjk_prose(tmp_path: Path) -> None:
+    dense = (
+        "本研究使用真实实验记录比较处理组与对照组并记录分析口径证据来源与限制条件"
+        "确保结论可复核且仅适用于当前仿真场景"
+    )
+    (tmp_path / "report_zh.md").write_text(
+        f"""# 报告
+
+## 1 概览
+
+{dense}
+
+## 2 发现
+
+{dense}
+
+## 3 结论
+
+{dense}
+""",
+        encoding="utf-8",
+    )
+    (tmp_path / "report_en.md").write_text(_report_markdown(zh=False), encoding="utf-8")
+    (tmp_path / "report_zh.html").write_text(
+        _valid_report_html(zh=True), encoding="utf-8"
+    )
+    (tmp_path / "report_en.html").write_text(
+        _valid_report_html(zh=False), encoding="utf-8"
+    )
+    (tmp_path / "data").mkdir()
+    (tmp_path / "data" / "analysis_summary.json").write_text(
+        json.dumps(
+            {
+                "limitations": (
+                    "Simulation results may not generalize beyond the tested "
+                    "scenario and agent population."
+                ),
+                "key_findings": [
+                    "Treatment agents show a higher mean value than control agents."
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = validate_report_quality(tmp_path)
+
+    assert result.status == "PASS", result.model_dump(mode="json")
+
+
+def test_report_validator_checks_dot_slash_figure_embeds(tmp_path: Path) -> None:
+    _write_report_fixture(tmp_path)
+    for language in ("zh", "en"):
+        path = tmp_path / f"report_{language}.md"
+        text = path.read_text(encoding="utf-8").replace(
+            "(assets/chart_01.png)\nMean value by condition with 95% CI.\n",
+            "(./assets/chart_01.png)\n",
+        )
+        path.write_text(text, encoding="utf-8")
+
+    result = validate_report_quality(tmp_path)
+    codes = {item.code for item in result.issues}
+
+    assert result.status == "BLOCKED"
+    assert "figure_caption_missing" in codes

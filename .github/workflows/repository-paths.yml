@@ -1,0 +1,17 @@
+name: Repository paths
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+
+jobs:
+  paths:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: python3 scripts/ci/check_repo_paths.py

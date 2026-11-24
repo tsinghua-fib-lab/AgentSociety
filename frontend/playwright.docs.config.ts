@@ -4,6 +4,7 @@ const externalPreview = process.env.DOCS_PREVIEW_URL;
 const previewPython = process.env.DOCS_PYTHON_EXECUTABLE || '../.venv/bin/python';
 
 export default defineConfig({
+    outputDir: './test-results/docs',
     testDir: './tests/docs',
     workers: 1,
     retries: 0,

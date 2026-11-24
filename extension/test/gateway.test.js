@@ -489,7 +489,19 @@ test('gateway owns and releases reusable direct HTTP agents', async () => {
   await gateway.stop();
 });
 
-test('gateway aborts the upstream request when the downstream client disconnects', async () => {
+test('concurrent gateway starts bind distinct ports and share a listener within one gateway', async (t) => {
+  const { AiCliGateway } = require('../out/services/aiCliGateway');
+  const gateways = Array.from({ length: 4 }, () => new AiCliGateway());
+  t.after(() => Promise.all(gateways.map(gateway => gateway.stop())));
+  const upstream = { baseUrl: 'https://example.test', apiKey: 'test', apiKind: 'anthropic' };
+  const results = await Promise.all(gateways.flatMap(gateway => [gateway.start(upstream), gateway.start(upstream)]));
+  assert.equal(new Set(results.map(status => status.port)).size, gateways.length);
+  for (let i = 0; i < results.length; i += 2) {
+    assert.equal(results[i].port, results[i + 1].port);
+  }
+});
+
+test('gateway aborts the upstream request when the downstream client disconnects', async (t) => {
   let finishUpstream;
   const upstreamClosed = new Promise((resolve) => { finishUpstream = resolve; });
   const upstream = http.createServer((req) => {
@@ -497,9 +509,11 @@ test('gateway aborts the upstream request when the downstream client disconnects
     req.once('close', finishUpstream);
   });
   await new Promise((resolve) => upstream.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise((resolve) => upstream.close(resolve)));
   const upstreamPort = upstream.address().port;
   const { AiCliGateway } = require('../out/services/aiCliGateway');
   const gateway = new AiCliGateway(5_000);
+  t.after(() => gateway.stop());
   const status = await gateway.start({
     baseUrl: `http://127.0.0.1:${upstreamPort}`,
     apiKey: 'test',
@@ -519,16 +533,16 @@ test('gateway aborts the upstream request when the downstream client disconnects
   ]);
   await new Promise((resolve) => setTimeout(resolve, 20));
   assert.equal(gateway.getStatus().stats.activeConnections, 0);
-  await gateway.stop();
-  await new Promise((resolve) => upstream.close(resolve));
 });
 
-test('gateway terminates an idle upstream request with a bounded 504 response', async () => {
+test('gateway terminates an idle upstream request with a bounded 504 response', async (t) => {
   const upstream = http.createServer(() => {});
   await new Promise((resolve) => upstream.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise((resolve) => upstream.close(resolve)));
   const upstreamPort = upstream.address().port;
   const { AiCliGateway } = require('../out/services/aiCliGateway');
   const gateway = new AiCliGateway(50);
+  t.after(() => gateway.stop());
   const status = await gateway.start({
     baseUrl: `http://127.0.0.1:${upstreamPort}`,
     apiKey: 'test',
@@ -549,11 +563,9 @@ test('gateway terminates an idle upstream request with a bounded 504 response', 
   });
   assert.equal(result.status, 504);
   assert.ok(result.ms < 1_000, `idle timeout took ${result.ms}ms`);
-  await gateway.stop();
-  await new Promise((resolve) => upstream.close(resolve));
 });
 
-test('gateway records the upstream response-cost header as authoritative USD cost', async () => {
+test('gateway records the upstream response-cost header as authoritative USD cost', async (t) => {
   const upstream = http.createServer((_request, response) => {
     const body = JSON.stringify({
       model: 'unknown-vendor-model',
@@ -568,11 +580,13 @@ test('gateway records the upstream response-cost header as authoritative USD cos
     response.end(body);
   });
   await new Promise((resolve) => upstream.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise((resolve) => upstream.close(resolve)));
   const upstreamPort = upstream.address().port;
   const { AiCliGateway } = require('../out/services/aiCliGateway');
   const gateway = new AiCliGateway();
   const records = [];
   gateway.onUsage((record) => records.push(record));
+  t.after(() => gateway.stop());
   const status = await gateway.start({
     baseUrl: `http://127.0.0.1:${upstreamPort}`,
     apiKey: 'test',
@@ -592,8 +606,6 @@ test('gateway records the upstream response-cost header as authoritative USD cos
   });
   assert.equal(records.length, 1);
   assert.equal(records[0].reportedCostUsd, 0.123456);
-  await gateway.stop();
-  await new Promise((resolve) => upstream.close(resolve));
 });
 
 test('gateway start keeps authHeaderMode on the primary upstream', async () => {

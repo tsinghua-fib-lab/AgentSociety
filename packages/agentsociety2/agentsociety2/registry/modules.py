@@ -286,7 +286,9 @@ def scan_and_register_custom_modules(
 
     from agentsociety2.backend.services.custom.scanner import CustomModuleScanner
 
-    scanner = CustomModuleScanner(str(workspace_path))
+    scanner = CustomModuleScanner(
+        str(workspace_path), validate_workspace_root=False
+    )
     scan_result = scanner.scan_all()
     scan_result = register_scanned_custom_modules(scan_result, registry)
 
@@ -327,6 +329,24 @@ def get_agent_module_class(agent_type: str) -> type[AgentBase] | None:
     :returns: agent class；未找到返回 ``None`` 。
     """
     return get_registry().get_agent_module(agent_type)
+
+
+def resolve_env_module_key(module_type: str) -> str | None:
+    """把环境模块标识解析为注册表规范键。
+
+    :param module_type: 用户提供的模块标识（允许 snake_case）。
+    :returns: 规范键；未找到返回 ``None`` 。
+    """
+    return get_registry().resolve_env_module_key(module_type)
+
+
+def resolve_agent_module_key(agent_type: str) -> str | None:
+    """把 agent 模块标识解析为注册表规范键。
+
+    :param agent_type: 用户提供的模块标识（允许 snake_case）。
+    :returns: 规范键；未找到返回 ``None`` 。
+    """
+    return get_registry().resolve_agent_module_key(agent_type)
 
 
 def list_all_modules() -> dict[str, list[dict[str, Any]]]:

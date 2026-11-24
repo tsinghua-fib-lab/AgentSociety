@@ -19,17 +19,17 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/module_and_parameter_management.md:1
+#: ../../module_and_parameter_management.md:1
 msgid "模块与参数管理"
 msgstr "Module and Parameter Management"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/module_and_parameter_management.md:3
+#: ../../module_and_parameter_management.md:3
 msgid "先查询当前环境中的真实模块，再配置参数；这页不列固定模块数量，避免安装版本不同导致照抄失败。"
 msgstr ""
 "Query modules in the current environment before configuring parameters. This page "
 "avoids a fixed module count that can differ between installed versions."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/module_and_parameter_management.md:5
+#: ../../module_and_parameter_management.md:5
 #, python-brace-format
 msgid ""
 "本页说明注册表、工作区自定义模块与预填充参数的关系。模块实现教程见 {doc}`custom_modules`，方法签名和返回结构以 "
@@ -39,18 +39,18 @@ msgstr ""
 " {doc}`custom_modules` for implementation tutorials and {doc}`api/registry` for "
 "method signatures and return structures."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/module_and_parameter_management.md:7
+#: ../../module_and_parameter_management.md:7
 msgid "查询已注册模块"
 msgstr "Query Registered Modules"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/module_and_parameter_management.md:9
+#: ../../module_and_parameter_management.md:9
 msgid "注册表延迟发现内置模块。先查询实际安装环境中的标识符，再用于配置；不依赖文档中固定的模块数量或示例清单。"
 msgstr ""
 "The registry discovers built-in modules lazily. Query the identifiers in the "
 "installed environment before using them in configuration; do not rely on a fixed "
 "module count or example inventory in documentation."
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/module_and_parameter_management.md:11
+#: ../../module_and_parameter_management.md:11
 msgid ""
 "from agentsociety2.registry import get_registry\n"
 "\n"
@@ -70,7 +70,7 @@ msgstr ""
 "for agent_type, agent_class in registry.list_agent_modules():\n"
 "    print(agent_type, agent_class.__name__)\n"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/module_and_parameter_management.md:22
+#: ../../module_and_parameter_management.md:22
 msgid ""
 "`get_module_info(module_type, kind)` 返回描述和构造参数；`kind` 为 `env_module` 或 "
 "`agent`。查询时使用上一步返回的标识符。"
@@ -79,11 +79,11 @@ msgstr ""
 " `kind` is `env_module` or `agent`. Use an identifier returned by the preceding "
 "query."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/module_and_parameter_management.md:24
+#: ../../module_and_parameter_management.md:24
 msgid "发现工作区自定义模块"
 msgstr "Discover Workspace Custom Modules"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/module_and_parameter_management.md:26
+#: ../../module_and_parameter_management.md:26
 msgid ""
 "workspace-root/\n"
 "├── custom/\n"
@@ -101,13 +101,13 @@ msgstr ""
 "└── .agentsociety/\n"
 "    └── prefill_params.json\n"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/module_and_parameter_management.md:36
+#: ../../module_and_parameter_management.md:36
 msgid "`custom/agents/` 和 `custom/envs/` 放置 Python 模块；`custom/skills/` 放置智能体技能，两者使用不同的注册表。"
 msgstr ""
 "`custom/agents/` and `custom/envs/` contain Python modules; `custom/skills/` contains"
 " agent skills. They use separate registries."
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/module_and_parameter_management.md:38
+#: ../../module_and_parameter_management.md:38
 msgid ""
 "from pathlib import Path\n"
 "from agentsociety2.registry import get_registry, scan_and_register_custom_modules\n"
@@ -123,7 +123,7 @@ msgstr ""
 "result = scan_and_register_custom_modules(workspace_path=workspace, registry=get_registry())\n"
 "print(result)\n"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/module_and_parameter_management.md:47
+#: ../../module_and_parameter_management.md:47
 #, python-brace-format
 msgid "检查返回的 `errors` 后再引用自定义类。类定义与最小实现见 {doc}`custom_modules`；技能目录见 {doc}`agent_skills`。"
 msgstr ""
@@ -131,17 +131,17 @@ msgstr ""
 "{doc}`custom_modules` for class definitions and minimal implementations, and "
 "{doc}`agent_skills` for skill directories."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/module_and_parameter_management.md:49
+#: ../../module_and_parameter_management.md:49
 msgid "预填充参数"
 msgstr "Prefill Parameters"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/module_and_parameter_management.md:51
+#: ../../module_and_parameter_management.md:51
 msgid "`.agentsociety/prefill_params.json` 保存工作区的可复用默认参数，基础结构如下："
 msgstr ""
 "`.agentsociety/prefill_params.json` stores reusable workspace defaults with this base"
 " structure:"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/module_and_parameter_management.md:53
+#: ../../module_and_parameter_management.md:53
 #, python-brace-format
 msgid ""
 "{\n"
@@ -156,7 +156,7 @@ msgstr ""
 "  \"agents\": {}\n"
 "}\n"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/module_and_parameter_management.md:61
+#: ../../module_and_parameter_management.md:61
 msgid "以注册表中的模块标识符为键添加默认参数。最终实验配置仍需符合实际构造函数和配置模型；预填充文件不会替代参数校验或自动改变已经生成的实验配置。"
 msgstr ""
 "Add defaults keyed by registry module identifiers. Final experiment configuration "
@@ -164,18 +164,18 @@ msgstr ""
 "replace validation or automatically change an existing generated experiment "
 "configuration."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/module_and_parameter_management.md:63
+#: ../../module_and_parameter_management.md:63
 msgid "在工作台的参数查看器中检查和编辑预填充信息。"
 msgstr "Inspect and edit prefill information in the workbench parameter viewer."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/module_and_parameter_management.md:64
+#: ../../module_and_parameter_management.md:64
 #, python-brace-format
 msgid "运行前核对 `init_config.json` 与 `steps.yaml`，配置模型见 {doc}`api/config`。"
 msgstr ""
 "Check `init_config.json` and `steps.yaml` before execution; see {doc}`api/config` for"
 " configuration models."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/module_and_parameter_management.md:65
+#: ../../module_and_parameter_management.md:65
 #, python-brace-format
 msgid "后端的类查询与预填充接口见 {doc}`api/backend`，运行中的请求字段以 `/docs` 为准。"
 msgstr ""

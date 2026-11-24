@@ -45,24 +45,15 @@ export const PANEL_ICONS = {
  * Get avatar icon URL based on agent profile (gender + age)
  */
 export function getAgentIconUrl(profile: Record<string, any> | undefined): string {
-  if (!profile) {return AGENT_ICONS.agent;}
-
-  try {
-    const gender = profile.gender?.toLowerCase();
-    const age = profile.age;
-
-    if (gender === 'male' && typeof age === 'number') {
-      if (age < 18) {return AGENT_ICONS.boy1;}
-      if (age < 65) {return AGENT_ICONS.boy2;}
-      return AGENT_ICONS.boy3;
-    } else if (gender === 'female' && typeof age === 'number') {
-      if (age < 18) {return AGENT_ICONS.girl1;}
-      if (age < 65) {return AGENT_ICONS.girl2;}
-      return AGENT_ICONS.girl3;
-    }
-  } catch (e) {
-    console.error('Error getting avatar icon:', e);
+  const age = profile?.age;
+  const gender = typeof profile?.gender === 'string' ? profile.gender.toLowerCase() : '';
+  if (typeof age === 'number' && gender === 'male') {
+    if (age < 18) { return AGENT_ICONS.boy1; }
+    return age < 65 ? AGENT_ICONS.boy2 : AGENT_ICONS.boy3;
   }
-
+  if (typeof age === 'number' && gender === 'female') {
+    if (age < 18) { return AGENT_ICONS.girl1; }
+    return age < 65 ? AGENT_ICONS.girl2 : AGENT_ICONS.girl3;
+  }
   return AGENT_ICONS.agent;
 }

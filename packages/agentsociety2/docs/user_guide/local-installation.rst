@@ -7,7 +7,7 @@
 --------
 
 - **操作系统**：macOS 或 Linux（Windows 用户建议使用 WSL）
-- **Python**：3.11–3.13，推荐使用 `uv <https://docs.astral.sh/uv/>`_ 管理
+- **Python**：3.11.5–3.13，推荐使用 `uv <https://docs.astral.sh/uv/>`_ 管理
 
 .. code-block:: bash
 

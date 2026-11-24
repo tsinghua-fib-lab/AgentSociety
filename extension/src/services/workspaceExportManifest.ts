@@ -122,6 +122,8 @@ export const WORKSPACE_EXPORT_EXCLUDED_PATTERNS = [
   'agentsociety_data',
   'mineru_output',
   'auth.json / credentials.json / secrets.json',
+  '.netrc / .npmrc / .pypirc / id_rsa / id_ed25519',
+  '*.pem / *.key',
   'easypaper_config.yaml',
   '.cursor / .vscode',
 ];
@@ -146,9 +148,14 @@ const EXCLUDED_DIRECTORY_NAMES = new Set([
 const EXCLUDED_FILE_NAMES = new Set([
   '.DS_Store',
   'Thumbs.db',
+  '.netrc',
+  '.npmrc',
+  '.pypirc',
   'auth.json',
   'credentials.json',
   'secrets.json',
+  'id_rsa',
+  'id_ed25519',
   'easypaper_config.yaml',
 ]);
 
@@ -183,6 +190,9 @@ export function shouldExcludeWorkspacePath(relativePath: string): boolean {
     return true;
   }
   if (/\.(pyc|pyo)$/i.test(fileName)) {
+    return true;
+  }
+  if (/\.(pem|key)$/i.test(fileName)) {
     return true;
   }
   return false;
@@ -235,17 +245,19 @@ export function resolveSafeExportSymlink(
   symlinkPath: string,
   allowedRoot: string,
 ): string | undefined {
-  let resolvedPath: string;
   try {
-    resolvedPath = fs.realpathSync(symlinkPath);
+    const resolved = fs.realpathSync(symlinkPath);
+    const relative = path.relative(fs.realpathSync(allowedRoot), resolved);
+    if (
+      relative === '..' || relative.startsWith('..' + path.sep) ||
+      path.isAbsolute(relative) || shouldExcludeWorkspacePath(relative)
+    ) {
+      return undefined;
+    }
+    return resolved;
   } catch {
     return undefined;
   }
-  const relativePath = path.relative(path.resolve(allowedRoot), resolvedPath);
-  if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
-    return undefined;
-  }
-  return resolvedPath;
 }
 
 export function formatExportRootSummary(roots: Array<{ archivePath: string }>): string {

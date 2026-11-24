@@ -3,7 +3,7 @@
 `agentsociety2.skills.analysis` is now a pure tool layer for experiment analysis.
 
 Interactive orchestration has moved to the staged Claude Code skill under
-`extension/skills/agentsociety-analysis/v1.0.0/`. That staged workflow is responsible
+`extension/skills/agentsociety-analysis/`. That staged workflow is responsible
 for deciding what to inspect, which charts to generate, when to write reports,
 and when to enter cross-experiment synthesis.
 
@@ -83,25 +83,17 @@ quick_stats = EDAGenerator().generate_quick_stats(
 ## CLI Surface
 
 The staged skill uses
-`extension/skills/agentsociety-analysis/v1.0.0/scripts/analysis.py`, which exposes:
+`extension/skills/agentsociety-analysis/scripts/analysis.py`, which exposes
+the operations declared in `harness/operations.py` (currently 41 commands).
+Each command is generated from the operation registry, so the authoritative list is:
 
-- `load-context`
-- `list-tables`
-- `data-summary`
-- `query-data`
-- `run-eda`
-- `compose-figure`
-- `collect-assets`
-- `build-report-context`
-- `validate-report-quality`
-- `record-report-review`
-- `record-synthesis-review`
-- `draft-reflection`
-- `record-reflection`
-- `record-feedback`
-- `review-reflection`
-- `promote-reflection`
-- `memory-context`
+```bash
+$PYTHON_PATH .agentsociety/bin/ags.py analysis --help
+```
+
+Core operation groups include context loading, table/data queries, EDA, figure
+composition, report context/release validation, independent review, and memory
+reflection/promotion.
 
 ## Output Layout
 
@@ -109,7 +101,7 @@ Single-experiment outputs live under:
 `presentation/hypothesis_{id}/`
 
 - `report_zh.md` / `report_en.md` (required for harness)
-- required LLM-authored bilingual `.html` reports (see extension skill `references/html-export.md`)
+- required LLM-authored bilingual `.html` reports (see extension skill `references/reports.md`)
 - `.agentsociety/analysis/hypothesis_{id}/` harness state (`state.yaml`, `analysis_plan.yaml`, `claims.json`)
 - `data/analysis_summary.json`
 - `data/eda_*.html` or `eda_quick_stats.md`
@@ -123,13 +115,13 @@ Optional cross-experiment synthesis outputs live under:
 
 For the full interactive workflow, use the extension skill files:
 
-- `extension/skills/agentsociety-analysis/v1.0.0/SKILL.md`
-- `extension/skills/agentsociety-analysis/v1.0.0/stages/01_frame.md`
-- `extension/skills/agentsociety-analysis/v1.0.0/stages/02_data_explore.md`
-- `extension/skills/agentsociety-analysis/v1.0.0/stages/03_claims.md`
-- `extension/skills/agentsociety-analysis/v1.0.0/stages/04_refine.md`
-- `extension/skills/agentsociety-analysis/v1.0.0/stages/05_produce.md`
-- `extension/skills/agentsociety-analysis/v1.0.0/stages/06_synthesis.md`
+- `extension/skills/agentsociety-analysis/SKILL.md`
+- `extension/skills/agentsociety-analysis/stages/01_frame.md`
+- `extension/skills/agentsociety-analysis/stages/02_data_explore.md`
+- `extension/skills/agentsociety-analysis/stages/03_claims.md`
+- `extension/skills/agentsociety-analysis/stages/04_refine.md`
+- `extension/skills/agentsociety-analysis/stages/05_produce.md`
+- `extension/skills/agentsociety-analysis/stages/06_synthesis.md`
 
 The plotting and composite-figure guidance in that skill now follows a contract-first
 reference layout, but remains adapted to

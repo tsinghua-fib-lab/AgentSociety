@@ -12,6 +12,7 @@
 import argparse
 import asyncio
 import json
+import os
 import shutil
 import sys
 from datetime import UTC, datetime
@@ -180,7 +181,9 @@ class MyAgent(AgentBase):
             encoding="utf-8",
         )
 
-    async def ask(self, message: str, readonly: bool = True) -> str:
+    async def ask(
+        self, message: str, readonly: bool = True, *, t: datetime | None = None
+    ) -> str:
         return f"Answer to: {message}"
 
     async def step(self, tick: int, t: datetime) -> str:
@@ -294,6 +297,7 @@ async def download_map_file(target_dir: Path, timeout: int = 300) -> dict:
     data_dir.mkdir(parents=True, exist_ok=True)
     map_file_path = data_dir / "beijing_map.pb"
 
+    tmp_path = map_file_path.with_name(f".{map_file_path.name}.{os.getpid()}.tmp")
     try:
         async with (
             aiohttp.ClientSession() as session,
@@ -303,19 +307,22 @@ async def download_map_file(target_dir: Path, timeout: int = 300) -> dict:
         ):
             response.raise_for_status()
 
-            with open(map_file_path, "wb") as f:
+            with open(tmp_path, "wb") as f:
                 async for chunk in response.content.iter_chunked(8192):
                     f.write(chunk)
+        os.replace(tmp_path, map_file_path)
 
         result["success"] = True
         result["message"] = f"Map file downloaded to {map_file_path}"
         result["file_path"] = str(map_file_path.resolve())
 
     except Exception as e:
+        try:
+            tmp_path.unlink(missing_ok=True)
+        except OSError:
+            pass
         result["errors"].append(str(e))
         result["message"] = f"Failed to download map file: {e}"
-        # 即使下载失败，也返回预期的文件路径
-        result["file_path"] = str(map_file_path.resolve())
 
     return result
 
@@ -459,37 +466,49 @@ Instead of using specialized discovery tools, you should:
     return result
 
 
-def create_prefill_params(target_dir: Path, map_file_path: str) -> dict:
+def create_prefill_params(
+    target_dir: Path,
+    map_file_path: str | None,
+    *,
+    force: bool = False,
+) -> dict:
     """
     创建 .agentsociety/prefill_params.json 预填充参数文件
 
     :param target_dir: 目标工作区根目录
-    :param map_file_path: 地图文件路径
+    :param map_file_path: 地图文件路径；为空时不写入 mobility_space 预填项
+    :param force: 是否覆盖已存在的 prefill_params.json
 
     :returns: 包含操作结果的字典
     """
-    result = {"success": False, "message": "", "errors": []}
+    result = {"success": False, "message": "", "created": False, "errors": []}
 
     dot_agentsociety_dir = target_dir / ".agentsociety"
     data_dir = dot_agentsociety_dir / "data"
+    prefill_path = dot_agentsociety_dir / "prefill_params.json"
 
+    if prefill_path.exists() and not force:
+        result["success"] = True
+        result["message"] = "prefill_params.json already exists"
+        return result
+
+    env_modules: dict[str, dict[str, str]] = {}
+    if map_file_path:
+        env_modules["mobility_space"] = {
+            "file_path": map_file_path,
+            "home_dir": str(data_dir.resolve()),
+        }
     prefill_data = {
         "version": "1.0",
-        "env_modules": {
-            "mobility_space": {
-                "file_path": map_file_path,
-                "home_dir": str(data_dir.resolve()),
-            },
-        },
+        "env_modules": env_modules,
         "agents": {},
     }
 
     try:
-        with open(
-            dot_agentsociety_dir / "prefill_params.json", "w", encoding="utf-8"
-        ) as f:
+        with open(prefill_path, "w", encoding="utf-8") as f:
             json.dump(prefill_data, f, ensure_ascii=False, indent=2)
         result["success"] = True
+        result["created"] = True
         result["message"] = "prefill_params.json created"
     except Exception as e:
         result["errors"].append(str(e))
@@ -503,6 +522,9 @@ async def init_workspace(
     topic: str = "",
     components: list[str] | None = None,
     force: bool = False,
+    *,
+    skip_map: bool = False,
+    map_timeout: int = 300,
 ) -> dict:
     """
     初始化工作区，创建所需的目录结构
@@ -511,6 +533,8 @@ async def init_workspace(
     :param topic: 研究主题
     :param components: 要创建的组件列表，可选值: "custom", "user_data", "papers", "agentsociety"
     :param force: 是否强制覆盖已存在的文件
+    :param skip_map: 是否跳过可选的地图文件下载
+    :param map_timeout: 地图下载超时时间（秒）
 
     :returns: 包含操作结果的字典
     """
@@ -600,20 +624,36 @@ async def init_workspace(
                 parents=True, exist_ok=True
             )
 
-            # 下载地图文件
-            download_result = await download_map_file(target_dir)
-            if download_result["success"]:
-                result["created"].append(".agentsociety/data/beijing_map.pb")
-            else:
-                result["errors"].append(
-                    f"Map download failed: {download_result['message']}"
-                )
-                # 即使下载失败也继续，创建空的 data 目录记录
+            # 地图是可选资产：存在则复用，跳过或下载失败都不阻断初始化
+            map_file_path: str | None = None
+            map_file = target_dir / ".agentsociety" / "data" / "beijing_map.pb"
+            if skip_map:
                 result["skipped"].append(
-                    ".agentsociety/data/beijing_map.pb (download failed)"
+                    ".agentsociety/data/beijing_map.pb (--skip-map)"
                 )
-
-            map_file_path = download_result["file_path"]
+            elif map_file.is_file() and not force:
+                map_file_path = str(map_file.resolve())
+                result["skipped"].append(
+                    ".agentsociety/data/beijing_map.pb (already exists)"
+                )
+            else:
+                download_result = await download_map_file(
+                    target_dir, timeout=map_timeout
+                )
+                if download_result["success"]:
+                    map_file_path = download_result["file_path"]
+                    result["created"].append(".agentsociety/data/beijing_map.pb")
+                elif map_file.is_file():
+                    map_file_path = str(map_file.resolve())
+                    result["skipped"].append(
+                        ".agentsociety/data/beijing_map.pb "
+                        "(download failed; using existing map)"
+                    )
+                else:
+                    result["skipped"].append(
+                        ".agentsociety/data/beijing_map.pb "
+                        f"(download failed: {download_result['message']})"
+                    )
 
             # 创建模块信息文件
             module_info_result = create_module_info_files(target_dir)
@@ -626,10 +666,17 @@ async def init_workspace(
                 result["created"].append(".agentsociety/path.md")
             result["errors"].extend(path_md_result["errors"])
 
-            # 创建 prefill_params.json
-            prefill_result = create_prefill_params(target_dir, map_file_path)
+            # 创建 prefill_params.json，保留已有配置
+            prefill_result = create_prefill_params(
+                target_dir, map_file_path, force=force
+            )
             if prefill_result["success"]:
-                result["created"].append(".agentsociety/prefill_params.json")
+                if prefill_result["created"]:
+                    result["created"].append(".agentsociety/prefill_params.json")
+                else:
+                    result["skipped"].append(
+                        ".agentsociety/prefill_params.json (already exists)"
+                    )
             result["errors"].extend(prefill_result["errors"])
 
             # 创建过程持久化文件
@@ -675,20 +722,16 @@ async def init_workspace(
                 )
                 result["created"].append(".agentsociety/progress.json")
 
-            keep_root_files = {"path.md", "prefill_params.json", "progress.json"}
-            for existing_file in (target_dir / ".agentsociety").iterdir():
-                if not existing_file.is_file():
-                    continue
-                if existing_file.name in keep_root_files:
-                    continue
-                if existing_file.suffix not in {".json", ".jsonl"}:
-                    continue
-                existing_file.unlink()
+            # Do not delete unknown user files under .agentsociety/; only the
+            # files this command owns are created above.
 
-        if not result["errors"] or any("failed" in e.lower() for e in result["errors"]):
-            # 只有没有严重错误时才标记为成功
-            result["success"] = True
+        result["success"] = not result["errors"]
+        if result["success"]:
             result["message"] = f"Workspace initialized at {target_dir}"
+        else:
+            result["message"] = (
+                f"Workspace initialization finished with {len(result['errors'])} error(s)"
+            )
 
     except Exception as e:
         result["errors"].append(str(e))
@@ -721,6 +764,17 @@ def main():
         "--force", action="store_true", help="Force overwrite existing files"
     )
     init_parser.add_argument(
+        "--skip-map",
+        action="store_true",
+        help="Skip downloading the optional Beijing map file",
+    )
+    init_parser.add_argument(
+        "--map-timeout",
+        type=int,
+        default=300,
+        help="Map download timeout in seconds (default: 300)",
+    )
+    init_parser.add_argument(
         "--json", action="store_true", help="Output result as JSON"
     )
 
@@ -751,10 +805,26 @@ def main():
 
     if args.command == "init":
         components = [c.strip() for c in args.components.split(",")]
+        allowed_components = {"custom", "user_data", "papers", "agentsociety"}
+        unknown = sorted(set(components) - allowed_components)
+        if unknown:
+            print(
+                f"Error: unknown component(s): {', '.join(unknown)}. "
+                f"Allowed: {', '.join(sorted(allowed_components))}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
         # 使用 asyncio 运行异步函数
+        if args.map_timeout <= 0:
+            parser.error("--map-timeout must be positive")
         result = asyncio.run(
             init_workspace(
-                target_dir, topic=args.topic, components=components, force=args.force
+                target_dir,
+                topic=args.topic,
+                components=components,
+                force=args.force,
+                skip_map=args.skip_map,
+                map_timeout=args.map_timeout,
             )
         )
     elif args.command == "init-custom":
@@ -765,6 +835,8 @@ def main():
 
     if args.json:
         print(json.dumps(result, indent=2, ensure_ascii=False))
+        if not result.get("success"):
+            sys.exit(1)
     else:
         if result["success"]:
             print(f"✓ {result['message']}")

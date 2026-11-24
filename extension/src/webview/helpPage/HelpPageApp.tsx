@@ -12,6 +12,7 @@ import {
 import { BookOutlined, ExportOutlined, ReloadOutlined, FileTextOutlined } from '@ant-design/icons';
 import { XMarkdown } from '@ant-design/x-markdown';
 import { useVscodeTheme } from '../theme';
+import { useTranslation } from 'react-i18next';
 import '../i18n';
 import type { VSCodeAPI } from './types';
 
@@ -38,24 +39,17 @@ const slugify = (text: string): string =>
 
 export const HelpPageApp: React.FC<HelpPageAppProps> = ({ vscode }) => {
   const { isDark, palette, themeConfig } = useVscodeTheme();
-  const [helpContent, setHelpContent] = React.useState<string>('');
-  const [viewMode, setViewMode] = React.useState<ViewMode>('loading');
+  const helpContent = window.HELP_CONTENT ?? '';
+  const [viewMode, setViewMode] = React.useState<ViewMode>('fallback');
   const [iframeError, setIframeError] = React.useState(false);
-  const iframeRef = React.useRef<HTMLIFrameElement>(null);
 
   // Use ref for callbacks to avoid stale closure over viewMode
   const viewModeRef = React.useRef<ViewMode>(viewMode);
   viewModeRef.current = viewMode;
 
   const rtdUrl = window.RTD_URL ?? 'https://agentsociety2.readthedocs.io/en/latest/';
-  const locale = typeof navigator !== 'undefined' ? navigator.language : 'zh-CN';
-  const isZh = locale.startsWith('zh');
-
-  React.useEffect(() => {
-    if (window.HELP_CONTENT) {
-      setHelpContent(window.HELP_CONTENT);
-    }
-  }, []);
+  const { i18n } = useTranslation();
+  const isZh = i18n.language === 'zh-CN';
 
   // Timeout: fallback after 8 seconds if iframe hasn't loaded
   React.useEffect(() => {
@@ -66,10 +60,6 @@ export const HelpPageApp: React.FC<HelpPageAppProps> = ({ vscode }) => {
       if (viewModeRef.current === 'loading') {
         setIframeError(true);
         setViewMode('fallback');
-        // Stop the iframe from continuing to load
-        if (iframeRef.current) {
-          iframeRef.current.src = 'about:blank';
-        }
       }
     }, 8000);
     return () => clearTimeout(timer);
@@ -89,9 +79,6 @@ export const HelpPageApp: React.FC<HelpPageAppProps> = ({ vscode }) => {
     }
     setIframeError(true);
     setViewMode('fallback');
-    if (iframeRef.current) {
-      iframeRef.current.src = 'about:blank';
-    }
   }, []);
 
   const handleLinkClick = (href: string) => {
@@ -328,9 +315,6 @@ export const HelpPageApp: React.FC<HelpPageAppProps> = ({ vscode }) => {
   const switchToIframe = () => {
     setViewMode('loading');
     setIframeError(false);
-    if (iframeRef.current) {
-      iframeRef.current.src = rtdUrl;
-    }
   };
 
   return (
@@ -432,7 +416,6 @@ export const HelpPageApp: React.FC<HelpPageAppProps> = ({ vscode }) => {
               border: `1px solid ${palette.panelBorder}`,
             }}>
               <iframe
-                ref={iframeRef}
                 src={rtdUrl}
                 onLoad={handleIframeLoad}
                 onError={handleIframeError}

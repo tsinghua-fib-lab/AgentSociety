@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 from fastapi import FastAPI
@@ -26,7 +27,7 @@ Swagger 中展开接口后使用 **Try it out → Execute** 发送真实请求�
 
 成功响应的字段、分页与默认值见各接口的 Responses 和 Schemas。
 参数缺失或类型不符通常返回 `422`；不合法的路径或标识符、访问范围限制、资源不存在和服务异常分别查看实际响应中的 `detail` 或 `error`。
-后端的模型 API Key 用于调用模型；远程部署的访问认证由部署环境提供。
+未设置 BACKEND_TOKEN 时只允许回环客户端。设置后，包括文档在内的请求都需要 `Authorization: Bearer <token>`。通过反向代理浏览文档时，代理应在用户登录后为文档和接口请求传递后端凭据。
 """.strip()
 
 OPENAPI_TAGS = [
@@ -52,7 +53,7 @@ OPENAPI_TAGS = [
     },
     {
         "name": "experiments",
-        "description": "读取假设下某次实验的状态、Markdown 产物与运行日志。`hypothesis_id` 和 `experiment_id` 填编号，例如 `1`，工作区根目录通过 `workspace_path` 指定。",
+        "description": "读取假设下某次实验的状态、Markdown 产物、问卷 JSON 和运行日志。`hypothesis_id` 和 `experiment_id` 填编号，例如 `1`，工作区根目录通过 `workspace_path` 指定。",
     },
     {
         "name": "replay",
@@ -63,6 +64,7 @@ OPENAPI_TAGS = [
 SWAGGER_UI_PARAMETERS = {
     "docExpansion": "none",
     "filter": True,
+    "validatorUrl": None,
     "displayRequestDuration": True,
     "defaultModelsExpandDepth": 0,
 }
@@ -99,15 +101,15 @@ _OPERATION_DOCS = {
         "返回实验状态、起止时间、智能体数量与已执行步数。状态读取运行目录中的记录，统计信息在存在 replay 时从回放读取。",
     ),
     ("get", "/api/v1/experiments/{hypothesis_id}/{experiment_id}/artifacts"): (
-        "列出实验 Markdown 产物",
-        "列出运行产生的 Markdown 文件及其元信息，再使用产物读取接口获取内容。",
+        "列出实验产物",
+        "返回 Markdown 与问卷 JSON 的名称、路径和类别。读取单个文件时传入列表中的 name。",
     ),
     (
         "get",
         "/api/v1/experiments/{hypothesis_id}/{experiment_id}/artifacts/{artifact_name}",
     ): (
-        "读取 Markdown 产物",
-        "按产物列表返回的文件名读取 UTF-8 内容。文件名应为当前实验允许访问的 Markdown 产物。",
+        "读取实验产物原文",
+        "返回 name 和 UTF-8 字符串 content。问卷内容需再按 JSON 解析；文件超过 4 MiB 返回 413。",
     ),
     ("get", "/api/v1/experiments/{hypothesis_id}/{experiment_id}/log"): (
         "读取运行日志末尾",
@@ -212,7 +214,10 @@ _PARAMETER_DOCS = {
     "include_custom": ("是否包含已发现的自定义智能体和环境模块。", False),
     "class_kind": ("类的类别：agent 为智能体，env_module 为环境模块。", "agent"),
     "class_name": ("modules 接口返回的类名。", "PersonAgent"),
-    "artifact_name": ("产物列表接口返回的 Markdown 文件名。", "report.md"),
+    "artifact_name": (
+        "产物列表接口返回的文件名。",
+        "questionnaire_step_0_20260101_120000.json",
+    ),
     "dataset_id": ("数据集目录接口返回的 dataset_id。", "core.agent_profile"),
     "skill_id": ("技能列表返回的完整标识，包含命名空间。", "built-in@daily-guidance"),
     "step": ("需要读取或筛选的实际仿真步号。", 1),
@@ -235,7 +240,7 @@ _FIELD_DOCS = {
     "source_path": "待导入技能目录的绝对路径，必须位于允许的工作区内。",
     "module_kind": "可选的模块类别：agent 或 env_module，与 module_class_name 配合使用。",
     "module_class_name": "指定测试的类名；与 module_kind 配合使用。",
-    "name": "名称；创建技能时也作为目标目录名。",
+    "name": "名称；实验产物使用文件名，创建技能时使用目标目录名。",
     "description": "面向使用者或智能体的简短说明。",
     "script": "技能脚本相对路径，例如 scripts/main.py；留空表示不创建脚本。",
     "body": "SKILL.md 的 Markdown 正文，不含 YAML frontmatter。",
@@ -280,6 +285,16 @@ def _describe_schema(schema: dict[str, Any]) -> None:
 
 
 def _describe_openapi(schema: dict[str, Any]) -> None:
+    """补全中间件鉴权约定、接口示例和各功能分组的中文说明。"""
+    schema["components"].setdefault("securitySchemes", {})["BackendBearer"] = {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "部署配置的 BACKEND_TOKEN。",
+    }
+    security = [{"BackendBearer": []}]
+    if not os.getenv("BACKEND_TOKEN", "").strip():
+        security.append({})
+    schema["security"] = security
     for path, operations in schema["paths"].items():
         for method, operation in operations.items():
             details = _OPERATION_DOCS.get((method, path))
@@ -312,9 +327,10 @@ def install_api_documentation(app: FastAPI) -> None:
     original_openapi = app.openapi
 
     def documented_openapi() -> dict[str, Any]:
-        if app.openapi_schema is None:
-            schema = original_openapi()
+        previous = app.openapi_schema
+        schema = original_openapi()
+        if schema is not previous:
             _describe_openapi(schema)
-        return app.openapi_schema
+        return schema
 
     app.openapi = documented_openapi

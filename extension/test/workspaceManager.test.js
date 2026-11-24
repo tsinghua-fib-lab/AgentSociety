@@ -69,3 +69,26 @@ test('initialization reports a conflicting file without replacing it', async (t)
   assert.match(result.message, /custom\/agents must be a directory/);
   assert.equal(fs.readFileSync(conflict, 'utf8'), 'keep this file');
 });
+
+test('paper-toolkit marketplace is pinned to v0.1.2', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'as2-marketplace-test-'));
+  try {
+    const manager = Object.create(exportsObject.WorkspaceManager.prototype);
+    manager.getWorkspacePath = () => root;
+    manager.log = () => {};
+    const result = manager.seedClaudePluginMarketplaces(root);
+    assert.equal(result.success, true, result.message);
+
+    const settings = JSON.parse(
+      fs.readFileSync(path.join(root, '.claude', 'settings.json'), 'utf-8'),
+    );
+    assert.deepEqual(settings.extraKnownMarketplaces['paper-toolkit'].source, {
+      source: 'github',
+      repo: 'Yokumii/paper-toolkit',
+      ref: 'v0.1.2',
+    });
+    assert.equal(settings.enabledPlugins['paper-toolkit@paper-toolkit'], true);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});

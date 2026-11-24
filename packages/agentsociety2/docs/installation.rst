@@ -4,7 +4,7 @@
 系统要求
 ------------
 
-AgentSociety 2 需要 Python 3.11–3.13。
+AgentSociety 2 需要 Python 3.11.5–3.13。
 
 从 PyPI 安装
 -----------------
@@ -160,8 +160,9 @@ AgentSociety 2 需要 Python 3.11–3.13。
 
 .. code-block:: bash
 
-   # inprocess（默认）在环境进程内计算；process 开启独立计算进程与硬资源限制
-   export AGENTSOCIETY_CODE_EXEC_BACKEND="inprocess"
+   # process（Linux 默认）开启独立计算进程与硬资源限制；
+   # inprocess（其他平台默认）在环境进程内计算
+   export AGENTSOCIETY_CODE_EXEC_BACKEND="process"
    # export AGENTSOCIETY_CODE_EXEC_TIMEOUT=10       # 程序执行与工具等待期限（秒）
    # export AGENTSOCIETY_CODE_EXEC_MEMORY_MIB=512   # process 后端每 worker 地址空间上限
    # export AGENTSOCIETY_CODE_EXEC_WORKERS=4         # 共享数值工作进程数上限

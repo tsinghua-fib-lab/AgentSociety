@@ -5,6 +5,7 @@
 - [开发环境设置](#开发环境设置)
 - [项目结构](#项目结构)
 - [核心模块](#核心模块)
+- [工作区分享包](#工作区分享包)
 - [后端开发](#后端开发)
 - [React Webview 开发](#react-webview-开发)
 - [帮助页面维护](#帮助页面维护)
@@ -96,7 +97,7 @@ extension/
 │   ├── openWorkspaceFile.ts          # 按文件类型选择查看器打开工作区文件
 │   ├── claudeCodeConfigProvider.ts   # Claude Code 配置入口（跳转主配置页）
 │   ├── agentSkillSource.ts           # 后端技能 source / skill_id 分类（built-in | custom | env）
-│   ├── skillVersionManager.ts        # 版本化内置技能管理（捆绑版 / 用户快照）
+│   ├── bundledSkillManager.ts        # 内置技能同步、旧链接迁移与用户快照
 │   ├── onboardingState.ts            # 首次设置与校验缓存等全局状态键
 │   ├── dragAndDropController.ts      # 拖放控制器
 │   ├── runtimeConfig.ts              # 运行时配置读取
@@ -363,6 +364,12 @@ webview/configPage/             # 关键组件（完整清单见目录）
 - 支持 SSE 流式响应
 - 错误处理
 - 连接状态管理
+
+## 工作区分享包
+
+导出/导入的完整设计（选择分层、清单与 hash、排除规则、symlink、限额、导入 staging + rename）见
+[`workspace-share-design.md`](./workspace-share-design.md)。实现位于
+`src/services/workspace{Export,Import}Manager.ts`、`workspaceExportManifest.ts`、`workspaceArchiveIo.ts`。
 
 ## 后端开发
 

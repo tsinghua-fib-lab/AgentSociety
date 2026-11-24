@@ -103,6 +103,9 @@ def get_env_router_actor_class(max_concurrency: int = 1) -> Any:
                     self._router.set_trace_sink(sink)
 
         async def init(self, start_datetime: datetime) -> bool:
+            from agentsociety2.society.provenance import apply_seed_from_env
+
+            apply_seed_from_env()
             if self._replay_proxy is not None:
                 self._router.set_replay_writer(self._replay_proxy)
             # RouterBase.init 会先跑各模块 init() 再恢复 checkpoint（resume）。

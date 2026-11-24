@@ -45,6 +45,47 @@ def validate_refine(
             )
         )
 
+    from agentsociety2.skills.analysis.harness.state import load_claims
+
+    claims = load_claims(workspace, hypothesis_id)
+    approved_claim_ids = {c.claim_id for c in claims.claims if c.approved}
+    known_claim_ids = {c.claim_id for c in claims.claims}
+
+    for contract in state.figure_contracts:
+        if not contract.claim_id:
+            issues.append(
+                issue(
+                    "refine_contract_missing_claim",
+                    phase="refine",
+                    message=f"Contract {contract.contract_id} has no claim_id",
+                    fix_hint="Trace each figure to a recorded claim",
+                )
+            )
+        elif contract.claim_id not in known_claim_ids:
+            issues.append(
+                issue(
+                    "refine_contract_unknown_claim",
+                    phase="refine",
+                    message=(
+                        f"Contract {contract.contract_id} references unknown claim "
+                        f"{contract.claim_id}"
+                    ),
+                    fix_hint="Use a claim_id from claims.json",
+                )
+            )
+        elif contract.claim_id not in approved_claim_ids:
+            issues.append(
+                issue(
+                    "refine_contract_unapproved_claim",
+                    phase="refine",
+                    message=(
+                        f"Contract {contract.contract_id} references claim "
+                        f"{contract.claim_id} which is not approved"
+                    ),
+                    fix_hint="Approve the claim or point the contract at an approved claim",
+                )
+            )
+
     for contract in state.figure_contracts:
         if not contract.output_files:
             issues.append(
@@ -57,12 +98,20 @@ def validate_refine(
             )
             continue
         for rel in contract.output_files:
-            candidates = [
-                pres / rel,
-                assets / Path(rel).name,
-                charts_dir / Path(rel).name,
-                Path(rel),
-            ]
+            rel_path = Path(rel)
+            if rel_path.is_absolute() or ".." in rel_path.parts:
+                issues.append(
+                    issue(
+                        "refine_output_outside_presentation",
+                        phase="refine",
+                        message=f"Contract {contract.contract_id} has unsafe output path: {rel}",
+                        fix_hint="Use a path under presentation/hypothesis_{id}/charts or assets",
+                    )
+                )
+                continue
+            candidates = [pres / rel_path]
+            if len(rel_path.parts) == 1:
+                candidates.extend((assets / rel_path, charts_dir / rel_path))
             if not any(p.exists() and p.is_file() for p in candidates):
                 issues.append(
                     issue(

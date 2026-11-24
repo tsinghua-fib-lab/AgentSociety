@@ -47,7 +47,7 @@ Swagger 中的标签与后端模块对应：
      - 主要功能
    * - ``experiments``
      - ``/api/v1/experiments``
-     - 实验信息、日志与产物。
+     - 实验状态、运行日志、Markdown 产物及问卷 JSON 原文。
    * - ``replay``
      - ``/api/v1/replay``
      - 回放元信息与仿真数据查询。
@@ -85,6 +85,6 @@ Swagger 中的标签与后端模块对应：
 
 实验与回放接口需要 ``workspace_path`` 查询参数，值为后端可访问的研究工作区绝对路径。通过扩展操作时由扩展传入；手动调用时按 Swagger 填写。``WORKSPACE_PATH`` 配置后端允许访问的工作区范围，具体约束见 :doc:`/installation`。工作区目录及实验产物约定见 :doc:`/user_guide/research-project` 与 :doc:`/results`。
 
-后端默认监听回环地址，当前没有内置用户登录认证。LLM 供应商的 API Key 用于调用模型，不是此后端的访问凭据。需要远程访问时，应配置访问认证的反向代理，并按 :doc:`/installation` 设置可信主机与浏览器来源。
+后端默认监听回环地址。设置 ``BACKEND_TOKEN`` 后，接口、文档页面和静态资源都要求 ``Authorization: Bearer <token>``。远程客户端应使用 HTTPS；通过反向代理浏览文档时，请在代理验证用户身份后传递后端凭据。主机和来源配置见 :doc:`/installation`。
 
-无法访问 ``/docs`` 时，先确认后端地址和 ``/health``；页面打开后界面仍空白时，检查浏览器能否加载 Swagger 的外部静态资源。框架提供的文档方式见 `FastAPI 自动文档说明 <https://fastapi.tiangolo.com/features/#automatic-docs>`_。
+Swagger 和 ReDoc 的页面资源随 SDK 安装。从 Coder 的端口代理进入后，在该代理路径下打开 ``docs`` 或 ``redoc``。Swagger 的请求耗时包含浏览器到后端这段往返时间；首次加载页面和执行模型的耗时需单独测量。

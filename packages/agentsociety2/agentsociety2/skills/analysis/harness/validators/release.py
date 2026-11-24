@@ -11,6 +11,7 @@ from agentsociety2.skills.analysis.harness.layout import list_presentation_layou
 from agentsociety2.skills.analysis.harness.models import ValidationResult
 from agentsociety2.skills.analysis.harness.report_assets import (
     charts_path_refs_in_reports,
+    data_path_refs_in_reports,
 )
 from agentsociety2.skills.analysis.harness.schemas import (
     REPORT_SECTION_IDS,
@@ -24,9 +25,9 @@ from agentsociety2.skills.analysis.harness.validators._helpers import (
     passed,
 )
 
-ASSET_REF_RE = re.compile(r"!\[[^\]]*\]\(assets/([^)]+)\)")
+ASSET_REF_RE = re.compile(r"!\[[^\]]*\]\((?:\./)?assets/([^)]+)\)")
 HTML_IMG_SRC_RE = re.compile(
-    r"""<img[^>]*\ssrc=["']assets/([^"']+)["']""",
+    r"""<img[^>]*\ssrc=["'](?:\./)?assets/([^"']+)["']""",
     re.IGNORECASE,
 )
 
@@ -207,6 +208,39 @@ def validate_release(presentation_dir: Path) -> ValidationResult:
                     phase="produce",
                     message=f"{ref} missing from artifact_manifest.json",
                     fix_hint="Sync manifest with report_outline figures",
+                )
+            )
+
+    if manifest is not None:
+        for name in sorted(manifest_files - disk_files):
+            issues.append(
+                issue(
+                    "manifest_asset_not_on_disk",
+                    phase="produce",
+                    message=f"artifact_manifest.json lists missing asset: {name}",
+                    fix_hint="Remove stale manifest entries or regenerate the asset",
+                )
+            )
+
+    for ref in data_path_refs_in_reports(presentation_dir):
+        rel = Path(ref)
+        if rel.is_absolute() or ".." in rel.parts:
+            issues.append(
+                issue(
+                    "data_ref_unsafe",
+                    phase="produce",
+                    message=f"Report references unsafe data path: {ref}",
+                    fix_hint="Use data/... paths inside the presentation directory",
+                )
+            )
+            continue
+        if not (presentation_dir / rel).is_file():
+            issues.append(
+                issue(
+                    "data_ref_missing",
+                    phase="produce",
+                    message=f"Report references missing file: {ref}",
+                    fix_hint="Regenerate EDA/evidence artifacts or fix the link",
                 )
             )
 

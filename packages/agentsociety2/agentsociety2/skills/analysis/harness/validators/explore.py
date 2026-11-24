@@ -96,16 +96,37 @@ def validate_explore(
                 )
 
     if recorded_artifacts:
-        missing = [p for p in recorded_artifacts if not Path(p).exists()]
-        for path in missing:
-            issues.append(
-                issue(
-                    "phase_artifact_missing",
-                    phase="explore",
-                    message=f"Recorded explore artifact missing: {path}",
-                    fix_hint="Re-run run-eda and record-phase-artifacts",
+        data_root = data_dir.resolve() if data_dir is not None else None
+        for recorded in recorded_artifacts:
+            path = Path(recorded)
+            resolved = path.resolve()
+            if data_root is not None and data_root not in resolved.parents:
+                issues.append(
+                    issue(
+                        "phase_artifact_outside_data_dir",
+                        phase="explore",
+                        message=f"Explore artifact is outside data/: {recorded}",
+                        fix_hint="Register files generated under presentation/hypothesis_{id}/data",
+                    )
                 )
-            )
+            elif path.suffix.lower() not in {".md", ".html", ".csv"}:
+                issues.append(
+                    issue(
+                        "phase_artifact_unrecognized",
+                        phase="explore",
+                        message=f"Unrecognized EDA artifact type: {recorded}",
+                        fix_hint="Register eda_quick_stats.md, eda_*.html, or EDA CSV outputs",
+                    )
+                )
+            elif not resolved.exists():
+                issues.append(
+                    issue(
+                        "phase_artifact_missing",
+                        phase="explore",
+                        message=f"Recorded explore artifact missing: {recorded}",
+                        fix_hint="Re-run run-eda and record-phase-artifacts",
+                    )
+                )
     elif data_dir is not None:
         if not data_dir.exists():
             issues.append(

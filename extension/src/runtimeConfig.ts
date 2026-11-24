@@ -32,8 +32,11 @@ function isFiniteNumber(value: unknown): value is number {
 
 export function normalizeBackendAccessHost(host?: string): string {
   const normalized = host?.trim();
-  if (!normalized || normalized === '0.0.0.0' || normalized === '::' || normalized === '[::]') {
+  if (!normalized || normalized === '0.0.0.0') {
     return '127.0.0.1';
+  }
+  if (normalized === '::' || normalized === '[::]') {
+    return '::1';
   }
   return normalized;
 }
@@ -56,13 +59,6 @@ export function getBackendPort(config?: Partial<EnvConfig>): number {
     return port;
   }
   return Number(DEFAULT_ENV_CONFIG.backendPort ?? 8001);
-}
-
-export function getBackendAccessUrl(config?: Partial<EnvConfig>): string {
-  const resolvedConfig = config ?? readWorkspaceEnvConfig();
-  const host = normalizeBackendAccessHost(getBackendBindHost(resolvedConfig));
-  const port = getBackendPort(resolvedConfig);
-  return `http://${host}:${port}`;
 }
 
 /** 模板占位符(envManager 写入的默认值)——不算已配置。

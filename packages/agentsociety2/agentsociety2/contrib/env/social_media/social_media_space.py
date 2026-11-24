@@ -177,6 +177,7 @@ class SocialMediaSpace(EnvBase):
             **kwargs: feed_source, polarization_mode 等实验参数。
         """
         super().__init__()
+        self._pending_tasks: set[asyncio.Task] = set()
         self._initial_persons = persons
         self._initial_posts = posts
         self._initial_comments = comments
@@ -471,7 +472,18 @@ class SocialMediaSpace(EnvBase):
             asyncio.get_running_loop()
         except RuntimeError:
             return
-        asyncio.create_task(coro)
+        task = asyncio.create_task(coro)
+        self._pending_tasks.add(task)
+        task.add_done_callback(self._on_replay_task_done)
+
+    def _on_replay_task_done(self, task: asyncio.Task) -> None:
+        """回收 replay 任务并记录异常，避免 fire-and-forget 丢失错误。"""
+        self._pending_tasks.discard(task)
+        if task.cancelled():
+            return
+        exc = task.exception()
+        if exc is not None:
+            get_logger().warning("Social media replay task failed: %r", exc)
 
     @classmethod
     def init_description(cls) -> str:
@@ -711,6 +723,9 @@ Example payloads (ISO datetimes, keys may be int or string in JSON; constructor 
 
     async def close(self):
         """Close the environment module. Data persistence is handled by external DB."""
+        # 等待所有后台 replay 任务完成，避免进程退出时静默丢写。
+        if self._pending_tasks:
+            await asyncio.gather(*list(self._pending_tasks), return_exceptions=True)
         # 刷写剩余事件
         await self._flush_events()
         get_logger().info("SocialMediaSpace closed")

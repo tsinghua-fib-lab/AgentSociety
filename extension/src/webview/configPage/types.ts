@@ -61,6 +61,7 @@ export interface BackendStatus {
   isRunning: boolean;
   port?: number;
   url?: string;
+  error?: string;
 }
 
 export interface ImportedModelOptions {

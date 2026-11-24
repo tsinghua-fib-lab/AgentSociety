@@ -18,17 +18,17 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/contributing.rst:2
+#: ../../contributing.rst:2
 msgid "为 AgentSociety 2 贡献"
 msgstr "Contributing to AgentSociety 2"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/contributing.rst:4
+#: ../../contributing.rst:4
 msgid "问题报告应尽量让维护者能复现；改文档时，请同时说明适用版本、实际操作入口与验证方式。"
 msgstr ""
 "Make issue reports reproducible. Documentation changes should identify the applicable"
 " version, actual entry points and validation performed."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/contributing.rst:6
+#: ../../contributing.rst:6
 msgid ""
 "本页提供贡献入口；安装、检查与构建命令统一维护在 :doc:`development`，完整 PR 与发布约定见仓库的 `CONTRIBUTING.md "
 "<https://github.com/tsinghua-fib-lab/agentsociety/blob/main/CONTRIBUTING.md>`_。"
@@ -38,65 +38,65 @@ msgstr ""
 "repository `CONTRIBUTING.md <https://github.com/tsinghua-fib-"
 "lab/agentsociety/blob/main/CONTRIBUTING.md>`_."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/contributing.rst:9
+#: ../../contributing.rst:9
 msgid "报告错误"
 msgstr "Report Bugs"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/contributing.rst:11
+#: ../../contributing.rst:11
 msgid "报告错误时，请包括："
 msgstr "When reporting bugs, please include:"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/contributing.rst:13
+#: ../../contributing.rst:13
 msgid "Python 版本"
 msgstr "Python version"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/contributing.rst:14
+#: ../../contributing.rst:14
 msgid "AgentSociety 2 版本"
 msgstr "AgentSociety 2 version"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/contributing.rst:15
+#: ../../contributing.rst:15
 msgid "最小的可重现示例"
 msgstr "Minimal reproducible example"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/contributing.rst:16
+#: ../../contributing.rst:16
 msgid "预期行为与实际行为"
 msgstr "Expected vs actual behavior"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/contributing.rst:17
+#: ../../contributing.rst:17
 msgid "任何错误消息或回溯"
 msgstr "Any error messages or tracebacks"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/contributing.rst:20
+#: ../../contributing.rst:20
 msgid "提交更改"
 msgstr "Submit Changes"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/contributing.rst:22
+#: ../../contributing.rst:22
 msgid "修改应说明具体问题、预期行为与验证结果。行为变更补充相应测试，文档和界面变更同步检查示例、翻译与图片引用。"
 msgstr ""
 "Describe the concrete problem, expected behavior and validation results. Add "
 "appropriate tests for behavior changes, and check examples, translations and image "
 "references when changing documentation or UI."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/contributing.rst:24
+#: ../../contributing.rst:24
 msgid "新增环境或智能体：参阅 :doc:`custom_modules`。"
 msgstr "New environments or agents: see :doc:`custom_modules`."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/contributing.rst:25
+#: ../../contributing.rst:25
 msgid "新增智能体技能：参阅 :doc:`skill_guide`。"
 msgstr "New agent skills: see :doc:`skill_guide`."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/contributing.rst:26
+#: ../../contributing.rst:26
 msgid "运行测试、检查与构建文档：参阅 :doc:`development`。"
 msgstr "Tests, checks and documentation builds: see :doc:`development`."
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/contributing.rst:27
+#: ../../contributing.rst:27
 msgid "公开 Python 接口应提供文档字符串，说明参数、返回值、异常与必要的使用条件。同一模块保持一种格式；现有 reST 字段与 NumPy 风格都可由文档构建解析。"
 msgstr ""
 "Public Python interfaces should document parameters, return values, exceptions, and relevant "
 "usage conditions. Keep a consistent style within a module; the documentation builder supports "
 "both reST fields and NumPy-style docstrings."
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/contributing.rst:29
+#: ../../contributing.rst:29
 msgid ""
 "格式参考 `PEP 257 <https://peps.python.org/pep-0257/>`_ 与 `NumPy 文档字符串指南 "
 "<https://numpydoc.readthedocs.io/en/latest/format.html>`_。函数名、参数名与示例必须与代码一致，说明文字随文档语言提供翻译。"
@@ -106,11 +106,11 @@ msgstr ""
 "examples must match the code. Provide translations of explanatory text for each documentation "
 "language."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/contributing.rst:30
+#: ../../contributing.rst:32
 msgid "许可证"
 msgstr "License"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/contributing.rst:32
+#: ../../contributing.rst:34
 msgid "通过贡献 AgentSociety 2，您同意您的贡献将根据 Apache License 2.0 获得许可。"
 msgstr ""
 "By contributing to AgentSociety 2, you agree that your contributions will be licensed"

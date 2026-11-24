@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import re
 from html.parser import HTMLParser
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 HAN = re.compile(r"[\u3400-\u9fff\uf900-\ufaff\U00020000-\U0003134f]")
 VOID_TAGS = {
@@ -92,6 +92,9 @@ def check_catalogs(templates: Path, locale: Path) -> tuple[list[str], int]:
 
     errors: list[str] = []
     messages = 0
+    package = Path(__file__).resolve().parents[1]
+    # Sphinx writes locations relative to the output of the documented make gettext target.
+    catalog_base = package / "docs/_build/gettext"
     paths = sorted(templates.glob("*.pot"))
     if not paths:
         return [f"No gettext templates found in {templates}"], 0
@@ -104,6 +107,20 @@ def check_catalogs(templates: Path, locale: Path) -> tuple[list[str], int]:
             continue
         with catalog.open("rb") as stream:
             target = read_po(stream, locale="en")
+        locations = {name for item in target for name, _ in item.locations}
+        for name in sorted(locations):
+            if "/" not in name and "\\" not in name:
+                continue  # Autodoc also emits dotted Python names.
+            path = Path(name.partition(":docstring")[0])
+            resolved = (catalog_base / path).resolve()
+            if (
+                PureWindowsPath(name).anchor
+                or not resolved.is_relative_to(package)
+                or not resolved.is_file()
+            ):
+                errors.append(
+                    f"{catalog.name}: invalid source path {name!r} (expected a package file relative to docs/_build/gettext)"
+                )
         expected = {item.id for item in source if item.id}
         for translation in target:
             if translation.id and translation.id not in expected:

@@ -29,7 +29,8 @@ const getDefaultLanguage = (): string => {
   if (langParam === 'en-US' || langParam === 'en') {
     return 'en-US';
   }
-  return 'zh-CN';
+  if (langParam === 'zh-CN' || langParam === 'zh') { return 'zh-CN'; }
+  return document.documentElement.lang.startsWith('en') ? 'en-US' : 'zh-CN';
 };
 
 i18n
@@ -49,6 +50,16 @@ i18n
       escapeValue: false, // React 已经转义了
     },
   });
+
+window.addEventListener('message', ({ data }) => {
+  if (data?.type !== 'extensionLanguageChanged') { return; }
+  const language = data.language;
+  if (language === 'zh-CN' || language === 'en-US') {
+    window.__AS_LANG__ = language;
+    document.documentElement.lang = language;
+    if (i18n.language !== language) { void i18n.changeLanguage(language); }
+  }
+});
 
 export default i18n;
 

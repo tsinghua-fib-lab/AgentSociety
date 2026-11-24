@@ -1,19 +1,13 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SKILL_ROOT = REPO_ROOT / "extension/skills/agentsociety-paper-review"
-SKILL_VERSION_ROOT = SKILL_ROOT / "v1.0.0"
+SKILL_VERSION_ROOT = SKILL_ROOT
 
 
 def test_paper_review_skill_bundle_is_complete() -> None:
-    manifest = json.loads((SKILL_ROOT / "manifest.json").read_text(encoding="utf-8"))
-
-    assert manifest["defaultVersion"] == "v1.0.0"
-    assert {version["id"] for version in manifest["versions"]} == {"v1.0.0"}
-
     skill_text = (SKILL_VERSION_ROOT / "SKILL.md").read_text(encoding="utf-8")
     assert "name: agentsociety-paper-review" in skill_text
     assert "author-side internal mock review" in skill_text
@@ -106,7 +100,7 @@ def test_paper_review_reroutes_use_existing_pipeline_stage_names() -> None:
 def test_paper_review_is_advisory_not_a_cli_or_progress_stage() -> None:
     pipeline_script = (
         REPO_ROOT
-        / "extension/skills/agentsociety-research-pipeline/v1.0.0/scripts/progress.py"
+        / "extension/skills/agentsociety-research-pipeline/scripts/progress.py"
     ).read_text(encoding="utf-8")
     launcher_text = (REPO_ROOT / "extension/runtime/agentsociety/bin/ags.py").read_text(
         encoding="utf-8"
@@ -119,7 +113,7 @@ def test_paper_review_is_advisory_not_a_cli_or_progress_stage() -> None:
 
 def test_paper_review_is_routed_after_draft_generation() -> None:
     pipeline_text = (
-        REPO_ROOT / "extension/skills/agentsociety-research-pipeline/v1.0.0/SKILL.md"
+        REPO_ROOT / "extension/skills/agentsociety-research-pipeline/SKILL.md"
     ).read_text(encoding="utf-8")
     workspace_text = (REPO_ROOT / "extension/src/workspaceManager.ts").read_text(
         encoding="utf-8"

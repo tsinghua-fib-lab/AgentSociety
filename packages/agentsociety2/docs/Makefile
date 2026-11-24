@@ -23,6 +23,8 @@ gettext:
 	$(SPHINXBUILD) -b gettext $(SPHINXOPTS) $(SOURCEDIR) $(BUILDDIR)/gettext
 
 # 更新翻译文件
+# Keep committed source locations relative to docs/_build/gettext.
+update-po: override BUILDDIR := $(SOURCEDIR)/_build
 update-po: gettext
 	@echo "更新翻译文件..."
 	$(SPHINXINTL) update -p $(BUILDDIR)/gettext -d $(SOURCEDIR)/locale -l en

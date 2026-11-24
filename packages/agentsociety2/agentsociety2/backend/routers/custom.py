@@ -2,6 +2,7 @@
 
 调用模块扫描器生成配置元数据，并提供模块列表、状态查询、测试与清理入口。模块编写和发现流程见 :doc:`/custom_modules`。"""
 
+import asyncio
 import json
 import os
 from typing import Any
@@ -139,12 +140,13 @@ async def scan_custom_modules(request: ScanRequest):
             detail="Workspace path not provided. Set WORKSPACE_PATH env var or pass in request.",
         )
 
+    workspace_path = str(resolve_workspace_root(workspace_path))
     try:
         log_workspace = workspace_path.replace("\r", "\\r").replace("\n", "\\n")
         logger.info(f"[Custom Modules] Starting scan of workspace: {log_workspace}")
 
         scanner = CustomModuleScanner(workspace_path)
-        scan_result = scanner.scan_all()
+        scan_result = await asyncio.to_thread(scanner.scan_all)
 
         logger.info(
             f"[Custom Modules] Scan complete: {len(scan_result['agents'])} agents, "
@@ -152,8 +154,12 @@ async def scan_custom_modules(request: ScanRequest):
         )
 
         registry = get_registry()
-        registry.clear_custom_modules()
-        scan_result = register_scanned_custom_modules(scan_result, registry)
+
+        def _apply_scan():
+            registry.clear_custom_modules()
+            return register_scanned_custom_modules(scan_result, registry)
+
+        scan_result = await asyncio.to_thread(_apply_scan)
         scan_result["errors"].extend(scan_result.get("registration_errors", []))
 
         message_parts = []
@@ -250,6 +256,7 @@ async def test_custom_modules(request: TestRequest):
         )
 
     module_kind = request.module_kind
+    workspace_path = str(resolve_workspace_root(workspace_path))
     module_class_name = request.module_class_name
 
     try:
@@ -268,7 +275,7 @@ async def test_custom_modules(request: TestRequest):
 
         if module_kind and module_class_name:
             scanner = CustomModuleScanner(workspace_path)
-            scan_result = scanner.scan_all()
+            scan_result = await asyncio.to_thread(scanner.scan_all)
             target_modules = (
                 scan_result.get("agents", [])
                 if module_kind == "agent"
@@ -318,7 +325,7 @@ async def test_custom_modules(request: TestRequest):
             )
         else:
             scanner = CustomModuleScanner(workspace_path)
-            scan_result = scanner.scan_all()
+            scan_result = await asyncio.to_thread(scanner.scan_all)
 
             agents = scan_result.get("agents", [])
             envs = scan_result.get("envs", [])
@@ -395,8 +402,10 @@ async def list_custom_modules():
         workspace_path = os.getenv("WORKSPACE_PATH")
         if workspace_path and not registry._custom_loaded:
             try:
-                scan_and_register_custom_modules(
-                    resolve_workspace_root(workspace_path), registry
+                await asyncio.to_thread(
+                    scan_and_register_custom_modules,
+                    resolve_workspace_root(workspace_path),
+                    registry,
                 )
             except Exception as exc:
                 logger.warning(f"[Custom Modules] Auto-load before list failed: {exc}")
@@ -492,7 +501,8 @@ async def get_custom_modules_status():
             [
                 f
                 for f in (custom_dir / "agents").rglob("*.py")
-                if not f.name.startswith("__") and "examples" not in f.parts
+                if not f.name.startswith("__")
+                and "examples" not in f.relative_to(custom_dir).parts
             ]
         )
 
@@ -501,7 +511,8 @@ async def get_custom_modules_status():
             [
                 f
                 for f in (custom_dir / "envs").rglob("*.py")
-                if not f.name.startswith("__") and "examples" not in f.parts
+                if not f.name.startswith("__")
+                and "examples" not in f.relative_to(custom_dir).parts
             ]
         )
 
@@ -541,8 +552,10 @@ async def list_available_classes(
         # 扫描自定义模块（如果请求）
         if include_custom:
             try:
-                scan_and_register_custom_modules(
-                    resolve_workspace_root(workspace_path), registry
+                await asyncio.to_thread(
+                    scan_and_register_custom_modules,
+                    resolve_workspace_root(workspace_path),
+                    registry,
                 )
             except Exception as e:
                 logger.warning(f"Failed to scan custom modules: {e}")
@@ -647,12 +660,14 @@ async def rescan_custom_modules(
         registry = get_registry()
 
         # 清除旧的自定义模块
-        registry.clear_custom_modules()
+        def _rescan():
+            registry.clear_custom_modules()
+            return scan_and_register_custom_modules(
+                resolve_workspace_root(workspace_path), registry
+            )
 
         # 扫描新的自定义模块
-        scan_result = scan_and_register_custom_modules(
-            resolve_workspace_root(workspace_path), registry
-        )
+        scan_result = await asyncio.to_thread(_rescan)
         registration_errors = scan_result.get("registration_errors", [])
         if registration_errors:
             logger.warning(

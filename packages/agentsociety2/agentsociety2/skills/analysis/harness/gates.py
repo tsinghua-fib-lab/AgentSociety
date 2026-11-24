@@ -18,6 +18,24 @@ from agentsociety2.skills.analysis.harness.models import (
 )
 from agentsociety2.skills.analysis.harness.validators._helpers import issue
 
+PHASE_VALIDATE_COMMAND: dict[str, str] = {
+    "frame": "validate-plan",
+    "explore": "validate-explore",
+    "claims": "validate-claims",
+    "refine": "validate-refine",
+    "produce": "validate-release",
+    "synthesis": "validate-synthesis",
+}
+
+
+def validate_command_for(phase: str) -> str:
+    """Return the CLI command that validates a phase.
+
+    :param phase: Phase name.
+    :returns: Command name such as ``validate-plan``.
+    """
+    return PHASE_VALIDATE_COMMAND.get(phase, f"validate-{phase}")
+
 
 def prior_phase_gate_issues(
     state: HypothesisAnalysisState,
@@ -35,7 +53,7 @@ def prior_phase_gate_issues(
                     phase=target.value,
                     message=f"Prior phase {prior.value} gate not passed",
                     fix_hint=(
-                        f"Run validate-{prior.value}, record-attestation --phase {prior.value}, "
+                        f"Run {validate_command_for(prior.value)}, record-attestation --phase {prior.value}, "
                         f"confirm gate-status PASS, then advance"
                     ),
                 )

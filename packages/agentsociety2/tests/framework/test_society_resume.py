@@ -9,13 +9,14 @@ from __future__ import annotations
 import json
 from datetime import datetime, timedelta
 from pathlib import Path
-from unittest.mock import AsyncMock
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
 from agentsociety2.contrib.env.prisoners_dilemma import PrisonersDilemmaEnv
 from agentsociety2.env.router_base import RouterBase
-from agentsociety2.society.society import AgentSociety
+from agentsociety2.society.society import SOCIETY_SCHEMA_VERSION, AgentSociety
 
 
 class _StubRouter(RouterBase):
@@ -63,7 +64,7 @@ async def test_write_society_json_writes_immutable_full_snapshot(
     society._write_society_json()
 
     data = json.loads((tmp_path / "SOCIETY.json").read_text(encoding="utf-8"))
-    assert data["schema_version"] == 1
+    assert data["schema_version"] == SOCIETY_SCHEMA_VERSION
     assert data["agent_class_name"] == "PersonAgent"
     assert data["agent_specs"] == [{"id": 1, "profile": {}, "config": {}}]
     assert data["env_module_types"] == ["prisoners_dilemma"]
@@ -94,7 +95,7 @@ async def test_to_workspace_writes_step_scalars_and_delegates(
     society._step_count = 3
     society._completed_step_count = 2
 
-    await society.to_workspace(tick=100)  # tick 现在被忽略（兼容旧签名）
+    await society.to_workspace()
 
     env_router.to_workspaces.assert_awaited_once()
     step = json.loads((tmp_path / "SOCIETY_STEP.json").read_text(encoding="utf-8"))
@@ -119,7 +120,7 @@ async def test_to_workspace_env_failure_blocks_progress_commit(tmp_path: Path) -
         run_dir=tmp_path,
     )
     with pytest.raises(RuntimeError, match="boom"):
-        await society.to_workspace(tick=1)
+        await society.to_workspace()
     assert not (tmp_path / "SOCIETY_STEP.json").exists()
 
 
@@ -133,14 +134,14 @@ async def test_to_workspace_noop_without_run_dir() -> None:
         start_t=datetime(2025, 1, 1),
         run_dir=None,
     )
-    await society.to_workspace(tick=1)
+    await society.to_workspace()
     env_router.to_workspaces.assert_not_awaited()
 
 
 def _write_checkpoint(
     run_dir: Path,
     *,
-    schema_version: int = 1,
+    schema_version: int = SOCIETY_SCHEMA_VERSION,
     step_count: int = 7,
     completed_step_count: int = 0,
     current_time: str = "2025-01-01T02:00:00",
@@ -168,6 +169,7 @@ def _write_checkpoint(
                 "step_count": step_count,
                 "completed_step_count": completed_step_count,
                 "terminated": False,
+                "pending_update": None,
             }
         ),
         encoding="utf-8",
@@ -211,27 +213,46 @@ async def test_from_workspace_rejects_corrupt_json(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_from_workspace_falls_back_when_no_step_file(tmp_path: Path) -> None:
-    """旧布局：只有 SOCIETY.json（含标量），无 SOCIETY_STEP.json —— 仍能 resume。"""
-    (tmp_path / "SOCIETY.json").write_text(
-        json.dumps(
-            {
-                "schema_version": 1,
-                "agent_class_name": "PersonAgent",
-                "agent_specs": [],
-                "env_module_types": [],
-                "env_kwargs": {},
-                "batch_size": 64,
-                "steps_hash": None,
-                "current_time": "2025-01-01T00:00:00",
-                "step_count": 5,
-            }
-        ),
-        encoding="utf-8",
+async def test_environment_save_failure_leaves_tick_uncommitted(tmp_path: Path) -> None:
+    router = SimpleNamespace(
+        set_current_time=Mock(),
+        step=AsyncMock(),
+        to_workspaces=AsyncMock(side_effect=OSError("disk full")),
     )
-    society = await AgentSociety.from_workspace(tmp_path, env_router=AsyncMock())
-    assert society.step_count == 5
-    assert society._completed_step_count == 0
+    start = datetime(2025, 1, 1)
+    society = AgentSociety([], "PersonAgent", router, start, tmp_path)
+    society._write_society_json()
+    society._write_society_step_json()
+
+    with pytest.raises(OSError, match="disk full"):
+        await society.step(60)
+    router.step.assert_awaited_once()
+    assert society.step_count == 0
+    assert society.current_time == start
+    with pytest.raises(ValueError, match="incomplete tick"):
+        await AgentSociety.from_workspace(tmp_path, env_router=router)
+    with pytest.raises(RuntimeError, match="tick has not committed"):
+        await society.step(60)
+    router.step.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_intervention_must_save_environment_before_advancing_cursor(
+    tmp_path: Path,
+) -> None:
+    _write_checkpoint(tmp_path, completed_step_count=3)
+    router = SimpleNamespace(to_workspaces=AsyncMock(side_effect=OSError("disk full")))
+    society = await AgentSociety.from_workspace(tmp_path, env_router=router)
+    society.begin_intervention(3)
+    with pytest.raises(OSError, match="disk full"):
+        await society.commit_intervention()
+    with pytest.raises(ValueError, match="incomplete intervention"):
+        await AgentSociety.from_workspace(tmp_path, env_router=router)
+
+    router.to_workspaces.side_effect = None
+    await society.commit_intervention()
+    restored = await AgentSociety.from_workspace(tmp_path, env_router=router)
+    assert restored._completed_step_count == 4
 
 
 # ---------------------------------------------------------------------------
@@ -274,9 +295,7 @@ async def test_society_env_resume_end_to_end(tmp_path: Path) -> None:
     assert len(env1.round_history) == 1
     assert (tmp_path / "SOCIETY.json").is_file()
     assert (tmp_path / "SOCIETY_STEP.json").is_file()
-    assert (
-        root / module_type / "state" / "ENV_STATE.json"
-    ).is_file()
+    assert (root / module_type / "state" / "ENV_STATE.json").is_file()
 
     # 阶段 2：用全新对象 resume。
     env2 = PrisonersDilemmaEnv()

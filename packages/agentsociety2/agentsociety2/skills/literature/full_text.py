@@ -207,6 +207,24 @@ def safe_pdf_stem(entry: dict[str, Any]) -> str:
     return stem[:100] or "full_text"
 
 
+def safe_output_name(output_name: str | None, entry: dict[str, Any]) -> str:
+    """把用户提供的文件名规范化为 ``papers/full_texts/`` 下的纯文件名。
+
+    :param output_name: 可选的用户文件名。
+    :param entry: 文献索引条目。
+    :returns: 不含目录分隔符的安全文件名。
+    """
+    candidate = (output_name or "").strip()
+    if candidate:
+        basename = Path(candidate).name
+        if basename in {"", ".", ".."} or basename != candidate:
+            raise ValueError(f"Invalid output_name: {output_name!r}")
+        if not basename.lower().endswith(".pdf"):
+            basename = f"{basename}.pdf"
+        return basename
+    return f"{safe_pdf_stem(entry)}.pdf"
+
+
 def looks_like_pdf(url: str, content_type: str, content: bytes) -> bool:
     return (
         "application/pdf" in content_type.lower()
@@ -276,20 +294,35 @@ class _SafeRedirectHandler(HTTPRedirectHandler):
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
-def download_pdf_bytes(url: str, *, timeout: int = 60) -> tuple[bytes, str]:
+def download_pdf_bytes(
+    url: str, *, timeout: int = 60, max_bytes: int = 64 * 1024 * 1024
+) -> tuple[bytes, str]:
     """从 URL 下载数据并校验响应是否为 PDF。
 
     :param url: 待抓取的 HTTP(S) URL。
     :param timeout: 套接字超时时间（秒）。
+    :param max_bytes: 允许的最大响应体字节数。
     :returns: PDF 字节内容与重定向后的最终 URL 组成的元组。
-    :raises FullTextDownloadError: HTTP 错误、网络错误或内容不是 PDF 时抛出。
+    :raises FullTextDownloadError: HTTP 错误、网络错误、响应过大或内容不是 PDF 时抛出。
     """
     _validate_public_url(url)
     request = Request(url, headers={"User-Agent": USER_AGENT})
     opener = build_opener(_SafeRedirectHandler())
     try:
         with opener.open(request, timeout=timeout) as response:
-            content = response.read()
+            chunks: list[bytes] = []
+            total = 0
+            while True:
+                chunk = response.read(1024 * 1024)
+                if not chunk:
+                    break
+                total += len(chunk)
+                if total > max_bytes:
+                    raise FullTextDownloadError(
+                        f"PDF response exceeds the {max_bytes}-byte limit: {url}"
+                    )
+                chunks.append(chunk)
+            content = b"".join(chunks)
             final_url = response.geturl()
             _validate_public_url(final_url)
             content_type = response.headers.get("content-type", "")
@@ -382,7 +415,7 @@ def download_entry_pdf(
 
     full_text_dir = workspace_path / "papers" / "full_texts"
     full_text_dir.mkdir(parents=True, exist_ok=True)
-    target = full_text_dir / (output_name or f"{safe_pdf_stem(entry)}.pdf")
+    target = full_text_dir / safe_output_name(output_name, entry)
 
     errors: list[str] = []
     for url in urls:
@@ -520,7 +553,7 @@ def command_register(args: argparse.Namespace) -> int:
         is_in_full_text_dir = False
 
     if not is_in_full_text_dir:
-        target = full_text_dir / (args.output_name or f"{safe_pdf_stem(entry)}.pdf")
+        target = full_text_dir / safe_output_name(args.output_name, entry)
         shutil.copy2(source, target)
         rel = relative_workspace_path(args.workspace, target)
 

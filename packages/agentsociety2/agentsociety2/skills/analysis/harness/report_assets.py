@@ -7,12 +7,19 @@ from pathlib import Path
 
 from agentsociety2.skills.analysis.chart_export import ensure_brand_icon
 
-MD_ASSET_REF_RE = re.compile(r"!\[[^\]]*\]\((?:assets|charts)/([^)]+)\)")
+MD_ASSET_REF_RE = re.compile(
+    r"!\[[^\]]*\]\((?:\./)?(?:assets|charts)/([^)]+)\)"
+)
 HTML_ASSET_REF_RE = re.compile(
-    r"""<img[^>]*\ssrc=["'](?:assets|charts)/([^"']+)["']""",
+    r"""<img[^>]*\ssrc=["'](?:\./)?(?:assets|charts)/([^"']+)["']""",
     re.IGNORECASE,
 )
-CHARTS_PATH_IN_BODY_RE = re.compile(r"""(?:\]\(|src=["'])(charts/[^"')]+)""")
+CHARTS_PATH_IN_BODY_RE = re.compile(
+    r"""(?:\]\(|src=["'])(?:\./)?(charts/[^"')]+)"""
+)
+DATA_REF_IN_BODY_RE = re.compile(
+    r"""(?:\]\(|(?:src|href)=["'])(?:\./)?(data/[^"')]+)"""
+)
 
 
 def referenced_asset_names(presentation_dir: Path) -> set[str]:
@@ -45,6 +52,27 @@ def charts_path_refs_in_reports(presentation_dir: Path) -> list[str]:
             continue
         text = path.read_text(encoding="utf-8", errors="replace")
         found.extend(CHARTS_PATH_IN_BODY_RE.findall(text))
+    return found
+
+
+def data_path_refs_in_reports(presentation_dir: Path) -> list[str]:
+    """Return ``data/...`` links referenced from reports.
+
+    :param presentation_dir: Presentation directory for one hypothesis.
+    :returns: Relative paths beginning with ``data/``.
+    """
+    found: list[str] = []
+    for fname in (
+        "report_zh.md",
+        "report_en.md",
+        "report_zh.html",
+        "report_en.html",
+    ):
+        path = presentation_dir / fname
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8", errors="replace")
+        found.extend(DATA_REF_IN_BODY_RE.findall(text))
     return found
 
 

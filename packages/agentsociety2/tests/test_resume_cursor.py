@@ -14,6 +14,7 @@ def _bare_society(tmp_path: Path) -> AgentSociety:
     soc._step_count = 0
     soc._t = datetime(2026, 10, 19, 0, 0)
     soc._should_terminate = False
+    soc._pending_update = None
     return soc
 
 

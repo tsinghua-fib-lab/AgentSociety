@@ -18,23 +18,34 @@ repos:
       - id: detect-private-key
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.11.13
+    rev: v0.16.8
     hooks:
-      - id: ruff
+      - id: ruff-check
         args: [--fix, --exit-non-zero-on-fix]
-        files: ^packages/agentsociety2/
+        files: ^(packages/agentsociety2|scripts/ci|examples/v2/daily_mobility)/
       - id: ruff-format
         files: ^packages/agentsociety2/
 
-  - repo: https://github.com/pre-commit/mirrors-prettier
-    rev: v3.4.2
+  - repo: local
     hooks:
       - id: prettier
-        types_or: [ts, tsx, js, jsx, json, yaml, css, html]
+        name: Prettier
+        language: node
+        language_version: system
+        entry: prettier --write
+        additional_dependencies: [prettier@3.4.2]
+        types_or: [ts, tsx, javascript, jsx, json, yaml, css, html]
         exclude: ^(frontend/node_modules/|extension/node_modules/|packages/agentsociety/|packages/agentsociety-community/|packages/agentsociety-benchmark/|packages/agentsociety/docs/|frontend/public/monaco-editor/)
 
-  - repo: https://github.com/nick-lockhart/pre-commit-git-cliff
-    rev: 0.6.0
-    hooks:
-      - id: git-cliff-check
-        args: [--config, cliff.toml, --tag-pattern, "agentsociety2-v[0-9]+.[0-9]+.[0-9]+"]
+      - id: check-release-metadata
+        name: Check release metadata
+        entry: python scripts/ci/release.py check
+        language: python
+        pass_filenames: false
+        files: ^(CHANGELOG\.md|extension/package\.json|packages/agentsociety2/pyproject\.toml|scripts/ci/release\.py)$
+
+      - id: check-repo-paths
+        name: Check source paths and Git ignore rules
+        entry: python scripts/ci/check_repo_paths.py
+        language: python
+        types: [text]

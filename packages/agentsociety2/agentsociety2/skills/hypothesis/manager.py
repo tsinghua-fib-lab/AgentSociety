@@ -375,6 +375,52 @@ def add_hypothesis_with_validation(
     }
 
 
+def _resolve_hypothesis_dir(
+    workspace_path: Path,
+    hypothesis_id: str | None,
+    hypothesis_path: str | None,
+) -> Path | dict[str, Any]:
+    """把 hypothesis 定位参数解析为工作区内的安全目录。
+
+    :param workspace_path: 工作区目录路径。
+    :param hypothesis_id: hypothesis ID。
+    :param hypothesis_path: hypothesis 文件夹的相对路径。
+    :returns: 解析后的目录；参数缺失或越界时返回错误字典。
+    """
+    workspace = Path(workspace_path).resolve()
+    if hypothesis_path:
+        raw = Path(hypothesis_path)
+        if raw.is_absolute():
+            return {
+                "success": False,
+                "error": "Invalid path",
+                "content": "hypothesis_path must be relative to the workspace",
+            }
+        target = (workspace / raw).resolve()
+    elif hypothesis_id:
+        target = (workspace / f"hypothesis_{hypothesis_id}").resolve()
+    else:
+        return {
+            "success": False,
+            "error": "Missing parameter",
+            "content": "Either hypothesis_id or hypothesis_path must be provided",
+        }
+
+    if target == workspace or workspace not in target.parents:
+        return {
+            "success": False,
+            "error": "Invalid path",
+            "content": f"Path escapes the workspace: {target}",
+        }
+    if not target.name.startswith("hypothesis_"):
+        return {
+            "success": False,
+            "error": "Invalid path",
+            "content": f"Not a hypothesis directory: {target.name}",
+        }
+    return target
+
+
 def get_hypothesis(
     workspace_path: Path,
     hypothesis_id: str | None = None,
@@ -389,16 +435,9 @@ def get_hypothesis(
     :returns: 包含 hypothesis 详情的结果字典
     """
     # Determine folder to get
-    if hypothesis_path:
-        hyp_dir = workspace_path / hypothesis_path
-    elif hypothesis_id:
-        hyp_dir = workspace_path / f"hypothesis_{hypothesis_id}"
-    else:
-        return {
-            "success": False,
-            "error": "Missing parameter",
-            "content": "Either hypothesis_id or hypothesis_path must be provided",
-        }
+    hyp_dir = _resolve_hypothesis_dir(workspace_path, hypothesis_id, hypothesis_path)
+    if isinstance(hyp_dir, dict):
+        return hyp_dir
 
     if not hyp_dir.exists():
         return {
@@ -537,16 +576,9 @@ def delete_hypothesis(
     :returns: 包含删除状态的结果字典
     """
     # Determine folder to delete
-    if hypothesis_path:
-        hyp_dir = workspace_path / hypothesis_path
-    elif hypothesis_id:
-        hyp_dir = workspace_path / f"hypothesis_{hypothesis_id}"
-    else:
-        return {
-            "success": False,
-            "error": "Missing parameter",
-            "content": "Either hypothesis_id or hypothesis_path must be provided",
-        }
+    hyp_dir = _resolve_hypothesis_dir(workspace_path, hypothesis_id, hypothesis_path)
+    if isinstance(hyp_dir, dict):
+        return hyp_dir
 
     if not hyp_dir.exists():
         return {

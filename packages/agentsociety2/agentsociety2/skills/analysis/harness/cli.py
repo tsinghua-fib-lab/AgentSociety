@@ -21,6 +21,7 @@ from agentsociety2.skills.analysis.harness.gates import (
     evaluate_synthesis_gate,
     gate_status_hypothesis,
     prior_phase_gate_issues,
+    validate_command_for,
 )
 from agentsociety2.skills.analysis.harness.layout import (
     migrate_legacy_hypothesis_harness,
@@ -431,6 +432,30 @@ def cmd_record_attestation(
     phase = att.phase.strip()
     if phase == "synthesis":
         st = harness_state.load_synthesis_state(workspace)
+        blocking: list[dict[str, Any]] = []
+        for scoped_id in harness_state.resolve_synthesis_scope(workspace, st):
+            hst = harness_state.load_hypothesis_state(workspace, scoped_id)
+            produce_cp = hst.phase_checkpoints.get("produce")
+            if produce_cp is None or not produce_cp.gate_pass:
+                blocking.append(
+                    {
+                        "hypothesis_id": scoped_id,
+                        "message": (
+                            "produce phase gate has not passed for this hypothesis"
+                        ),
+                        "fix_hint": (
+                            f"Finish produce and validate-release for hypothesis "
+                            f"{scoped_id} before recording synthesis attestation"
+                        ),
+                    }
+                )
+        if blocking:
+            return {
+                "error": "prior_phase_gate_blocked",
+                "status": "BLOCKED",
+                "issues": blocking,
+                "recommended_next_step": blocking[0]["fix_hint"],
+            }
         if not att.artifact_fingerprint:
             att.artifact_fingerprint = _synthesis_fingerprint(workspace)
         st.phase_attestation = att
@@ -657,15 +682,10 @@ def cmd_validate_chart(
             st.chart_count = len(validated)
     else:
         return {"error": "provide --chart-path or --code"}
-    gate = evaluate_hypothesis_gate(
-        "refine",
-        state=st,
-        structural_result=structural,
-        attestation=st.phase_attestations.get("refine"),
-    )
-    _apply_gate_to_state(st, gate)
     harness_state.save_hypothesis_state(workspace, hypothesis_id, st)
-    out = _gate_payload(gate)
+    # Per-chart validation registers evidence only; it must never rewrite the
+    # holistic refine checkpoint/gate.
+    out = structural.model_dump(mode="json")
     out["chart_count"] = st.chart_count
     return out
 
@@ -900,13 +920,9 @@ def cmd_validate_synthesis(workspace: Path) -> dict[str, Any]:
     syn_paths = synthesis_paths(workspace)
     st = harness_state.load_synthesis_state(workspace)
     if not st.synthesis_scope_hypothesis_ids:
-        pres_root = workspace / DIR_PRESENTATION
-        if pres_root.exists():
-            st.synthesis_scope_hypothesis_ids = [
-                d.name.replace("hypothesis_", "", 1)
-                for d in pres_root.iterdir()
-                if d.is_dir() and d.name.startswith("hypothesis_")
-            ]
+        st.synthesis_scope_hypothesis_ids = harness_state.resolve_synthesis_scope(
+            workspace, st
+        )
     structural = merge_results(
         validate_synthesis(
             workspace,
@@ -931,7 +947,9 @@ def cmd_validate_synthesis(workspace: Path) -> dict[str, Any]:
     else:
         st.workspace_release = ReleaseStatus.blocked
     harness_state.save_synthesis_state(workspace, st)
-    return _gate_payload(gate)
+    out = _gate_payload(gate)
+    out["workspace_release"] = st.workspace_release.value
+    return out
 
 
 def _phase_index(phase: AnalysisPhase) -> int:
@@ -954,7 +972,8 @@ def cmd_advance(
     try:
         target_phase = AnalysisPhase(target)
     except ValueError:
-        return {"error": f"unknown phase: {target}"}
+        allowed = ", ".join(phase.value for phase in HYPOTHESIS_PHASE_ORDER)
+        return {"error": f"unknown phase: {target}; allowed: {allowed}"}
 
     st = harness_state.load_hypothesis_state(workspace, hypothesis_id)
     if _phase_index(target_phase) <= _phase_index(st.current_phase):
@@ -968,7 +987,7 @@ def cmd_advance(
         if cp is None or not cp.gate_pass:
             return {
                 "error": f"prior phase {prior.value} gate not passed",
-                "recommended_next_step": f"Run validate-{prior.value}, record-attestation --phase {prior.value}",
+                "recommended_next_step": f"Run {validate_command_for(prior.value)}, record-attestation --phase {prior.value}",
             }
 
     st.current_phase = target_phase
@@ -1199,7 +1218,7 @@ def cmd_run_loop(
     else:
         steps = [
             f"1. LLM: {llm_focus}",
-            f"2. Mechanical: validate-{phase}",
+            f"2. Mechanical: {validate_command_for(phase)}",
             f"3. LLM: record-attestation --phase {phase} (rubric: {rubric})",
         ]
         advance_n = "4"
@@ -1209,26 +1228,37 @@ def cmd_run_loop(
         )
     else:
         steps.append(f"{advance_n}. advance after gate PASS")
-    if st.hypothesis_release == ReleaseStatus.ready:
+    synthesis_state = harness_state.load_synthesis_state(workspace)
+    analysis_complete = (
+        st.hypothesis_release == ReleaseStatus.ready
+        and synthesis_state.workspace_release == ReleaseStatus.ready
+    )
+    if analysis_complete:
+        steps = [
+            "Analysis complete: workspace synthesis gate passed; no further operations required."
+        ]
+    elif st.hypothesis_release == ReleaseStatus.ready:
         steps = [
             "1. LLM: synthesis-producer → synthesis reports + brief",
             "2. LLM: synthesis-reviewer → record-synthesis-review PASS",
             "3. validate-synthesis + record-attestation --phase synthesis",
         ]
-    if memory_context["active"]:
+    if memory_context["active"] and not analysis_complete:
         steps.insert(
             0,
             "0. Memory: apply confirmed preferences and relevant method_recipes; treat recent_lessons as advisory",
         )
+    recommended_operations = [] if analysis_complete else available_operations
     return {
         "current_phase": phase,
         "effective_phase": effective_phase,
         "hypothesis_release": st.hypothesis_release.value,
+        "workspace_release": synthesis_state.workspace_release.value,
         "recommended_next_step": " | ".join(steps),
         "available_operations": available_operations,
-        "recommended_operations": available_operations,
+        "recommended_operations": recommended_operations,
         "suggested_next_operation": (
-            available_operations[0]["id"] if available_operations else None
+            recommended_operations[0]["id"] if recommended_operations else None
         ),
         "blocked_operations": blocked_operations,
         "completed_operations": completed_operations,
@@ -1718,7 +1748,13 @@ def cmd_chart_scaffold() -> dict[str, Any]:
     return {"scaffold": get_chart_scaffold()}
 
 
-def cmd_validate(
-    workspace: Path, hypothesis_id: str, experiment_id: str
-) -> dict[str, Any]:
+def cmd_validate(workspace: Path) -> dict[str, Any]:
+    """校验工作区整体完成度。
+
+    该操作只作用于 workspace 级的 synthesis 门禁；hypothesis/experiment
+    参数不再参与校验，避免 API 表面暗示错误的语义。
+
+    :param workspace: 工作区目录。
+    :returns: synthesis 校验结果。
+    """
     return cmd_validate_synthesis(workspace)

@@ -181,7 +181,7 @@ from agentsociety.simulation import AgentSociety
 
 ## 环境要求
 
-- Python 3.11 – 3.13
+- Python 3.11.5 – 3.13
 - LLM API Key（OpenAI、Anthropic 或任意 litellm 支持的供应商）
 
 ## 贡献者

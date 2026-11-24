@@ -184,7 +184,7 @@ def build_evidence_index(workspace: Path, hypothesis_id: str) -> EvidenceIndex:
     )
 
 
-def render_report_context_md(index: EvidenceIndex, *, pres_dir: Path) -> str:
+def render_report_context_md(index: EvidenceIndex) -> str:
     lines = [
         "# Report context (auto-generated)",
         "",
@@ -242,7 +242,7 @@ def write_report_bundle(workspace: Path, hypothesis_id: str) -> dict:
     )
     context_path = pres / "data" / "report_context.md"
     context_path.write_text(
-        render_report_context_md(index, pres_dir=pres),
+        render_report_context_md(index),
         encoding="utf-8",
     )
 

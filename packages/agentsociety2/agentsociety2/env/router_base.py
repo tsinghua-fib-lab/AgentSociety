@@ -29,6 +29,7 @@ Example::
 """
 
 import asyncio
+import os
 import time
 import uuid
 from abc import ABC, abstractmethod
@@ -378,11 +379,48 @@ class RouterBase(ABC):
     async def step(self, tick: int, t: datetime):
         """推进环境模块一个仿真步。
 
+        每个模块有独立超时（``AGENTSOCIETY_ENV_MODULE_TIMEOUT``，默认 900s），
+        单个模块挂死不会拖住整个 tick 和 actor 串行队列。
+
         :param tick: 本步时间跨度（秒）。
         :param t: 本步结束后的仿真时间。
         """
         self.t = t
-        await asyncio.gather(*[m.step(tick, self.t) for m in self.env_modules])
+
+        async def _step_module(module):
+            try:
+                return await asyncio.wait_for(
+                    module.step(tick, self.t), timeout=self._module_timeout()
+                )
+            except TimeoutError as exc:
+                raise TimeoutError(
+                    f"Env module {type(module).__name__}.step exceeded "
+                    f"{self._module_timeout():.0f}s"
+                ) from exc
+
+        tasks = [asyncio.create_task(_step_module(m)) for m in self.env_modules]
+        try:
+            await asyncio.gather(*tasks)
+        except BaseException:
+            # Cancel siblings so a timed-out module cannot keep mutating state
+            # while society closes or starts the next tick.
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+            raise
+
+    @staticmethod
+    def _module_timeout() -> float:
+        """读取环境模块单步超时（秒）。
+
+        :returns: 正数超时秒数；配置非法时回退 900s。
+        """
+        raw = os.getenv("AGENTSOCIETY_ENV_MODULE_TIMEOUT", "")
+        try:
+            value = float(raw)
+        except ValueError:
+            return 900.0
+        return value if value > 0 else 900.0
 
     async def close(self):
         """关闭路由器（关闭所有环境模块）。"""

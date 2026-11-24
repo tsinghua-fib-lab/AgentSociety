@@ -10,6 +10,8 @@ string values are capped so every record fits below ``PIPE_BUF`` and a single
 import json
 from pathlib import Path
 
+import pytest
+
 from agentsociety2.trace import (
     JsonlTraceWriter,
     ShardedAppendSink,
@@ -146,3 +148,20 @@ def test_sharded_append_sink_writes_through_jsonl_writer(tmp_path):
 
     records = _read_all_records(tmp_path)
     assert [r["name"] for r in records] == [f"span.{i}" for i in range(10)]
+
+
+def test_trace_sink_caps_open_descriptors(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("AGENTSOCIETY_TRACE_MAX_FDS_PER_SINK", "8")
+    sink = ShardedAppendSink(tmp_path)
+    for index in range(40):
+        sink.append_record(
+            {"trace_id": f"{index:02x}" + "0" * 30, "name": f"span-{index}"}
+        )
+    try:
+        assert len(sink._fds) <= 8
+        assert len(list(tmp_path.glob("trace_*.jsonl"))) >= 40
+    finally:
+        sink.close()
+    assert not sink._fds

@@ -1,1 +1,1 @@
-"""Compatibility package for Daily Mobility example tools."""
+"""Daily Mobility example and diagnostic tools."""

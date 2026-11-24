@@ -25,7 +25,19 @@
     # 创建假设
     hypothesis.add_hypothesis(
         workspace_path=Path("./workspace"),
-        hypothesis="社会网络密度影响信息传播速度"
+        hypothesis_data={
+            "hypothesis": {
+                "description": "社会网络密度影响信息传播速度",
+                "rationale": "高密度网络提供更多传播路径",
+            },
+            "groups": [
+                {
+                    "name": "high_density",
+                    "group_type": "treatment",
+                    "description": "高密度网络",
+                }
+            ],
+        },
     )
 
     # 读取实验 replay catalog

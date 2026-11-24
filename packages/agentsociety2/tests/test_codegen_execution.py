@@ -2,6 +2,7 @@
 
 import asyncio
 import datetime
+import sys
 from types import SimpleNamespace
 
 import pytest
@@ -16,6 +17,8 @@ from agentsociety2.env.router_codegen import CodeStage
 
 @pytest.fixture(params=["inprocess", "process"])
 def execution_backend(request, monkeypatch):
+    if request.param == "process" and not sys.platform.startswith("linux"):
+        pytest.skip("process codegen backend requires Linux")
     monkeypatch.setattr(Config, "CODE_EXEC_BACKEND", request.param)
 
 
@@ -125,6 +128,8 @@ async def test_readonly_policy_is_enforced_at_tool_dispatch():
 async def test_numeric_and_tool_loop_results_match_with_data_boundaries(
     monkeypatch, backend
 ):
+    if backend == "process" and not sys.platform.startswith("linux"):
+        pytest.skip("process codegen backend requires Linux")
     monkeypatch.setattr(Config, "CODE_EXEC_BACKEND", backend)
     owner = asyncio.get_running_loop()
     calls = []
@@ -225,6 +230,8 @@ async def test_generated_code_rejects_host_capabilities(
 
 @pytest.mark.parametrize("backend", ["process", "inprocess"])
 async def test_pending_sleep_cannot_expose_its_event_loop(monkeypatch, backend):
+    if backend == "process" and not sys.platform.startswith("linux"):
+        pytest.skip("process codegen backend requires Linux")
     monkeypatch.setattr(Config, "CODE_EXEC_BACKEND", backend)
     router = CodeGenRouter(env_modules=[], template_cache_enabled=False)
     try:

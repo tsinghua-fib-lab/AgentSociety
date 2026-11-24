@@ -113,7 +113,9 @@ This agent participates in a 10-round Tragedy of the Commons game where multiple
             encoding="utf-8",
         )
 
-    async def ask(self, message: str, readonly: bool = True) -> str:
+    async def ask(
+        self, message: str, readonly: bool = True, *, t: datetime | None = None
+    ) -> str:
         """Answer questions"""
         # Build prompt from profile dict
         profile_str = self._build_profile_string()

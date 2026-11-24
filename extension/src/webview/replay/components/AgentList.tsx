@@ -4,9 +4,11 @@
  */
 
 import * as React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useReplay } from '../store';
 
 export const AgentList: React.FC = () => {
+  const { t } = useTranslation();
   const { state, actions } = useReplay();
   const { agentProfiles, agentStateRowsAtStep, selectedAgentId, panelSchema } = state;
   const primaryDatasetId = panelSchema?.primary_agent_state_dataset_id ?? null;
@@ -45,7 +47,7 @@ export const AgentList: React.FC = () => {
             <div className="agent-info">
               <div className="agent-name">{agent.name}</div>
               <div className="agent-action">
-                {status?.action || status?.thought || status?.t || 'No activity'}
+                {status?.action || status?.thought || status?.t || t('replay.rows.noActivity')}
               </div>
             </div>
           </div>
@@ -54,7 +56,7 @@ export const AgentList: React.FC = () => {
 
       {sortedAgents.length === 0 && (
         <div style={{ padding: '16px', textAlign: 'center', color: 'var(--vscode-descriptionForeground)' }}>
-          No agents found
+          {t('replay.rows.empty')}
         </div>
       )}
     </div>

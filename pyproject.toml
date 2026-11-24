@@ -3,7 +3,7 @@ index-url = "https://pypi.tuna.tsinghua.edu.cn/simple"
 constraint-dependencies = [
     "virtualenv==21.15.1",
     "filelock==4.2.4",
-    "tornado==6.6",
+    "tornado==6.6.1",
 ]
 
 [tool.uv.workspace]
@@ -25,3 +25,6 @@ dev = [
     "agentsociety2[docs]",
     "deptry>=0.25.1",
 ]
+
+[tool.ruff.per-file-target-version]
+"scripts/ci/**/*.py" = "py311"

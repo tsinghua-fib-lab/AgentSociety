@@ -21,19 +21,18 @@ from pathlib import Path
 from typing import Any
 
 EXP_DIR = Path(__file__).resolve().parent
-REPO_ROOT = EXP_DIR.parents[2]
 INIT_SCRIPT = EXP_DIR / "init" / "config_params.py"
 EVAL_SCRIPT = EXP_DIR / "tools" / "eval_metrics.py"
 # Follow the same per-experiment config directory as init/config_params.py.
 DEFAULT_INIT_DIR = Path(
     os.environ.get("DAILY_MOBILITY_INIT_DIR", str(EXP_DIR / "tmp" / "init"))
 )
-DEFAULT_RUN_DIR = EXP_DIR / "tmp" / "run"
+DEFAULT_RUN_DIR = Path(os.environ.get("DAILY_MOBILITY_RUN_DIR") or EXP_DIR / "tmp/run")
 
 
 def _run(cmd: list[str], *, env: dict[str, str] | None = None) -> None:
     print("+ " + " ".join(cmd), flush=True)
-    subprocess.run(cmd, cwd=REPO_ROOT, env=env, check=True)
+    subprocess.run(cmd, env=env, check=True)
 
 
 def _stage_env(args: argparse.Namespace) -> dict[str, str]:
@@ -85,7 +84,7 @@ def _dry_run_world_description(router: Any) -> str:
                         for child in base.iterdir()
                         if child.is_dir() and (child / "SKILL.md").is_file()
                     )
-        except Exception:
+        except OSError:
             skill_count = 0
         lines.append(
             f"- {module.name}: {module.description()} "
@@ -182,7 +181,7 @@ async def run_simulation(
 
     args.run_dir.mkdir(parents=True, exist_ok=True)
     runner = ExperimentRunner(args.run_dir)
-    await runner.run(config_path, steps_path)
+    await runner.run(config_path, steps_path, experiment_id=args.experiment_id)
 
 
 def compute_metrics(args: argparse.Namespace) -> None:

@@ -104,7 +104,7 @@ class QuestionItem(BaseModel):
         "text",
         description="回答类型",
     )
-    choices: list[str] = Field(default_factory=list, description="choice 题型可选项")
+    choices: list[str] = Field(default_factory=list, validate_default=True, description="choice 题型可选项")
 
     @field_validator("choices")
     @classmethod
@@ -143,10 +143,14 @@ class StepsConfig(BaseModel):
     start_t: str = Field(..., description="仿真开始时间（ISO格式）")
     steps: list[StepUnion] = Field(..., min_length=1, description="步骤列表")
 
-    @field_validator("start_t")
+    @field_validator("start_t", mode="before")
     @classmethod
-    def validate_start_t(cls, v: str) -> str:
+    def validate_start_t(cls, v: Any) -> str:
         """验证开始时间格式"""
+        if isinstance(v, datetime):
+            return v.isoformat()
+        if not isinstance(v, str):
+            raise ValueError("start_t must be an ISO timestamp")
         try:
             datetime.fromisoformat(v)
         except ValueError:

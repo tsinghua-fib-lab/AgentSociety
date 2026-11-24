@@ -8,6 +8,7 @@ from urllib.parse import quote
 
 from fastapi import FastAPI, Request
 from fastapi.openapi.docs import (
+    get_redoc_html,
     get_swagger_ui_html,
     get_swagger_ui_oauth2_redirect_html,
 )
@@ -29,23 +30,24 @@ def render_swagger_page(
     app: FastAPI,
     root_path: str = "",
     *,
-    swagger_js_url: str = "https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js",
-    swagger_css_url: str = "https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css",
+    swagger_js_url: str | None = None,
+    swagger_css_url: str | None = None,
 ) -> HTMLResponse:
     """按实际服务前缀生成页面，预览可复用本地 Swagger 资源。"""
-    prefix = root_path.rstrip("/")
+    prefix = root_path.rstrip("/") or "."
+    assets = prefix + "/docs-assets"
     redirect = app.swagger_ui_oauth2_redirect_url
     response = get_swagger_ui_html(
         openapi_url=prefix + (app.openapi_url or "/openapi.json"),
         title=escape(f"{app.title} · Swagger"),
-        swagger_js_url=swagger_js_url,
-        swagger_css_url=swagger_css_url,
+        swagger_js_url=swagger_js_url or assets + "/swagger-ui-bundle.js",
+        swagger_css_url=swagger_css_url or assets + "/swagger-ui.css",
         swagger_favicon_url="data:,",
-        oauth2_redirect_url=prefix + redirect if redirect else None,
+        oauth2_redirect_url=root_path.rstrip("/") + redirect if redirect else None,
         init_oauth=app.swagger_ui_init_oauth,
         swagger_ui_parameters=app.swagger_ui_parameters,
     )
-    asset_url = escape(prefix + "/docs-assets", quote=True)
+    asset_url = escape(assets, quote=True)
     redoc_url = escape(prefix + (app.redoc_url or "/redoc"), quote=True)
     spec_url = escape(prefix + (app.openapi_url or "/openapi.json"), quote=True)
     tags = app.openapi_tags or []
@@ -103,13 +105,31 @@ def install_docs_ui(app: FastAPI) -> None:
         return
     app.mount(
         "/docs-assets",
-        StaticFiles(directory=Path(__file__).with_name("static")),
+        StaticFiles(
+            directory=Path(__file__).with_name("static"),
+            packages=[("fastapi_offline", "static")],
+        ),
         name="api-doc-assets",
     )
 
     @app.get("/docs", include_in_schema=False)
     async def swagger_ui(request: Request) -> HTMLResponse:
         return render_swagger_page(app, request.scope.get("root_path", ""))
+
+    @app.get("/redoc", include_in_schema=False, response_class=HTMLResponse)
+    async def redoc(request: Request) -> HTMLResponse:
+        """从当前服务加载 ReDoc 和接口定义，支持剥离前缀的反向代理。"""
+        prefix = request.scope.get("root_path", "").rstrip("/") or "."
+        page = get_redoc_html(
+            openapi_url=prefix + (app.openapi_url or "/openapi.json"),
+            title=escape(f"{app.title} · ReDoc"),
+            redoc_js_url=prefix + "/docs-assets/redoc.standalone.js",
+            redoc_favicon_url="data:,",
+            with_google_fonts=False,
+        )
+        # ReDoc 的页脚带有远程图标，离线部署保留文字链接即可。
+        page.headers["Content-Security-Policy"] = "img-src 'self' data:"
+        return page
 
     if app.swagger_ui_oauth2_redirect_url:
         app.add_api_route(

@@ -10,6 +10,7 @@
 
 import * as vscode from 'vscode';
 import * as path from 'path';
+import { getCurrentLanguageCode, syncWebviewLanguage } from './i18n';
 
 /**
  * Init Config 编辑器提供者类
@@ -62,6 +63,7 @@ export class InitConfigEditorProvider implements vscode.CustomTextEditorProvider
     const scriptUri = webviewPanel.webview.asWebviewUri(scriptPath);
 
     // 设置 Webview 的 HTML 内容
+    syncWebviewLanguage(webviewPanel);
     webviewPanel.webview.html = this._getHtmlForWebview(
       webviewPanel.webview,
       scriptUri,
@@ -134,7 +136,7 @@ export class InitConfigEditorProvider implements vscode.CustomTextEditorProvider
     ].join('; ');
 
     return `<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="${getCurrentLanguageCode()}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -155,7 +157,7 @@ export class InitConfigEditorProvider implements vscode.CustomTextEditorProvider
 <body>
   <div id="root"></div>
   <script nonce="${nonce}">
-    window.initialConfig = ${JSON.stringify(initialConfig)};
+    window.initialConfig = ${JSON.stringify(initialConfig).replace(/</g, '\\u003c')};
   </script>
   <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>

@@ -64,15 +64,23 @@ def test_documentation_preserves_the_generated_api_contract(
     assert _without_display_metadata(schema["paths"]) == _without_display_metadata(
         baseline["paths"]
     )
-    assert _without_display_metadata(schema["components"]) == _without_display_metadata(
-        baseline["components"]
-    )
+    assert _without_display_metadata(
+        schema["components"]["schemas"]
+    ) == _without_display_metadata(baseline["components"]["schemas"])
 
 
 def test_request_fields_and_health_example_are_explained(
     schema: dict[str, Any],
 ) -> None:
     models = schema["components"]["schemas"]
+    assert models["ExperimentArtifact"]["properties"]["type"]["enum"] == [
+        "ask",
+        "intervene",
+        "questionnaire",
+    ]
+    assert set(models["ArtifactContent"]["required"]) == {"name", "content"}
+    artifact = "/api/v1/experiments/{hypothesis_id}/{experiment_id}/artifacts/{artifact_name}"
+    assert "413" in schema["paths"][artifact]["get"]["responses"]
     for path in (
         "/api/v1/agent-skills/create",
         "/api/v1/agent-skills/import",
@@ -119,3 +127,29 @@ def test_docs_use_the_proxy_prefix_and_schema_cache(
         assert response.status_code == 200
         assert response.json()["servers"] == [{"url": "/proxy/13339"}]
         assert app.openapi() is app.openapi()
+
+
+@pytest.mark.parametrize("token_configured", [False, True])
+def test_schema_describes_backend_bearer_auth(monkeypatch, token_configured):
+    monkeypatch.setenv("BACKEND_TOKEN", "fixture" if token_configured else "")
+    monkeypatch.setattr(app, "openapi_schema", None)
+    schema = app.openapi()
+    assert (
+        schema["components"]["securitySchemes"]["BackendBearer"]["scheme"] == "bearer"
+    )
+    assert {"BackendBearer": []} in schema["security"]
+    assert ({} in schema["security"]) is not token_configured
+
+
+def test_docs_load_local_assets_through_a_prefix_stripping_proxy():
+    """代理剥离前缀时，文档与试调仍使用浏览器当前目录。"""
+    with TestClient(app, base_url="http://127.0.0.1") as client:
+        for page, asset in (
+            ("docs", "swagger-ui-bundle.js"),
+            ("redoc", "redoc.standalone.js"),
+        ):
+            html = client.get("/" + page).text
+            assert "./openapi.json" in html
+            assert "./docs-assets/" + asset in html
+            assert client.get("/docs-assets/" + asset).status_code == 200
+        assert {"url": "."} in client.get("/openapi.json").json()["servers"]

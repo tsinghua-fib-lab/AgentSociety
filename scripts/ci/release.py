@@ -9,9 +9,8 @@ import json
 import os
 import re
 import sys
-from pathlib import Path
-
 import tomllib
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 VERSION = r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)"
@@ -83,7 +82,7 @@ def changelog_sections(text: str) -> dict[str, str]:
             if not re.fullmatch(r" - \d{4}-\d{2}-\d{2}", suffix):
                 raise ValueError(f"Missing YYYY-MM-DD release date: {version}")
             date = dt.date.fromisoformat(suffix.removeprefix(" - "))
-            if date > dt.datetime.now(dt.timezone.utc).date():
+            if date > dt.datetime.now(dt.UTC).date():
                 raise ValueError(f"Release date is in the future: {version}")
         end = headings[index + 1].start() if index + 1 < len(headings) else len(active)
         section = active[heading.start() : end].strip()

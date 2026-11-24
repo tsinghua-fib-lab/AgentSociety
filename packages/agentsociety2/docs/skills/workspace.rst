@@ -42,6 +42,8 @@
       agentsociety-workspace init --target-dir .
 
    等价入口是 ``python -m agentsociety2.society.workspace init --target-dir .``。
+   地图 ``.agentsociety/data/beijing_map.pb`` 是可选资产：离线或不需要地图时加
+   ``--skip-map``；已存在的地图会被复用，下载失败只记录为 skipped，不会让初始化失败。
 
 .. _skills-workspace-0:
 

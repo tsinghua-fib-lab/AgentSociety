@@ -1,6 +1,7 @@
 """Optional workers enforce resource limits and preserve data and concurrency."""
 
 import asyncio
+import sys
 import time
 from pathlib import Path
 from types import SimpleNamespace
@@ -11,6 +12,11 @@ import pytest
 from agentsociety2.config import Config
 from agentsociety2.env import CodeGenRouter
 from agentsociety2.env.router_codegen import CodeStage
+
+pytestmark = pytest.mark.skipif(
+    not sys.platform.startswith("linux"),
+    reason="process codegen backend requires Linux",
+)
 
 
 @pytest.fixture(autouse=True)

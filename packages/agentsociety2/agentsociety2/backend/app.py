@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+import hmac
+import ipaddress
 import logging
 import os
 import re
@@ -74,6 +76,9 @@ logger = get_logger()
 async def lifespan(app: FastAPI):
     """FastAPI 应用生命周期管理（启动/关闭钩子）。"""
     # 启动时执行
+    from agentsociety2.config import Config
+
+    Config.validate_required()
     logger.info("AI Social Scientist Backend Service 启动中...")
     logger.info(f"项目根目录: {_project_root}")
 
@@ -87,6 +92,8 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="AI Social Scientist Backend API",
     docs_url=None,
+    redoc_url=None,
+    servers=[{"url": "."}],
     description=_api_documentation.API_DESCRIPTION,
     openapi_tags=_api_documentation.OPENAPI_TAGS,
     swagger_ui_parameters=_api_documentation.SWAGGER_UI_PARAMETERS,
@@ -152,6 +159,66 @@ _allowed_hosts += [
     if host.strip()
 ]
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=_allowed_hosts)
+
+
+def _is_loopback_client(scope) -> bool:
+    """判断请求是否来自本机（含测试客户端）。
+
+    :param scope: ASGI scope。
+    :returns: 客户端地址为回环地址或测试客户端时返回 True。
+    """
+    client = scope.get("client")
+    if not client:
+        return False
+    host = str(client[0])
+    if host == "testclient":
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return host == "localhost"
+
+
+class BackendAuthMiddleware:
+    """可选的 Bearer Token 认证与默认本机访问限制。
+
+    后端包含会执行工作区 Python 的接口（``/custom/scan``、``/agent-skills``
+    上传等），因此默认只接受回环地址请求。需要远程访问时设置
+    ``BACKEND_TOKEN``，所有非预检请求都必须携带
+    ``Authorization: Bearer <token>``。
+    """
+
+    def __init__(self, app):
+        self.app = app
+        self.token = os.getenv("BACKEND_TOKEN", "").strip()
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] in {"http", "websocket"} and scope.get("method") != "OPTIONS":
+            if not self.token:
+                if not _is_loopback_client(scope):
+                    await JSONResponse(
+                        {
+                            "error": "Remote access requires BACKEND_TOKEN to be configured"
+                        },
+                        status_code=403,
+                    )(scope, receive, send)
+                    return
+            else:
+                headers = {
+                    name.decode("latin-1").lower(): value.decode("latin-1")
+                    for name, value in scope.get("headers", [])
+                }
+                supplied = headers.get("authorization", "")
+                expected = f"Bearer {self.token}"
+                if not hmac.compare_digest(supplied, expected):
+                    await JSONResponse({"error": "Unauthorized"}, status_code=401)(
+                        scope, receive, send
+                    )
+                    return
+        await self.app(scope, receive, send)
+
+
+app.add_middleware(BackendAuthMiddleware)
 
 # 注册路由（仅保留必要的API）
 app.include_router(prefill_params.router)

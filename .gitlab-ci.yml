@@ -44,6 +44,8 @@ variables:
   - CHANGELOG.md
   - cliff.toml
   - scripts/ci/**/*
+  - .gitignore
+  - examples/v2/daily_mobility/**/*
   - Makefile
   - .github/workflows/*.yml
   - packages/agentsociety2/agentsociety2/**/*
@@ -88,6 +90,10 @@ variables:
   - .gitlab-ci.yml
 
 .codeql_changes: &codeql_changes
+  - examples/v2/daily_mobility/**/*
+  - extension/skills/docx/scripts/**/*
+  - packages/agentsociety2/scripts/**/*
+  - packages/agentsociety2/experiments/**/*
   - packages/agentsociety2/agentsociety2/**/*
   - extension/src/**/*
   - frontend/src/**/*
@@ -174,6 +180,16 @@ release-check:
     - if: $CI_COMMIT_TAG =~ /^agentsociety2-v[0-9]+\.[0-9]+\.[0-9]+$/
   script:
     - make ci-release-check AS2_PYTHON=python
+
+# Check every merge request, including changes confined to documentation.
+repository-paths:
+  stage: lint
+  image: python:3.12-bookworm
+  interruptible: true
+  rules:
+    - when: on_success
+  script:
+    - python scripts/ci/check_repo_paths.py
 
 lint:
   stage: lint

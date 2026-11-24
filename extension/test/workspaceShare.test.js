@@ -80,7 +80,48 @@ test('export excludes secrets and local IDE state', () => {
   assert.equal(shouldExcludeWorkspacePath('paper/easypaper_config.yaml'), true);
   assert.equal(shouldExcludeWorkspacePath('.cursor/settings.json'), true);
   assert.equal(shouldExcludeWorkspacePath('.vscode/launch.json'), true);
+  assert.equal(shouldExcludeWorkspacePath('.netrc'), true);
+  assert.equal(shouldExcludeWorkspacePath('keys/server.pem'), true);
+  assert.equal(shouldExcludeWorkspacePath('ssh/id_ed25519'), true);
   assert.equal(shouldExcludeWorkspacePath('custom/skills/demo/SKILL.md'), false);
+});
+
+test('inspect reads the export manifest without extracting', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'as-share-inspect-'));
+  const zipPath = path.join(root, 'share.zip');
+  const manifest = {
+    formatVersion: 2,
+    exportKind: 'agentsociety-workspace',
+    generator: 'ai-social-scientist',
+    exportedAt: '2026-11-21T00:00:00.000Z',
+    workspaceName: 'demo',
+    extensionVersion: 'test',
+    roots: [{ archivePath: 'TOPIC.md', kind: 'file', tier: 'core', bytes: 1, fileCount: 1 }],
+    excluded: [],
+    secretsOmitted: true,
+    contentHash: 'a'.repeat(64),
+    notice: { title: 't', copyright: 'c', redistribution: 'r', secrets: 's', importer: 'i' },
+  };
+  const created = spawnSync(
+    process.platform === 'win32' ? 'python' : 'python3',
+    [
+      '-c',
+      'import json, sys, zipfile; zipfile.ZipFile(sys.argv[1], "w").writestr("_agentsociety/export-manifest.json", sys.argv[2])',
+      zipPath,
+      JSON.stringify(manifest),
+    ],
+    { encoding: 'utf-8' },
+  );
+  assert.equal(created.status, 0, created.stderr);
+  const result = await runPythonArchiveCommand(
+    process.platform === 'win32' ? 'python' : 'python3',
+    'inspect',
+    zipPath,
+    '',
+  );
+  assert.equal(result.manifest.workspaceName, 'demo');
+  assert.equal(fs.existsSync(path.join(root, 'extracted')), false);
+  fs.rmSync(root, { recursive: true, force: true });
 });
 
 test('content hash is stable and changes with file contents', () => {
@@ -138,7 +179,10 @@ test('export symlink resolver skips broken and outside links', () => {
   fs.symlinkSync(outside, path.join(root, 'outside-link'));
 
   assert.equal(resolveSafeExportSymlink(path.join(root, 'broken'), root), undefined);
-  assert.equal(resolveSafeExportSymlink(path.join(root, 'inside-link'), root), inside);
+  assert.equal(
+    resolveSafeExportSymlink(path.join(root, 'inside-link'), root),
+    fs.realpathSync(inside),
+  );
   assert.equal(resolveSafeExportSymlink(path.join(root, 'outside-link'), root), undefined);
 
   fs.rmSync(root, { recursive: true, force: true });
@@ -187,28 +231,26 @@ test('extract refuses archives that write outside the destination', async () => 
   fs.rmSync(root, { recursive: true, force: true });
 });
 
-test('extract refuses archive entries with excessive compression ratios', async () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'as-share-bomb-'));
-  const zipPath = path.join(root, 'bomb.zip');
+test('extract accepts legitimate highly compressible research logs', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'as-share-compressible-'));
+  const zipPath = path.join(root, 'logs.zip');
   const extracted = path.join(root, 'extracted');
   const created = spawnSync(
     process.platform === 'win32' ? 'python' : 'python3',
     [
       '-c',
-      'import zipfile, sys; zipfile.ZipFile(sys.argv[1], "w", zipfile.ZIP_DEFLATED).writestr("large.txt", b"0" * 1024 * 1024)',
+      'import zipfile, sys; zipfile.ZipFile(sys.argv[1], "w", zipfile.ZIP_DEFLATED).writestr("events.jsonl", b"0" * 1024 * 1024)',
       zipPath,
     ],
     { encoding: 'utf-8' },
   );
   assert.equal(created.status, 0, created.stderr);
-  await assert.rejects(
-    () => runPythonArchiveCommand(
-      process.platform === 'win32' ? 'python' : 'python3',
-      'extract',
-      zipPath,
-      extracted,
-    ),
-    /compression ratio is too high/,
+  await runPythonArchiveCommand(
+    process.platform === 'win32' ? 'python' : 'python3',
+    'extract',
+    zipPath,
+    extracted,
   );
+  assert.equal(fs.statSync(path.join(extracted, 'events.jsonl')).size, 1024 * 1024);
   fs.rmSync(root, { recursive: true, force: true });
 });

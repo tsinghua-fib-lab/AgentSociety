@@ -7,7 +7,6 @@
 
 from __future__ import annotations
 
-import glob
 import json
 import re
 from datetime import datetime
@@ -37,7 +36,7 @@ def _duckdb_type(sqlite_type: str) -> str:
     kind = str(sqlite_type or "TEXT").upper()
     if kind == "INTEGER":
         return "BIGINT"
-    if kind == "REAL":
+    if kind in ("REAL", "FLOAT", "DOUBLE", "NUMERIC"):
         return "DOUBLE"
     if kind == "BLOB":
         return "BLOB"
@@ -73,13 +72,15 @@ def _json_safe(value: Any) -> Any:
 class ReplayReader:
     """通过 DuckDB 读取回放 ``_schema.json`` 与分片 JSONL 行数据。"""
 
-    def __init__(self, replay_dir: str | Path) -> None:
+    def __init__(self, replay_dir: str | Path, *, threads: int | None = None) -> None:
         """绑定已有的回放目录，查询时再创建 DuckDB 内存连接。
 
         :param replay_dir: 含有 ``_schema.json`` 的回放目录。
+        :param threads: 查询可使用的 DuckDB 线程数，省略时使用引擎默认值。
         :raises FileNotFoundError: 目录或元数据文件不存在。
         :raises ValueError: 路径包含空字节或父目录跳转。
         """
+        self._threads = threads
         _path = Path(replay_dir)
         # Reject path traversal and null bytes
         if "\0" in str(_path):
@@ -94,6 +95,7 @@ class ReplayReader:
             raise FileNotFoundError(f"Replay schema not found: {self.schema_path}")
         self._schema: dict[str, Any] | None = None
         self._catalog: list[dict[str, Any]] | None = None
+        self._schema_signature: tuple[int, int, int, int] | None = None
         self._conn: duckdb.DuckDBPyConnection | None = None
         self._registered_tables: set[str] = set()
 
@@ -105,15 +107,24 @@ class ReplayReader:
         if self._conn is not None:
             self._conn.close()
             self._conn = None
+            self._registered_tables.clear()
 
     def _connection(self) -> duckdb.DuckDBPyConnection:
         if self._conn is None:
-            self._conn = duckdb.connect(database=":memory:")
+            config = {} if self._threads is None else {"threads": self._threads}
+            self._conn = duckdb.connect(database=":memory:", config=config)
         return self._conn
 
     def _load_schema(self) -> dict[str, Any]:
-        if self._schema is None:
+        stat = self.schema_path.stat()
+        signature = (stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns)
+        if self._schema is None or self._schema_signature != signature:
             self._schema = json.loads(self.schema_path.read_text(encoding="utf-8"))
+            self._schema_signature = signature
+            # 目录与已注册视图都依赖 schema；schema 变化后必须重新构建，
+            # 否则长生命周期 reader 看不到新增 dataset/列。
+            self._catalog = None
+            self._registered_tables.clear()
         return self._schema
 
     def _schema_mtime(self) -> datetime:
@@ -121,10 +132,10 @@ class ReplayReader:
 
     def load_dataset_catalog(self) -> list[dict[str, Any]]:
         """读取并缓存数据集目录，保留列定义、排序规则和能力标记。"""
+        schema = self._load_schema()
         if self._catalog is not None:
             return self._catalog
 
-        schema = self._load_schema()
         created_at = self._schema_mtime()
         catalog: list[dict[str, Any]] = []
         for dataset_id, raw in sorted((schema.get("datasets") or {}).items()):
@@ -215,8 +226,12 @@ class ReplayReader:
         conn = self._connection()
         quoted_table = _quote_identifier(table_name)
         pattern = str(self.replay_dir / f"{table_name}.*.jsonl")
-        files = glob.glob(pattern)
-        if files:
+        # DuckDB 无法从空分片推断列，沿用目录中声明的空表结构。
+        has_rows = any(
+            path.stat().st_size
+            for path in self.replay_dir.glob(f"{table_name}.*.jsonl")
+        )
+        if has_rows:
             conn.execute(
                 f"""
                 CREATE OR REPLACE VIEW {quoted_table} AS
@@ -237,7 +252,8 @@ class ReplayReader:
             conn.execute(
                 f"CREATE OR REPLACE VIEW {quoted_table} AS SELECT {select_list} WHERE FALSE"
             )
-        self._registered_tables.add(table_name)
+        if has_rows:
+            self._registered_tables.add(table_name)
         return table_name
 
     def _validate_selected_columns(
@@ -341,11 +357,14 @@ class ReplayReader:
         desc: bool,
         latest_per_entity: bool,
         filters: list[str],
+        with_total: bool = False,
     ) -> str:
         table_name = _quote_identifier(self._ensure_view(dataset))
         select_list = ", ".join(
             _quote_identifier(column) for column in selected_columns
         )
+        if with_total:
+            select_list += ", count(*) OVER ()"
         where_sql = f" WHERE {' AND '.join(filters)}" if filters else ""
 
         if latest_per_entity:
@@ -359,10 +378,9 @@ class ReplayReader:
             step_sql = _quote_identifier(step_key)
             return (
                 f"SELECT {select_list} FROM ("
-                f"SELECT {select_list}, row_number() OVER "
-                f"(PARTITION BY {entity_sql} ORDER BY {step_sql} DESC) AS __row_num "
-                f"FROM {table_name}{where_sql}"
-                f") WHERE __row_num = 1 ORDER BY {entity_sql} {'DESC' if desc else 'ASC'}"
+                f"SELECT * FROM {table_name}{where_sql} QUALIFY row_number() OVER "
+                f"(PARTITION BY {entity_sql} ORDER BY {step_sql} DESC) = 1"
+                f") ORDER BY {entity_sql} {'DESC' if desc else 'ASC'}"
             )
 
         sql = f"SELECT {select_list} FROM {table_name}{where_sql}"
@@ -499,30 +517,46 @@ class ReplayReader:
         :returns: ``columns``、当前页 ``rows`` 与过滤后的 ``total``。
         """
         offset = (page - 1) * page_size
-        total = self.count_dataset_rows(
+        selected = self._validate_selected_columns(dataset, columns)
+        criteria = {
+            "step": step,
+            "entity_id": entity_id,
+            "start_step": start_step,
+            "end_step": end_step,
+            "max_step": max_step,
+        }
+        filters, params = self._build_filter_sql(dataset, **criteria)
+        count_first = offset > 0 or page_size == 0
+        sql = self._select_sql(
             dataset,
-            step=step,
-            entity_id=entity_id,
-            start_step=start_step,
-            end_step=end_step,
-            max_step=max_step,
-            latest_per_entity=latest_per_entity,
-        )
-        rows = self.fetch_dataset_rows(
-            dataset,
+            selected_columns=selected,
             order_by=order_by,
             desc=desc,
-            step=step,
-            entity_id=entity_id,
-            start_step=start_step,
-            end_step=end_step,
-            max_step=max_step,
-            columns=columns,
             latest_per_entity=latest_per_entity,
-            limit=page_size,
-            offset=offset,
+            filters=filters,
+            with_total=not count_first,
         )
-        return {"columns": rows["columns"], "rows": rows["rows"], "total": total}
+        total = 0
+        if count_first:
+            # 先判断后续页是否存在，避免为越界页排序和读取记录。
+            total = self.count_dataset_rows(
+                dataset, latest_per_entity=latest_per_entity, **criteria
+            )
+            if offset >= total or page_size == 0:
+                return {"columns": selected, "rows": [], "total": total}
+        records = (
+            self._connection()
+            .execute(sql + " LIMIT ? OFFSET ?", [*params, page_size, offset])
+            .fetchall()
+        )
+        if not count_first and records:
+            # 窗口计数在末列，不占用用户列名。
+            total = int(records[0][-1])
+        rows = [
+            self.normalize_row(dataset, dict(zip(selected, row, strict=False)))
+            for row in records
+        ]
+        return {"columns": selected, "rows": rows, "total": total}
 
     def distinct_values(
         self, dataset: dict[str, Any], column: str, *, order: bool = True
@@ -563,6 +597,87 @@ class ReplayReader:
             .fetchone()
         )
         return int(row[0] or 0)
+
+    def timeline_summary(self, dataset: dict[str, Any]) -> tuple[int, Any, Any]:
+        """一次扫描统计不同仿真步数、最早时间和最晚时间。
+
+        :param dataset: 含有步号列和时间列的回放目录条目。
+        :returns: 非空步号的去重计数与时间范围。空表的步数为零，两个时间均为空。
+        """
+        step, time = self._validate_selected_columns(
+            dataset, [dataset["step_key"], dataset["time_key"]]
+        )
+        table = _quote_identifier(self._ensure_view(dataset))
+        time_column = _quote_identifier(time)
+        query = (
+            f"SELECT count(DISTINCT {_quote_identifier(step)}), "
+            f"min({time_column}), max({time_column}) FROM {table}"
+        )
+        count, first, last = self._connection().execute(query).fetchone()
+        return int(count), first, last
+
+    def value_counts(
+        self,
+        dataset: dict[str, Any],
+        column: str,
+        *,
+        limit: int = 5,
+    ) -> list[tuple[Any, int]]:
+        """按出现次数降序返回一列的非空取值及计数。
+
+        计数相同的取值按取值升序排列，保证同一份 replay 的输出稳定。
+
+        :param dataset: 数据集定义。
+        :param column: 数据集定义中的列名。
+        :param limit: 最多返回的取值数量，必须为正整数。
+        :returns: ``(value, count)`` 列表。
+        :raises ValueError: 列名不属于该数据集，或 ``limit`` 非正。
+        """
+        if column not in set(self._get_column_names(dataset)):
+            raise ValueError(
+                f"Unknown column for dataset '{dataset['dataset_id']}': {column}"
+            )
+        if limit < 1:
+            raise ValueError("limit must be a positive integer")
+        table_name = _quote_identifier(self._ensure_view(dataset))
+        column_sql = _quote_identifier(column)
+        rows = (
+            self._connection()
+            .execute(
+                f"SELECT {column_sql}, count(*) AS n FROM {table_name} "
+                f"WHERE {column_sql} IS NOT NULL "
+                f"GROUP BY {column_sql} ORDER BY n DESC, {column_sql} ASC LIMIT ?",
+                [limit],
+            )
+            .fetchall()
+        )
+        return [(row[0], int(row[1])) for row in rows]
+
+    def avg_value(self, dataset: dict[str, Any], column: str) -> float | None:
+        """按声明的数值类型计算非空值的平均数，没有非空值时返回 ``None``。
+
+        :param dataset: 数据集定义。
+        :param column: 数据集定义中的数值列名。
+        :returns: 平均数或 ``None``。
+        :raises ValueError: 列名不属于该数据集，或该列未声明为数值类型。
+        :raises duckdb.ConversionException: 非空值无法转换为声明的数值类型。
+        """
+        column_def = self._get_column_map(dataset).get(column)
+        if column_def is None:
+            raise ValueError(
+                f"Unknown column for dataset '{dataset['dataset_id']}': {column}"
+            )
+        column_type = _duckdb_type(column_def["sqlite_type"])
+        if column_type not in ("BIGINT", "DOUBLE"):
+            raise ValueError(
+                f"Column '{column}' in dataset '{dataset['dataset_id']}' is not numeric"
+            )
+
+        table_name = _quote_identifier(self._ensure_view(dataset))
+        column_sql = _quote_identifier(column)
+        # read_json_auto 可能将全为 NULL 的列推断为 JSON。
+        sql = f"SELECT avg(CAST({column_sql} AS {column_type})) FROM {table_name}"
+        return self._connection().execute(sql).fetchone()[0]
 
     def min_value(self, dataset: dict[str, Any], column: str) -> Any:
         """返回一列的最小非空值，无记录时返回 ``None``。

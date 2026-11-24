@@ -823,6 +823,12 @@ class AgentBase(ABC):
 
     async def close(self):
         """关闭 agent 并释放资源。子类可覆写。"""
+        writer = getattr(self, "_jsonl_trace_writer", None)
+        if writer is not None:
+            try:
+                writer.close()
+            finally:
+                self._jsonl_trace_writer = None
 
     def get_profile(self) -> dict[str, Any]:
         """以 dict 形式返回 agent profile。
@@ -1450,17 +1456,20 @@ The constructor ``__init__`` is arg-less.
             )
         import time as _time
 
+        from agentsociety2.storage.workspace_state import atomic_write_text
+
         config_path = self._workspace.resolve("config.json")
         backup_path = self._workspace.resolve(
             f"config_backup_{self._step_count:06d}_{int(_time.time())}.json"
         )
-        backup_path.write_text(
-            config_path.read_text(encoding="utf-8"), encoding="utf-8"
+        atomic_write_text(
+            backup_path, config_path.read_text(encoding="utf-8")
         )
         merged = dict(self._config)
         merged.update(accepted)
-        config_path.write_text(
-            json.dumps(merged, ensure_ascii=False, indent=2), encoding="utf-8"
+        atomic_write_text(
+            config_path,
+            json.dumps(merged, ensure_ascii=False, indent=2),
         )
         log_path = self._workspace.resolve("config_changes.jsonl")
         entry = {

@@ -7,7 +7,7 @@ name = "agentsociety2"
 version = "2.11.0"
 description = "A modern, LLM-native agent simulation platform for social science research"
 readme = "README.md"
-requires-python = ">=3.11,<3.14"
+requires-python = ">=3.11.5,<3.14"
 license = { text = "Apache-2.0" }
 authors = [
     { name = "Jun Zhang", email = "zhangjun990222@gmail.com" },
@@ -63,11 +63,12 @@ dependencies = [
     "elemental-xenon>=1.1.0",
     "litellm>=1.103.7,<2",
     "mcp[cli]>=2.3.0,<3",
-    "httpx2>=2.5.0,<3",
+    "httpx2[socks]>=2.5.0,<3",
     "mem0ai>=1.0.5",
     "aiohttp>=3.14.5",
-    "stringcase>=1.2.0",
     "fastapi>=0.128.0",
+    "fastapi-offline>=1.7.7,<2",
+    "typing-extensions>=4.12.2",
     "uvicorn>=0.36.0",
     "wsproto>=1.2.0",
     "black>=26.10.1",
@@ -81,6 +82,7 @@ dependencies = [
     "requests>=2.32.5",
     "protobuf>=4.0.0",
     "plotly>=6.8.0",
+    "psutil>=5.9",
     "ray>=2.0.0; sys_platform != 'win32'",
     "duckdb>=1.4.0",
 ]
@@ -124,7 +126,8 @@ docs = [
     "jieba>=0.42.1",
     "sphinx-autobuild>=2024.9.19",
     "furo>=2024.8.6",
-    "sphinx-design>=0.7,<0.8",
+    "soupsieve>=4.0.0",
+    "sphinx-design>=0.7,<0.9",
     "sphinx-copybutton>=0.5.2,<0.6",
     "myst-parser>=5.0.0",
     "sphinx-intl>=2.4.0",
@@ -220,6 +223,8 @@ markers = [
     "network: hits public bibliographic APIs (Crossref, doi.org, arXiv)",
 ]
 filterwarnings = [
+    # pytest resets LiteLLM's import-time filter. Its reasoning summary is read-only for type checkers.
+    "ignore:^Item 'summary' on TypedDict class 'ChatCompletionReasoningItem' is using the `ReadOnly` qualifier[.] Pydantic will not protect items from any mutation on dictionary instances[.]$:UserWarning:^pydantic[.]_internal[.]_generate_schema$",
     "ignore:builtin type SwigPyPacked has no __module__ attribute:DeprecationWarning",
     "ignore:builtin type SwigPyObject has no __module__ attribute:DeprecationWarning",
     "ignore:builtin type swigvarlink has no __module__ attribute:DeprecationWarning",

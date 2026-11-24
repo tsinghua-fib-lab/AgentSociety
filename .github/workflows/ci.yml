@@ -8,6 +8,8 @@ on:
     branches: [main, develop]
     paths:
       - "scripts/ci/**"
+      - ".gitignore"
+      - "examples/v2/daily_mobility/**"
       - "Makefile"
       - "CHANGELOG.md"
       - "cliff.toml"
@@ -24,6 +26,8 @@ on:
     branches: [main, develop]
     paths:
       - "scripts/ci/**"
+      - ".gitignore"
+      - "examples/v2/daily_mobility/**"
       - "Makefile"
       - "CHANGELOG.md"
       - "cliff.toml"

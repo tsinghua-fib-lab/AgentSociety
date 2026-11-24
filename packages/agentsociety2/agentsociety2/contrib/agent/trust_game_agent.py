@@ -149,7 +149,9 @@ Both roles aim to maximize cumulative coins while considering trust and reciproc
         """Return agent role"""
         return self._role
 
-    async def ask(self, message: str, readonly: bool = True) -> str:
+    async def ask(
+        self, message: str, readonly: bool = True, *, t: datetime | None = None
+    ) -> str:
         """Answer questions"""
         prompt = f"{self._profile}\n\n{message}"
         try:

@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
 from typing import Any
 
@@ -34,8 +35,8 @@ def _get_workspace_path() -> str:
     return workspace_path
 
 
-def _load_custom_modules_if_needed() -> None:
-    """已配置工作区时加载自定义模块"""
+def _load_custom_modules_sync() -> None:
+    """已配置工作区时加载自定义模块（同步实现）。"""
     try:
         workspace_path = os.getenv("WORKSPACE_PATH")
         if workspace_path:
@@ -47,6 +48,15 @@ def _load_custom_modules_if_needed() -> None:
                 )
     except Exception as e:
         logger.warning(f"Failed to load custom modules: {e}")
+
+
+async def _load_custom_modules_if_needed() -> None:
+    """异步入口：把可能执行用户模块代码的扫描放到线程池。
+
+    扫描会 import 工作区里的任意 Python，放在事件循环里会阻塞所有 API
+    请求；这里统一转交 ``asyncio.to_thread``。
+    """
+    await asyncio.to_thread(_load_custom_modules_sync)
 
 
 @router.get("/agent_classes")
@@ -67,7 +77,7 @@ async def get_agent_classes(
 
         # 加载自定义模块（如果需要）
         if include_custom:
-            _load_custom_modules_if_needed()
+            await _load_custom_modules_if_needed()
 
         # 获取所有已注册的 Agent 类
         agents = {}
@@ -121,7 +131,7 @@ async def get_env_module_classes(
 
         # 加载自定义模块（如果需要）
         if include_custom:
-            _load_custom_modules_if_needed()
+            await _load_custom_modules_if_needed()
 
         # 获取所有已注册的 Environment 模块类
         env_modules = {}
@@ -175,7 +185,7 @@ async def get_all_modules(
 
         # 加载自定义模块（如果需要）
         if include_custom:
-            _load_custom_modules_if_needed()
+            await _load_custom_modules_if_needed()
 
         # 获取 Agent 类
         agents = {}

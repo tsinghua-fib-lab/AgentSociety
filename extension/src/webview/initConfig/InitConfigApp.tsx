@@ -29,6 +29,7 @@ import {
 } from '@ant-design/icons';
 import type { VSCodeAPI, InitConfig, EnvModuleConfig, AgentConfig } from './types';
 import { useVscodeTheme } from '../theme';
+import { useTranslation } from 'react-i18next';
 import '../i18n';
 
 const { Content } = Layout;
@@ -47,6 +48,7 @@ const ParamEditor: React.FC<{
   depth?: number;
   palette: any;
 }> = ({ value, onChange, depth = 0, palette }) => {
+  const { t } = useTranslation();
   if (value === null || value === undefined) {
     return <Text type="secondary">null</Text>;
   }
@@ -128,7 +130,7 @@ const ParamEditor: React.FC<{
           icon={<PlusOutlined />}
           onClick={() => onChange([...value, ''])}
         >
-          添加
+          {t('initConfig.add')}
         </Button>
       </div>
     );
@@ -164,6 +166,7 @@ const ParamEditor: React.FC<{
 };
 
 export const InitConfigApp: React.FC<InitConfigAppProps> = ({ vscode, initialConfig }) => {
+  const { t } = useTranslation();
   const { palette, themeConfig } = useVscodeTheme();
   const [config, setConfig] = React.useState<InitConfig>(initialConfig || {});
   const [loading, setLoading] = React.useState<boolean>(true);
@@ -274,7 +277,7 @@ export const InitConfigApp: React.FC<InitConfigAppProps> = ({ vscode, initialCon
         <Layout style={{ minHeight: '100vh', background: 'transparent' }}>
           <Content className="as-page-content" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh', gap: 16 }}>
             <Spin size="large" />
-            <Text>加载配置中...</Text>
+            <Text>{t('initConfig.loading')}</Text>
           </Content>
         </Layout>
       </ConfigProvider>
@@ -319,31 +322,31 @@ export const InitConfigApp: React.FC<InitConfigAppProps> = ({ vscode, initialCon
                     <SettingOutlined style={{ fontSize: 20 }} />
                   </span>
                   <div>
-                    <Title level={4} style={{ margin: 0 }}>实验初始化配置</Title>
-                    <Text type="secondary" style={{ fontSize: 12 }}>配置实验的环境模块和 Agent 参数</Text>
+                    <Title level={4} style={{ margin: 0 }}>{t('initConfig.title')}</Title>
+                    <Text type="secondary" style={{ fontSize: 12 }}>{t('initConfig.subtitle')}</Text>
                   </div>
                 </div>
                 <Space>
                   <Button onClick={() => setConfig(initialConfig || {})}>
-                    重置
+                    {t('initConfig.reset')}
                   </Button>
                   <Button type="primary" icon={<SaveOutlined />} onClick={handleSave}>
-                    保存配置
+                    {t('initConfig.save')}
                   </Button>
                 </Space>
               </div>
 
               {/* 统计卡片 */}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-                {statPill('环境模块', envModules.length, <EnvironmentOutlined />, palette.linkForeground)}
-                {statPill('Agent 数量', agents.length, <UserOutlined />, palette.successForeground)}
-                {statPill('配置状态', isComplete ? '完整' : '不完整', isComplete ? <CheckCircleOutlined /> : <CloseCircleOutlined />, isComplete ? palette.successForeground : palette.warningForeground)}
+                {statPill(t('initConfig.modules'), envModules.length, <EnvironmentOutlined />, palette.linkForeground)}
+                {statPill(t('initConfig.agents'), agents.length, <UserOutlined />, palette.successForeground)}
+                {statPill(t('initConfig.status'), isComplete ? t('initConfig.complete') : t('initConfig.incomplete'), isComplete ? <CheckCircleOutlined /> : <CloseCircleOutlined />, isComplete ? palette.successForeground : palette.warningForeground)}
               </div>
             </div>
 
             {saved && (
               <Alert
-                message="配置已保存"
+                message={t('initConfig.saved')}
                 type="success"
                 showIcon
                 closable
@@ -364,11 +367,11 @@ export const InitConfigApp: React.FC<InitConfigAppProps> = ({ vscode, initialCon
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                 <EnvironmentOutlined style={{ color: palette.linkForeground }} />
-                <Text strong style={{ fontSize: 14 }}>环境模块配置</Text>
+                <Text strong style={{ fontSize: 14 }}>{t('initConfig.moduleConfig')}</Text>
                 <Tag color="blue" style={{ marginLeft: 'auto' }}>{envModules.length}</Tag>
               </div>
               {envModules.length === 0 ? (
-                <Empty description="暂无环境模块配置" style={{ padding: 20 }} />
+                <Empty description={t('initConfig.noModules')} style={{ padding: 20 }} />
               ) : (
                 <Collapse accordion style={{ background: 'transparent' }}>
                   {envModules.map((module, index) => (
@@ -377,17 +380,17 @@ export const InitConfigApp: React.FC<InitConfigAppProps> = ({ vscode, initialCon
                         <Space>
                           <Tag color="green" style={{ margin: 0 }}>{module.module_type}</Tag>
                           <Text type="secondary" style={{ fontSize: 12 }}>
-                            {Object.keys(module.kwargs || {}).length} 个参数
+                            {t('initConfig.parameterCount', { count: Object.keys(module.kwargs || {}).length })}
                           </Text>
                         </Space>
                       }
                       key={index}
                       extra={
                         <Popconfirm
-                          title="确定删除此模块？"
+                          title={t('initConfig.removeModule')}
                           onConfirm={() => deleteEnvModule(index)}
-                          okText="确定"
-                          cancelText="取消"
+                          okText={t('initConfig.confirm')}
+                          cancelText={t('initConfig.cancel')}
                         >
                           <Button
                             size="small"
@@ -400,11 +403,11 @@ export const InitConfigApp: React.FC<InitConfigAppProps> = ({ vscode, initialCon
                     >
                       <div style={{ padding: '12px 0' }}>
                         <Text strong style={{ display: 'block', marginBottom: 12 }}>
-                          模块类型: {module.module_type}
+                          {t('initConfig.moduleType', { type: module.module_type })}
                         </Text>
                         <Card
                           size="small"
-                          title="参数配置"
+                          title={t('initConfig.parameters')}
                           style={{
                             borderRadius: 8,
                             background: palette.editorBackground,
@@ -437,11 +440,11 @@ export const InitConfigApp: React.FC<InitConfigAppProps> = ({ vscode, initialCon
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                 <UserOutlined style={{ color: palette.successForeground }} />
-                <Text strong style={{ fontSize: 14 }}>Agent 配置</Text>
+                <Text strong style={{ fontSize: 14 }}>{t('initConfig.agentConfig')}</Text>
                 <Tag color="green" style={{ marginLeft: 'auto' }}>{agents.length}</Tag>
               </div>
               {agents.length === 0 ? (
-                <Empty description="暂无 Agent 配置" style={{ padding: 20 }} />
+                <Empty description={t('initConfig.noAgents')} style={{ padding: 20 }} />
               ) : (
                 <Table
                   dataSource={agents.map((agent, index) => ({ ...agent, _index: index }))}
@@ -453,7 +456,7 @@ export const InitConfigApp: React.FC<InitConfigAppProps> = ({ vscode, initialCon
                       <div style={{ padding: 12 }}>
                         <Card
                           size="small"
-                          title="Kwargs 参数"
+                          title={t('initConfig.kwargs')}
                           style={{
                             marginBottom: 12,
                             borderRadius: 8,
@@ -498,32 +501,32 @@ export const InitConfigApp: React.FC<InitConfigAppProps> = ({ vscode, initialCon
                       width: 60,
                     },
                     {
-                      title: '类型',
+                      title: t('initConfig.type'),
                       dataIndex: 'agent_type',
                       width: 180,
                       render: (text) => <Tag color="blue" style={{ margin: 0 }}>{text}</Tag>,
                     },
                     {
-                      title: '名称',
+                      title: t('initConfig.name'),
                       dataIndex: ['kwargs', 'name'],
                       render: (text, record) => text || record.kwargs?.profile?.name || '—',
                       ellipsis: true,
                     },
                     {
-                      title: '角色',
+                      title: t('initConfig.role'),
                       dataIndex: ['kwargs', 'role'],
                       width: 100,
                       render: (text) => text && <Tag style={{ margin: 0 }}>{text}</Tag>,
                     },
                     {
-                      title: '操作',
+                      title: t('initConfig.actions'),
                       width: 80,
                       render: (_, record) => (
                         <Popconfirm
-                          title="确定删除此 Agent？"
+                          title={t('initConfig.removeAgent')}
                           onConfirm={() => deleteAgent(record._index)}
-                          okText="确定"
-                          cancelText="取消"
+                          okText={t('initConfig.confirm')}
+                          cancelText={t('initConfig.cancel')}
                         >
                           <Button size="small" danger icon={<DeleteOutlined />} />
                         </Popconfirm>

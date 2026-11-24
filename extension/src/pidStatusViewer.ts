@@ -31,7 +31,7 @@ export class PidStatusViewer {
 
     const panel = vscode.window.createWebviewPanel(
       'pidStatusViewer',
-      localize('projectStructure.experimentStatus'),
+      localize('projectStructure.runDetails'),
       column || vscode.ViewColumn.One,
       {
         enableScripts: true,
@@ -60,11 +60,15 @@ export class PidStatusViewer {
   private getWebviewContent(data: any, isChinese: boolean): string {
     const esc = (value: unknown): string => String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     const status = String(data.status || 'unknown');
+    const chineseStatus = new Map([
+      ['completed', '已完成'], ['running', '运行中'], ['failed', '失败'],
+      ['pending', '待运行'], ['created', '待运行'], ['queued', '待运行'], ['unknown', '未知'],
+    ]);
     const statusEmoji = status === 'completed' ? '✅' : status === 'running' ? '🔄' : status === 'failed' ? '❌' : '⏸️';
     const statusColor = status === 'completed' ? '#28a745' : status === 'running' ? '#007bff' : status === 'failed' ? '#dc3545' : '#6c757d';
 
     const labels = {
-      title: isChinese ? '实验状态' : 'Experiment Status',
+      title: isChinese ? '运行详情' : 'Run Details',
       pid: isChinese ? '进程ID' : 'Process ID',
       status: isChinese ? '状态' : 'Status',
       experimentId: isChinese ? '实验ID' : 'Experiment ID',
@@ -188,7 +192,7 @@ export class PidStatusViewer {
     <div class="header">
       <div class="status-badge ${status === 'running' ? 'running-animation' : ''}">
         <span class="status-emoji">${statusEmoji}</span>
-        <span>${esc(status.toUpperCase())}</span>
+        <span>${esc(isChinese ? chineseStatus.get(status) ?? status : status)}</span>
       </div>
     </div>
     
@@ -239,8 +243,6 @@ export class PidStatusViewer {
   </div>
   
   <script>
-    // 自动刷新（运行中的实验）。JSON.stringify 转义引号/反斜杠,
-    // < 防 </script> 提前闭合(2026-11-06 二轮审计:此前裸拼可注入)。
     if (${JSON.stringify(String(status ?? '')).replace(/</g, '\\u003c')} === 'running') {
       setTimeout(() => location.reload(), 5000);
     }

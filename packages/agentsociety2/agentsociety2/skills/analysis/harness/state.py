@@ -113,6 +113,32 @@ def save_synthesis_state(workspace: Path, state: SynthesisAnalysisState) -> None
     _save_yaml(synthesis_state_path(workspace), state)
 
 
+def resolve_synthesis_scope(
+    workspace: Path, state: SynthesisAnalysisState | None = None
+) -> list[str]:
+    """Return the configured synthesis scope, inferring it from presentation/.
+
+    ``write-plan`` stores scope on ``AnalysisPlan``; the synthesis state starts
+    empty. Preflight must use the same inference as ``validate-synthesis`` or it
+    blocks every synthesis command before the handler can populate scope.
+
+    :param workspace: Workspace root.
+    :param state: Optional already-loaded synthesis state.
+    :returns: Sorted hypothesis ids.
+    """
+    state = state or load_synthesis_state(workspace)
+    if state.synthesis_scope_hypothesis_ids:
+        return list(state.synthesis_scope_hypothesis_ids)
+    pres_root = workspace / "presentation"
+    if not pres_root.is_dir():
+        return []
+    return sorted(
+        child.name.replace("hypothesis_", "", 1)
+        for child in pres_root.iterdir()
+        if child.is_dir() and child.name.startswith("hypothesis_")
+    )
+
+
 def load_reflection(
     workspace: Path, hypothesis_id: str | None = None
 ) -> ReflectionReport:

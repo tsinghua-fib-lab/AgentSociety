@@ -19,22 +19,22 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:2
+#: ../../storage.rst:2
 msgid "存储与结果访问"
 msgstr "Storage and Result Access"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:4
+#: ../../storage.rst:4
 msgid "只想在工作台查看回放或分析报告时，先读 :doc:`results`。本页说明存储布局、写入格式与程序读取方式；外部输入数据见 :doc:`datasets`。"
 msgstr ""
 "To inspect replay or analysis reports in the workbench, start with :doc:`results`. "
 "This page covers storage layout, write formats, and programmatic access. See "
 ":doc:`datasets` for external input data."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:6
+#: ../../storage.rst:6
 msgid "读取运行目录时，先区分三类产物："
 msgstr "Distinguish three kinds of run artifacts:"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:8
+#: ../../storage.rst:8
 msgid ""
 "**Replay 目录**： ``<run_dir>/replay/``。``ReplaySink`` / ``ReplayWriter`` 以 append-only "
 "JSONL 写入 replay 数据，并在 ``_schema.json`` 中保存 dataset catalog 与列元数据。"
@@ -43,7 +43,7 @@ msgstr ""
 "replay data as append-only JSONL and store the dataset catalog and column metadata in"
 " ``_schema.json``."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:11
+#: ../../storage.rst:11
 msgid ""
 "**本地工作目录**： ``<run_dir>/artifacts/``、``<run_dir>/agents/agent_<id>/``、 "
 "``<run_dir>/pid.json`` 等文件，存放 ``ask`` / ``intervene`` 产物、agent workspace 与运行时元信息。"
@@ -52,7 +52,7 @@ msgstr ""
 "``<run_dir>/agents/agent_<id>/``, and ``<run_dir>/pid.json``, which store "
 "``ask``/``intervene`` artifacts, agent workspaces, and runtime metadata."
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:14
+#: ../../storage.rst:14
 msgid ""
 "**Workspace checkpoint（用于 resume）**：各 env 模块把动态状态写入 "
 "``<run_dir>/env/<module>/state/ENV_STATE.json``，society 把初始化时的不可变全量写入 "
@@ -66,27 +66,27 @@ msgstr ""
 "catalog. **Replay is append-only time-series data for analysis; workspace persistence is for "
 "recovery and overwrites the latest state**."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:20
+#: ../../storage.rst:19
 msgid "读取结果有三条路径："
 msgstr "There are three ways to read results:"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:22
+#: ../../storage.rst:21
 msgid "后端 REST API ``/api/v1/replay/...``。推荐配合前端 / VSCode replay webview 使用。"
 msgstr ""
 "Backend REST API ``/api/v1/replay/...``\\ (recommended, together with the frontend or"
 " the VSCode replay webview)"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:23
+#: ../../storage.rst:22
 msgid ":class:`agentsociety2.storage.ReplayReader`，基于 DuckDB 读取 sharded JSONL。"
 msgstr ":class:`agentsociety2.storage.ReplayReader`, which reads sharded JSONL with DuckDB."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:24
+#: ../../storage.rst:23
 msgid "直接读取 workspace 中的 ``*.json`` / ``*.jsonl``，用于 agent 行为分析、调试。"
 msgstr ""
 "Read ``*.json`` / ``*.jsonl`` files in the workspace directly for agent behavior "
 "analysis and debugging."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:28
+#: ../../storage.rst:27
 msgid ""
 "新实验不再写入 ``sqlite.db``，也不再写旧的 ``agent_profile``、``agent_status``、 ``agent_dialog`` "
 "三张框架表。``agentsociety2.storage.models`` 仅保留这些历史 SQLModel 定义，供旧数据库兼容读取。"
@@ -97,11 +97,11 @@ msgstr ""
 "historical databases; equivalent data in new experiments is stored as catalog-driven "
 "datasets."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:33
+#: ../../storage.rst:32
 msgid "Run 目录布局"
 msgstr "Run Directory Layout"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:35
+#: ../../storage.rst:34
 msgid ""
 "CLI 入口 ``python -m agentsociety2.society.cli`` 以 ``--run-dir`` 指定的目录作为实验 "
 "HOME。``ExperimentRunner`` 会在其中创建以下结构："
@@ -110,7 +110,7 @@ msgstr ""
 " with ``--run-dir`` as the experiment HOME. ``ExperimentRunner`` creates the "
 "following structure inside it:"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:37
+#: ../../storage.rst:37
 msgid ""
 "<run_dir>/\n"
 "├── replay/\n"
@@ -154,7 +154,7 @@ msgstr ""
 "        │   └── state.json           # Memory runtime state\n"
 "        └── state/                   # Skill and custom state, such as daily_guidance/"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:60
+#: ../../storage.rst:59
 msgid ""
 "当通过后端读取实验数据时，``run_dir`` 是从 ``workspace_path`` + "
 "``hypothesis_<id>/experiment_<id>/run`` 组装得到的，后端会读取其中的 ``replay/_schema.json`` 和 "
@@ -164,19 +164,19 @@ msgstr ""
 "``workspace_path`` + ``hypothesis_<id>/experiment_<id>/run``. The backend reads "
 "``replay/_schema.json`` and the JSONL shards from that directory."
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:64
+#: ../../storage.rst:64
 msgid "离线验证回放读写"
 msgstr "Validate replay reads and writes offline"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:104
+#: ../../storage.rst:82
 msgid "Replay round trip passed."
 msgstr "Replay round trip passed."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:65
+#: ../../storage.rst:89
 msgid "Replay 写入格式"
 msgstr "Replay Write Format"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:111
+#: ../../storage.rst:91
 msgid ""
 "``ReplaySink`` 是每个进程本地持有的 append-only JSONL writer。``ReplayProxy`` 只携带 ``replay_dir`` "
 "与启用标志，可序列化穿过 Ray task / actor 边界；每个消费者在本进程内懒加载自己的 ``ReplaySink``，不再经过中心 SQLite actor。"
@@ -186,11 +186,11 @@ msgstr ""
 "each consumer lazily loads its own ``ReplaySink`` inside the current process, without going "
 "through a central SQLite actor."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:71
+#: ../../storage.rst:94
 msgid "``<run_dir>/replay/_schema.json`` 的顶层结构如下："
 msgstr "The top-level structure of ``<run_dir>/replay/_schema.json`` is:"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:116
+#: ../../storage.rst:96
 #, python-brace-format
 msgid ""
 "{\n"
@@ -243,7 +243,7 @@ msgstr ""
 "  }\n"
 "}"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:143
+#: ../../storage.rst:123
 msgid ""
 "每个物理表写成 ``<table_name>.<shard>.jsonl``。shard 由行内容的 CRC32 计算得到，因此跨 shard 的自然顺序不保证稳定；读取时应使用 dataset"
 " 的 ``default_order``、 ``step_key`` 或 ``time_key`` 显式排序。"
@@ -252,47 +252,47 @@ msgstr ""
 "row content CRC32, so natural ordering across shards is not stable; readers should sort "
 "explicitly with the dataset ``default_order``, ``step_key``, or ``time_key``."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:104
+#: ../../storage.rst:126
 msgid "常见 capability："
 msgstr "Common capabilities:"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:106
+#: ../../storage.rst:128
 msgid "``agent_profile``  — agent 静态档案。"
 msgstr "``agent_profile`` - static agent profiles."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:107
+#: ../../storage.rst:129
 msgid "``agent_snapshot`` — agent per-step 状态。"
 msgstr "``agent_snapshot`` - per-step agent state."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:108
+#: ../../storage.rst:130
 msgid "``env_snapshot``   — env per-step 状态。"
 msgstr "``env_snapshot`` - per-step environment state."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:109
+#: ../../storage.rst:131
 msgid "``timeseries``     — 适合按时间轴展开。"
 msgstr "``timeseries`` - suitable for timeline expansion."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:110
+#: ../../storage.rst:132
 msgid "``geo_point``      — 含 ``lng`` / ``lat``，可在地图上画。"
 msgstr "``geo_point`` - contains ``lng`` / ``lat`` and can be drawn on a map."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:111
+#: ../../storage.rst:133
 msgid "``trajectory``     — 适合做轨迹回放。"
 msgstr "``trajectory`` - suitable for trajectory replay."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:112
+#: ../../storage.rst:134
 msgid "``entity_static``  — 一次性静态实体表。"
 msgstr "``entity_static`` - one-time static entity table."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:113
+#: ../../storage.rst:135
 msgid "``event_stream``   — 事件流。"
 msgstr "``event_stream``   — event stream"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:116
+#: ../../storage.rst:138
 msgid "写入数据"
 msgstr "Writing Data"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:160
+#: ../../storage.rst:140
 msgid ""
 "环境模块的状态数据有两种写入路径： **声明式** （推荐）和 **手工注册** （事件流、自定义形状）。两条路径都调用同一个 replay writer，注入逻辑由 "
 "``AgentSociety`` / 环境 router 完成。"
@@ -301,11 +301,11 @@ msgstr ""
 " **manual registration** for event streams and irregular shapes. Both paths call the same replay "
 "writer; injection is handled by ``AgentSociety`` / the environment router."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:123
+#: ../../storage.rst:144
 msgid "方式 A：声明式 ``_agent_state_columns`` / ``_env_state_columns``"
 msgstr "Method A: declarative ``_agent_state_columns`` / ``_env_state_columns``"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:125
+#: ../../storage.rst:146
 msgid ""
 "子类化 :class:`~agentsociety2.env.base.EnvBase` 时，把希望每步写入 replay 的列声明在 class var "
 "里。``EnvBase`` 会在首次写入前自动："
@@ -314,18 +314,18 @@ msgstr ""
 "want to write to replay on every step as class variables. Before the first write, "
 "``EnvBase`` automatically:"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:169
+#: ../../storage.rst:149
 msgid "推导表名前缀（PascalCase → ``snake_case``，去 ``Space`` / ``Env`` / ``Module`` 后缀）。"
 msgstr ""
 "Derives the table-name prefix (PascalCase to ``snake_case``, removing ``Space`` / ``Env`` / "
 "``Module`` suffixes)."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:129
+#: ../../storage.rst:150
 #, python-brace-format
 msgid "注册 ``{prefix}_agent_state`` 和 / 或 ``{prefix}_env_state`` 的 schema。"
 msgstr "Registers the schema for ``{prefix}_agent_state`` and / or ``{prefix}_env_state``."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:130
+#: ../../storage.rst:151
 msgid ""
 "调 ``register_dataset`` 写入 ``_schema.json``，capability 默认为 ``[\"agent_snapshot\", "
 "\"timeseries\"]`` / ``[\"env_snapshot\", \"timeseries\"]``；如果 "
@@ -337,7 +337,7 @@ msgstr ""
 "If ``_agent_state_columns`` also declares both ``lng`` and ``lat``, ``geo_point`` and"
 " ``trajectory`` are added automatically."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:135
+#: ../../storage.rst:156
 msgid ""
 "模块在 ``step()`` 中调用 ``EnvBase._write_agent_state()``、 "
 "``EnvBase._write_agent_state_batch()``、``EnvBase._write_env_state()`` 即可。"
@@ -345,7 +345,7 @@ msgstr ""
 "Inside ``step()``, the module only needs to call ``EnvBase._write_agent_state()``, "
 "``EnvBase._write_agent_state_batch()``, or ``EnvBase._write_env_state()``."
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:179
+#: ../../storage.rst:159
 #, python-brace-format
 msgid ""
 "from typing import ClassVar\n"
@@ -400,17 +400,17 @@ msgstr ""
 "                                    bank_interest_rate=self._bank_interest_rate)\n"
 "        self._step += 1"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:167
+#: ../../storage.rst:188
 msgid "方式 B：手工 ``register_table`` + ``register_dataset``"
 msgstr "Method B: manual ``register_table`` + ``register_dataset``"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:169
+#: ../../storage.rst:190
 msgid "事件流（``kind=\"event_stream\"``）或形状不规则的数据，仍可手工注册："
 msgstr ""
 "Event streams with ``kind=\"event_stream\"`` and data with irregular shapes can still"
 " be registered manually:"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:212
+#: ../../storage.rst:192
 #, python-brace-format
 msgid ""
 "from agentsociety2.storage import ColumnDef, ReplayDatasetSpec, TableSchema\n"
@@ -485,15 +485,15 @@ msgstr ""
 "await self._replay_writer.write(\"social_media_event\", {...})\n"
 "await self._replay_writer.write_batch(\"social_media_event\", [{...}, {...}])"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:210
+#: ../../storage.rst:231
 msgid "读取数据"
 msgstr "Reading Data"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:213
+#: ../../storage.rst:234
 msgid "方式 1：后端 REST API（推荐）"
 msgstr "Method 1: backend REST API (recommended)"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:215
+#: ../../storage.rst:236
 msgid ""
 "启动 ``python -m agentsociety2.backend.run`` 后，replay API 挂在 ``/api/v1/replay``。所有请求都带 "
 "``workspace_path`` query 参数，后端据此定位 "
@@ -504,91 +504,91 @@ msgstr ""
 "the backend uses it to locate "
 "``<workspace_path>/hypothesis_<id>/experiment_<id>/run/replay``."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:223
+#: ../../storage.rst:244
 msgid "路径"
 msgstr "Path"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:224
+#: ../../storage.rst:245
 msgid "作用"
 msgstr "Role"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:225
+#: ../../storage.rst:246
 msgid "``GET /info``"
 msgstr "``GET /info``"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:226
+#: ../../storage.rst:247
 msgid "实验摘要：``total_steps``、``start_time``、``end_time``、``agent_count``。"
 msgstr "Experiment summary: ``total_steps``, ``start_time``, ``end_time``, and ``agent_count``"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:227
+#: ../../storage.rst:248
 msgid "``GET /datasets``"
 msgstr "``GET /datasets``"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:228
+#: ../../storage.rst:249
 msgid "返回当前实验所有 dataset 及列元数据。"
 msgstr "Return all datasets in the current experiment together with column metadata"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:229
+#: ../../storage.rst:250
 #, python-brace-format
 msgid "``GET /datasets/{dataset_id}``"
 msgstr "``GET /datasets/{dataset_id}``"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:230
+#: ../../storage.rst:251
 msgid "单个 dataset 详情。"
 msgstr "Details for a single dataset"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:231
+#: ../../storage.rst:252
 #, python-brace-format
 msgid "``GET /datasets/{dataset_id}/rows``"
 msgstr "``GET /datasets/{dataset_id}/rows``"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:232
+#: ../../storage.rst:253
 msgid "分页行查询。"
 msgstr "Paginated row query."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:233
+#: ../../storage.rst:254
 msgid "``GET /panel-schema``"
 msgstr "``GET /panel-schema``"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:234
+#: ../../storage.rst:255
 msgid "前端 panel / 地图布局所需的 dataset 分组。"
 msgstr "Dataset grouping required by frontend panels / map layouts."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:235
+#: ../../storage.rst:256
 #, python-brace-format
 msgid "``GET /steps/{step}/bundle``"
 msgstr "``GET /steps/{step}/bundle``"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:236
+#: ../../storage.rst:257
 msgid "某一步的合并快照：所有 agent 状态、env 状态、地理位置。"
 msgstr ""
 "Merged snapshot for one step: all agent states, environment state, and geographic "
 "positions"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:237
+#: ../../storage.rst:258
 msgid "``GET /timeline``"
 msgstr "``GET /timeline``"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:238
+#: ../../storage.rst:259
 msgid "``step → t`` 映射，用于时间轴。"
 msgstr "``step → t`` mapping for the timeline"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:239
+#: ../../storage.rst:260
 msgid "``GET /agents/profiles``"
 msgstr "``GET /agents/profiles``"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:240
+#: ../../storage.rst:261
 msgid "agent profile 列表（优先读 ``core.agent_profile``，否则从主 agent state dataset 推导）。"
 msgstr ""
 "List of agent profiles, read from ``core.agent_profile`` when available, otherwise "
 "derived from the primary agent-state dataset"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:242
+#: ../../storage.rst:263
 #, python-brace-format
 msgid "完整前缀为 ``/api/v1/replay/{hypothesis_id}/{experiment_id}/...``。"
 msgstr "The full prefix is ``/api/v1/replay/{hypothesis_id}/{experiment_id}/...``."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:244
+#: ../../storage.rst:265
 #, python-brace-format
 msgid ""
 "``/datasets/{dataset_id}/rows`` 支持 ``page``、``page_size``、``order_by``、 "
@@ -599,11 +599,11 @@ msgstr ""
 "``desc_order``, ``step``, ``entity_id``, ``start_step``, ``end_step``, ``max_step``, "
 "``columns``, and ``latest_per_entity``."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:249
+#: ../../storage.rst:270
 msgid "方式 2：ReplayReader + DuckDB"
 msgstr "Method 2: ReplayReader + DuckDB"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:251
+#: ../../storage.rst:272
 msgid ""
 "``ReplayReader`` 读取 ``_schema.json``，并把每个 dataset 的 JSONL shard 注册为 DuckDB "
 "view。它保留后端使用的 metadata-driven 查询语义："
@@ -611,7 +611,7 @@ msgstr ""
 "``ReplayReader`` reads ``_schema.json`` and registers each dataset's JSONL shards as "
 "DuckDB views. It preserves the metadata-driven query semantics used by the backend:"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:295
+#: ../../storage.rst:275
 msgid ""
 "from agentsociety2.storage import ReplayReader\n"
 "\n"
@@ -641,7 +641,7 @@ msgstr ""
 ")\n"
 "reader.close()"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:270
+#: ../../storage.rst:291
 msgid ""
 "返回值约定：catalog 中标为 ``JSON`` 的列会被自动反序列化为 Python 对象； ``TIMESTAMP`` 列返回 ``datetime`` "
 "对象，后端响应会编码为 ISO-8601 字符串。"
@@ -649,11 +649,11 @@ msgstr ""
 "Return-value convention: columns marked as JSON in the catalog are automatically "
 "deserialized into objects, and ``datetime`` columns are returned as ISO-8601 strings."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:274
+#: ../../storage.rst:295
 msgid "方式 3：直接读 workspace 文件"
 msgstr "Method 3: read workspace files directly"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:276
+#: ../../storage.rst:297
 msgid ""
 "``<run_dir>/artifacts/`` 是 CLI 在 ``ask`` / ``intervene`` / ``questionnaire`` 步骤上保存的 "
 "Markdown 产物，可直接展示给研究者。"
@@ -661,39 +661,39 @@ msgstr ""
 "``<run_dir>/artifacts/`` stores Markdown artifacts written by the CLI for ``ask``, "
 "``intervene``, and ``questionnaire`` steps, and can be shown to researchers directly."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:279
+#: ../../storage.rst:300
 msgid "``<run_dir>/agents/agent_<id>/`` 中常用文件："
 msgstr "Common files under ``<run_dir>/agents/agent_<id>/``:"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:281
+#: ../../storage.rst:302
 msgid "``config.json`` — agent 静态配置。"
 msgstr "``config.json`` - static agent configuration."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:282
+#: ../../storage.rst:303
 msgid "``AGENT.json`` — 动态自描述快照（含 ``world_description``；每步 ``to_workspace`` 更新）。"
 msgstr ""
 "``AGENT.json`` - dynamic self-description snapshot (including ``world_description``; "
 "updated by ``to_workspace`` on each step)."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:283
+#: ../../storage.rst:304
 msgid "``TODO.json`` — 跨步任务列表（``todo_*`` 工具读写）。"
 msgstr "``TODO.json`` - cross-step task list (read and written by ``todo_*`` tools)."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:284
+#: ../../storage.rst:305
 msgid "``MEMORY.md`` — 运行时记忆摘要。"
 msgstr "``MEMORY.md`` - runtime memory summary."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:285
+#: ../../storage.rst:306
 msgid "``memory/episodes.jsonl`` — event-level memories。"
 msgstr "``memory/episodes.jsonl`` - event-level memories."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:286
+#: ../../storage.rst:307
 msgid "``state/*.json`` — 技能与用户自定义状态文件（如 ``state/daily_guidance/`` 下的每日 Story）。"
 msgstr ""
 "``state/*.json`` - skill and user-defined state files (such as the daily Story under "
 "``state/daily_guidance/``)."
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:329
+#: ../../storage.rst:309
 msgid ""
 "工具、技能脚本与 LLM 调用的过程日志以 trace span 形式写入共享的 ``<run_dir>/trace/trace_<xx>.jsonl`` （按 ``trace_id`` "
 "前缀分片的 JSONL），不在 agent workspace 内。"
@@ -702,17 +702,17 @@ msgstr ""
 "``<run_dir>/trace/trace_<xx>.jsonl`` files (JSONL sharded by trace-id prefix), rather than agent "
 "workspaces."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:292
+#: ../../storage.rst:313
 msgid "这些文件适合调试 agent 行为、复现 thread 上下文、审视技能执行过程；它们不进入 replay dataset。"
 msgstr ""
 "These files are useful for debugging agent behavior, reconstructing thread context, "
 "and inspecting skill execution. They are not written into the replay dataset."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:296
+#: ../../storage.rst:317
 msgid "兼容旧数据库"
 msgstr "Compatibility with Legacy Databases"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:339
+#: ../../storage.rst:319
 msgid ""
 "旧版本（v1 或早期 v2）数据库里可能仍包含 ``agent_profile``、``agent_status``、 ``agent_dialog`` 三张框架表。新 backend "
 "replay API 面向 ``run/replay`` 目录；如果需要读取历史 ``sqlite.db``，请使用 ``agentsociety2.storage.models`` "
@@ -723,18 +723,18 @@ msgstr ""
 " ``run/replay`` directory. To read historical ``sqlite.db`` files, use the compatibility models "
 "retained in ``agentsociety2.storage.models`` or a legacy analysis script."
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:66
+#: ../../storage.rst:66
 msgid "以下脚本在临时目录注册数据集、写入一条记录，再通过 ``ReplayReader`` 读取。它不启动仿真或访问模型，不需要模型凭据；临时目录在结束后自动清理。"
 msgstr ""
 "This script registers a dataset, writes one record and reads it through ``ReplayReader`` in a "
 "temporary directory. It does not start a simulation, access models or require model credentials. "
 "The temporary directory is removed on exit."
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:68
+#: ../../storage.rst:68
 msgid "``examples/offline/replay_round_trip.py``"
 msgstr "``examples/offline/replay_round_trip.py``"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:68
+#: ../../storage.rst:68
 #, python-brace-format
 msgid ""
 "\"\"\"Write and read a replay dataset without Ray, model credentials or network calls.\"\"\"\n"
@@ -851,25 +851,25 @@ msgstr ""
 "if __name__ == \"__main__\":\n"
 "    main()\n"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:72
+#: ../../storage.rst:72
 msgid ":download:`下载可运行脚本 <../examples/offline/replay_round_trip.py>`，安装 SDK 后可直接执行。"
 msgstr ""
 ":download:`Download the runnable script <../examples/offline/replay_round_trip.py>` and execute "
 "it after installing the SDK."
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:74
+#: ../../storage.rst:74
 msgid "在已安装 SDK 的环境中，从仓库根目录运行："
 msgstr "With the SDK installed, run from the repository root:"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:76
+#: ../../storage.rst:76
 msgid "python packages/agentsociety2/examples/offline/replay_round_trip.py"
 msgstr "python packages/agentsociety2/examples/offline/replay_round_trip.py"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:80
+#: ../../storage.rst:80
 msgid "输出："
 msgstr "Output:"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/storage.rst:86
+#: ../../storage.rst:86
 msgid "页面代码直接引用这份脚本。文档构建会执行它，pytest 还会检查数据集元信息、JSONL 文件和读取结果，避免示例与文档各维护一份。"
 msgstr ""
 "The page includes this script directly. Documentation builds execute it, while pytest also checks"

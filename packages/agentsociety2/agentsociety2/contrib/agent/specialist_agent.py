@@ -42,7 +42,9 @@ class SpecialistAgent(AgentBase):
     async def step(self, tick: int, t: datetime) -> str:
         return "ok"
 
-    async def ask(self, message: str, *, readonly: bool = True) -> str:
+    async def ask(
+        self, message: str, *, readonly: bool = True, t: datetime | None = None
+    ) -> str:
         specialty = (self._config or {}).get("specialty") or (self._profile or {}).get(
             "specialty", "general knowledge"
         )

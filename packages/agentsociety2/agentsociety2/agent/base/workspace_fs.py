@@ -141,7 +141,9 @@ class WorkspaceFS:
         target = self.resolve(path)
         target.parent.mkdir(parents=True, exist_ok=True)
         text = str(content)
-        target.write_text(text, encoding="utf-8")
+        from agentsociety2.storage.workspace_state import atomic_write_text
+
+        atomic_write_text(target, text)
         return FileOpResult(
             ok=True,
             path=target.relative_to(self.root).as_posix(),
@@ -331,7 +333,22 @@ class WorkspaceFS:
         """
         if not argv:
             return CommandResult(False, -1, "", "empty argv", "validation")
-        if Path(argv[0]).name not in {"python", "python3", Path(sys.executable).name}:
+        executable = Path(argv[0]).expanduser()
+        if executable.name in {"python", "python3", "py"}:
+            # Agents commonly call `python script.py`; run it with this process's
+            # interpreter rather than resolving a possibly different PATH shim.
+            argv = [sys.executable, *argv[1:]]
+            executable = Path(sys.executable)
+        elif not executable.is_absolute():
+            resolved = shutil.which(argv[0])
+            executable = Path(resolved) if resolved else executable
+        try:
+            executable = executable.resolve()
+        except OSError:
+            return CommandResult(False, -1, "", "command not allowed", "validation")
+        # 只允许当前解释器本身；仅按 basename 白名单会让工作区内同名的任意
+        # 可执行文件绕过限制。
+        if executable != Path(sys.executable).resolve():
             return CommandResult(False, -1, "", "command not allowed", "validation")
         work_dir = self.resolve(cwd)
         if not work_dir.is_dir():
@@ -399,6 +416,8 @@ class WorkspaceFS:
     def _grep_python(
         self, target: Path, pattern: str, *, limit: int
     ) -> list[GrepMatch]:
+        if len(pattern) > 1000:
+            raise ValueError("grep pattern is too long (max 1000 characters)")
         regex = re.compile(pattern)
         candidates = [target] if target.is_file() else sorted(target.rglob("*"))
         matches: list[GrepMatch] = []
@@ -409,6 +428,8 @@ class WorkspaceFS:
             if any(part in self.ignored_dirs for part in rel_parts):
                 continue
             try:
+                if path.stat().st_size > 4 * 1024 * 1024:
+                    continue
                 text = path.read_text(encoding="utf-8")
             except (UnicodeDecodeError, OSError):
                 continue

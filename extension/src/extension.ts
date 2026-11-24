@@ -33,6 +33,7 @@ import { ApiClient } from './apiClient';
 import { ProjectDragAndDropController } from './dragAndDropController';
 import { localize, isExtensionZh } from './i18n';
 import { BackendManager } from './services/backendManager';
+import { BackendAccessError, BackendService } from './services/backendService';
 import { AiCliGatewayManager } from './services/aiCliGatewayManager';
 import { ConfigHealthStatusBar } from './services/configHealthStatus';
 import { LanguageStatusBar } from './services/languageStatusBar';
@@ -85,7 +86,8 @@ function activateExtension(context: vscode.ExtensionContext) {
 
   // ========== 初始化后端服务管理器 ==========
   // BackendManager 负责 FastAPI 后端进程的生命周期管理
-  backendManager = new BackendManager(context);
+  const backend = new BackendService();
+  backendManager = new BackendManager(context, backend);
   aiCliGatewayManager = new AiCliGatewayManager(context);
   const configHealthStatusBar = new ConfigHealthStatusBar(context);
   ConfigPageViewProvider.attachGatewayManager(aiCliGatewayManager);
@@ -156,16 +158,17 @@ function activateExtension(context: vscode.ExtensionContext) {
     }
   } else if (autoStart) {
     backendManager.start({ silent: true }).catch((error) => {
-      console.error('Failed to auto-start backend:', error);
+      if (!(error instanceof BackendAccessError)) {
+        console.error('Failed to auto-start backend:', error);
+      }
     });
   }
 
   // Initialize API client
-  const apiClient = new ApiClient(context);
+  const apiClient = new ApiClient(backend);
 
   // Initialize AI Chat invoker
   const aiChatInvoker = new AIChatInvoker();
-  context.subscriptions.push(aiChatInvoker);
 
   // ========== 初始化项目结构树视图（支持拖拽） ==========
   // ProjectStructureProvider 提供左侧树视图，展示工作区文件结构
@@ -358,8 +361,7 @@ function activateExtension(context: vscode.ExtensionContext) {
         const dirPath = path.dirname(item.filePath);
         const newPath = path.join(dirPath, newName);
 
-        // Rename the file
-        fs.renameSync(item.filePath, newPath);
+        await vscode.workspace.fs.rename(vscode.Uri.file(item.filePath), vscode.Uri.file(newPath), { overwrite: false });
         vscode.window.showInformationMessage(localize('extension.renameLiterature.success', newName));
 
         // Update literature_index.json if it exists
@@ -388,33 +390,6 @@ function activateExtension(context: vscode.ExtensionContext) {
         projectStructureProvider.refresh();
       } catch (error: any) {
         vscode.window.showErrorMessage(localize('extension.renameLiterature.failed', error.message || error));
-      }
-    }
-  );
-
-  // 在编辑器中打开 Markdown 文件命令
-  const openMarkdownInEditorCommand = vscode.commands.registerCommand(
-    'aiSocialScientist.openMarkdownInEditor',
-    async (item: any) => {
-      if (!item || !item.filePath) {
-        vscode.window.showErrorMessage(localize('extension.openMarkdown.noFile'));
-        return;
-      }
-
-      const filePath = item.filePath;
-      // 检查是否为 markdown 文件
-      const isMarkdown = filePath.toLowerCase().endsWith('.md');
-      if (!isMarkdown) {
-        vscode.window.showWarningMessage(localize('extension.openMarkdown.warning'));
-        return;
-      }
-
-      try {
-        // 使用 vscode.open 命令在编辑器中打开文件
-        const fileUri = vscode.Uri.file(filePath);
-        await vscode.window.showTextDocument(fileUri);
-      } catch (error: any) {
-        vscode.window.showErrorMessage(localize('extension.openMarkdown.failed'));
       }
     }
   );
@@ -482,7 +457,7 @@ function activateExtension(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.window.registerCustomEditorProvider(
       'aiSocialScientist.simSettings',
-      new SimSettingsEditorProvider(context),
+      new SimSettingsEditorProvider(context, apiClient),
       {
         webviewOptions: {
           retainContextWhenHidden: true
@@ -565,6 +540,7 @@ function activateExtension(context: vscode.ExtensionContext) {
       // Create replay webview
       ReplayWebviewProvider.create(
         context,
+        backend,
         workspaceFolder.uri.fsPath,
         hypothesisId,
         experimentId
@@ -800,16 +776,15 @@ function activateExtension(context: vscode.ExtensionContext) {
     configHealthStatusBar.refresh();
     updateGatewayStatusBar();
     languageStatusBar.refresh();
-    ConfigPageViewProvider.reloadLanguageIfOpen();
-    SkillMarketplacePanel.reloadLanguageIfOpen();
     HelpPageViewProvider.reloadLanguageIfOpen();
     void import('./paperReviewViewer').then(({ PaperReviewViewer }) => {
       PaperReviewViewer.reloadLanguageIfOpen();
     });
   };
-  const languageStatusBar = new LanguageStatusBar(context, () => {
-    applyLanguageChange();
-  });
+  const languageStatusBar = new LanguageStatusBar(context);
+  context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(event => {
+    if (event.affectsConfiguration('aiSocialScientist.language')) { applyLanguageChange(); }
+  }));
   const toggleLanguageCommand = vscode.commands.registerCommand(
     'aiSocialScientist.toggleLanguage',
     async () => {
@@ -868,8 +843,7 @@ function activateExtension(context: vscode.ExtensionContext) {
   const refreshProjectViewCommand = vscode.commands.registerCommand(
     'aiSocialScientist.refreshProjectView',
     () => {
-      projectStructureProvider.refresh();
-      vscode.window.showInformationMessage(localize('projectView.refreshed'));
+      projectStructureProvider.refreshNow();
     }
   );
 
@@ -887,43 +861,6 @@ function activateExtension(context: vscode.ExtensionContext) {
     }
   );
 
-  const switchSkillVersionCommand = vscode.commands.registerCommand(
-    'aiSocialScientist.switchSkillVersion',
-    async () => {
-      const wf = vscode.workspace.workspaceFolders?.[0];
-      if (!wf) {
-        vscode.window.showErrorMessage('请先打开工作区文件夹');
-        return;
-      }
-      const versionManager = projectStructureProvider.getSkillVersionManager();
-      const file = versionManager.ensureDefaultPresetExists(wf.uri.fsPath);
-      const items = Object.keys(file.presets)
-        .sort()
-        .map((name) => ({
-          label: file.active === name ? `$(check) ${name}` : name,
-          description: file.active === name ? '当前激活' : undefined,
-          name,
-        }));
-      const picked = await vscode.window.showQuickPick(items, {
-        placeHolder: 'Switch Skill Version: 选择 preset',
-      });
-      if (!picked) {
-        return;
-      }
-      const result = versionManager.applyPreset(wf.uri.fsPath, picked.name);
-      const summary =
-        `已切换到 preset「${result.preset}」：` +
-        `应用 ${result.applied.length} 个，` +
-        `回退 ${result.fallbacks.length} 个，` +
-        `错误 ${result.errors.length} 个`;
-      if (result.errors.length === 0) {
-        vscode.window.showInformationMessage(summary);
-      } else {
-        vscode.window.showWarningMessage(summary);
-      }
-    }
-  );
-
   const snapshotCurrentSkillCommand = vscode.commands.registerCommand(
     'aiSocialScientist.snapshotCurrentSkill',
     async (presetSkillName?: string) => {
@@ -932,8 +869,8 @@ function activateExtension(context: vscode.ExtensionContext) {
         vscode.window.showErrorMessage('请先打开工作区文件夹');
         return;
       }
-      const versionManager = projectStructureProvider.getSkillVersionManager();
-      const skillNames = versionManager.listManagedSkills();
+      const skillManager = projectStructureProvider.getBundledSkillManager();
+      const skillNames = skillManager.listManagedSkills();
       if (skillNames.length === 0) {
         vscode.window.showWarningMessage('未发现可快照的 agentsociety-* skill');
         return;
@@ -955,7 +892,7 @@ function activateExtension(context: vscode.ExtensionContext) {
       if (!tag) {
         return;
       }
-      const result = versionManager.createSnapshot(wf.uri.fsPath, skill, tag);
+      const result = skillManager.createSnapshot(wf.uri.fsPath, skill, tag);
       if (result.success) {
         vscode.window.showInformationMessage(result.message);
       } else {
@@ -964,52 +901,41 @@ function activateExtension(context: vscode.ExtensionContext) {
     }
   );
 
-  const editSkillPresetsCommand = vscode.commands.registerCommand(
-    'aiSocialScientist.editSkillPresets',
-    async () => {
+  const restoreSkillSnapshotCommand = vscode.commands.registerCommand(
+    'aiSocialScientist.restoreSkillSnapshot',
+    async (presetSkillName?: string) => {
       const wf = vscode.workspace.workspaceFolders?.[0];
       if (!wf) {
         vscode.window.showErrorMessage('请先打开工作区文件夹');
         return;
       }
-      const versionManager = projectStructureProvider.getSkillVersionManager();
-      versionManager.ensureDefaultPresetExists(wf.uri.fsPath);
-      const file = vscode.Uri.file(
-        path.join(wf.uri.fsPath, '.agentsociety', 'skill-presets.json')
+      const skillManager = projectStructureProvider.getBundledSkillManager();
+      const skill =
+        presetSkillName && skillManager.listManagedSkills().includes(presetSkillName)
+          ? presetSkillName
+          : await vscode.window.showQuickPick(skillManager.listManagedSkills(), {
+            placeHolder: 'Restore Skill Snapshot: 选择要恢复的 skill',
+          });
+      if (!skill) {
+        return;
+      }
+      const snapshots = skillManager.listSnapshots(skill);
+      if (snapshots.length === 0) {
+        vscode.window.showWarningMessage(`技能 ${skill} 没有可用快照`);
+        return;
+      }
+      const picked = await vscode.window.showQuickPick(
+        snapshots.map((s) => ({ label: s.id, description: s.label })),
+        { placeHolder: '选择要恢复的快照' }
       );
-      await vscode.window.showTextDocument(file);
-    }
-  );
-
-  // 格式化查看 JSON 文件命令
-  const formatJsonCommand = vscode.commands.registerCommand(
-    'aiSocialScientist.formatJsonFile',
-    async (item: any) => {
-      if (!item || !item.filePath) {
-        vscode.window.showErrorMessage(localize('extension.noFilePath'));
+      if (!picked) {
         return;
       }
-
-      const filePath = item.filePath;
-
-      // 检查是否为 JSON 文件
-      if (!filePath.toLowerCase().endsWith('.json')) {
-        vscode.window.showWarningMessage(localize('extension.formatJson.wrongType'));
-        return;
-      }
-
-      try {
-        // 打开文件
-        const document = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
-        await vscode.window.showTextDocument(document);
-
-        // 格式化文档
-        await vscode.commands.executeCommand('editor.action.formatDocument');
-
-        // 可选：切换到更友好的视图（如果安装了 JSON tools 等扩展）
-        vscode.window.showInformationMessage(localize('extension.formatJson.done'));
-      } catch (error: any) {
-        vscode.window.showErrorMessage(localize('extension.formatJson.failed'));
+      const result = skillManager.restoreSnapshot(wf.uri.fsPath, skill, picked.label);
+      if (result.success) {
+        vscode.window.showInformationMessage(result.message);
+      } else {
+        vscode.window.showErrorMessage(result.message);
       }
     }
   );
@@ -1098,8 +1024,8 @@ function activateExtension(context: vscode.ExtensionContext) {
   // PID状态可视化命令
   const viewPidStatusCommand = vscode.commands.registerCommand(
     'aiSocialScientist.viewPidStatus',
-    async (item: any) => {
-      const filePath = item?.filePath;
+    async (item?: { runStatusPath?: string; filePath?: string }) => {
+      const filePath = item?.runStatusPath ?? item?.filePath;
       if (!filePath || !fs.existsSync(filePath)) {
         vscode.window.showErrorMessage(localize('extension.pid.missing'));
         return;
@@ -1117,7 +1043,7 @@ function activateExtension(context: vscode.ExtensionContext) {
   const copyFilePathCommand = vscode.commands.registerCommand(
     'aiSocialScientist.copyFilePath',
     async (item: any) => {
-      const filePath = item?.filePath;
+      const filePath = item?.directoryPath ?? item?.filePath;
       if (!filePath) {
         vscode.window.showErrorMessage(localize('extension.noFilePath'));
         return;
@@ -1136,7 +1062,7 @@ function activateExtension(context: vscode.ExtensionContext) {
   const copyAtReferenceCommand = vscode.commands.registerCommand(
     'aiSocialScientist.copyAtReference',
     async (item: any) => {
-      const filePath = item?.filePath;
+      const filePath = item?.directoryPath ?? item?.filePath;
       if (!filePath) {
         vscode.window.showErrorMessage(localize('extension.noFilePath'));
         return;
@@ -1278,18 +1204,13 @@ function activateExtension(context: vscode.ExtensionContext) {
   const openInExplorerCommand = vscode.commands.registerCommand(
     'aiSocialScientist.openInExplorer',
     async (item: any) => {
-      const filePath = item?.filePath;
+      const filePath = item?.directoryPath ?? item?.filePath;
       if (!filePath) {
         vscode.window.showErrorMessage(localize('extension.noFilePath'));
         return;
       }
 
-      // 如果是文件，打开其所在目录
-      const targetPath = fs.existsSync(filePath) && fs.statSync(filePath).isFile()
-        ? path.dirname(filePath)
-        : filePath;
-
-      await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(targetPath));
+      await vscode.commands.executeCommand('revealInExplorer', vscode.Uri.file(filePath));
     }
   );
 
@@ -1304,7 +1225,6 @@ function activateExtension(context: vscode.ExtensionContext) {
     renameLiteratureCommand,
     ...literatureLibraryCommands,
     openPdfPreviewCommand,
-    openMarkdownInEditorCommand,
     openHtmlReportCommand,
     openTreeFileInEditorCommand,
     openChatCommand,
@@ -1330,10 +1250,8 @@ function activateExtension(context: vscode.ExtensionContext) {
     toggleLanguageCommand,
     openAgentSkillDocCommand,
     updateExtensionSkillsCommand,
-    switchSkillVersionCommand,
     snapshotCurrentSkillCommand,
-    editSkillPresetsCommand,
-    formatJsonCommand,
+    restoreSkillSnapshotCommand,
     viewStepsYamlCommand,
     viewPidStatusCommand,
     viewJsonFileCommand,

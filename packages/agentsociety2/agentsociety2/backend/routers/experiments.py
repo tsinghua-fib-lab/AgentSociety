@@ -11,11 +11,12 @@ from __future__ import annotations
 import asyncio
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
+from typing_extensions import TypedDict
 
 from agentsociety2.backend.path_security import (
     require_safe_segment,
@@ -23,9 +24,12 @@ from agentsociety2.backend.path_security import (
     resolve_experiment_dir,
     resolve_under_root,
 )
+from agentsociety2.backend.services.replay_catalog import (
+    iter_timeline_datasets,
+    open_http_replay_reader,
+)
 from agentsociety2.logger import get_logger
 from agentsociety2.storage.replay_metadata import AGENT_PROFILE_DATASET_CAPABILITY
-from agentsociety2.storage.replay_reader import ReplayReader
 
 logger = get_logger()
 
@@ -35,6 +39,8 @@ _LOG_CANDIDATES = ("output.log", "stderr.log")
 _DEFAULT_LOG_TAIL_LINES = 2000
 _MAX_LOG_TAIL_LINES = 100_000
 _LOG_READ_CHUNK = 64 * 1024
+_MAX_LOG_TAIL_BYTES = 8 * 1024 * 1024
+_MAX_ARTIFACT_BYTES = 4 * 1024 * 1024
 
 
 def _resolve_experiment_log_path(run_dir: Path, source: str) -> Path:
@@ -83,16 +89,18 @@ def read_log_tail(path: Path, *, tail: int) -> str:
     newline_target = max(tail - 1, 0)
     chunks: list[bytes] = []
     newlines = 0
+    consumed = 0
     with path.open("rb") as fh:
         pos = size
         while pos > 0 and newlines <= newline_target:
             read_size = min(_LOG_READ_CHUNK, pos)
             pos -= read_size
+            consumed += read_size
             fh.seek(pos)
             block = fh.read(read_size)
             chunks.append(block)
             newlines += block.count(b"\n")
-            if pos == 0:
+            if pos == 0 or consumed >= _MAX_LOG_TAIL_BYTES:
                 break
 
     data = b"".join(reversed(chunks))
@@ -113,6 +121,22 @@ class ExperimentInfo(BaseModel):
     end_time: str | None = None
     agent_count: int
     step_count: int
+    replay_error: str | None = None
+
+
+class ExperimentArtifact(TypedDict):
+    """产物列表中的文件名、后端路径和产物类别。"""
+
+    name: str
+    path: str
+    type: Literal["ask", "intervene", "questionnaire"]
+
+
+class ArtifactContent(TypedDict):
+    """产物文件名和 UTF-8 原文，问卷 JSON 同样以字符串返回。"""
+
+    name: str
+    content: str
 
 
 def _get_experiment_path(
@@ -172,32 +196,6 @@ def _get_agent_profile_dataset(
     return candidates[0] if candidates else None
 
 
-def _get_timeline_dataset(datasets: list[dict[str, Any]]) -> dict[str, Any] | None:
-    """选择用于计算 replay 步数的首选数据集。
-
-    :param datasets: replay 数据集目录条目。
-    :returns: 兼容的 agent 或环境快照数据集，无则返回 ``None`` 。
-    """
-    agent_datasets = [
-        dataset
-        for dataset in _list_agent_state_datasets(datasets)
-        if dataset.get("step_key") and dataset.get("time_key")
-    ]
-    if agent_datasets:
-        return agent_datasets[0]
-
-    env_datasets = [
-        dataset
-        for dataset in datasets
-        if dataset.get("kind") == "env_snapshot"
-        and "env_snapshot" in dataset.get("capabilities", [])
-        and dataset.get("step_key")
-        and dataset.get("time_key")
-    ]
-    env_datasets.sort(key=lambda item: item["dataset_id"])
-    return env_datasets[0] if env_datasets else None
-
-
 def _read_replay_summary(replay_dir: Path) -> tuple[int, int]:
     """从当前 replay JSONL 数据返回 agent 数与步数。
 
@@ -205,7 +203,7 @@ def _read_replay_summary(replay_dir: Path) -> tuple[int, int]:
     :returns: ``(agent_count, step_count)`` 。
     """
 
-    reader = ReplayReader(replay_dir)
+    reader = open_http_replay_reader(replay_dir)
     try:
         datasets = reader.load_dataset_catalog()
         agent_count = 0
@@ -222,11 +220,12 @@ def _read_replay_summary(replay_dir: Path) -> tuple[int, int]:
                 )
 
         step_count = 0
-        timeline_dataset = _get_timeline_dataset(datasets)
-        if timeline_dataset is not None and timeline_dataset.get("step_key"):
+        for timeline_dataset in iter_timeline_datasets(datasets):
             step_count = reader.count_distinct(
                 timeline_dataset, str(timeline_dataset["step_key"])
             )
+            if step_count:
+                break
 
         return agent_count, step_count
     finally:
@@ -276,6 +275,7 @@ async def get_experiment_info(
 
     agent_count = 0
     step_count = 0
+    replay_error: str | None = None
     if replay_dir.is_dir() and (replay_dir / "_schema.json").is_file():
         try:
             agent_count, step_count = await asyncio.to_thread(
@@ -283,6 +283,7 @@ async def get_experiment_info(
             )
         except Exception as e:
             logger.warning(f"Failed to query replay data: {e}")
+            replay_error = str(e)
 
     return ExperimentInfo(
         experiment_id=experiment_id,
@@ -292,6 +293,7 @@ async def get_experiment_info(
         end_time=end_time,
         agent_count=agent_count,
         step_count=step_count,
+        replay_error=replay_error,
     )
 
 
@@ -300,13 +302,13 @@ async def list_artifacts(
     hypothesis_id: str,
     experiment_id: str,
     workspace_path: str = Query(..., description="Workspace directory path"),
-) -> list[dict[str, str]]:
-    """列出实验运行过程中生成的 Markdown 产出文件。
+) -> list[ExperimentArtifact]:
+    """列出实验运行过程中生成的 Markdown 与问卷产出文件。
 
     :param hypothesis_id: 假设标识符。
     :param experiment_id: 实验标识符。
     :param workspace_path: 包含实验数据的工作区根目录。
-    :returns: 生成的 Markdown 产出文件的元数据。
+    :returns: 生成的 Markdown 与问卷产出文件的元数据。
     :raises HTTPException: 标识符或解析出的路径不安全时抛出。
     """
 
@@ -319,31 +321,47 @@ async def list_artifacts(
     if not artifacts_dir.is_dir():
         return []
 
-    artifacts = []
-    for file_path in sorted(artifacts_dir.glob("*.md")):
+    artifacts: list[ExperimentArtifact] = []
+    for file_path in sorted(artifacts_dir.iterdir()):
+        if not file_path.is_file():
+            continue
+        try:
+            resolve_artifact_path(
+                workspace_path, hypothesis_id, experiment_id, file_path.name
+            )
+        except HTTPException:
+            continue
+        artifact_type: Literal["ask", "intervene", "questionnaire"] = (
+            "ask" if file_path.name.startswith("ask_") else "intervene"
+        )
+        if file_path.suffix == ".json":
+            artifact_type = "questionnaire"
         artifacts.append(
             {
                 "name": file_path.name,
                 "path": str(file_path),
-                "type": "ask" if file_path.name.startswith("ask_") else "intervene",
+                "type": artifact_type,
             }
         )
 
     return artifacts
 
 
-@router.get("/{hypothesis_id}/{experiment_id}/artifacts/{artifact_name}")
+@router.get(
+    "/{hypothesis_id}/{experiment_id}/artifacts/{artifact_name}",
+    responses={413: {"description": "文件超过 4 MiB，无法直接返回原文。"}},
+)
 async def get_artifact(
     hypothesis_id: str,
     experiment_id: str,
     artifact_name: str,
     workspace_path: str = Query(..., description="Workspace directory path"),
-) -> dict[str, str]:
-    """获取指定 Markdown 产出文件内容。
+) -> ArtifactContent:
+    """获取指定 Markdown 或问卷产出文件内容。
 
     :param hypothesis_id: 假设标识符。
     :param experiment_id: 实验标识符。
-    :param artifact_name: Markdown 产出文件名。
+    :param artifact_name: 产出文件名。
     :param workspace_path: 包含实验数据的工作区根目录。
     :returns: 产出文件名与 UTF-8 内容。
     :raises HTTPException: 产出文件路径不安全或不存在时抛出。
@@ -352,6 +370,10 @@ async def get_artifact(
     artifact_path = resolve_artifact_path(
         workspace_path, hypothesis_id, experiment_id, artifact_name
     )
+    if not artifact_path.is_file():
+        raise HTTPException(status_code=404, detail="Artifact not found")
+    if artifact_path.stat().st_size > _MAX_ARTIFACT_BYTES:
+        raise HTTPException(status_code=413, detail="Artifact is too large to inline")
     return {
         "name": artifact_name,
         "content": artifact_path.read_text(encoding="utf-8"),

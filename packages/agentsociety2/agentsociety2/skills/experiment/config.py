@@ -72,10 +72,31 @@ def read_init_config(exp_dir: Path) -> dict[str, Any] | None:
     return None
 
 
+def _safe_segment(value: str, label: str) -> str:
+    """Validate a single path segment used in experiment paths.
+
+    :param value: Raw id.
+    :param label: Field name for diagnostics.
+    :returns: The unchanged safe id.
+    :raises ValueError: Empty, dotted, absolute, or separator-containing id.
+    """
+    text = str(value)
+    if (
+        not text
+        or text in {".", ".."}
+        or "/" in text
+        or "\\" in text
+        or "\0" in text
+    ):
+        raise ValueError(f"Invalid {label}: {value!r}")
+    return text
+
+
 def get_experiment_paths(
     workspace_path: Path,
     hypothesis_id: str,
     experiment_id: str,
+    run_id: str = "run",
 ) -> dict[str, Path]:
     """Get all relevant paths for an experiment
 
@@ -90,10 +111,14 @@ def get_experiment_paths(
         - init/init_config.json - Experiment configuration
         - init/steps.yaml - Execution steps
     """
+    hypothesis_id = _safe_segment(hypothesis_id, "hypothesis_id")
+    experiment_id = _safe_segment(experiment_id, "experiment_id")
     hyp_dir = workspace_path / f"hypothesis_{hypothesis_id}"
     exp_dir = hyp_dir / f"experiment_{experiment_id}"
     init_dir = exp_dir / "init"
-    run_dir = exp_dir / "run"
+    run_dir = exp_dir / _safe_segment(run_id, "run_id")
+    if run_dir == init_dir or run_dir.is_symlink():
+        raise ValueError(f"Invalid run_id for experiment output: {run_id!r}")
 
     return {
         "workspace": workspace_path,

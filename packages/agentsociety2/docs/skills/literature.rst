@@ -140,7 +140,19 @@ Claude ``mcp.json``）。网关上的其他 MCP 工具不会被文献技能调�
    # 添加假设
    add_hypothesis(
        workspace_path=Path("./workspace"),
-       hypothesis="网络密度越高，信息传播速度越快"
+       hypothesis_data={
+           "hypothesis": {
+               "description": "网络密度越高，信息传播速度越快",
+               "rationale": "高密度网络提供更多传播路径",
+           },
+           "groups": [
+               {
+                   "name": "high_density",
+                   "group_type": "treatment",
+                   "description": "高密度网络",
+               }
+           ],
+       },
    )
 
    # 列出假设

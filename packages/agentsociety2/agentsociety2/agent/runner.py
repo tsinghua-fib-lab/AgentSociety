@@ -114,6 +114,13 @@ def _workspace_for(workspace_root: str, agent_id: int) -> Path:
 # ---------------------------------------------------------------------------
 # Async cores (testable in-process, driven by the sync Ray wrappers below)
 # ---------------------------------------------------------------------------
+def _seed_process(*task_identity: object) -> None:
+    """Apply ``AGENTSOCIETY_SEED`` inside a reused Ray worker process."""
+    from agentsociety2.society.provenance import apply_seed_from_env
+
+    apply_seed_from_env(*task_identity)
+
+
 async def _step_agent_batch_async(
     agent_ids: list[int],
     workspace_root: str,
@@ -122,6 +129,7 @@ async def _step_agent_batch_async(
     t: datetime,
     service_proxy: ServiceProxy,
 ) -> list[dict]:
+    _seed_process("step", agent_class_name, t.isoformat(), tick, agent_ids)
     cls = _resolve_agent_class(agent_class_name, workspace_root)
 
     async def _step_one(aid: int) -> dict:
@@ -163,7 +171,25 @@ async def _step_agent_batch_async(
                 "error": repr(e),
                 "state_persisted": persisted,
             }
-        await agent.to_workspace(ws)
+        try:
+            await agent.to_workspace(ws)
+        except Exception as e:
+            # Persistence failure is reported per-agent instead of tearing down
+            # the whole batch: the remaining agents still have valid results.
+            try:
+                await agent.close()
+            except Exception:
+                logging.getLogger(__name__).debug(
+                    "Error closing agent %s after failed persistence",
+                    aid,
+                    exc_info=True,
+                )
+            return {
+                "id": aid,
+                "ok": False,
+                "error": f"state persistence failed: {e!r}",
+                "state_persisted": False,
+            }
         try:
             await agent.close()
         except Exception:
@@ -179,7 +205,28 @@ async def _step_agent_batch_async(
     # is still gated by the dispatcher's semaphore; per-agent workspaces and the
     # injected service_proxy are concurrency-safe, so there is no shared mutable
     # state to protect. gather() preserves input order in the returned list.
-    return await asyncio.gather(*[_step_one(aid) for aid in agent_ids])
+    results = await asyncio.gather(
+        *[_step_one(aid) for aid in agent_ids], return_exceptions=True
+    )
+    normalized: list[dict] = []
+    for aid, result in zip(agent_ids, results, strict=True):
+        if isinstance(result, BaseException):
+            if isinstance(result, asyncio.CancelledError):
+                raise result
+            logging.getLogger(__name__).warning(
+                "Agent %s batch task raised outside its handler: %r", aid, result
+            )
+            normalized.append(
+                {
+                    "id": aid,
+                    "ok": False,
+                    "error": repr(result),
+                    "state_persisted": False,
+                }
+            )
+        else:
+            normalized.append(result)
+    return normalized
 
 
 async def _create_agents_batch_async(
@@ -187,6 +234,7 @@ async def _create_agents_batch_async(
     workspace_root: str,
     agent_class_name: str,
 ) -> int:
+    _seed_process("create", agent_class_name, [item["id"] for item in items])
     cls = _resolve_agent_class(agent_class_name, workspace_root)
     for it in items:
         ws = _workspace_for(workspace_root, int(it["id"]))
@@ -218,6 +266,8 @@ async def _questionnaire_agent_batch_async(
     """
     from agentsociety2.society.questionnaire import QuestionnaireRunner
 
+    _seed_process("questionnaire", agent_class_name, t.isoformat(), step_count, agent_ids)
+
     cls = _resolve_agent_class(agent_class_name, workspace_root)
     runner = QuestionnaireRunner()
 
@@ -241,19 +291,21 @@ async def _questionnaire_agent_batch_async(
                 )
             finally:
                 # Persist any agent state mutations back to the workspace
-                # (the driver no longer holds the agent object).
+                # (the driver no longer holds the agent object), then release
+                # the trace sink even when the questionnaire timed out.
                 try:
                     await agent.to_workspace(ws)
                 except Exception:
                     logging.getLogger(__name__).debug(
                         "Error persisting agent %s to workspace", aid, exc_info=True
                     )
-            try:
-                await agent.close()
-            except Exception:
-                logging.getLogger(__name__).debug(
-                    "Error closing agent %s after query", aid, exc_info=True
-                )
+                finally:
+                    try:
+                        await agent.close()
+                    except Exception:
+                        logging.getLogger(__name__).debug(
+                            "Error closing agent %s after query", aid, exc_info=True
+                        )
             per_agent = resp.responses[0] if resp.responses else None
             return {
                 "id": aid,
@@ -263,7 +315,23 @@ async def _questionnaire_agent_batch_async(
         except Exception as e:
             return {"id": aid, "ok": False, "error": repr(e)}
 
-    return await asyncio.gather(*[_run_one(aid) for aid in agent_ids])
+    results = await asyncio.gather(
+        *[_run_one(aid) for aid in agent_ids], return_exceptions=True
+    )
+    normalized: list[dict] = []
+    for aid, result in zip(agent_ids, results, strict=True):
+        if isinstance(result, BaseException):
+            if isinstance(result, asyncio.CancelledError):
+                raise result
+            logging.getLogger(__name__).warning(
+                "Agent %s questionnaire task raised outside its handler: %r",
+                aid,
+                result,
+            )
+            normalized.append({"id": aid, "ok": False, "error": repr(result)})
+        else:
+            normalized.append(result)
+    return normalized
 
 
 @_ray_remote
@@ -274,7 +342,7 @@ def step_agent_batch(
     tick: int,
     t: datetime,
     service_proxy: ServiceProxy,
-) -> list[dict]:
+) -> dict[str, Any]:
     """为批内每个 agent id 运行一次 ``step`` 。
 
     对每个 id:``from_workspace`` → ``step`` → ``to_workspace`` 。批内 agent
@@ -290,7 +358,7 @@ def step_agent_batch(
     :param t: 当前仿真时间。
     :param service_proxy: 共享服务句柄(env / llm / trace / replay),
         注入式提供,任务内从不重建。
-    :returns: 每个 agent 的结果 dict 列表::
+    :returns: ``results`` 下存放每个 agent 的结果::
 
         {"id": int, "ok": True, "summary": str}
         {"id": int, "ok": False, "error": str}
@@ -300,7 +368,12 @@ def step_agent_batch(
     """
     results = asyncio.run(
         _step_agent_batch_async(
-            agent_ids, workspace_root, agent_class_name, tick, t, service_proxy
+            agent_ids,
+            workspace_root,
+            agent_class_name,
+            tick,
+            t,
+            service_proxy,
         )
     )
     # Drain this task's LLM clients' token stats (a delta since the last drain)

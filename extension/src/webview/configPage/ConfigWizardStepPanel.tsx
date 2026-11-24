@@ -60,7 +60,7 @@ function WizardBackendPanel({
   return (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
       <Alert
-        type={running ? 'success' : 'info'}
+        type={running ? 'success' : backendStatus.error ? 'error' : 'info'}
         showIcon
         icon={
           running ? (
@@ -76,7 +76,7 @@ function WizardBackendPanel({
             ? t('configPage.overview.backendRunning', { port: String(port ?? '?') })
             : t('configPage.overview.backendStopped')
         }
-        description={running ? undefined : t('configPage.overview.backendStoppedHint')}
+        description={running ? undefined : (backendStatus.error ?? t('configPage.overview.backendStoppedHint'))}
       />
       <Card size="small" title={t('configPage.python.title')} style={{ borderRadius: 10 }}>
         <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 12 }}>

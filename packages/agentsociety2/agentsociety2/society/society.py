@@ -70,7 +70,7 @@ SOCIETY_JSON = "SOCIETY.json"
 SOCIETY_STEP_JSON = "SOCIETY_STEP.json"
 # LLM token 用量汇总（含 prompt 缓存命中）。收尾写一次；resume 时被忽略。
 LLM_STATS_JSON = "LLM_STATS.json"
-SOCIETY_SCHEMA_VERSION = 1
+SOCIETY_SCHEMA_VERSION = 2
 
 
 def _json_safe_profile(profile: Any) -> dict[str, Any]:
@@ -163,14 +163,20 @@ class AgentSociety:
         self._agent_specs: list[dict] = list(agent_specs)
         self._agent_class_name: str = agent_class_name
         self._agent_ids: list[int] = [int(s["id"]) for s in self._agent_specs]
+        if len(self._agent_ids) != len(set(self._agent_ids)):
+            raise ValueError(
+                "Agent ids must be unique: duplicate ids map to the same "
+                "workspace directory and corrupt state under concurrency."
+            )
 
         self._env_router = env_router
         self._t = start_t
         self._should_terminate: bool = False
         self._step_count: int = 0
+        self._pending_update: str | None = None
 
         # Resolve to ABSOLUTE paths. Ray worker processes may run with a cwd
-        # inside an uploaded runtime-env package (/tmp/ray/.../_ray_pkg_.../),
+        # inside an uploaded runtime-env package in the Ray temporary directory,
         # not the driver's cwd — so a relative run_dir would resolve to a
         # phantom path inside the package and agent workspaces would never land
         # where the driver (and replay/trace) expect them.
@@ -200,11 +206,17 @@ class AgentSociety:
         self._steps_hash: str | None = None
 
         self._service_proxy: ServiceProxy | None = service_proxy
-        self._owns_service_proxy = service_proxy is not None
+        # Only a proxy built by this society is owned (and closed) by it.
+        self._owns_service_proxy = service_proxy is None
+        # True when this instance was reconstructed by ``from_workspace``.
+        self._resumed = False
 
         self._replay_writer: Any = None
         self._agent_profiles_persisted = False
         self._simulation_timeline_ready = False
+        # 最后一个已写入 timeline 的 step；init 的 step-0 标记与首步
+        # 的 upcoming 标记指向同一 step，用它避免重复行。
+        self._last_timeline_step: int | None = None
         self._step_failures_ready = False
         # Running count of per-agent step failures, drained into pid.json
         # so an experiment that "completed" with a broken batch is visible
@@ -422,14 +434,23 @@ class AgentSociety:
         self._simulation_timeline_ready = True
 
     async def _write_simulation_timeline_point(self, step: int, t: datetime) -> None:
-        """Append one timeline marker used by the replay UI."""
+        """Append one timeline marker used by the replay UI.
+
+        ``init`` writes the synthetic step-0 marker, and the first ``step``
+        publishes the same upcoming marker before fan-out. Keep timeline rows
+        one-per-step so replay counts and primary-key semantics stay honest.
+        """
         if self._replay_writer is None:
+            return
+        normalized_step = int(step)
+        if self._last_timeline_step == normalized_step:
             return
         await self._ensure_simulation_timeline_dataset()
         await self._replay_writer.write(
             SIMULATION_TIMELINE_TABLE_NAME,
-            {"step": int(step), "t": t},
+            {"step": normalized_step, "t": t},
         )
+        self._last_timeline_step = normalized_step
 
     async def _ensure_step_failures_dataset(self) -> None:
         """Register the society-owned per-agent step-failure table once."""
@@ -612,12 +633,16 @@ class AgentSociety:
 
         # Step-0 timeline marker: replay UI can open immediately after init,
         # even if the first agent tick has not finished writing env snapshots.
-        if self._replay_writer is not None:
+        # A resumed run already has its timeline; appending a synthetic step-0
+        # point at the resumed clock would corrupt the time axis.
+        if self._replay_writer is not None and not self._resumed:
             await self._write_simulation_timeline_point(0, self._t)
 
         # 写一次不可变全量 checkpoint（含 agent_specs / env 配置 / steps_hash）。
         # resume 时（from_workspace 已置 _society_json_written=True）跳过，避免覆盖。
         if self._run_dir is not None and not self._society_json_written:
+            # Publish metadata only after the initial environment and cursor are saved.
+            await self.to_workspace()
             self._write_society_json()
             self._society_json_written = True
 
@@ -647,17 +672,12 @@ class AgentSociety:
     # ------------------------------------------------------------------
     # 状态持久化 / resume（无状态 checkpoint）
     # ------------------------------------------------------------------
-    async def to_workspace(self, *, tick: int | None = None) -> None:
-        """持久化 society + env 状态（每步调用，无状态 resume）。
-
-        让 env router 落盘各模块状态，并写 ``run_dir/SOCIETY_STEP.json`` （仅少量标量：当前时间 / 步数 / 已完成前置步数 / terminated）。不可变的大字段（``agent_specs`` 等）只在 :meth:`init` 写一次到 ``SOCIETY.json`` ，避免每步重序列化。``run_dir`` 为空时 no-op；env 落盘失败时抛错，不提交总进度。
-
-        :param tick: 保留以兼容旧调用签名（不再单独持久化）。
-        """
-        if self._run_dir is None:
-            return
-        await self._env_router.to_workspaces()
-        self._write_society_step_json()
+    async def to_workspace(self) -> None:
+        """Save the current environment and progress outside a tick or intervention."""
+        self._require_idle_workspace()
+        if self._run_dir is not None:
+            await self._env_router.to_workspaces()
+            self._write_society_step_json()
 
     def _write_society_json(self) -> None:
         """写不可变全量 checkpoint 到 ``run_dir/SOCIETY.json`` （init 时写一次）。
@@ -679,19 +699,73 @@ class AgentSociety:
             json.dumps(payload, ensure_ascii=False, indent=2, default=str),
         )
 
-    def _write_society_step_json(self) -> None:
-        """写每步标量 checkpoint 到 ``run_dir/SOCIETY_STEP.json`` （原子写入）。"""
+    def _write_society_step_json(
+        self,
+        *,
+        current_time: datetime | None = None,
+        step_count: int | None = None,
+        completed_step_count: int | None = None,
+        pending_update: str | None = None,
+    ) -> None:
+        """Publish the committed cursor without exposing an in-flight tick."""
         assert self._run_dir is not None
         payload = {
-            "current_time": self._t.isoformat(),
-            "step_count": self._step_count,
-            "completed_step_count": self._completed_step_count,
+            "current_time": (
+                self._t if current_time is None else current_time
+            ).isoformat(),
+            "step_count": self._step_count if step_count is None else step_count,
+            "completed_step_count": (
+                self._completed_step_count
+                if completed_step_count is None
+                else completed_step_count
+            ),
             "terminated": self._should_terminate,
+            "pending_update": pending_update,
         }
         atomic_write_text(
             self._run_dir / SOCIETY_STEP_JSON,
             json.dumps(payload, ensure_ascii=False, indent=2, default=str),
         )
+
+    def _require_idle_workspace(self) -> None:
+        if self._pending_update is not None:
+            raise RuntimeError(f"The current {self._pending_update} has not committed")
+
+    def _begin_workspace_update(self, kind: str) -> None:
+        """Mark the checkpoint incomplete before a tick or intervention writes state."""
+        self._require_idle_workspace()
+        if self._run_dir is not None:
+            self._write_society_step_json(pending_update=kind)
+        self._pending_update = kind
+
+    async def _commit_tick(self, tick: int) -> None:
+        """Advance the public clock after persisting the environment and cursor."""
+        current_time = self._t + timedelta(seconds=tick)
+        step_count = self._step_count + 1
+        if self._run_dir is not None:
+            await self._env_router.to_workspaces()
+            self._write_society_step_json(
+                current_time=current_time, step_count=step_count
+            )
+        self._t, self._step_count = current_time, step_count
+        self._pending_update = None
+
+    def begin_intervention(self, step_idx: int) -> None:
+        """Begin a CLI intervention before its first side effect."""
+        if step_idx != self._completed_step_count:
+            raise ValueError("Intervention must follow the completed step prefix")
+        self._begin_workspace_update("intervention")
+
+    async def commit_intervention(self) -> None:
+        """Save an active CLI intervention before advancing its cursor."""
+        if self._pending_update != "intervention":
+            raise RuntimeError("No intervention is pending")
+        completed_step_count = self._completed_step_count + 1
+        if self._run_dir is not None:
+            await self._env_router.to_workspaces()
+            self._write_society_step_json(completed_step_count=completed_step_count)
+        self._completed_step_count = completed_step_count
+        self._pending_update = None
 
     def write_llm_stats_json(self) -> dict[str, Any] | None:
         """把 LLM token 用量与缓存命中率写到 ``run_dir/LLM_STATS.json`` 。
@@ -710,7 +784,13 @@ class AgentSociety:
 
         # Snapshot each side once: ``router_token_stats`` hits the env router.
         agent_stats = self.token_stats
-        router_stats = self.router_token_stats
+        try:
+            router_stats = self.router_token_stats
+        except Exception:
+            logger.warning("Environment token usage is unavailable", exc_info=True)
+            router_available, router_stats = False, {}
+        else:
+            router_available = True
         combined = merge_token_stats(agent_stats, router_stats)
 
         def _totals(stats: dict[str, dict[str, int]]) -> dict[str, int]:
@@ -725,6 +805,7 @@ class AgentSociety:
 
         payload = {
             "schema_version": 1,
+            "scope": "current_process",
             "step_count": self._step_count,
             "current_time": self._t.isoformat(),
             "models": combined,
@@ -736,6 +817,7 @@ class AgentSociety:
                 "cache_hit_rate": cache_hit_rate(agent_stats),
             },
             "router_side": {
+                "available": router_available,
                 "models": router_stats,
                 "totals": _totals(router_stats),
                 "cache_hit_rate": cache_hit_rate(router_stats),
@@ -748,25 +830,12 @@ class AgentSociety:
         return payload
 
     def mark_step_completed(self, step_idx: int) -> None:
-        """标记第 ``step_idx`` 个顶层 step 已完成并立即持久化进度。
-
-        由 CLI 在每个顶层 step（含 Ask/Intervene/Questionnaire）成功后调用。游标语义为**最大连续完成前缀**（2026-10-19 修复）：游标只在
-        ``step_idx == 游标`` 时前进,后续成功步不再把被失败步隔开的缺口顶上去——失败步因此保持可重试,resume 不会永久跳过它。
-
-        背景(T2 生产实锤):旧语义 ``游标 = step_idx + 1`` 下,step 59 失败、
-        step 60 成功即把游标顶到 61,59 的时钟缺口永久丢失且 resume 空转
-        (96/96 全 skip)。间隔失败(非前缀)的 run step 必须由 resume 重跑;
-        问卷步重跑成本低(幂等重放),run 步从 checkpoint 时钟重放同样幂等。
-        """
-        if self._run_dir is None:
-            return
-        if step_idx == self._completed_step_count:
-            self._completed_step_count = step_idx + 1
-            self._write_society_step_json()
-        elif step_idx > self._completed_step_count:
-            # 前缀之外的完成(缺口之后):记录最大见过的 step 供诊断,
-            # 但游标不动——缺口修复(resume 重跑失败步)后它会自然前进。
-            self._write_society_step_json()
+        """Advance the CLI cursor only for the next step in its completed prefix."""
+        if self._run_dir is not None and step_idx == self._completed_step_count:
+            self._require_idle_workspace()
+            completed_step_count = step_idx + 1
+            self._write_society_step_json(completed_step_count=completed_step_count)
+            self._completed_step_count = completed_step_count
 
     @staticmethod
     def _read_checkpoint(run_dir: Path) -> tuple[dict, dict]:
@@ -798,14 +867,34 @@ class AgentSociety:
         if "agent_class_name" not in meta:
             raise ValueError(f"Cannot resume: {meta_path} missing agent_class_name")
         step_path = run_dir / SOCIETY_STEP_JSON
-        step_meta: dict = {}
-        if step_path.is_file():
-            try:
-                step_meta = json.loads(step_path.read_text(encoding="utf-8"))
-            except json.JSONDecodeError as exc:
-                raise ValueError(
-                    f"Cannot resume: {step_path} is corrupt or was truncated: {exc}"
-                ) from exc
+        try:
+            step_meta = json.loads(step_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            raise ValueError(
+                f"Cannot resume: {step_path} is missing or unreadable"
+            ) from exc
+        if not isinstance(step_meta, dict) or not isinstance(
+            step_meta.get("current_time"), str
+        ):
+            raise ValueError(f"Cannot resume: {step_path} has no valid current_time")
+        step_count = step_meta.get("step_count")
+        completed_step_count = step_meta.get("completed_step_count")
+        if (
+            type(step_count) is not int
+            or step_count < 0
+            or type(completed_step_count) is not int
+            or completed_step_count < 0
+        ):
+            raise ValueError(
+                f"Cannot resume: {step_path} has an invalid progress cursor"
+            )
+        if "pending_update" not in step_meta:
+            raise ValueError(f"Cannot resume: {step_path} has no update status")
+        if step_meta["pending_update"] is not None:
+            raise ValueError(
+                f"Cannot resume after an incomplete {step_meta['pending_update']}: "
+                "restore a consistent backup or start a fresh run."
+            )
         return meta, step_meta
 
     @classmethod
@@ -830,11 +919,7 @@ class AgentSociety:
         """
         run_dir = Path(run_dir).resolve()
         meta, step_meta = cls._read_checkpoint(run_dir)
-        if step_meta.get("current_time"):
-            current_time = datetime.fromisoformat(str(step_meta["current_time"]))
-        else:
-            # 旧布局（仅有 SOCIETY.json，无 SOCIETY_STEP.json）——回退到 SOCIETY.json。
-            current_time = datetime.fromisoformat(str(meta["current_time"]))
+        current_time = datetime.fromisoformat(step_meta["current_time"])
         society = cls(
             agent_specs=list(meta.get("agent_specs", [])),
             agent_class_name=str(meta["agent_class_name"]),
@@ -848,22 +933,25 @@ class AgentSociety:
             env_kwargs=dict(meta.get("env_kwargs", {})),
         )
         society._steps_hash = meta.get("steps_hash")
-        society._step_count = int(
-            step_meta.get("step_count", meta.get("step_count", 0))
-        )
-        society._completed_step_count = int(step_meta.get("completed_step_count", 0))
+        society._step_count = step_meta["step_count"]
+        society._completed_step_count = step_meta["completed_step_count"]
         # init() 时跳过 agent workspace 创建、profile 重写，以及 SOCIETY.json 覆盖。
         society._agents_created = True
         society._agent_profiles_persisted = True
         society._simulation_timeline_ready = True
+        # Completed steps have already published markers 0..step_count-1.
+        # For a crash before the first step, init's synthetic step-0 marker
+        # is the only existing row, hence the max(0, ...) floor.
+        society._last_timeline_step = max(0, society._step_count - 1)
         society._society_json_written = True
+        society._resumed = True
         return society
 
     async def __aenter__(self):
         await self.init()
         return self
 
-    async def __aexit__(self, exc_type, exc_value, traceback):
+    async def __aexit__(self, _exc_type, _exc_value, _traceback):
         await self.close()
 
     # ------------------------------------------------------------------
@@ -874,20 +962,7 @@ class AgentSociety:
 
         :param tick: 本步时间跨度（秒）。
         """
-        if not self._agent_ids:
-            # 仍推进 env + 时钟。
-            self._env_router.set_current_time(self._t)
-            if self._replay_writer is not None:
-                await self._write_simulation_timeline_point(self._step_count, self._t)
-            await self._env_router.step(tick, self._t)
-            self._t += timedelta(seconds=tick)
-            self._step_count += 1
-            # 自增后再落盘，checkpoint 反映已完成步数。
-            await self.to_workspace(tick=tick)
-            return
-
-        proxy = await self._resolve_service_proxy()
-
+        self._begin_workspace_update("tick")
         # Push the clock to env BEFORE fan-out so all batches share the same
         # time context (env modules read it during agent tool calls).
         self._env_router.set_current_time(self._t)
@@ -900,18 +975,22 @@ class AgentSociety:
         # Chunk ids and submit one Ray Task per chunk.
         refs = []
         batch_agent_ids: list[list[int]] = []
-        for ids in _chunked(self._agent_ids, self._batch_size):
-            batch_agent_ids.append(ids)
-            refs.append(
-                step_agent_batch.remote(
-                    ids,
-                    str(self._workspace_root),
-                    self._agent_class_name,
-                    tick,
-                    self._t,
-                    proxy,
+        if self._agent_ids:
+            proxy = await self._resolve_service_proxy()
+            # Retrying a crashed worker could reapply partially persisted actions.
+            task = step_agent_batch.options(max_retries=0)
+            for ids in _chunked(self._agent_ids, self._batch_size):
+                batch_agent_ids.append(ids)
+                refs.append(
+                    task.remote(
+                        ids,
+                        str(self._workspace_root),
+                        self._agent_class_name,
+                        tick,
+                        self._t,
+                        proxy,
+                    )
                 )
-            )
         # Await all batches. Each batch returns {"results", "token_stats"};
         # fold the per-task token-usage deltas into this society's instance
         # aggregate (no module-global state).
@@ -963,12 +1042,8 @@ class AgentSociety:
                     f"Agent step failures ({len(failures)}): {preview}{more}"
                 )
 
-        # Env advances AFTER agents.
         await self._env_router.step(tick, self._t)
-        self._t += timedelta(seconds=tick)
-        self._step_count += 1
-        # 自增后再落盘，checkpoint 反映已完成步数。
-        await self.to_workspace(tick=tick)
+        await self._commit_tick(tick)
 
     async def run(self, num_steps: int, tick: int):
         """运行多步仿真。
@@ -1016,7 +1091,18 @@ class AgentSociety:
     async def _reconstruct_agents(self, agent_ids: list[int]) -> list[AgentBase]:
         """Reconstruct a subset of agents (parallel ``from_workspace`` calls)."""
         coros = [self._reconstruct_agent(int(aid)) for aid in agent_ids]
-        return list(await asyncio.gather(*coros))
+        results = await asyncio.gather(*coros, return_exceptions=True)
+        agents: list[AgentBase] = []
+        for result in results:
+            if isinstance(result, BaseException):
+                for agent in agents:
+                    try:
+                        await agent.close()
+                    except Exception:
+                        logger.debug("Failed to close agent", exc_info=True)
+                raise result
+            agents.append(result)
+        return agents
 
     def _get_helper(self) -> AgentSocietyHelper:
         """Lazily build the plan-and-execute helper bound to this society.
@@ -1108,12 +1194,20 @@ class AgentSociety:
 
         from agentsociety2.config.llm_dispatcher import merge_token_stats
 
-        batch_returns = await asyncio.gather(*[self._await_ref(r) for r in refs])
+        batch_returns = await asyncio.gather(
+            *[self._await_ref(r) for r in refs], return_exceptions=True
+        )
 
         # Merge per-agent results across batches; aggregate token deltas.
         results_by_id: dict[int, dict] = {}
         failed: list[tuple[int, str]] = []
         for br in batch_returns:
+            if isinstance(br, BaseException):
+                if isinstance(br, asyncio.CancelledError):
+                    raise br
+                logger.warning("Questionnaire batch failed: %r", br)
+                failed.append((-1, repr(br)))
+                continue
             if isinstance(br, dict) and br.get("token_stats"):
                 self._token_stats = merge_token_stats(
                     self._token_stats, br["token_stats"]

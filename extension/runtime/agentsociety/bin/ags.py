@@ -124,15 +124,14 @@ def _extract_workspace_and_passthrough_args(
 def _load_workspace_env(workspace: Path) -> dict[str, str]:
     """构造子进程环境：工作区 ``.env`` 覆盖已有 shell 变量。"""
     env = os.environ.copy()
-    env["AGENTSOCIETY_WORKSPACE"] = str(workspace)
-
     env_file = workspace / ".env"
-    if dotenv_values is None or not env_file.exists():
-        return env
-
-    for key, value in dotenv_values(env_file).items():
-        if value is not None:
-            env[key] = value
+    if dotenv_values is not None and env_file.exists():
+        for key, value in dotenv_values(env_file).items():
+            if value is not None:
+                env[key] = value
+    # The selected workspace also anchors backend path resolution.
+    env["AGENTSOCIETY_WORKSPACE"] = str(workspace)
+    env["WORKSPACE_PATH"] = str(workspace)
     return env
 
 
@@ -141,9 +140,19 @@ def _resolve_script(workspace: Path, tool: str) -> Path:
     return workspace / ".claude" / "skills" / skill_dir / relative_script
 
 
+def _available_tools_text() -> str:
+    """返回可供 help/epilog 使用的工具清单。"""
+
+    lines = ["Available tools:"]
+    lines.extend(f"  - {name}" for name in sorted(TOOL_SCRIPTS))
+    return "\n".join(lines)
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Workspace-stable launcher for AgentSociety Claude skills."
+        description="Workspace-stable launcher for AgentSociety Claude skills.",
+        epilog=_available_tools_text(),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
         "tool",
@@ -158,26 +167,18 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _print_available_tools() -> None:
-    print("Available tools:")
-    for name in sorted(TOOL_SCRIPTS):
-        print(f"  - {name}")
-
-
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
 
     if not args.tool:
         parser.print_help()
-        print()
-        _print_available_tools()
         return 0
 
     tool = _normalize_tool(args.tool)
     if tool not in TOOL_SCRIPTS:
         print(f"Unknown tool: {args.tool}", file=sys.stderr)
-        _print_available_tools()
+        print(_available_tools_text(), file=sys.stderr)
         return 2
 
     workspace, passthrough_args = _extract_workspace_and_passthrough_args(
@@ -197,7 +198,7 @@ def main(argv: list[str] | None = None) -> int:
     env = _load_workspace_env(workspace)
     command = [sys.executable, str(script_path), *passthrough_args]
 
-    result = subprocess.run(command, cwd=str(workspace), env=env)
+    result = subprocess.run(command, cwd=str(workspace), env=env, check=False)
     return int(result.returncode)
 
 

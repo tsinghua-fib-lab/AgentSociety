@@ -377,14 +377,17 @@ def pre_step():
 async def test_custom_entrypoint_context_and_sync_returned_awaitable(
     tmp_path, monkeypatch
 ):
-    """入口上下文跨进程传递，返回 awaitable 时不得误报成功或丢失结果。"""
+    """入口上下文跨进程传递；自定义 skill 默认不继承宿主凭证类环境变量。"""
     monkeypatch.setenv("SKILL_TEST_CUSTOM_CONFIG", "inherited")
     _make_skill(
         tmp_path,
         "awaitable",
         """async def result(argv, ctx):
     import os
-    assert os.environ["SKILL_TEST_CUSTOM_CONFIG"] == "inherited"
+    if argv[0] == "expect_inherited":
+        assert os.environ["SKILL_TEST_CUSTOM_CONFIG"] == "inherited"
+    else:
+        assert "SKILL_TEST_CUSTOM_CONFIG" not in os.environ
     assert len(argv[1]) == 262144
     assert ctx.skill_id == "custom@awaitable"
     assert ctx.env["AGENT_WORK_DIR"] == str(ctx.workspace_root)
@@ -399,6 +402,16 @@ def entrypoint(argv, ctx):
     )
     assert result.ok, result.stderr
     assert result.stdout == "done:value"
+
+    monkeypatch.setenv("AGENTSOCIETY_SKILL_ENV_ALLOW", "SKILL_TEST_CUSTOM_CONFIG")
+    allowed = await runtime.run_skill_script(
+        "custom@awaitable",
+        "scripts/run.py",
+        ["expect_inherited", "x" * 262144],
+        timeout_sec=15,
+    )
+    assert allowed.ok, allowed.stderr
+    assert allowed.stdout == "done:expect_inherited"
 
 
 @pytest.mark.asyncio

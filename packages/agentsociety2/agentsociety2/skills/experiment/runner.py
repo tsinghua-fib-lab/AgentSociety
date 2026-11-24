@@ -1,13 +1,17 @@
 """实验运行器模块
 
-提供实验的启动、停止与状态监控功能。这里是最小实现——实际执行由
-agent society 框架与扩展脚本完成。
+提供实验的停止与状态监控功能。真正的仿真启动由
+``agentsociety2.society.cli`` 或扩展脚本负责；本模块不伪造启动行为。
 """
 
 from __future__ import annotations
 
+import json
+from itertools import pairwise
 from pathlib import Path
 from typing import Any
+
+import psutil
 
 from agentsociety2.logger import get_logger
 from agentsociety2.skills.experiment.models import ExperimentInfo, ExperimentStatus
@@ -23,7 +27,7 @@ async def start_experiment(
     init_config_path: Path | None = None,
     steps_path: Path | None = None,
 ) -> dict[str, Any]:
-    """启动一个实验
+    """校验启动输入并返回运行路径，供调用方启动实验。
 
     :param workspace_path: 工作区目录路径
     :param hypothesis_id: 假设 ID（如 '1'、'2'）
@@ -36,7 +40,7 @@ async def start_experiment(
     """
     from agentsociety2.skills.experiment.config import get_experiment_paths
 
-    exp_paths = get_experiment_paths(workspace_path, hypothesis_id, experiment_id)
+    exp_paths = get_experiment_paths(workspace_path, hypothesis_id, experiment_id, run_id)
 
     if not exp_paths["experiment"].exists():
         return {
@@ -106,42 +110,83 @@ async def stop_experiment(
     """
     from agentsociety2.skills.experiment.config import get_experiment_paths
 
-    exp_paths = get_experiment_paths(workspace_path, hypothesis_id, experiment_id)
+    exp_paths = get_experiment_paths(workspace_path, hypothesis_id, experiment_id, run_id)
 
     # Check for PID file and attempt to stop the process
     pid_file = exp_paths["pid_file"]
     stopped = False
+    failure: str | None = None
     if pid_file.exists():
         try:
-            pid_content = pid_file.read_text().strip()
-            if pid_content:
-                import json
-                import os
-                import signal
-
-                pid_data = json.loads(pid_content)
-                pid = pid_data.get("pid")
-                if pid:
-                    try:
-                        os.kill(pid, signal.SIGTERM)
-                        stopped = True
-                    except OSError:
-                        logger.debug(
-                            "Failed to send SIGTERM to pid %s", pid, exc_info=True
-                        )
-        except (ValueError, OSError, json.JSONDecodeError):
+            pid_data = json.loads(pid_file.read_text())
+            pid = pid_data.get("pid")
+            if pid and pid_data.get("status") not in _TERMINAL_STATUSES:
+                process = _experiment_process(
+                    int(pid), exp_paths["run"].resolve(), pid_data
+                )
+                if process is None:
+                    failure = "pid.json does not belong to this experiment; refusing to signal"
+                else:
+                    process.terminate()
+                    stopped = True
+        except (TypeError, ValueError, OSError, psutil.Error) as exc:
+            failure = f"failed to read pid file: {exc}"
             logger.debug("Failed to read pid file", exc_info=True)
 
-    # Experiment lifecycle is managed externally
+    if failure:
+        return {
+            "success": False,
+            "error": failure,
+            "content": f"Experiment {experiment_id} was not stopped: {failure}",
+            "hypothesis_id": hypothesis_id,
+            "experiment_id": experiment_id,
+            "run_id": run_id,
+        }
     return {
         "success": True,
-        "content": f"Stop signal sent for experiment {experiment_id}"
-        if not stopped
-        else f"Experiment {experiment_id} stopped (PID terminated)",
+        "content": f"Experiment {experiment_id} stopped (PID terminated)"
+        if stopped
+        else f"No running process recorded for experiment {experiment_id}",
         "hypothesis_id": hypothesis_id,
         "experiment_id": experiment_id,
         "run_id": run_id,
     }
+
+
+_TERMINAL_STATUSES = {"completed", "completed_with_errors", "failed", "terminated"}
+
+
+def _experiment_process(
+    pid: int, run_dir: Path, pid_data: dict[str, Any]
+) -> psutil.Process | None:
+    """Find the simulator process whose arguments select this exact run directory."""
+    try:
+        if pid <= 0 or (
+            pid_data.get("run_dir") and Path(pid_data["run_dir"]).resolve() != run_dir
+        ):
+            return None
+        process = psutil.Process(pid)
+        argv = process.cmdline()
+        module = any(
+            pair == ("-m", "agentsociety2.society.cli") for pair in pairwise(argv)
+        )
+        entrypoint = any(
+            Path(arg).stem in {"agentsociety", "agentsociety-script"}
+            for arg in argv[:2]
+        )
+        if not (module or entrypoint):
+            return None
+        selected = "."  # CLI default
+        for index, arg in enumerate(argv):
+            if arg == "--run-dir" and index + 1 < len(argv):
+                selected = argv[index + 1]
+            elif arg.startswith("--run-dir="):
+                selected = arg.split("=", 1)[1]
+        if selected and (Path(process.cwd()) / selected).resolve() == run_dir:
+            return process
+    except (OSError, TypeError, ValueError, psutil.Error):
+        pass
+    return None
 
 
 async def get_experiment_status(
@@ -161,7 +206,7 @@ async def get_experiment_status(
     """
     from agentsociety2.skills.experiment.config import get_experiment_paths
 
-    exp_paths = get_experiment_paths(workspace_path, hypothesis_id, experiment_id)
+    exp_paths = get_experiment_paths(workspace_path, hypothesis_id, experiment_id, run_id)
 
     # Determine status based on simplified init structure
     status = "not_initialized"
@@ -181,40 +226,25 @@ async def get_experiment_status(
         try:
             pid_content = pid_file.read_text().strip()
             if pid_content:
-                import json
-
                 pid_data = json.loads(pid_content)
                 pid = pid_data.get("pid")
                 pid_status = str(pid_data.get("status") or "").strip().lower()
                 start_time = pid_data.get("start_time") or pid_data.get("started_at")
                 end_time = pid_data.get("end_time")
 
-                if pid_status == "completed":
-                    status = "completed"
-                elif pid_status == "failed":
-                    status = "failed"
-                elif pid_status:
+                if pid_status:
                     status = pid_status
-
-                if pid and pid_status not in {"completed", "failed"}:
-                    # Check if process is still alive
-                    import os
-
-                    try:
-                        os.kill(pid, 0)  # Check if process exists
-                        is_running = True
+                if pid and pid_status not in _TERMINAL_STATUSES:
+                    is_running = (
+                        _experiment_process(
+                            int(pid), exp_paths["run"].resolve(), pid_data
+                        )
+                        is not None
+                    )
+                    if is_running:
                         status = "running"
-                    except OSError:
-                        if pid_status == "running" and status not in {
-                            "completed",
-                            "failed",
-                        }:
-                            if (exp_paths["run"] / "replay" / "_schema.json").exists():
-                                status = "completed"
-                            else:
-                                status = "failed"
-                        elif pid_status == "failed":
-                            status = "failed"
+                    elif pid_status == "running":
+                        status = "failed"
         except (ValueError, OSError, json.JSONDecodeError):
             logger.debug("Failed to read pid file for status check", exc_info=True)
 
@@ -280,26 +310,22 @@ async def list_experiments(
         pid_file = exp_dir / "run" / "pid.json"
         if pid_file.exists():
             try:
-                import json
-                import os
-
                 pid_content = pid_file.read_text().strip()
                 if pid_content:
                     pid_data = json.loads(pid_content)
                     pid = pid_data.get("pid")
                     pid_status = str(pid_data.get("status") or "").strip().lower()
-                    if pid_status == "completed":
-                        is_completed = True
-                        terminal_status = "completed"
-                    elif pid_status == "failed":
-                        terminal_status = "failed"
-                    if pid_status not in {"completed", "failed"} and pid:
-                        try:
-                            os.kill(pid, 0)
-                            is_running = True
-                        except OSError:
-                            if pid_status == "running" and not is_completed:
-                                pid = None
+                    if pid_status in _TERMINAL_STATUSES:
+                        terminal_status = pid_status
+                    elif pid:
+                        is_running = (
+                            _experiment_process(
+                                int(pid), pid_file.parent.resolve(), pid_data
+                            )
+                            is not None
+                        )
+                        if pid_status == "running" and not is_running:
+                            terminal_status = "failed"
             except (ValueError, OSError, json.JSONDecodeError):
                 logger.debug("Failed to read pid file for running check", exc_info=True)
 

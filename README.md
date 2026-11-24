@@ -179,7 +179,7 @@ from agentsociety.simulation import AgentSociety
 
 ## Requirements
 
-- Python 3.11 – 3.13
+- Python 3.11.5 – 3.13
 - An LLM API key (OpenAI, Anthropic, or any litellm-supported provider)
 
 ## Contributors

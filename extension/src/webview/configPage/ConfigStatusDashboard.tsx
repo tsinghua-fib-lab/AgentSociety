@@ -166,7 +166,7 @@ export function ConfigStatusDashboard({
           subtitle={
             backendStatus.isRunning
               ? backendStatus.url
-              : backendStarting ? t('configPage.starting') : t('configPage.overview.backendStoppedHint')
+              : backendStarting ? t('configPage.starting') : (backendStatus.error ?? t('configPage.overview.backendStoppedHint'))
           }
           accent={backendStatus.isRunning ? palette.successForeground : palette.descriptionForeground}
           icon={

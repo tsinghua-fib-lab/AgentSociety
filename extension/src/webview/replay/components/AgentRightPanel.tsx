@@ -3,6 +3,7 @@
  */
 
 import * as React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button, Empty, Flex, Modal, Pagination, Spin, Table, Typography } from 'antd';
 import { DatabaseOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useReplay } from '../store';
@@ -30,6 +31,7 @@ function getColumnLabel(dataset: ReplayDatasetInfo, key: string): string {
 }
 
 export const AgentRightPanel: React.FC = () => {
+  const { t } = useTranslation();
   const { state, actions, sendMessage } = useReplay();
   const {
     panelSchema,
@@ -88,9 +90,9 @@ export const AgentRightPanel: React.FC = () => {
   return (
     <Flex vertical className="right-inner" style={{ padding: '12px' }}>
       <Flex align="center" justify="space-between" style={{ marginBottom: '12px' }}>
-        <Title level={4} style={{ margin: 0 }}>Environment State</Title>
+        <Title level={4} style={{ margin: 0 }}>{t('replay.rows.environment')}</Title>
         {currentStepNumber !== undefined && (
-          <Text type="secondary">Step {currentStepNumber}</Text>
+          <Text type="secondary">{t('replay.left.step', { step: currentStepNumber })}</Text>
         )}
       </Flex>
 
@@ -98,7 +100,7 @@ export const AgentRightPanel: React.FC = () => {
         {envDatasets.length === 0 ? (
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description="No env_state datasets exported by this replay"
+            description={t('replay.rows.noEnvStates')}
           />
         ) : (
           envDatasets.map((dataset) => {
@@ -123,7 +125,7 @@ export const AgentRightPanel: React.FC = () => {
                     icon={<DatabaseOutlined />}
                     onClick={() => openRawDataset(dataset)}
                   >
-                    Raw
+                    {t('replay.rows.raw')}
                   </Button>
                 </Flex>
 
@@ -134,14 +136,14 @@ export const AgentRightPanel: React.FC = () => {
                 ) : null}
 
                 {!row ? (
-                  <div className="right-empty">No row at current step</div>
+                  <div className="right-empty">{t('replay.rows.noRow')}</div>
                 ) : (
                   <Flex vertical gap={8}>
                     <div style={{ fontSize: '11px', color: 'var(--as-muted-text)' }}>
-                      Step {String(row.step ?? '-')} · {row.t ? new Date(String(row.t)).toLocaleString() : 'No timestamp'}
+                      {t('replay.left.step', { step: String(row.step ?? '-') })} · {row.t ? new Date(String(row.t)).toLocaleString() : t('replay.rows.noTimestamp')}
                     </div>
                     {entries.length === 0 ? (
-                      <div className="right-empty">No environment fields in this row</div>
+                      <div className="right-empty">{t('replay.rows.noFields')}</div>
                     ) : (
                       entries.map(([key, value]) => (
                         <div key={key} className="right-info-card">
@@ -161,7 +163,7 @@ export const AgentRightPanel: React.FC = () => {
       </div>
 
       <Modal
-        title={selectedDataset ? `Raw Dataset · ${selectedDataset.title || selectedDataset.dataset_id}` : 'Raw Dataset'}
+        title={selectedDataset ? `${t('replay.rows.rawDataset')} · ${selectedDataset.title || selectedDataset.dataset_id}` : t('replay.rows.rawDataset')}
         open={isModalVisible}
         onCancel={() => setIsModalVisible(false)}
         footer={null}
@@ -185,7 +187,7 @@ export const AgentRightPanel: React.FC = () => {
                   icon={<ReloadOutlined />}
                   onClick={() => openRawDataset(selectedDataset, currentPage)}
                 >
-                  Refresh
+                  {t('replay.timeline.refresh')}
                 </Button>
                 <Pagination
                   simple
@@ -199,7 +201,7 @@ export const AgentRightPanel: React.FC = () => {
             </>
           ) : (
             <div style={{ textAlign: 'center', padding: 40 }}>
-              {modalLoading ? <Spin tip="Loading raw rows..." /> : 'Waiting for dataset rows...'}
+              {modalLoading ? <Spin tip={t('replay.rows.loading')} /> : t('replay.rows.waiting')}
             </div>
           )}
         </div>

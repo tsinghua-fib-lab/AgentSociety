@@ -9,8 +9,10 @@ from typing import Any
 
 from agentsociety2.logger import get_logger
 from agentsociety2.registry import (
+    get_agent_module_class,
     get_registered_agent_modules,
     get_registered_env_modules,
+    resolve_env_module_key,
 )
 
 logger = get_logger()
@@ -112,9 +114,9 @@ def validate_module_selection(
             "No agent classes selected. Please select at least one agent type."
         )
     else:
-        # Validate that selected agents exist
+        # Validate that selected agents exist (accept snake_case aliases)
         for agent_class in agent_classes:
-            if agent_class not in available_agents:
+            if get_agent_module_class(agent_class) is None:
                 errors.append(
                     f"Agent class '{agent_class}' not found in available agents: {list(available_agents.keys())}"
                 )
@@ -125,9 +127,9 @@ def validate_module_selection(
             "No environment modules selected. Please select at least one environment module."
         )
     else:
-        # Validate that selected env modules exist
+        # Validate that selected env modules exist (accept snake_case aliases)
         for env_module in env_modules:
-            if env_module not in available_envs:
+            if resolve_env_module_key(env_module) is None:
                 errors.append(
                     f"Environment module '{env_module}' not found in available modules: {list(available_envs.keys())}"
                 )
@@ -180,14 +182,23 @@ def get_module_selection_guidance(
         lines.append(f"- {env_type}{status}: {description[:300]}")
 
     lines.append("\n## Recommendation")
-    lines.append("Based on your research topic, consider:")
-    lines.append("1. Using `person_agent` for general social simulation scenarios")
-    lines.append("2. Using `simple_social_space` for basic social interactions")
-    lines.append("3. Using `global_information` for information dissemination studies")
-    lines.append("4. Using `economy_space` for economic behavior experiments")
     lines.append(
-        "5. Using specific game environments (prisoners_dilemma, public_goods, etc.) for game theory experiments"
+        "Use the exact registry names listed above (case-insensitive aliases such "
+        "as snake_case are accepted, but the canonical name is preferred)."
     )
+    if available_agents:
+        agent_name, agent_description = next(iter(available_agents.items()))
+        lines.append(
+            f"1. Start with `{agent_name}`: {agent_description[:200]}"
+        )
+    if available_envs:
+        env_name, env_description = next(iter(available_envs.items()))
+        lines.append(
+            f"2. Start with `{env_name}`: {env_description[:200]}"
+        )
+    if len(available_envs) > 1:
+        names = ", ".join(f"`{name}`" for name in list(available_envs)[1:5])
+        lines.append(f"3. Other environment modules to consider: {names}")
 
     return "\n".join(lines)
 

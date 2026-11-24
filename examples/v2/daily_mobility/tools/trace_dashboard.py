@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -133,8 +133,8 @@ def fmt_dur(ms: float) -> str:
 def fmt_ts(ms: float) -> str:
     """Convert unix-ms to human readable datetime."""
     try:
-        return datetime.fromtimestamp(ms / 1000, tz=timezone.utc).strftime("%H:%M:%S.") + f"{ms % 1000:.0f}"
-    except Exception:
+        return datetime.fromtimestamp(ms / 1000, tz=UTC).strftime("%H:%M:%S.") + f"{ms % 1000:.0f}"
+    except (OSError, OverflowError, ValueError):
         return f"{ms:.0f}"
 
 
@@ -246,7 +246,7 @@ def build_hover(sp: Span) -> str:
         lines.append(f"skills visible: {a.get('skill.visible_count', '—')}")
         out = a.get("output.summary")
         if isinstance(out, dict) and out.get("result"):
-            lines.append(f"<b>result:</b>")
+            lines.append("<b>result:</b>")
             lines.append(_wrap(_truncate(out["result"], 200)))
 
     elif name == "react.loop":
@@ -254,14 +254,14 @@ def build_hover(sp: Span) -> str:
         lines.append(f"end reason: <b>{a.get('react.end_reason', '—')}</b>")
         out = a.get("output.summary")
         if isinstance(out, dict) and out.get("final"):
-            lines.append(f"<b>final:</b>")
+            lines.append("<b>final:</b>")
             lines.append(_wrap(_truncate(out["final"], 200)))
 
     elif name == "react.turn":
         lines.append(f"turn #{a.get('react.turn', '?')}  action: <b>{a.get('react.action', '—')}</b>")
         thought = a.get("react.thought")
         if thought:
-            lines.append(f"<b>thought:</b>")
+            lines.append("<b>thought:</b>")
             lines.append(_wrap(_truncate(thought, 300)))
         tool_ok = a.get("react.tool_ok")
         if tool_ok is not None:
@@ -272,7 +272,7 @@ def build_hover(sp: Span) -> str:
         lines.append(f"result: {'✅ ok' if a.get('result.ok') else '❌ fail' if a.get('result.ok') is False else '—'}")
         obs = _extract_observation(a.get("output.summary"))
         if obs:
-            lines.append(f"<b>observation:</b>")
+            lines.append("<b>observation:</b>")
             lines.append(_wrap(_truncate(obs, 300)))
 
     elif name == "llm.completion":
@@ -357,19 +357,19 @@ def build_flame(spans: list[Span]) -> go.Figure:
     fig.update_layout(
         barmode="overlay",
         height=max(280, 36 * (max_depth + 1) + 60),
-        margin=dict(l=8, r=8, t=40, b=32),
+        margin={"l": 8, "r": 8, "t": 40, "b": 32},
         plot_bgcolor="#1a1d27",
         paper_bgcolor="#1a1d27",
         font_color="#e4e6f0",
-        xaxis=dict(title_text="Time (ms)", gridcolor="#2e3347", zeroline=False),
-        yaxis=dict(visible=False),
-        hoverlabel=dict(
-            bgcolor="#242834",
-            bordercolor="#3e4460",
-            font_color="#e4e6f0",
-            font_size=13,
-            font_family="monospace",
-        ),
+        xaxis={"title_text": "Time (ms)", "gridcolor": "#2e3347", "zeroline": False},
+        yaxis={"visible": False},
+        hoverlabel={
+            "bgcolor": "#242834",
+            "bordercolor": "#3e4460",
+            "font_color": "#e4e6f0",
+            "font_size": 13,
+            "font_family": "monospace",
+        },
     )
 
     for i, (name, color) in enumerate(seen.items()):
@@ -378,7 +378,7 @@ def build_flame(spans: list[Span]) -> go.Figure:
             x=0.01 + i * 0.13, y=1.07,
             text=f"■ {name}",
             showarrow=False,
-            font=dict(size=11, color=color),
+            font={"size": 11, "color": color},
         )
 
     return fig
@@ -498,11 +498,10 @@ def main() -> None:
     # -- Sidebar --
     with st.sidebar:
         st.header("📁 Data")
-        env_dir = os.environ.get("TRACE_RUN_DIR", "")
-        default = env_dir if env_dir and Path(env_dir).is_dir() else "examples/v2/daily_mobility/tmp/run"
-        run_dir_str = st.text_input("Run directory", value=default)
-        run_dir = Path(run_dir_str)
-
+        run_dir = Path(
+            os.environ.get("TRACE_RUN_DIR") or Path(__file__).resolve().parents[1] / "tmp/run"
+        ).expanduser().resolve()
+        st.caption(f"Run directory: {run_dir}")
         if not run_dir.is_dir():
             st.error(f"Not found: {run_dir}")
             st.stop()
@@ -572,7 +571,7 @@ def main() -> None:
         selected_sid = st.selectbox(
             "🔍 Select a span to inspect",
             options=span_options,
-            format_func=lambda sid: span_labels.get(sid, sid),
+            format_func=span_labels.__getitem__,
             key=f"sel_{trace_id}",
         )
 

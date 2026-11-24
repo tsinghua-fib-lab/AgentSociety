@@ -17,12 +17,13 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { spawn, ChildProcess, execSync } from 'child_process';
+import { spawn, type ChildProcess, execSync } from 'child_process';
+import { createInterface } from 'node:readline';
 import { localize } from '../i18n';
 import { EnvManager } from '../envManager';
 import { findAvailablePort, isPortAvailable } from '../portUtils';
-import { getBackendAccessUrl, getBackendBindHost, getBackendPort } from '../runtimeConfig';
-import { fetchCompat } from '../shared/fetchCompat';
+import { getBackendBindHost, getBackendPort } from '../runtimeConfig';
+import { BackendAccessError, BackendService, type BackendStatus } from './backendService';
 import {
   appendSharedOutputLine,
   getSharedOutputChannel,
@@ -37,14 +38,7 @@ import {
   type PythonEnvironmentCandidate,
 } from './agentsocietyPythonResolver';
 
-const fetch = fetchCompat as unknown as typeof globalThis.fetch;
-
-export interface BackendStatus {
-  isRunning: boolean;
-  pid?: number;
-  port?: number;
-  error?: string;
-}
+export type { BackendStatus } from './backendService';
 
 export interface BackendConfig {
   pythonPath: string;
@@ -65,13 +59,12 @@ export class BackendManager {
   private context: vscode.ExtensionContext;
   private healthCheckInterval: NodeJS.Timeout | null = null;
   private isStarting = false;
-  private allocatedPort: number | null = null; // Track dynamically allocated port
   private currentStatus: 'running' | 'stopped' | 'starting' | 'error' = 'stopped';
   private externalBackend = false;
   private runningSinceMs: number | null = null;
   private operationSilent = false;
 
-  constructor(context: vscode.ExtensionContext) {
+  constructor(context: vscode.ExtensionContext, private readonly backend: BackendService) {
     this.context = context;
     this.outputChannel = getSharedOutputChannel(OUTPUT_CHANNEL_BACKEND);
     this.statusBarItem = vscode.window.createStatusBarItem(
@@ -93,7 +86,7 @@ export class BackendManager {
         // 如果服务正在运行，需要重启以应用新的工作目录
         if (this.process) {
           this.log('Workspace changed, restarting backend...');
-          this.restart();
+          void this.restart();
         }
       })
     );
@@ -119,83 +112,42 @@ export class BackendManager {
    * 如果.env中记录的PID对应的进程不存在，则清理记录
    */
   private async checkAndCleanupOrphanedProcess(): Promise<void> {
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    if (!workspaceFolder) {
+    if (this.process || this.isStarting) {
       return;
     }
-
-    const envPath = path.join(workspaceFolder.uri.fsPath, '.env');
-    if (!fs.existsSync(envPath)) {
+    const envManager = new EnvManager();
+    const workspacePath = envManager.getWorkspacePath();
+    const pid = envManager.readEnv().backendPid;
+    if (!pid || !Number.isInteger(pid) || pid < 1) {
       return;
     }
-
-    const content = fs.readFileSync(envPath, 'utf-8');
-    const lines = content.split('\n');
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (trimmed.startsWith('BACKEND_PID=')) {
-        const match = trimmed.match(/^BACKEND_PID=(\d+)/);
-        if (match) {
-          const pid = parseInt(match[1], 10);
-          try {
-            // 检查进程是否存在
-            process.kill(pid, 0);
-            // 进程存在，尝试进行健康检查
-            const envManager = new EnvManager();
-            const envConfig = envManager.readEnv();
-            const port = getBackendPort(envConfig);
-            const backendUrl = getBackendAccessUrl(envConfig);
-
-            try {
-              const response = await fetch(`${backendUrl}/health`, {
-                method: 'GET',
-                signal: AbortSignal.timeout(3000),
-              });
-              if (response.ok) {
-                this.log(`Existing backend process found (PID: ${pid}, Port: ${port})`);
-                this.allocatedPort = port;
-                this.externalBackend = true;
-                this.currentStatus = 'running';
-                this.updateStatusBar('running', port);
-                this.startHealthCheck();
-              } else {
-                this.log(`Backend process (PID: ${pid}) exists but health check returned non-OK, cleaning up...`);
-                this.cleanupBackendEnv();
-              }
-            } catch {
-              // 健康检查失败可能是后端正在启动中，等待 2 秒重试一次
-              this.log(`Backend health check failed (PID: ${pid}), retrying in 2s...`);
-              await new Promise(resolve => setTimeout(resolve, 2000));
-              try {
-                const retryResponse = await fetch(`${backendUrl}/health`, {
-                  method: 'GET',
-                  signal: AbortSignal.timeout(3000),
-                });
-                if (retryResponse.ok) {
-                  this.log(`Backend process recovered (PID: ${pid}, Port: ${port})`);
-                  this.allocatedPort = port;
-                  this.externalBackend = true;
-                  this.currentStatus = 'running';
-                  this.updateStatusBar('running', port);
-                  this.startHealthCheck();
-                } else {
-                  this.log(`Backend process (PID: ${pid}) still unhealthy after retry, cleaning up...`);
-                  this.cleanupBackendEnv();
-                }
-              } catch {
-                this.log(`Cannot connect to backend (PID: ${pid}) after retry, cleaning up...`);
-                this.cleanupBackendEnv();
-              }
-            }
-          } catch {
-            // 进程不存在，清理记录
-            this.log(`Orphaned backend PID ${pid} found, cleaning up...`);
-            this.cleanupBackendEnv();
-          }
-        }
-        break;
+    try {
+      process.kill(pid, 0);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ESRCH') {
+        this.log(`Orphaned backend PID ${pid} found, cleaning up...`);
+        this.cleanupBackendEnv(workspacePath, pid);
       }
+      return;
+    }
+
+    let status = await this.backend.getStatus();
+    if (!status.isRunning && !status.error) {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      status = await this.backend.getStatus();
+    }
+    if (this.process || this.isStarting || envManager.getWorkspacePath() !== workspacePath) {
+      return;
+    }
+    if (status.isRunning) {
+      this.log(`Existing backend process found (PID: ${pid}, Port: ${status.port})`);
+      this.externalBackend = true;
+      this.updateStatusBar('running', status.port);
+      this.startHealthCheck();
+    } else if (status.error) {
+      // An authorization failure is not evidence that the process has exited.
+      this.log(status.error, 'warn');
+      this.updateStatusBar('error', status.port, status.error);
     }
   }
 
@@ -437,10 +389,9 @@ export class BackendManager {
    * @param status 状态类型
    * @param port 可选的端口号，运行状态时显示
    */
-  private updateStatusBar(status: 'running' | 'stopped' | 'starting' | 'error', port?: number): void {
+  private updateStatusBar(status: 'running' | 'stopped' | 'starting' | 'error', port?: number, error?: string): void {
     this.currentStatus = status;
-    const effectivePort = port ?? this.allocatedPort;
-    const backendUrl = effectivePort ? `http://localhost:${effectivePort}` : '';
+    const effectivePort = port;
 
     switch (status) {
       case 'running': {
@@ -457,7 +408,10 @@ export class BackendManager {
         if (uptime) {
           runningTooltip.appendMarkdown(`${localize('backendManager.statusBar.uptime', uptime)}\n`);
         }
-        runningTooltip.appendMarkdown(`\`${backendUrl}\``);
+        const backendUrl = this.getBackendUrl();
+        if (backendUrl) {
+          runningTooltip.appendMarkdown(`\`${backendUrl}\``);
+        }
         this.statusBarItem.tooltip = runningTooltip;
         this.statusBarItem.backgroundColor = undefined;
         this.statusBarItem.show();
@@ -473,7 +427,7 @@ export class BackendManager {
       case 'error':
         this.runningSinceMs = null;
         this.statusBarItem.text = '$(error)';
-        this.statusBarItem.tooltip = localize('backendManager.statusBar.errorTooltip');
+        this.statusBarItem.tooltip = error ?? localize('backendManager.statusBar.errorTooltip');
         this.statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.errorBackground');
         this.statusBarItem.show();
         break;
@@ -486,7 +440,7 @@ export class BackendManager {
         break;
     }
 
-    if (status === 'running' || status === 'stopped') {
+    if (status === 'running' || status === 'stopped' || error) {
       void import('../configPageViewProvider').then(({ ConfigPageViewProvider }) => {
         ConfigPageViewProvider.refreshBackendStatusIfOpen();
       });
@@ -494,65 +448,45 @@ export class BackendManager {
   }
 
   /**
-   * 检查后端服务是否正在运行
-   */
-  async isRunning(): Promise<boolean> {
-    if (!this.process || this.process.killed) {
-      return (await this.getStatus()).isRunning;
-    }
-
-    // 检查进程是否还在运行
-    try {
-      if (this.process.pid) {
-        process.kill(this.process.pid, 0); // 发送信号 0 检查进程是否存在
-      }
-    } catch {
-      return false;
-    }
-
-    // 进行健康检查
-    return await this.healthCheck();
-  }
-
-  /**
-   * 健康检查
-   */
-  async healthCheck(): Promise<boolean> {
-    const envManager = new EnvManager();
-    const envConfig = envManager.readEnv();
-    const port = this.allocatedPort ?? getBackendPort(envConfig);
-    const backendUrl = getBackendAccessUrl({ ...envConfig, backendPort: port });
-
-    try {
-      const response = await fetch(`${backendUrl}/health`, {
-        method: 'GET',
-        signal: AbortSignal.timeout(3000),
-      });
-      return response.ok;
-    } catch {
-      return false;
-    }
-  }
-
-  /**
    * 启动后端服务
    */
   async start(options?: BackendOperationOptions): Promise<boolean> {
+    if (this.isStarting) {
+      this.log('Backend is already starting...', 'warn');
+      return false;
+    }
+    this.isStarting = true;
     this.operationSilent = options?.silent ?? false;
+    let startedProcess: ChildProcess | undefined;
+    let backendToken = '';
+    const redactToken = (message: string): string => backendToken
+      ? message.split(backendToken).join('[REDACTED]')
+      : message;
+    const workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     try {
-      if (this.isStarting) {
-        this.log('Backend is already starting...', 'warn');
-        return false;
+      const backendEnv = this.backend.readConfiguredEnv();
+      const status = await this.backend.getStartupStatus(backendEnv);
+      if (workspacePath !== vscode.workspace.workspaceFolders?.[0]?.uri.fsPath) {
+        throw new BackendAccessError(localize('backendManager.workspaceChanged'));
+      }
+      this.externalBackend = !this.process && status.isRunning;
+      if (status.isRunning) {
+        this.log('Backend is already running', 'warn');
+        this.updateStatusBar('running', status.port);
+        this.startHealthCheck();
+        return true;
+      }
+      if (status.error) {
+        throw new BackendAccessError(status.error);
+      }
+      if (this.process) {
+        throw new Error(localize('backendManager.processNotReady'));
+      }
+      if (backendEnv.backendUrl?.trim() || (backendEnv.backendToken?.trim() && backendEnv.backendTokenOrigin !== undefined)) {
+        throw new BackendAccessError(localize('backendRequest.externalUnavailable'));
       }
 
       this.reloadConfig('before start');
-
-      if (await this.isRunning()) {
-        this.log('Backend is already running', 'warn');
-        return true;
-      }
-
-      this.isStarting = true;
       this.updateStatusBar('starting');
 
       // 验证 Python 路径
@@ -570,7 +504,7 @@ export class BackendManager {
       }
 
       // 验证工作目录
-      if (!fs.existsSync(this.config.workingDirectory)) {
+      if (!workspacePath || !fs.existsSync(workspacePath)) {
         const errorMessage = localize('backendManager.workingDirectoryMissing', this.config.workingDirectory);
         this.log(errorMessage, 'error');
         this.isStarting = false;
@@ -591,61 +525,55 @@ export class BackendManager {
 
       // 分配动态端口
       this.log('Allocating available port...');
-      const port = await this.allocatePort();
-      this.allocatedPort = port;
+      const port = await this.allocatePort(getBackendPort(backendEnv));
+      if (workspacePath !== vscode.workspace.workspaceFolders?.[0]?.uri.fsPath) {
+        throw new BackendAccessError(localize('backendManager.workspaceChanged'));
+      }
       this.log(`Allocated port: ${port}`);
 
-      // 将端口写入.env文件
-      await this.writePortToEnv(port);
-
-      this.log('Starting backend service...');
-      this.log(`Python path: ${this.config.pythonPath}`);
-      this.log(`Working directory: ${this.config.workingDirectory}`);
-
-      // 合并环境变量，使用动态分配的端口
+      // Preserve inherited values, but don't add an empty override for Python's dotenv.
+      backendToken = (process.env.BACKEND_TOKEN ?? backendEnv.backendToken)?.trim() ?? '';
       const env = {
         ...process.env,
         ...this.config.env,
+        BACKEND_HOST: getBackendBindHost(backendEnv),
         BACKEND_PORT: String(port),
+        ...(backendToken ? { BACKEND_TOKEN: backendToken } : {}),
         LITELLM_LOCAL_MODEL_COST_MAP: 'True',
       };
+      const pinBackend = this.backend.prepareManagedBackend(env, workspacePath);
+      this.writePortToEnv(port);
 
-      // 启动后端进程
+      this.log('Starting backend service...');
+      this.log(`Python path: ${this.config.pythonPath}`);
+      this.log(`Working directory: ${workspacePath}`);
+
       const args = ['-m', 'agentsociety2.backend.run'];
-      this.process = spawn(this.config.pythonPath, args, {
-        cwd: this.config.workingDirectory,
+      this.process = startedProcess = spawn(this.config.pythonPath, args, {
+        cwd: workspacePath,
         env,
         stdio: ['ignore', 'pipe', 'pipe'],
       });
+      pinBackend();
 
-      // 将进程PID写入.env文件用于生命周期管理
-      if (this.process.pid) {
-        await this.writePidToEnv(this.process.pid);
+      // Redact complete lines so a credential split across stream chunks is not logged.
+      if (startedProcess.stdout) {
+        createInterface({ input: startedProcess.stdout }).on('line', line => this.log(`[STDOUT] ${redactToken(line)}`));
+      }
+      if (startedProcess.stderr) {
+        createInterface({ input: startedProcess.stderr }).on('line', line => this.log(`[STDERR] ${redactToken(line)}`, 'warn'));
       }
 
-      // 处理 stdout
-      this.process.stdout?.on('data', (data: Buffer) => {
-        const message = data.toString();
-        this.outputChannel.append(message);
-        this.log(`[STDOUT] ${message.trim()}`, 'info');
-      });
-
-      // 处理 stderr
-      this.process.stderr?.on('data', (data: Buffer) => {
-        const message = data.toString();
-        this.outputChannel.append(message);
-        this.log(`[STDERR] ${message.trim()}`, 'warn');
-      });
-
       // 处理进程退出
-      this.process.on('exit', (code, signal) => {
+      startedProcess.on('exit', (code, signal) => {
+        this.cleanupBackendEnv(workspacePath, startedProcess?.pid);
+        if (this.process !== startedProcess) {
+          return;
+        }
         this.log(`Backend process exited with code ${code}, signal ${signal}`);
+        this.stopHealthCheck();
         this.process = null;
-        this.isStarting = false;
-        this.allocatedPort = null;
-
-        // 清理.env文件中的PID和端口信息
-        this.cleanupBackendEnv();
+        this.backend.clearManagedBackend();
 
         this.updateStatusBar('stopped');
 
@@ -656,18 +584,19 @@ export class BackendManager {
       });
 
       // 处理进程错误
-      this.process.on('error', async (error) => {
-        this.log(`Failed to start backend: ${error.message}`, 'error');
+      startedProcess.on('error', async (error) => {
+        this.cleanupBackendEnv(workspacePath, startedProcess?.pid);
+        if (this.process !== startedProcess) {
+          return;
+        }
+        this.log(`Failed to start backend: ${redactToken(error.message)}`, 'error');
+        this.stopHealthCheck();
         this.process = null;
-        this.isStarting = false;
-        this.allocatedPort = null;
-
-        // 清理.env文件中的PID和端口信息
-        this.cleanupBackendEnv();
+        this.backend.clearManagedBackend();
 
         this.updateStatusBar('error');
 
-        const errorMessage = error.message || 'Unknown error';
+        const errorMessage = redactToken(error.message) || 'Unknown error';
         const isConfigError =
           errorMessage.includes('ENOENT') ||
           errorMessage.includes('spawn') ||
@@ -681,6 +610,10 @@ export class BackendManager {
         }
       });
 
+      if (startedProcess.pid) {
+        this.writePidToEnv(startedProcess.pid, workspacePath);
+      }
+
       // 等待服务启动（最多等待30秒）
       const maxWaitTime = 30000;
       const checkInterval = 1000;
@@ -690,48 +623,53 @@ export class BackendManager {
         await new Promise((resolve) => setTimeout(resolve, checkInterval));
         elapsed += checkInterval;
 
-        if (await this.healthCheck()) {
+        if (workspacePath !== vscode.workspace.workspaceFolders?.[0]?.uri.fsPath) {
+          throw new BackendAccessError(localize('backendManager.workspaceChanged'));
+        }
+        if (this.process !== startedProcess || startedProcess.killed) {
+          throw new Error('Backend process exited unexpectedly');
+        }
+        const status = await this.backend.getManagedStatus();
+        if (workspacePath !== vscode.workspace.workspaceFolders?.[0]?.uri.fsPath) {
+          throw new BackendAccessError(localize('backendManager.workspaceChanged'));
+        }
+        if (status.error) {
+          throw new BackendAccessError(status.error);
+        }
+        if (status.isRunning && this.process === startedProcess && !startedProcess.killed) {
           this.log('Backend service started successfully');
-          this.isStarting = false;
-          this.updateStatusBar('running', this.allocatedPort ?? undefined);
+          this.updateStatusBar('running', status.port);
           this.startHealthCheck();
           return true;
-        }
-
-        if (!this.process || this.process.killed) {
-          throw new Error('Backend process exited unexpectedly');
         }
       }
 
       throw new Error('Backend service failed to start within 30 seconds');
-    } catch (error: any) {
-      this.log(`Failed to start backend: ${error.message}`, 'error');
-      this.isStarting = false;
-      this.allocatedPort = null;
-      this.updateStatusBar('error');
-
-      this.cleanupBackendEnv();
-
-      const errorMessage = error.message || 'Unknown error';
-      const isConfigError =
-        errorMessage.includes('Python path') ||
-        errorMessage.includes('LLM API key') ||
-        errorMessage.includes('Working directory') ||
-        errorMessage.includes('.env');
-
-      if (isConfigError) {
-        await this.showConfigError(localize('backendManager.startFailed', errorMessage));
-      } else {
-        this.outputChannel.show(true);
-        this.notifyError(localize('backendManager.startFailed', errorMessage));
-      }
-
-      if (this.process) {
+    } catch (error) {
+      if (startedProcess && this.process === startedProcess) {
         await this.stop();
+      } else if (!this.process) {
+        this.backend.clearManagedBackend();
       }
 
+      if (error instanceof BackendAccessError) {
+        this.log(error.message, 'error');
+        this.updateStatusBar('error', undefined, error.message);
+        if (this.operationSilent) {
+          throw error;
+        }
+        await this.showConfigError(error.message);
+        return false;
+      }
+
+      const errorMessage = error instanceof Error ? redactToken(error.message) : 'Unknown error';
+      this.log(`Failed to start backend: ${errorMessage}`, 'error');
+      this.updateStatusBar('error');
+      this.outputChannel.show(true);
+      this.notifyError(localize('backendManager.startFailed', errorMessage));
       return false;
     } finally {
+      this.isStarting = false;
       this.operationSilent = false;
     }
   }
@@ -797,11 +735,8 @@ export class BackendManager {
     }
 
     this.process = null;
-    this.allocatedPort = null;
+    this.backend.clearManagedBackend();
     this.externalBackend = false;
-
-    // 清理.env文件中的后端相关字段
-    this.cleanupBackendEnv();
 
     this.log('Backend service stopped');
     return true;
@@ -827,21 +762,28 @@ export class BackendManager {
   private startHealthCheck(): void {
     this.stopHealthCheck(); // 确保没有重复的检查
 
-    this.healthCheckInterval = setInterval(async () => {
-      const isHealthy = await this.healthCheck();
-      if (!isHealthy) {
-        if (this.process && !this.process.killed) {
-          this.log('Health check failed, but process is still running', 'warn');
-        } else if (this.externalBackend) {
-          this.externalBackend = false;
-          this.allocatedPort = null;
-          this.updateStatusBar('stopped');
-          this.stopHealthCheck();
+    const interval = setInterval(async () => {
+      const status = await this.backend.getStatus();
+      if (this.healthCheckInterval !== interval) {
+        return;
+      }
+      if (status.error) {
+        if (this.currentStatus !== 'error') {
+          this.log(status.error, 'warn');
+          this.updateStatusBar('error', status.port, status.error);
         }
-      } else if (this.currentStatus === 'running') {
-        this.updateStatusBar('running', this.allocatedPort ?? undefined);
+      } else if (status.isRunning) {
+        this.externalBackend = !this.process;
+        this.updateStatusBar('running', status.port);
+      } else if (this.process && !this.process.killed) {
+        this.log('Health check failed, but process is still running', 'warn');
+      } else {
+        this.externalBackend = false;
+        this.updateStatusBar('stopped');
+        this.stopHealthCheck();
       }
     }, 10000);
+    this.healthCheckInterval = interval;
   }
 
   /**
@@ -858,11 +800,7 @@ export class BackendManager {
    * 分配可用端口
    * 首先检查.env文件中配置的端口是否可用，如果不可用则随机分配新端口
    */
-  private async allocatePort(): Promise<number> {
-    const envManager = new EnvManager();
-    const envConfig = envManager.readEnv();
-    const configuredPort = getBackendPort(envConfig);
-
+  private async allocatePort(configuredPort: number): Promise<number> {
     // 首先检查配置的端口是否可用
     if (await isPortAvailable(configuredPort)) {
       this.log(`Configured port ${configuredPort} is available`);
@@ -879,7 +817,7 @@ export class BackendManager {
   /**
    * 将分配的端口写入.env文件
    */
-  private async writePortToEnv(port: number): Promise<void> {
+  private writePortToEnv(port: number): void {
     const envManager = new EnvManager();
     envManager.writeEnv({ backendPort: port });
     this.log(`Wrote port ${port} to .env file`);
@@ -888,13 +826,8 @@ export class BackendManager {
   /**
    * 将后端进程PID写入.env文件用于生命周期追踪
    */
-  private async writePidToEnv(pid: number): Promise<void> {
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    if (!workspaceFolder) {
-      return;
-    }
-
-    const envPath = path.join(workspaceFolder.uri.fsPath, '.env');
+  private writePidToEnv(pid: number, workspacePath: string): void {
+    const envPath = path.join(workspacePath, '.env');
 
     // 读取现有.env内容，移除末尾空行
     let content = '';
@@ -925,16 +858,13 @@ export class BackendManager {
     this.log(`Wrote PID ${pid} to .env file`);
   }
 
-  /**
-   * 清理.env文件中的后端相关字段（PID和端口）
-   */
-  private cleanupBackendEnv(): void {
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    if (!workspaceFolder) {
+  /** Clear only the PID we were tracking, in the workspace that owns it. */
+  private cleanupBackendEnv(workspacePath: string | null, pid?: number): void {
+    if (!workspacePath || !pid) {
       return;
     }
 
-    const envPath = path.join(workspaceFolder.uri.fsPath, '.env');
+    const envPath = path.join(workspacePath, '.env');
     if (!fs.existsSync(envPath)) {
       return;
     }
@@ -947,12 +877,15 @@ export class BackendManager {
     for (const line of lines) {
       const trimmed = line.trim();
       // 移除BACKEND_PID行
-      if (trimmed.startsWith('BACKEND_PID=')) {
+      if (trimmed === `BACKEND_PID=${pid}`) {
         continue;
       }
       newLines.push(line);
     }
 
+    if (lines.length === newLines.length) {
+      return;
+    }
     // 只在有内容时写入，并添加末尾换行符
     if (newLines.length > 0) {
       fs.writeFileSync(envPath, newLines.join('\n') + '\n', 'utf-8');
@@ -1006,65 +939,27 @@ export class BackendManager {
    * 获取后端状态
    */
   async getStatus(): Promise<BackendStatus> {
-    const port = this.allocatedPort ?? await this.getPortFromEnv();
-
-    if (this.process && !this.process.killed) {
-      try {
-        if (this.process.pid) {
-          process.kill(this.process.pid, 0);
-        }
-        if (await this.healthCheck()) {
-          this.currentStatus = 'running';
-          return {
-            isRunning: true,
-            pid: this.process.pid,
-            port: this.allocatedPort ?? port,
-          };
-        }
-      } catch {
-        // fall through to external probe
-      }
-    }
-
-    if (await this.healthCheck()) {
-      if (!this.process) {
-        this.externalBackend = true;
-      }
+    const status = await this.backend.getStatus();
+    this.externalBackend = !this.process && status.isRunning;
+    if (status.isRunning && !this.isStarting) {
       this.currentStatus = 'running';
-      // Status reads must not notify the config page: its refresh reads this
-      // method again. Lifecycle operations update the status bar separately.
-      return {
-        isRunning: true,
-        pid: this.process?.pid,
-        port: this.allocatedPort ?? port,
-      };
     }
-
-    return {
-      isRunning: false,
-      pid: this.process?.pid,
-      port,
-    };
-  }
-
-  /**
-   * 从.env文件读取端口
-   */
-  private async getPortFromEnv(): Promise<number> {
-    const envManager = new EnvManager();
-    const envConfig = envManager.readEnv();
-    return getBackendPort(envConfig);
+    // Status reads must not notify the config page: its refresh reads this method again.
+    return { ...status, pid: this.process?.pid };
   }
 
   /**
    * 获取后端 URL
    */
   getBackendUrl(): string | null {
-    const port = this.allocatedPort;
-    if (!port) {
+    if (this.currentStatus !== 'running') {
       return null;
     }
-    return `http://localhost:${port}`;
+    try {
+      return this.backend.getBaseUrl();
+    } catch {
+      return null;
+    }
   }
 
   /**
@@ -1092,26 +987,38 @@ export class BackendManager {
    * 在浏览器中打开后端 URL
    */
   async openInBrowser(): Promise<boolean> {
-    const url = this.getBackendUrl();
-    if (!url) {
-      vscode.window.showWarningMessage(localize('extension.backend.statusOff'));
-      return false;
-    }
-    await vscode.env.openExternal(vscode.Uri.parse(url));
-    return true;
+    return this.openBackendPage('');
   }
 
   /**
    * 在浏览器中打开 API 文档
    */
   async openApiDocs(): Promise<boolean> {
-    const url = this.getBackendUrl();
-    if (!url) {
-      vscode.window.showWarningMessage(localize('extension.backend.statusOff'));
+    return this.openBackendPage('/docs');
+  }
+
+  private async openBackendPage(pathname: '' | '/docs'): Promise<boolean> {
+    let url: string | undefined;
+    try {
+      url = await this.backend.getBrowserUrl();
+    } catch (error) {
+      if (!(error instanceof BackendAccessError)) {
+        throw error;
+      }
+      void vscode.window.showWarningMessage(error.message);
       return false;
     }
-    await vscode.env.openExternal(vscode.Uri.parse(`${url}/docs`));
-    return true;
+    if (!url) {
+      void vscode.window.showWarningMessage(localize('extension.backend.statusOff'));
+      return false;
+    }
+    const target = vscode.Uri.parse(`${url}${pathname}`);
+    if (vscode.env.uiKind === vscode.UIKind.Web) {
+      // Coder 将本地端口映射到代理根路径，需在映射后拼回 API 路径。
+      const proxy = await vscode.env.asExternalUri(target.with({ path: '/' }));
+      return vscode.env.openExternal(proxy.with({ path: proxy.path.replace(/\/$/, '') + (target.path || '/') }));
+    }
+    return vscode.env.openExternal(target);
   }
 
   /**

@@ -69,7 +69,7 @@ const DEFAULT_VALUES: ConfigValues = {
   llmApiKey: '',
   backendHost: '127.0.0.1',
   backendPort: 8001,
-  pythonPath: '/usr/local/bin/python3',
+  pythonPath: '',
   backendAutoStart: false,
   llmApiBase: 'https://api.openai.com/v1',
   llmModel: 'gpt-5.5',
@@ -1921,7 +1921,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
                   showUsageChart={showUsageChart}
                   usageLoading={gatewayUsageLoading}
                   onOpenSimulation={() => openConfigEditor('simulation')}
-                  onOpenBackendUrl={(url) => vscode.postMessage({ command: 'openUrl', url })}
+                  onOpenBackendUrl={() => vscode.postMessage({ command: 'openBackendInBrowser' })}
                   onStartBackend={handleStartBackend}
                   backendStarting={startingBackend}
                   onOpenCli={() => openConfigEditor('cli')}
@@ -1939,7 +1939,7 @@ export const ConfigPageApp: React.FC<ConfigPageAppProps> = ({ vscode }) => {
                   gatewayStatus={aiCliGatewayStatus}
                   gatewayUsageRecords={gatewayUsageRecords}
                   onOpenSimulation={() => jumpToPage('simulation')}
-                  onOpenBackendUrl={(url) => vscode.postMessage({ command: 'openUrl', url })}
+                  onOpenBackendUrl={() => vscode.postMessage({ command: 'openBackendInBrowser' })}
                   onStartBackend={handleStartBackend}
                   backendStarting={startingBackend}
                   onOpenCli={() => jumpToPage('cli')}

@@ -12,11 +12,11 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
-parts/
+/lib/
+/lib64/
+/parts/
 sdist/
-var/
+/var/
 wheels/
 *.egg-info/
 .installed.cfg
@@ -37,11 +37,10 @@ venv_arm/
 # =========================================
 # IDE and Editors
 # =========================================
-.vscode/
-!.vscode/settings.json
-!extension/skills/**/manifest.json
-!.vscode/launch.json
-!.vscode/tasks.json
+**/.vscode/*
+!**/.vscode/settings.json
+!**/.vscode/launch.json
+!**/.vscode/tasks.json
 .idea/
 *.swp
 *.swo
@@ -74,6 +73,7 @@ wheelhouse/
 # Logs and Databases
 # =========================================
 logs/
+logs_env/
 log/
 *.log
 
@@ -89,7 +89,6 @@ docs_v1/_build/
 # =========================================
 # Jupyter Notebooks
 # =========================================
-*.ipynb
 *.ipynb_checkpoints/
 .ipynb_checkpoints/
 
@@ -108,6 +107,8 @@ Thumbs.db
 # Cache
 # =========================================
 cache/
+.mypy_cache/
+.ruff_cache/
 *.pkl
 *.pickle
 
@@ -127,18 +128,16 @@ htmlcov/
 # Data directories
 agentsociety_data/
 .agentsociety/
-!.agentsociety/progress.json
-!.agentsociety/decisions.jsonl
 .agentsociety-benchmark/
 mobibench/
 benchmark_results/
 
 # Demos and experiments
 scientist_demo/
-groundtruth/
-workspace/
+/groundtruth/
+/workspace/
 packages/agentsociety2/.chainlit/
-paper/
+/paper/
 packages/agentsociety2/agentsociety2/skills/paper/**/__pycache__/
 
 # User projects and experiments
@@ -148,7 +147,7 @@ papers/
 presentation/
 synthesis/
 user_data/
-datasets/
+/datasets/
 /custom/
 
 # Game results
@@ -160,21 +159,15 @@ agentsociety-sim
 agentsociety-ui
 
 # Temporary files
-*.template
 ignore/
-TODO
-NEXT_STEPS.md
-PUBLISH_CHECKLIST.md
 
-# Test data files (local / generated)
-profiles.json
-*.json
-!extension/package-lock.json
-!extension/package.nls.json
-!extension/package.nls.*.json
-!extension/skills/*/manifest.json
-!frontend/package-lock.json
-*.jsonl
+# Local input overrides and per-run reports
+/profiles.json
+/packages/agentsociety2/experiments/profiles.json
+/examples/v2/daily_mobility/tmp/
+/packages/agentsociety2/examples/VALIDATION.md
+/.tmp_docs/
+/packages/agentsociety2/argv.json
 
 # Custom
 paper_sources/
@@ -183,38 +176,8 @@ paper_sources/
 # Sphinx generated .pot templates
 packages/agentsociety2/docs/locale/gettext/
 
-# Temporary examples
-examples/
-
 # Local example run directories under the AS2 package
 packages/agentsociety2/run_*/
-
-# =========================================
-# Pattern Exceptions
-# =========================================
-
-# Allow specific test files
-!packages/agentsociety2/tests/
-!packages/agentsociety2/tests/**
-!packages/agentsociety2/agentsociety2/contrib/env/*_test.py
-!examples/v2/daily_mobility/data/
-!examples/v2/daily_mobility/data/groundtruth/
-!examples/v2/daily_mobility/data/groundtruth/**
-!examples/v2/daily_mobility/data/groundtruth/*.json
-
-# Allow specific text files
-!requirements.txt
-!**/requirements*.txt
-!CHANGELOG.md
-
-# Allow __init__.py
-!__init__.py
-
-# Allow JSON configs (but not generated JSON data)
-# Note: *.json and *.jsonl are ignored by default for generated data
-!.github/rulesets/*.json
-!scripts/ci/codeql-bundle.json
-!packages/agentsociety2/agentsociety2/agent/skills/**/references/*.json
 
 # Local experiment data, reports, and one-off analysis tools
 /optimization/

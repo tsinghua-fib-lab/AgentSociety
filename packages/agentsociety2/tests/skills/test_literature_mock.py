@@ -256,8 +256,8 @@ class TestSearchLiteratureAndSave:
             assert len(result["saved_files"]) == 1
 
     @pytest.mark.asyncio
-    async def test_search_and_save_no_results(self, tmp_path: Path):
-        """Test search with no results."""
+    async def test_search_and_save_reports_connection_failure(self, tmp_path: Path):
+        """An unavailable search is distinct from a successful empty search."""
         with patch(
             "agentsociety2.skills.literature.search.search_literature",
             new_callable=AsyncMock,
@@ -271,6 +271,7 @@ class TestSearchLiteratureAndSave:
 
             assert result["success"] is False
             assert result["total"] == 0
+            assert "search failed" in result["error"].lower()
 
 
 class TestGenerateSummary:

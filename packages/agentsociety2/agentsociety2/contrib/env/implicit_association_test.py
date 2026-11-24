@@ -1363,9 +1363,7 @@ class ImplicitAssociationTestEnv(EnvBase):
             "Implicit Association Test environment for measuring implicit associations."
         )
 
-    def _get_instruction(
-        self, block_code: str, identity: str | None, valence: str | None
-    ) -> str:
+    def _get_instruction(self, block_code: str, identity: str | None) -> str:
         """Generate instruction text for a trial"""
         if block_code == "identity_practice":
             return "Categorize the word as 'self' (press m) or 'others' (press z)"
@@ -1411,7 +1409,6 @@ class ImplicitAssociationTestEnv(EnvBase):
             instruction = self._get_instruction(
                 trial_data["block_code"],
                 trial_data.get("identity"),
-                trial_data.get("valence"),
             )
 
             return TrialInfo(
