@@ -1,6 +1,8 @@
 """Workspace writes and backend requests enforce their access boundaries."""
 
 import asyncio
+import sys
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -10,7 +12,8 @@ from fastapi.testclient import TestClient
 from agentsociety2.agent import PersonAgent
 from agentsociety2.agent.base.agent import AgentBase
 from agentsociety2.agent.base.workspace_fs import WorkspaceFS
-from agentsociety2.backend.app import app
+from agentsociety2.backend.app import BackendAuthMiddleware, app
+from agentsociety2.skills.hypothesis.manager import delete_hypothesis
 
 
 @pytest.mark.parametrize("method", ["write_text", "append_text", "delete"])
@@ -116,3 +119,61 @@ async def test_react_writes_cannot_modify_core_files_through_symlinks(
     )
     assert result.data["core_owned"] is True
     assert target.read_text() == "original"
+
+
+def test_hypothesis_delete_rejects_workspace_escape(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    result = delete_hypothesis(workspace, hypothesis_path="../outside")
+    assert result["success"] is False
+    assert result["error"] == "Invalid path"
+
+
+def test_backend_rejects_remote_client_without_token() -> None:
+    async def invoke(scope: dict):
+        middleware = BackendAuthMiddleware(app=None)
+        middleware.token = ""
+        sent: list[dict] = []
+
+        async def receive():
+            return {"type": "http.request"}
+
+        async def send(message):
+            sent.append(message)
+
+        await middleware(scope, receive, send)
+        return sent
+
+    scope = {"type": "http", "method": "GET", "headers": [], "client": ("8.8.8.8", 1)}
+    messages = asyncio.run(invoke(scope))
+    assert messages[0]["status"] == 403
+
+
+def test_run_command_requires_current_interpreter(tmp_path: Path) -> None:
+    fs = WorkspaceFS(tmp_path)
+    ok = asyncio.run(
+        fs.run_command([sys.executable, "-c", "print('ok')"], timeout_sec=10)
+    )
+    assert ok.ok and "ok" in ok.stdout
+
+    fake = tmp_path / "python3"
+    fake.write_text("#!/bin/sh\necho hijacked\n", encoding="utf-8")
+    fake.chmod(0o755)
+    rewritten = asyncio.run(
+        fs.run_command([str(fake), "-c", "print('safe')"], timeout_sec=10)
+    )
+    # A bare python/python3 name is rewritten to this process's interpreter.
+    assert (
+        rewritten.ok
+        and "safe" in rewritten.stdout
+        and "hijacked" not in rewritten.stdout
+    )
+
+    evil = tmp_path / "evil-python"
+    evil.write_text("#!/bin/sh\necho hijacked\n", encoding="utf-8")
+    evil.chmod(0o755)
+    rejected = asyncio.run(
+        fs.run_command([str(evil), "-c", "print(1)"], timeout_sec=10)
+    )
+    assert not rejected.ok
+    assert rejected.error_type == "validation"

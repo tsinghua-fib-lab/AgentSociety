@@ -638,7 +638,9 @@ Please summarize their success patterns and provide suggestions: How should I ad
                 "Learning from top agents failed", exc_info=True
             )
 
-    async def ask(self, message: str, readonly: bool = True) -> str:
+    async def ask(
+        self, message: str, readonly: bool = True, *, t: datetime | None = None
+    ) -> str:
         """用 LLM(可选地结合记忆)回答一个问题。
 
         :param message: 要回答的问题。

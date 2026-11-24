@@ -25,11 +25,8 @@ VSCode extension is in `extension/`.
 ### Python Package (agentsociety2)
 
 ```bash
-# Install dependencies (in workspace root)
-uv sync
-
-# Install with dev dependencies
-cd packages/agentsociety2 && uv sync --extra dev
+# Install the locked SDK development environment from the workspace root
+uv sync --locked --package agentsociety2 --no-default-groups --extra dev
 
 # Run tests
 cd packages/agentsociety2 && uv run pytest
@@ -40,8 +37,8 @@ uv run ruff check packages/agentsociety2/
 # Format code
 uv run ruff format packages/agentsociety2/
 
-# Type checking
-uv run mypy packages/agentsociety2/tests/ --follow-imports=skip
+# Type checking (run inside the package so pyproject mypy overrides apply)
+cd packages/agentsociety2 && uv run mypy tests/ --follow-imports=skip
 ```
 
 ### Running Experiments (CLI)
@@ -191,7 +188,7 @@ PersonAgent follows a **metadata-first, selected-only** model. The skill *infras
 - **EnvBase**: Base class for environment modules with `@tool` decorator; override `is_concurrency_safe()` when tools are safe to fan out
 - **Router implementations**: CodeGenRouter (default; FAISS template cache only when `template_mode=True`), ReActRouter, PlanExecuteRouter, TwoTierReActRouter, TwoTierPlanExecuteRouter, SearchToolRouter
 - In production the router runs in a dedicated **Ray actor** (`env_router_actor.py` + `env_router_proxy.py::EnvRouterProxy`); `max_concurrency` is `AGENTSOCIETY_ENV_ACTOR_MAX_CONCURRENCY` (default 64; the old default of 8 starved the actor) only when all mounted modules are concurrency-safe, else 1
-- Codegen execution backend: `AGENTSOCIETY_CODE_EXEC_BACKEND` selects `inprocess` (default; cooperative deadlines inside the env process) or `process` (isolated workers with hard wall-clock deadlines and address-space limits); see also `AGENTSOCIETY_CODE_EXEC_TIMEOUT` / `AGENTSOCIETY_CODE_EXEC_MEMORY_MIB` / `AGENTSOCIETY_CODE_EXEC_WORKERS`
+- Codegen execution backend: `AGENTSOCIETY_CODE_EXEC_BACKEND` selects `process` (default on Linux; isolated workers with hard wall-clock deadlines and address-space limits) or `inprocess` (default on non-Linux; cooperative deadlines inside the env process); see also `AGENTSOCIETY_CODE_EXEC_TIMEOUT` / `AGENTSOCIETY_CODE_EXEC_MEMORY_MIB` / `AGENTSOCIETY_CODE_EXEC_WORKERS`
 - Environment modules register tools as observe/statistics/regular methods; routers mediate between agents and environment modules; empty observe/statistics sets skip init LLM codegen
 
 #### CLI (`agentsociety2/society/cli.py`)
@@ -476,7 +473,7 @@ PersonAgent maintains local workspace-backed memory via `AgentMemoryStore` (`age
 - **agentsociety2 is a Python package**: ALWAYS access `agentsociety2` via `import agentsociety2`, NEVER search for it in the file system (e.g., `packages/agentsociety2`). The package is installed in the Python environment and available for import.
 - **CLI --log-file is REQUIRED**: When running experiments in background, always specify `--log-file` to capture verbose logs.
 - **HuggingFace connectivity (v1 only)**: The legacy `agentsociety` package auto-switches to the Chinese mirror (`hf-mirror.com`) if HuggingFace is unreachable; agentsociety2 has no HuggingFace dependency.
-- **Version compatibility**: Use Python 3.11 – 3.13
+- **Version compatibility**: Use Python 3.11.5 – 3.13
 - **Dependencies**: Managed via uv workspace - run `uv sync` from root
 - **Frontend build**: Use `npm run build` in `frontend/` directory
 - **Testing**: pytest configuration in `packages/agentsociety2/`

@@ -1,6 +1,6 @@
 # Daily Mobility Example
 
-本目录整理自 `agentsociety_data/daily_mobility_experiment`，只保留可协作的模拟配置生成代码、评估代码和小型 groundtruth 数据。运行输出、SQLite、日志、agent workspace 都写入 `tmp/`，默认不加入 git。
+本示例使用 PersonAgent 和 MobilitySpace 模拟北京居民的一日出行，并与随仓库提供的真值数据比较。运行输出、SQLite、日志、agent workspace 都写入 `tmp/`，默认不加入 git。
 
 ## 目录
 
@@ -31,7 +31,7 @@ uv run python examples/v2/daily_mobility/init/config_params.py
 
 ## 一站式脚本
 
-只生成配置并测试 world description：
+使用上一步生成的配置测试 world description：
 
 ```bash
 uv run python examples/v2/daily_mobility/run_all.py \
@@ -72,7 +72,7 @@ uv run python -m agentsociety2.society.cli \
   --log-file examples/v2/daily_mobility/tmp/run/output.log
 ```
 
-地图文件默认从 `DAILY_MOBILITY_MAP_PATH`、`AGENTSOCIETY_HOME_DIR` 或仓库根目录的 `agentsociety_data/` 查找。`.pb` 地图文件不纳入 git。
+可通过 `DAILY_MOBILITY_PROFILES_PATH` 指定人员数据。默认优先读取仓库根目录的本地 `profiles.json`，再使用 SDK 随附的样本。地图文件默认从 `DAILY_MOBILITY_MAP_PATH`、`AGENTSOCIETY_HOME_DIR` 或仓库根目录的 `agentsociety_data/` 查找。`.pb` 地图文件不纳入 git。
 
 ## 计算指标
 
@@ -88,6 +88,20 @@ uv run python examples/v2/daily_mobility/tools/eval_metrics.py
 输出：
 
 - `examples/v2/daily_mobility/tmp/run/scores.json`
+
+## 实时看板与测试
+
+从仓库根目录运行：
+
+```bash
+bash examples/v2/daily_mobility/run_live_daily_mobility.sh
+uv run python examples/v2/daily_mobility/tools/serve_live_dashboard.py --run-dir examples/v2/daily_mobility/tmp/run
+uv run pytest -c packages/agentsociety2/pyproject.toml examples/v2/daily_mobility/tests
+```
+
+第一条命令运行带看板的实验，结果写入示例的 `tmp/live/`。开始新实验时请指定空的 `DAILY_MOBILITY_RUN_DIR` 和 `DAILY_MOBILITY_OUT_DIR`，已有输出会保留。第二条命令打开已有运行。共享的意图、位置和诊断逻辑位于 `daily_mobility/`，命令行工具位于 `tools/`。
+
+启动轨迹看板时，可用 `TRACE_RUN_DIR` 指定提供给浏览器的运行目录。
 
 ## 性能剖析与运行取舍
 

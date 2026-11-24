@@ -16,12 +16,13 @@ from pydantic import BaseModel, Field
 
 from ...backend.path_security import resolve_experiment_replay_dir
 from ...backend.services.replay_catalog import (
-    count_dataset_distinct,
+    dataset_timeline_summary,
+    distinct_dataset_values,
     fetch_dataset_rows,
     get_dataset_by_id,
+    iter_timeline_datasets,
     load_dataset_catalog,
-    max_dataset_value,
-    min_dataset_value,
+    open_http_replay_reader,
     query_dataset_rows,
 )
 from ...storage.replay_metadata import AGENT_PROFILE_DATASET_CAPABILITY
@@ -31,6 +32,8 @@ router = APIRouter(prefix="/replay", tags=["replay"])
 
 
 class ExperimentInfo(BaseModel):
+    """回放概览，包含时间范围、步数、智能体数与运行状态。"""
+
     hypothesis_id: str
     experiment_id: str
     total_steps: int
@@ -45,17 +48,23 @@ class ExperimentInfo(BaseModel):
 
 
 class TimelinePoint(BaseModel):
+    """一个仿真步及其对应时刻。"""
+
     step: int
     t: datetime
 
 
 class AgentProfile(BaseModel):
+    """智能体标识、显示名称和画像字段。"""
+
     id: int
     name: str
     profile: dict[str, Any] = Field(default_factory=dict)
 
 
 class ReplayDatasetColumn(BaseModel):
+    """回放数据列的类型、含义和显示信息。"""
+
     column_name: str
     sqlite_type: str
     logical_type: str | None = None
@@ -70,6 +79,8 @@ class ReplayDatasetColumn(BaseModel):
 
 
 class ReplayDatasetInfo(BaseModel):
+    """数据集的标识、列定义、排序字段及查询能力。"""
+
     dataset_id: str
     table_name: str
     module_name: str
@@ -87,10 +98,14 @@ class ReplayDatasetInfo(BaseModel):
 
 
 class ReplayDatasetList(BaseModel):
+    """当前回放中注册的数据集目录。"""
+
     datasets: list[ReplayDatasetInfo]
 
 
 class ReplayDatasetRows(BaseModel):
+    """查询结果的一页数据，以及匹配条件的总记录数。"""
+
     dataset_id: str
     columns: list[str]
     rows: list[dict[str, Any]]
@@ -98,6 +113,8 @@ class ReplayDatasetRows(BaseModel):
 
 
 class ReplayPanelSchema(BaseModel):
+    """前端回放面板可使用的数据集与布局提示。"""
+
     agent_profile_dataset: ReplayDatasetInfo | None = None
     agent_state_datasets: list[ReplayDatasetInfo] = Field(default_factory=list)
     env_state_datasets: list[ReplayDatasetInfo] = Field(default_factory=list)
@@ -108,28 +125,38 @@ class ReplayPanelSchema(BaseModel):
 
 
 class ReplayDatasetPanelRef(BaseModel):
+    """回放面板引用的数据集及其显示名称。"""
+
     dataset_id: str
     module_name: str
     title: str = ""
 
 
 class ReplayPosition(BaseModel):
+    """一个智能体在当前步的地理坐标。"""
+
     agent_id: int
     lng: float | None = None
     lat: float | None = None
 
 
 class ReplayAgentStateAtStep(BaseModel):
+    """按智能体标识索引的单步快照。"""
+
     dataset: ReplayDatasetPanelRef
     rows_by_agent_id: dict[str, dict[str, Any]] = Field(default_factory=dict)
 
 
 class ReplayEnvStateAtStep(BaseModel):
+    """指定环境数据集在当前步的状态。"""
+
     dataset: ReplayDatasetPanelRef
     row: dict[str, Any] | None = None
 
 
 class ReplayStepBundle(BaseModel):
+    """单个仿真步的位置、智能体状态和环境状态。"""
+
     step: int
     t: datetime | None = None
     layout_hint: Literal["map", "random"] = "random"
@@ -139,12 +166,14 @@ class ReplayStepBundle(BaseModel):
 
 
 def get_replay_dir(workspace_path: str, hypothesis_id: str, experiment_id: str) -> Path:
+    """解析工作区中指定实验的回放目录。"""
     return resolve_experiment_replay_dir(workspace_path, hypothesis_id, experiment_id)
 
 
 @asynccontextmanager
 async def get_replay_reader(replay_dir: Path):
-    reader = ReplayReader(replay_dir)
+    """借出请求专用的回放读取器，请求结束后释放连接。"""
+    reader = open_http_replay_reader(replay_dir)
     try:
         yield reader
     finally:
@@ -239,47 +268,6 @@ def _select_primary_agent_state_dataset(
     return candidates[0]
 
 
-def _select_timeline_dataset(
-    datasets: list[dict[str, Any]],
-) -> dict[str, Any] | None:
-    from ...storage.replay_metadata import SIMULATION_TIMELINE_DATASET_ID
-
-    for dataset in datasets:
-        if dataset.get("dataset_id") == SIMULATION_TIMELINE_DATASET_ID:
-            if dataset.get("step_key") and dataset.get("time_key"):
-                return dataset
-
-    primary_agent_state = _select_primary_agent_state_dataset(datasets)
-    if (
-        primary_agent_state is not None
-        and primary_agent_state.get("step_key")
-        and primary_agent_state.get("time_key")
-    ):
-        return primary_agent_state
-
-    agent_candidates = [
-        dataset
-        for dataset in _list_agent_state_datasets(datasets)
-        if dataset.get("step_key") and dataset.get("time_key")
-    ]
-    agent_candidates.sort(
-        key=lambda item: (
-            0 if "geo_point" not in item.get("capabilities", []) else 1,
-            item["dataset_id"],
-        )
-    )
-    if agent_candidates:
-        return agent_candidates[0]
-
-    env_candidates = [
-        dataset
-        for dataset in _list_env_state_datasets(datasets)
-        if dataset.get("step_key") and dataset.get("time_key")
-    ]
-    env_candidates.sort(key=lambda item: item["dataset_id"])
-    return env_candidates[0] if env_candidates else None
-
-
 def _find_time_value(
     rows: list[dict[str, Any]],
     time_key: str | None,
@@ -329,14 +317,12 @@ def _build_positions_from_step_rows(
     return list(positions_by_agent_id.values())
 
 
-async def _get_agent_profile_dataset(
-    reader: ReplayReader,
-    datasets: list[dict[str, Any]] | None = None,
+def _select_agent_profile_dataset(
+    datasets: list[dict[str, Any]],
 ) -> dict[str, Any] | None:
-    catalog = datasets or await load_dataset_catalog(reader)
     candidates = [
         dataset
-        for dataset in catalog
+        for dataset in datasets
         if AGENT_PROFILE_DATASET_CAPABILITY in dataset.get("capabilities", [])
         and dataset.get("entity_key")
     ]
@@ -370,10 +356,9 @@ def _resolve_agent_name(
 
 async def _load_agent_profiles(
     reader: ReplayReader,
-    datasets: list[dict[str, Any]] | None = None,
+    datasets: list[dict[str, Any]],
 ) -> dict[int, AgentProfile]:
-    catalog = datasets or await load_dataset_catalog(reader)
-    profile_dataset = await _get_agent_profile_dataset(reader, catalog)
+    profile_dataset = _select_agent_profile_dataset(datasets)
     if profile_dataset is not None:
         entity_key = profile_dataset["entity_key"]
         rows_result = await fetch_dataset_rows(reader, profile_dataset)
@@ -392,7 +377,7 @@ async def _load_agent_profiles(
         if profiles:
             return profiles
 
-    identity_dataset = _select_primary_agent_state_dataset(catalog)
+    identity_dataset = _select_primary_agent_state_dataset(datasets)
     if identity_dataset is None:
         return {}
 
@@ -415,24 +400,33 @@ async def _get_experiment_summary(
     reader: ReplayReader,
     datasets: list[dict[str, Any]],
 ) -> tuple[int, datetime | None, datetime | None, int]:
-    timeline_dataset = _select_timeline_dataset(datasets)
+    timeline_dataset = next(iter_timeline_datasets(datasets), None)
     total_steps = 0
     start_time: datetime | None = None
     end_time: datetime | None = None
 
     if timeline_dataset is not None:
-        step_key = timeline_dataset["step_key"]
-        time_key = timeline_dataset["time_key"]
-        total_steps = await count_dataset_distinct(reader, timeline_dataset, step_key)
-        start_time = _coerce_datetime(
-            await min_dataset_value(reader, timeline_dataset, time_key)
+        total_steps, first, last = await dataset_timeline_summary(
+            reader, timeline_dataset
         )
-        end_time = _coerce_datetime(
-            await max_dataset_value(reader, timeline_dataset, time_key)
-        )
+        start_time = _coerce_datetime(first)
+        end_time = _coerce_datetime(last)
 
-    profiles = await _load_agent_profiles(reader, datasets)
-    return int(total_steps), start_time, end_time, len(profiles)
+    agent_count = 0
+    for dataset in (
+        _select_agent_profile_dataset(datasets),
+        _select_primary_agent_state_dataset(datasets),
+    ):
+        if dataset is None:
+            continue
+        ids = await distinct_dataset_values(
+            reader, dataset, dataset["entity_key"], order=False
+        )
+        if ids:
+            # 旧回放可能使用字符串 ID，与画像接口保持相同的整数归一化。
+            agent_count = len({int(agent_id) for agent_id in ids})
+            break
+    return total_steps, start_time, end_time, agent_count
 
 
 @router.get("/{hypothesis_id}/{experiment_id}/info", response_model=ExperimentInfo)
@@ -441,6 +435,7 @@ async def get_experiment_info(
     experiment_id: str,
     workspace_path: str = Query(..., description="Workspace root path"),
 ) -> ExperimentInfo:
+    """汇总回放的步数、时间范围、智能体数量与运行状态。"""
     replay_dir = get_replay_dir(workspace_path, hypothesis_id, experiment_id)
     run_dir = replay_dir.parent
     pid_path = run_dir / "pid.json"
@@ -494,6 +489,7 @@ async def get_replay_datasets(
     experiment_id: str,
     workspace_path: str = Query(..., description="Workspace root path"),
 ) -> ReplayDatasetList:
+    """列出已注册的回放数据集及其列定义。"""
     replay_dir = get_replay_dir(workspace_path, hypothesis_id, experiment_id)
 
     async with get_replay_reader(replay_dir) as reader:
@@ -513,6 +509,7 @@ async def get_replay_dataset(
     dataset_id: str,
     workspace_path: str = Query(..., description="Workspace root path"),
 ) -> ReplayDatasetInfo:
+    """读取指定数据集的定义。"""
     replay_dir = get_replay_dir(workspace_path, hypothesis_id, experiment_id)
 
     async with get_replay_reader(replay_dir) as reader:
@@ -544,6 +541,7 @@ async def get_replay_dataset_rows(
         description="Return only the latest row per entity",
     ),
 ) -> ReplayDatasetRows:
+    """按筛选、排序和分页条件查询指定数据集。"""
     replay_dir = get_replay_dir(workspace_path, hypothesis_id, experiment_id)
 
     async with get_replay_reader(replay_dir) as reader:
@@ -580,11 +578,12 @@ async def get_replay_panel_schema(
     experiment_id: str,
     workspace_path: str = Query(..., description="Workspace root path"),
 ) -> ReplayPanelSchema:
+    """选择可用于地图、智能体面板与环境面板的数据集。"""
     replay_dir = get_replay_dir(workspace_path, hypothesis_id, experiment_id)
 
     async with get_replay_reader(replay_dir) as reader:
         datasets = await load_dataset_catalog(reader)
-        agent_profile_dataset = await _get_agent_profile_dataset(reader, datasets)
+        agent_profile_dataset = _select_agent_profile_dataset(datasets)
         agent_state_datasets = _list_agent_state_datasets(datasets)
         env_state_datasets = _list_env_state_datasets(datasets)
         geo_dataset = _select_geo_dataset(datasets)
@@ -624,6 +623,7 @@ async def get_replay_step_bundle(
     step: int,
     workspace_path: str = Query(..., description="Workspace root path"),
 ) -> ReplayStepBundle:
+    """读取指定仿真步的智能体位置与各面板的快照。"""
     replay_dir = get_replay_dir(workspace_path, hypothesis_id, experiment_id)
 
     async with get_replay_reader(replay_dir) as reader:
@@ -689,11 +689,12 @@ async def get_timeline(
     experiment_id: str,
     workspace_path: str = Query(..., description="Workspace root path"),
 ) -> list[TimelinePoint]:
+    """按步号返回仿真时间线。"""
     replay_dir = get_replay_dir(workspace_path, hypothesis_id, experiment_id)
 
     async with get_replay_reader(replay_dir) as reader:
         datasets = await load_dataset_catalog(reader)
-        timeline_dataset = _select_timeline_dataset(datasets)
+        timeline_dataset = next(iter_timeline_datasets(datasets), None)
         if timeline_dataset is None:
             return []
 
@@ -730,6 +731,7 @@ async def get_agent_profiles(
     experiment_id: str,
     workspace_path: str = Query(..., description="Workspace root path"),
 ) -> list[AgentProfile]:
+    """读取智能体画像；缺少画像时从状态记录恢复标识。"""
     replay_dir = get_replay_dir(workspace_path, hypothesis_id, experiment_id)
 
     async with get_replay_reader(replay_dir) as reader:

@@ -23,7 +23,8 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { ApiClient } from './apiClient';
-import { localize } from './i18n';
+import { getCurrentLanguageCode, localize, syncWebviewLanguage } from './i18n';
+import { BackendConnectionError } from './services/backendService';
 
 export class PrefillParamsViewProvider {
   /**
@@ -103,6 +104,7 @@ export class PrefillParamsViewProvider {
     this._apiClient = apiClient;
 
     // 设置Webview的HTML内容
+    syncWebviewLanguage(this._panel, () => localize('prefillParams.groupTitle'));
     this._panel.webview.html = this._getHtmlForWebview(this._panel.webview);
 
     // 监听面板销毁事件
@@ -362,16 +364,11 @@ export class PrefillParamsViewProvider {
         classes: classesResponse,
         prefillParams: prefillResponse.data,
       });
-    } catch (error: any) {
-      const errorText = error?.message || localize('prefillParams.errorMessages.loadFailed');
-      const backendOffline =
-        /未连接|not connected|ECONNREFUSED|Failed to fetch|fetch failed|NetworkError|后端服务响应超时/i.test(
-          String(errorText)
-        );
+    } catch (error) {
       this._postToWebview({
         command: 'error',
-        error: errorText,
-        backendOffline,
+        error: error instanceof Error ? error.message : localize('prefillParamsViewProvider.loadFailed'),
+        backendOffline: error instanceof BackendConnectionError,
       });
     }
   }
@@ -490,7 +487,7 @@ export class PrefillParamsViewProvider {
 
     // 使用非空断言，因为我们知道这些文件会被webpack生成
     return `<!DOCTYPE html>
-<html lang="en">
+<html lang="${getCurrentLanguageCode()}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">

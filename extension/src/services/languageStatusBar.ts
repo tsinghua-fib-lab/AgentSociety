@@ -12,10 +12,7 @@ import {
 export class LanguageStatusBar {
   private readonly item: vscode.StatusBarItem;
 
-  constructor(
-    context: vscode.ExtensionContext,
-    private readonly onToggled: (language: ExtensionLanguage) => void
-  ) {
+  constructor(context: vscode.ExtensionContext) {
     this.item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 97);
     this.item.command = 'aiSocialScientist.toggleLanguage';
     context.subscriptions.push(this.item);
@@ -30,11 +27,6 @@ export class LanguageStatusBar {
   }
 
   async toggle(): Promise<ExtensionLanguage> {
-    const next = await toggleExtensionLanguage();
-    this.refresh();
-    this.onToggled(next);
-    const label = next === 'zh-CN' ? localize('language.label.zh') : localize('language.label.en');
-    void vscode.window.showInformationMessage(localize('language.toggle.switched', label));
-    return next;
+    return toggleExtensionLanguage();
   }
 }

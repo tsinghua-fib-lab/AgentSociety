@@ -9,12 +9,17 @@ on:
   push:
     branches: [main, develop]
     paths:
+      - "examples/v2/daily_mobility/**"
+      - "extension/skills/docx/scripts/**"
+      - "packages/agentsociety2/scripts/**"
+      - "packages/agentsociety2/experiments/**"
       - "packages/agentsociety2/agentsociety2/**"
       - "extension/src/**"
       - "frontend/src/**"
       - ".github/codeql/**"
       - ".github/workflows/codeql.yml"
       - ".github/workflows/ci.yml"
+      - ".github/workflows/repository-paths.yml"
       - ".github/workflows/extension-ci.yml"
       - ".github/workflows/frontend-ci.yml"
       - ".github/workflows/docs-ci.yml"
@@ -24,12 +29,17 @@ on:
   pull_request:
     branches: [main, develop]
     paths:
+      - "examples/v2/daily_mobility/**"
+      - "extension/skills/docx/scripts/**"
+      - "packages/agentsociety2/scripts/**"
+      - "packages/agentsociety2/experiments/**"
       - "packages/agentsociety2/agentsociety2/**"
       - "extension/src/**"
       - "frontend/src/**"
       - ".github/codeql/**"
       - ".github/workflows/codeql.yml"
       - ".github/workflows/ci.yml"
+      - ".github/workflows/repository-paths.yml"
       - ".github/workflows/extension-ci.yml"
       - ".github/workflows/frontend-ci.yml"
       - ".github/workflows/docs-ci.yml"

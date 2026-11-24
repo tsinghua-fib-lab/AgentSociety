@@ -108,7 +108,7 @@ test('MCP probe preserves endpoints and sessions, reads open SSE streams and all
   t.after(() => { server.closeAllConnections(); return new Promise((resolve) => server.close(resolve)); });
   const endpoint = `http://127.0.0.1:${server.address().port}/rpc/research?tenant=fixture`;
   assert.equal(normalizeMcpHttpEndpoint(endpoint), endpoint);
-  for (const url of ['file:///tmp/mcp', 'https://user:secret@example.invalid/mcp', 'https://example.invalid/mcp#bad']) assert.equal(normalizeMcpHttpEndpoint(url), null);
+  for (const url of ['file:///mcp', 'https://user:secret@example.invalid/mcp', 'https://example.invalid/mcp#bad']) assert.equal(normalizeMcpHttpEndpoint(url), null);
   const result = await probeHttpMcpServer(endpoint, { Authorization: 'Bearer fixture' });
   assert.equal(result.ok, true);
   assert.deepEqual(result.tools, ['paper_search', 'paper_get']);

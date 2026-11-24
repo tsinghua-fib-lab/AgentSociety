@@ -6,7 +6,8 @@ English: Scans, parses, and queries Agent skill metadata.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import re
+from dataclasses import dataclass, replace
 from hashlib import sha256
 from pathlib import Path
 from typing import Any
@@ -18,7 +19,8 @@ import yaml
 # registry keeps scanning the real skill content directory regardless of where
 # this module itself is imported from / located.
 _BUILTIN_ROOT = Path(__file__).resolve().parent.parent / "skills"
-_RESOURCE_FILES_CACHE: dict[tuple[str, int], list[str]] = {}
+_RESOURCE_FILES_CACHE: dict[tuple[str, int, int, int], list[str]] = {}
+_RESOURCE_FILES_CACHE_MAX = 1024
 
 
 @dataclass(frozen=True)
@@ -51,13 +53,12 @@ class SkillDescriptor:
 
         :returns: skill 根下的相对资源文件路径。
         """
-        if not self.root.is_dir():
-            return []
         try:
-            mtime_ns = self.root.stat().st_mtime_ns
+            stat = self.root.stat()
         except OSError:
-            mtime_ns = 0
-        cache_key = (str(self.root), mtime_ns)
+            return []
+        # Reinstalling can preserve the old mtime but always publishes a new tree.
+        cache_key = (str(self.root), stat.st_dev, stat.st_ino, stat.st_mtime_ns)
         cached = _RESOURCE_FILES_CACHE.get(cache_key)
         if cached is not None:
             return list(cached)
@@ -71,6 +72,8 @@ class SkillDescriptor:
             if _is_hidden_or_cache_path(relative):
                 continue
             resources.append(relative.as_posix())
+        if len(_RESOURCE_FILES_CACHE) >= _RESOURCE_FILES_CACHE_MAX:
+            _RESOURCE_FILES_CACHE.clear()
         _RESOURCE_FILES_CACHE[cache_key] = resources
         return list(resources)
 
@@ -78,8 +81,9 @@ class SkillDescriptor:
 # Parsed frontmatter is immutable to callers and shared across fresh registries.
 # Equal-size rapid edits can retain identical filesystem timestamps. Hash the
 # same content that is parsed; metadata alone cannot establish cache freshness.
-_FRONTMATTER_CACHE: dict[tuple[str, bytes], dict[str, Any]] = {}
+_FRONTMATTER_CACHE: dict[bytes, dict[str, Any]] = {}
 _FRONTMATTER_CACHE_MAX = 1024
+_FRONTMATTER_DELIMITER = re.compile(r"^---$", re.MULTILINE)
 
 
 class SkillRegistry:
@@ -124,6 +128,21 @@ class SkillRegistry:
             source="custom",
             source_label=str(skills_root),
         )
+
+    def register_installed_custom(
+        self, descriptor: SkillDescriptor, destination: Path
+    ) -> None:
+        """Publish a validated custom skill at its final path, replacing stale entries."""
+        installed = replace(
+            descriptor, root=destination, source_label=str(destination.parent)
+        )
+        # A previous scan may have registered a different name at this path, or
+        # this name at a different path. Publish the new mapping in one assignment.
+        self._skills = {
+            skill_id: current
+            for skill_id, current in self._skills.items()
+            if current.namespace != "custom" or current.root != destination
+        } | {installed.skill_id: installed}
 
     def scan_env(self, skills_dir: Path, env_name: str) -> list[str]:
         """扫描某个环境模块提供的 skill。
@@ -219,52 +238,52 @@ class SkillRegistry:
         added: list[str] = []
         base = root.resolve()
         if not base.is_dir():
-            return added
-        # Ensure the resolved path hasn't escaped via symlink traversal.
-        try:
-            base.relative_to(root.resolve())
-        except ValueError:
-            # resolved path is outside the original root — reject
+            self._drop_stale_skills(namespace)
             return added
 
         for child in sorted(base.iterdir()):
             if not child.is_dir() or child.name.startswith((".", "_")):
                 continue
-            skill_md = child / "SKILL.md"
             try:
-                if not skill_md.is_file():
+                resolved_child = child.resolve()
+                if base not in resolved_child.parents:
                     continue
-                raw = skill_md.read_text(encoding="utf-8")
-            except OSError:
+                descriptor = _read_skill_descriptor(
+                    resolved_child,
+                    namespace=namespace,
+                    source=source,
+                    source_label=source_label,
+                )
+            except (OSError, RuntimeError, ValueError, yaml.YAMLError):
+                # A damaged skill must not interrupt discovery of its neighbors.
                 continue
-            cache_key = (str(skill_md), sha256(raw.encode("utf-8")).digest())
-            meta = _FRONTMATTER_CACHE.get(cache_key)
-            if meta is None:
-                meta = _parse_frontmatter(raw)
-                if len(_FRONTMATTER_CACHE) >= _FRONTMATTER_CACHE_MAX:
-                    _FRONTMATTER_CACHE.clear()
-                _FRONTMATTER_CACHE[cache_key] = meta
-            name = str(meta.get("name") or child.name).strip()
-            if not name:
-                continue
-            skill_id = f"{namespace}@{name}"
-            if skill_id in self._skills:
-                continue
-            description = str(meta.get("description") or "").strip()
-            descriptor = SkillDescriptor(
-                skill_id=skill_id,
-                name=name,
-                namespace=namespace,
-                description=description,
-                root=child.resolve(),
-                source=source,
-                source_label=source_label,
-                script=_clean_relative_script(child, meta.get("script")),
-                hooks=_parse_hooks(child, meta),
-            )
-            self._skills[skill_id] = descriptor
-            added.append(skill_id)
+            current = self._skills.get(descriptor.skill_id)
+            if current is None:
+                self._skills[descriptor.skill_id] = descriptor
+                added.append(descriptor.skill_id)
+            elif source == "custom" and (
+                current.root == descriptor.root
+                or (
+                    current.root.parent == descriptor.root.parent == base
+                    and descriptor.root.name == descriptor.name
+                )
+            ):
+                # Refresh the same directory; prefer canonical installs over siblings.
+                self._skills[descriptor.skill_id] = descriptor
+
+        # Drop entries whose directory disappeared since the previous scan;
+        # otherwise /list keeps advertising deleted skills until restart.
+        self._drop_stale_skills(namespace)
         return added
+
+    def _drop_stale_skills(self, namespace: str) -> None:
+        """Remove descriptors in ``namespace`` whose root directory is gone.
+
+        :param namespace: Registry namespace to prune.
+        """
+        for skill_id, descriptor in list(self._skills.items()):
+            if descriptor.namespace == namespace and not descriptor.root.is_dir():
+                del self._skills[skill_id]
 
     @staticmethod
     def _resolve_inside(root: Path, relative_path: str) -> Path | None:
@@ -281,36 +300,78 @@ class SkillRegistry:
         return None
 
 
+def describe_custom_skill(root: Path) -> SkillDescriptor:
+    """Validate a staged custom skill without modifying the registry."""
+    root = root.resolve()
+    descriptor = _read_skill_descriptor(
+        root, namespace="custom", source="custom", source_label=str(root.parent)
+    )
+    if descriptor.name != root.name:
+        raise ValueError("SKILL.md name must match the skill directory name")
+    return descriptor
+
+
+def _read_skill_descriptor(
+    root: Path, *, namespace: str, source: str, source_label: str
+) -> SkillDescriptor:
+    skill_md = root / "SKILL.md"
+    if not skill_md.is_file() or not skill_md.resolve().is_relative_to(root):
+        raise ValueError("Skill directory must contain SKILL.md")
+    raw = skill_md.read_text(encoding="utf-8")
+    cache_key = sha256(raw.encode("utf-8")).digest()
+    meta = _FRONTMATTER_CACHE.get(cache_key)
+    if meta is None:
+        meta = _parse_frontmatter(raw)
+        if len(_FRONTMATTER_CACHE) >= _FRONTMATTER_CACHE_MAX:
+            _FRONTMATTER_CACHE.clear()
+        _FRONTMATTER_CACHE[cache_key] = meta
+
+    name = meta.get("name")
+    if not isinstance(name, str) or not name or name != name.strip():
+        raise ValueError("SKILL.md must declare a non-empty string name")
+    description = meta.get("description", "")
+    if not isinstance(description, str):
+        raise ValueError("SKILL.md description must be a string")
+    return SkillDescriptor(
+        skill_id=f"{namespace}@{name}",
+        name=name,
+        namespace=namespace,
+        description=description.strip(),
+        root=root,
+        source=source,
+        source_label=source_label,
+        script=_require_relative_script(root, meta["script"])
+        if "script" in meta
+        else None,
+        hooks=_parse_hooks(root, meta),
+    )
+
+
 def _parse_frontmatter(raw: str) -> dict[str, Any]:
-    """从 SKILL.md 文件解析 YAML frontmatter。
+    """Parse a YAML mapping delimited by standalone ``---`` lines."""
+    opening = "---\n"
+    if not raw.startswith(opening):
+        raise ValueError("SKILL.md must begin with YAML frontmatter")
+    closing = _FRONTMATTER_DELIMITER.search(raw, len(opening))
+    if closing is None:
+        raise ValueError("SKILL.md YAML frontmatter is missing its closing delimiter")
+    loaded = yaml.safe_load(raw[len(opening) : closing.start()])
+    if not isinstance(loaded, dict):
+        raise ValueError("SKILL.md YAML frontmatter must be a mapping")
+    return loaded
 
-    :param raw: 已读取的 SKILL.md 文本,与内容指纹共享同一份快照。
-    :returns: 解析出的 frontmatter 映射。
-    """
-    if not raw.startswith("---"):
-        return {}
-    parts = raw.split("---", 2)
-    if len(parts) < 3:
-        return {}
-    loaded = yaml.safe_load(parts[1]) or {}
-    return loaded if isinstance(loaded, dict) else {}
 
-
-def _clean_relative_script(root: Path, raw: Any) -> str | None:
-    """校验并规范化脚本路径。
-
-    :param root: skill 根目录。
-    :param raw: 来自 frontmatter 的原始 script 值。
-    :returns: 规范化后的相对脚本路径,无效时返回 None。
-    """
-    text = str(raw or "").strip()
-    if not text:
-        return None
-    base = root.resolve()
-    target = (base / text).resolve()
-    if target.is_file() and (target == base or base in target.parents):
-        return text.replace("\\", "/")
-    return None
+def _require_relative_script(root: Path, value: Any) -> str:
+    """Validate a script reference and return its relative POSIX path."""
+    if isinstance(value, str) and value.strip():
+        path = Path(value.strip().replace("\\", "/"))
+        if not path.is_absolute() and not path.drive:
+            target = (root / path).resolve()
+            if target.is_relative_to(root) and target.is_file():
+                return target.relative_to(root).as_posix()
+    raise ValueError(
+        "SKILL.md script and hook paths must reference files within the skill directory"
+    )
 
 
 def _is_hidden_or_cache_path(relative_path: Path) -> bool:
@@ -334,20 +395,14 @@ def _parse_hooks(root: Path, meta: dict[str, Any]) -> dict[str, str]:
     :param meta: 已解析的 frontmatter 映射。
     :returns: 钩子类型到脚本路径的映射。
     """
+    raw_hooks = meta.get("hooks", {})
+    if not isinstance(raw_hooks, dict):
+        raise ValueError("SKILL.md hooks must be a mapping")
     hooks: dict[str, str] = {}
-
-    raw_hooks = meta.get("hooks")
-    if isinstance(raw_hooks, dict):
-        for key, value in raw_hooks.items():
-            hook_type = str(key or "").strip()
-            script = _clean_relative_script(root, value)
-            if hook_type and script:
-                hooks[hook_type] = script
-
-    hook_type = str(meta.get("hook") or "").strip()
-    hook_script = _clean_relative_script(root, meta.get("hook_script"))
-    if hook_type and hook_script:
-        hooks[hook_type] = hook_script
+    for hook_type, path in raw_hooks.items():
+        if not isinstance(hook_type, str) or not hook_type.strip():
+            raise ValueError("SKILL.md hook names must be non-empty strings")
+        hooks[hook_type.strip()] = _require_relative_script(root, path)
     return hooks
 
 

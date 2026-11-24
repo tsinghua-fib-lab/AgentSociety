@@ -126,9 +126,14 @@ const translations: Record<string, Record<string, string>> = {
     'workspaceImport.copyPath': '复制项目路径',
     'workspaceImport.failed': '导入失败：{0}',
     'workspaceImport.targetConflict': '目标位置已有同名文件：{0}',
+    'extension.aiChat.chooseOnce': '选择本次对话助手',
+    'extension.aiChat.chooseDefault': '选择默认对话助手',
+    'extension.aiChat.currentDefault': '当前默认',
+    'extension.aiChat.unavailable': '没有可用的对话助手。请安装并启用对话扩展。',
+    'extension.aiChat.openFailed': '无法打开 {0}，请检查扩展是否已启用。',
     'extension.aiChat.label': 'AI 对话',
     'extension.aiChat.commandTitle': '打开 AI 对话',
-    'extension.aiChat.tooltip': '在侧边栏与助手对话',
+    'extension.aiChat.tooltip': '打开对话。右键可选择默认助手。',
     'extension.searchPapers.prompt': '输入论文搜索查询',
     'extension.searchPapers.placeholder': '例如：社交媒体影响',
     'extension.searchPapers.searching': '正在搜索论文：{0}',
@@ -275,10 +280,6 @@ const translations: Record<string, Record<string, string>> = {
     'extension.renameLiterature.invalidChars': '文件名不能包含路径分隔符',
     'extension.renameLiterature.failed': '重命名失败: {0}',
 
-    // extension.ts - openMarkdownInEditor
-    'extension.openMarkdown.noFile': '无法打开：未选择有效的文件',
-    'extension.openMarkdown.warning': '此命令仅适用于 Markdown 文件',
-    'extension.openMarkdown.failed': '无法打开该文件，请稍后重试。',
     'extension.deleteLiterature.success': '已删除「{0}」',
     'extension.renameLiterature.success': '已重命名为「{0}」',
     'extension.backend.started': '后端服务已启动',
@@ -313,9 +314,6 @@ const translations: Record<string, Record<string, string>> = {
     'extension.replay.inputHypothesisPlaceholder': '例如：1',
     'extension.replay.inputExperiment': '请输入实验编号（通常与文件夹名称中的数字一致）',
     'extension.replay.inputExperimentPlaceholder': '例如：1',
-    'extension.formatJson.wrongType': '该操作仅适用于 JSON 文件（.json）。',
-    'extension.formatJson.done': '已格式化当前 JSON 文件',
-    'extension.formatJson.failed': '无法完成格式化，请确认文件有效后重试。',
     'extension.literatureIndex.missing': '找不到文献索引，请确认已在文献库中生成索引。',
     'extension.literatureIndex.openFailed': '无法打开文献索引预览，请稍后重试。',
     'extension.steps.noWorkspace': '请先打开工作区文件夹。',
@@ -323,11 +321,10 @@ const translations: Record<string, Record<string, string>> = {
     'extension.steps.pickPlaceholder': '选择要预览的步骤文件',
     'extension.steps.missing': '找不到步骤文件，请确认路径正确。',
     'extension.steps.openFailed': '无法打开步骤预览，请稍后重试。',
-    'extension.pid.missing': '请从项目树中对应实验的状态项打开；若尚无状态记录，请先运行实验。',
+    'extension.pid.missing': '找不到这次实验的运行记录。',
     'extension.pid.openFailed': '无法打开实验状态视图，请稍后重试。',
     'extension.clipboard.pathCopied': '路径已复制到剪贴板',
     'extension.clipboard.pathFailed': '复制路径失败，请重试。',
-    'extension.copyPath.commandTitle': '复制路径',
     'extension.openAsset.commandTitle': '打开预览',
     'extension.openDocument.commandTitle': '打开',
     'extension.openTreeFile.missing': '文件不存在或不可访问',
@@ -396,6 +393,8 @@ const translations: Record<string, Record<string, string>> = {
 
     // prefillParamsViewProvider.ts
     'prefillParamsViewProvider.noWorkspace': '未找到工作区文件夹',
+    'prefillParamsViewProvider.loadFailed': '无法加载环境与智能体参数。',
+    'replay.panelTitle': '回放：{0}',
     'prefillParams.title': '预填充参数',
     'prefillParams.groupTitle': '环境与智能体',
     'prefillParams.envModuleTitle': '环境模块预置参数',
@@ -430,22 +429,7 @@ const translations: Record<string, Record<string, string>> = {
     'projectStructure.presentation.tooltip': '按假设查看分析阶段、计划、结论、证据、审阅和最终报告',
     'projectStructure.synthesis.tooltip': '展开查看综合报告、证据和论文草稿材料',
     'projectStructure.experimentStats.label': '实验进度',
-    'projectStructure.experimentStats.run': '运行 {0}',
-    'projectStructure.experimentStats.failed': '失败 {0}',
-    'projectStructure.experimentStats.pending': '待跑 {0}',
-    'projectStructure.experimentStats.done': '完成 {0}/{1}',
-    'projectStructure.experimentStats.tooltipTitle': '实验状态总览',
-    'projectStructure.experimentStats.completionRate': '完成率 {0}%',
-    'projectStructure.experimentStats.unknown': '未知 {0}',
-    'projectStructure.experimentStats.compact': '完成 {0}/{1}（{2}%）· 运行{3} · 失败{4} · 待跑{5}',
-    'projectStructure.experimentStats.short': '{0}/{1} · {2}%',
-    'projectStructure.experimentStats.lineDone': '完成 {0}/{1}（{2}%）',
-    'projectStructure.experimentStats.lineRun': '运行 · {0}',
-    'projectStructure.experimentStats.lineFailed': '失败 · {0}',
-    'projectStructure.experimentStats.linePending': '待跑 · {0}',
-    'projectStructure.experimentStats.lineUnknown': '未知 · {0}',
-    'projectStructure.experimentStats.allDone': '全部完成',
-    'projectStructure.experimentStats.seeTopicHint': '分假设明细请在下方「研究话题」中展开对应「假设」节点查看。',
+    'projectStructure.experimentStats.done': '{0}/{1} 已完成',
 
     // backendManager.ts
     'backendManager.openSettings': '打开配置',
@@ -454,6 +438,25 @@ const translations: Record<string, Record<string, string>> = {
     'backendManager.workingDirectoryMissing': '工作目录不存在：{0}',
     'backendManager.llmKeyRequired': '需要 LLM API Key，请在工作区 .env 中设置 AGENTSOCIETY_LLM_API_KEY',
     'backendManager.startFailed': '无法启动后端服务：{0}',
+    'backendRequest.unauthorized': '后端鉴权失败（HTTP 401）：请配置与 AS2 后端一致的 BACKEND_TOKEN。连接外部后端时，请在工作区 .env 中同时设置 BACKEND_TOKEN 和 BACKEND_TOKEN_ORIGIN。',
+    'backendRequest.forbidden': '后端拒绝访问（HTTP 403）：请检查后端的访问限制。远程访问需要在 AS2 后端设置 BACKEND_TOKEN。',
+    'backendRequest.redirect': '后端返回重定向（HTTP {0}），扩展未跟随。请在工作区 .env 中配置直达 AS2 的 BACKEND_URL。',
+    'backendRequest.httpsRequired': '为保护 BACKEND_TOKEN，远程 AS2 后端必须通过 HTTPS 访问。请在工作区 .env 中设置 HTTPS 的 BACKEND_URL。',
+    'backendRequest.invalidOrigin': '后端地址配置无效：请检查 {0}。地址不能包含凭据、路径、查询参数或片段。',
+    'backendRequest.invalidUrl': '后端地址配置无效：BACKEND_URL 必须是 HTTP(S) 地址，可带普通路径前缀，但不能包含凭据、查询参数或片段。',
+    'backendRequest.tokenOriginRequired': '外部后端使用 BACKEND_TOKEN 时，必须在工作区 .env 中显式设置可信的 BACKEND_TOKEN_ORIGIN（协议、主机和可选端口，不含路径）。',
+    'backendRequest.tokenOriginMismatch': '后端地址与 BACKEND_TOKEN_ORIGIN 不匹配。请核对当前后端的协议、主机和端口，确认目标可信后再修改绑定。',
+    'backendRequest.browserAuthRequired': '此后端需要 Bearer 鉴权，请使用能设置 Authorization 请求头的 API 客户端访问。不要把 token 放进 URL。',
+    'backendRequest.invalidToken': 'BACKEND_TOKEN 必须是无空格的可打印 ASCII 字符串。',
+    'backendRequest.invalidRoute': '请求不在 AS2 后端路由范围内。',
+    'backendRequest.envReadFailed': '无法读取工作区 .env 中的后端配置。',
+    'backendRequest.externalUnavailable': '无法连接配置的外部 AS2 后端，请检查地址和服务状态。',
+    'backendRequest.offline': 'AS2 后端服务未连接，请检查地址或启动后端服务。',
+    'backendRequest.timeout': 'AS2 后端服务响应超时，请检查服务状态。',
+    'backendManager.processNotReady': '后端进程仍在运行但未就绪。请查看日志或重启后端。',
+    'backendManager.workspaceChanged': '工作区已切换，本次后端启动已取消。',
+    'backendRequest.httpError': 'AS2 后端请求失败（HTTP {0}）。',
+    'backendRequest.invalidResponse': 'AS2 后端返回了无效的 JSON。',
     'backendManager.exitedWithCode': '后端进程异常退出（代码 {0}），请查看输出面板日志',
     'backendManager.externalStop': '检测到后端并非由插件启动，无法在插件内停止；请在终端中手动结束进程。',
     'backendManager.notRunning': '后端当前未在运行。',
@@ -594,9 +597,7 @@ const translations: Record<string, Record<string, string>> = {
     'projectStructure.jsonFiles': 'JSON文件',
     'projectStructure.analysisWorkspace': '分析工作区',
     'projectStructure.analysisWorkspace.tooltip': '数据分析与实验工作区',
-    'projectStructure.experimentStatus': '实验状态',
-    'projectStructure.startTime': '开始时间',
-    'projectStructure.endTime': '结束时间',
+    'projectStructure.runDetails': '运行详情',
     'projectStructure.statusCompleted': '实验已完成',
     'projectStructure.statusRunning': '实验运行中',
     'projectStructure.statusFailed': '实验失败',
@@ -817,9 +818,14 @@ const translations: Record<string, Record<string, string>> = {
     'workspaceImport.copyPath': 'Copy project path',
     'workspaceImport.failed': 'Could not import: {0}',
     'workspaceImport.targetConflict': 'A file with this name already exists: {0}',
+    'extension.aiChat.chooseOnce': 'Choose a chat provider for this session',
+    'extension.aiChat.chooseDefault': 'Choose the default chat provider',
+    'extension.aiChat.currentDefault': 'Current default',
+    'extension.aiChat.unavailable': 'No chat provider is available. Install and enable a chat extension.',
+    'extension.aiChat.openFailed': 'Could not open {0}. Check that the extension is enabled.',
     'extension.aiChat.label': 'AI Chat',
     'extension.aiChat.commandTitle': 'Open AI Chat',
-    'extension.aiChat.tooltip': 'Open the side chat with the assistant',
+    'extension.aiChat.tooltip': 'Open chat. Right-click to choose the default assistant.',
     'extension.searchPapers.prompt': 'Enter paper search query',
     'extension.searchPapers.placeholder': 'e.g., social media influence',
     'extension.searchPapers.searching': 'Searching papers for: {0}',
@@ -966,10 +972,6 @@ const translations: Record<string, Record<string, string>> = {
     'extension.renameLiterature.invalidChars': 'File name cannot contain path separators',
     'extension.renameLiterature.failed': 'Rename failed: {0}',
 
-    // extension.ts - openMarkdownInEditor
-    'extension.openMarkdown.noFile': 'Cannot open: No valid file selected',
-    'extension.openMarkdown.warning': 'This command only works with Markdown files',
-    'extension.openMarkdown.failed': 'Could not open this file. Please try again.',
     'extension.deleteLiterature.success': 'Deleted “{0}”',
     'extension.renameLiterature.success': 'Renamed to “{0}”',
     'extension.backend.started': 'Backend service started',
@@ -1004,9 +1006,6 @@ const translations: Record<string, Record<string, string>> = {
     'extension.replay.inputHypothesisPlaceholder': 'e.g. 1',
     'extension.replay.inputExperiment': 'Enter experiment ID (usually matches the number in the folder name)',
     'extension.replay.inputExperimentPlaceholder': 'e.g. 1',
-    'extension.formatJson.wrongType': 'This action only applies to JSON files (.json).',
-    'extension.formatJson.done': 'Formatted the JSON file',
-    'extension.formatJson.failed': 'Could not format the file. Check that it is valid and try again.',
     'extension.literatureIndex.missing': 'Literature index not found. Generate or refresh it from the Literature section first.',
     'extension.literatureIndex.openFailed': 'Could not open the literature index preview. Please try again.',
     'extension.steps.noWorkspace': 'Open a workspace folder first.',
@@ -1014,11 +1013,10 @@ const translations: Record<string, Record<string, string>> = {
     'extension.steps.pickPlaceholder': 'Choose a steps file to preview',
     'extension.steps.missing': 'Steps file not found.',
     'extension.steps.openFailed': 'Could not open the steps preview. Please try again.',
-    'extension.pid.missing': 'Open status from the experiment entry in the project tree, or run the experiment first if nothing appears.',
+    'extension.pid.missing': 'No run record was found for this experiment.',
     'extension.pid.openFailed': 'Could not open the experiment status view. Please try again.',
     'extension.clipboard.pathCopied': 'Path copied to clipboard',
     'extension.clipboard.pathFailed': 'Could not copy the path. Please try again.',
-    'extension.copyPath.commandTitle': 'Copy Path',
     'extension.openAsset.commandTitle': 'Open Preview',
     'extension.openDocument.commandTitle': 'Open',
     'extension.openTreeFile.missing': 'File is missing or not accessible',
@@ -1028,15 +1026,6 @@ const translations: Record<string, Record<string, string>> = {
     'extension.clipboard.fileNameCopied': 'File name copied: {0}',
     'extension.skill.noDoc': 'No documentation is available for skill “{0}”.',
     'extension.skill.openDocFailed': 'Could not open the skill document. Please try again.',
-
-    // extension.ts - parseWithMinerU
-    'extension.parseMinerU.noFile': 'Cannot parse: No valid file selected',
-    'extension.parseMinerU.noWorkspace': 'Workspace folder not found',
-    'extension.parseMinerU.unsupportedFormat': 'MinerU parsing currently only supports PDF files',
-    'extension.parseMinerU.parsing': 'Parsing {0}...',
-    'extension.parseMinerU.success': 'Successfully parsed file: {0}',
-    'extension.parseMinerU.openFile': 'Open File',
-    'extension.parseMinerU.failed': 'Parse failed: {0}',
 
     // projectStructureProvider.ts
     'projectStructure.noWorkspace': 'Workspace folder not found',
@@ -1096,6 +1085,8 @@ const translations: Record<string, Record<string, string>> = {
 
     // prefillParamsViewProvider.ts
     'prefillParamsViewProvider.noWorkspace': 'No workspace folder found',
+    'prefillParamsViewProvider.loadFailed': 'Could not load environment and agent parameters.',
+    'replay.panelTitle': 'Replay: {0}',
     'prefillParams.title': 'Prefill Parameters',
     'prefillParams.groupTitle': 'Environment & Agents',
     'prefillParams.envModuleTitle': 'Environment Module Prefill Parameters',
@@ -1129,23 +1120,8 @@ const translations: Record<string, Record<string, string>> = {
     'projectStructure.customModules.tooltip': 'Expand to view custom modules, agents, environments, and skill files under custom/',
     'projectStructure.presentation.tooltip': 'View analysis phases, plans, claims, evidence, reviews, and final reports by hypothesis',
     'projectStructure.synthesis.tooltip': 'Expand to view synthesis reports, evidence, and manuscript materials',
-    'projectStructure.experimentStats.label': 'Experiments',
-    'projectStructure.experimentStats.run': 'Run {0}',
-    'projectStructure.experimentStats.failed': 'Failed {0}',
-    'projectStructure.experimentStats.pending': 'Pending {0}',
-    'projectStructure.experimentStats.done': 'Done {0}/{1}',
-    'projectStructure.experimentStats.tooltipTitle': 'Experiment status overview',
-    'projectStructure.experimentStats.completionRate': 'Completion {0}%',
-    'projectStructure.experimentStats.unknown': 'Unknown status {0}',
-    'projectStructure.experimentStats.compact': '{0}/{1} done ({2}%) · run {3} · fail {4} · queued {5}',
-    'projectStructure.experimentStats.short': '{0}/{1} · {2}%',
-    'projectStructure.experimentStats.lineDone': 'Done {0}/{1} ({2}%)',
-    'projectStructure.experimentStats.lineRun': 'Running · {0}',
-    'projectStructure.experimentStats.lineFailed': 'Failed · {0}',
-    'projectStructure.experimentStats.linePending': 'Queued · {0}',
-    'projectStructure.experimentStats.lineUnknown': 'Unknown · {0}',
-    'projectStructure.experimentStats.allDone': 'All done',
-    'projectStructure.experimentStats.seeTopicHint': 'Open “Research Topic” below and expand a hypothesis for per-folder details.',
+    'projectStructure.experimentStats.label': 'Experiment Progress',
+    'projectStructure.experimentStats.done': '{0}/{1} completed',
 
     // backendManager.ts
     'backendManager.openSettings': 'Open configuration',
@@ -1154,6 +1130,25 @@ const translations: Record<string, Record<string, string>> = {
     'backendManager.workingDirectoryMissing': 'Working directory does not exist: {0}',
     'backendManager.llmKeyRequired': 'LLM API key is required. Set AGENTSOCIETY_LLM_API_KEY in workspace .env',
     'backendManager.startFailed': 'Failed to start backend service: {0}',
+    'backendRequest.unauthorized': 'Backend authentication failed (HTTP 401). Configure a BACKEND_TOKEN that matches the AS2 backend. For an external backend, set both BACKEND_TOKEN and BACKEND_TOKEN_ORIGIN in the workspace .env.',
+    'backendRequest.forbidden': 'Backend access denied (HTTP 403). Check the backend access policy. Remote access requires BACKEND_TOKEN on the AS2 server.',
+    'backendRequest.redirect': 'Backend returned a redirect (HTTP {0}); it was not followed. Set BACKEND_URL in the workspace .env to the direct AS2 endpoint.',
+    'backendRequest.httpsRequired': 'Remote AS2 backends must use HTTPS to protect BACKEND_TOKEN. Set an HTTPS BACKEND_URL in the workspace .env.',
+    'backendRequest.invalidOrigin': 'Invalid backend address: check {0}. The address must not contain credentials, a path, a query, or a fragment.',
+    'backendRequest.invalidUrl': 'Invalid backend address: BACKEND_URL must be an HTTP(S) URL with an optional path prefix and no credentials, query, or fragment.',
+    'backendRequest.tokenOriginRequired': 'To use BACKEND_TOKEN with an external backend, explicitly set a trusted BACKEND_TOKEN_ORIGIN in the workspace .env (scheme, host, and optional port, without a path).',
+    'backendRequest.tokenOriginMismatch': 'The backend address does not match BACKEND_TOKEN_ORIGIN. Check the scheme, host, and port, and verify that you trust the destination before changing the binding.',
+    'backendRequest.browserAuthRequired': 'This backend requires Bearer authentication. Use an API client that can set the Authorization header. Do not put the token in the URL.',
+    'backendRequest.invalidToken': 'BACKEND_TOKEN must contain printable ASCII characters without spaces.',
+    'backendRequest.invalidRoute': 'The request is not an AS2 backend route.',
+    'backendRequest.envReadFailed': 'Could not read backend configuration from the workspace .env.',
+    'backendRequest.externalUnavailable': 'Could not connect to the configured external AS2 backend. Check the address and service status.',
+    'backendRequest.offline': 'The AS2 backend is not connected. Check the address or start the backend service.',
+    'backendRequest.timeout': 'The AS2 backend request timed out. Check the service status.',
+    'backendManager.processNotReady': 'The backend process is running but not ready. Check the logs or restart the backend.',
+    'backendManager.workspaceChanged': 'The workspace changed. Backend startup was cancelled.',
+    'backendRequest.httpError': 'AS2 backend request failed (HTTP {0}).',
+    'backendRequest.invalidResponse': 'The AS2 backend returned invalid JSON.',
     'backendManager.exitedWithCode': 'Backend process exited with code {0}. Check the output panel for details.',
     'backendManager.externalStop': 'The backend was not started by the extension and cannot be stopped from here. End the process manually in your terminal.',
     'backendManager.notRunning': 'The backend is not currently running.',
@@ -1294,9 +1289,7 @@ const translations: Record<string, Record<string, string>> = {
     'projectStructure.jsonFiles': 'JSON Files',
     'projectStructure.analysisWorkspace': 'Analysis Workspace',
     'projectStructure.analysisWorkspace.tooltip': 'Data analysis and experiment workspace',
-    'projectStructure.experimentStatus': 'Experiment Status',
-    'projectStructure.startTime': 'Start Time',
-    'projectStructure.endTime': 'End Time',
+    'projectStructure.runDetails': 'Run Details',
     'projectStructure.statusCompleted': 'Experiment completed',
     'projectStructure.statusRunning': 'Experiment running',
     'projectStructure.statusFailed': 'Experiment failed',
@@ -1476,4 +1469,30 @@ export function getCurrentLanguageCode(): ExtensionLanguage {
 /** 扩展 UI 是否为中文（跟随 `aiSocialScientist.language`，非 VS Code Display Language）。 */
 export function isExtensionZh(): boolean {
   return getCurrentLanguage() === 'zh-CN';
+}
+
+/** 将扩展语言同步到已打开或重新显示的编辑器，保留面板内的编辑状态。 */
+export function syncWebviewLanguage(panel: vscode.WebviewPanel, title?: () => string): void {
+  const update = () => {
+    if (title) {
+      panel.title = title();
+    }
+    void panel.webview.postMessage({ type: 'extensionLanguageChanged', language: getCurrentLanguageCode() });
+  };
+  const setting = vscode.workspace.onDidChangeConfiguration(event => {
+    if (event.affectsConfiguration('aiSocialScientist.language')) {
+      update();
+    }
+  });
+  // 隐藏的面板可能重建脚本，在其正常的就绪请求到达后补发当前语言。
+  const ready = panel.webview.onDidReceiveMessage(message => {
+    const command = message?.command ?? message?.type;
+    if (command === 'requestData' || command === 'requestConfig' || command === 'ready') {
+      update();
+    }
+  });
+  panel.onDidDispose(() => {
+    setting.dispose();
+    ready.dispose();
+  });
 }

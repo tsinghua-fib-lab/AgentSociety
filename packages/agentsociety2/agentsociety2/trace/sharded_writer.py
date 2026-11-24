@@ -29,6 +29,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+try:  # POSIX-only; Windows falls back to plain os.write.
+    import fcntl
+except ImportError:  # pragma: no cover - Windows
+    fcntl = None  # type: ignore[assignment]
+
 from agentsociety2.trace.span import TraceSpan
 
 
@@ -99,17 +104,31 @@ class ShardedAppendSink:
         self._cap = value_cap
         self._fds: dict[str, int] = {}
         self._lock = threading.Lock()
+        self._write_lock = threading.Lock()
+        self._max_fds = max(
+            8, int(os.getenv("AGENTSOCIETY_TRACE_MAX_FDS_PER_SINK", "64"))
+        )
+        self._closed = False
 
-    def _ensure_fd(self, key: str) -> None:
-        if key in self._fds:
-            return
+    def _ensure_fd(self, key: str) -> int | None:
         with self._lock:
-            if key not in self._fds:
+            if self._closed:
+                return None
+            fd = self._fds.get(key)
+            if fd is None:
+                if len(self._fds) >= self._max_fds:
+                    oldest_key, oldest_fd = next(iter(self._fds.items()))
+                    del self._fds[oldest_key]
+                    try:
+                        os.close(oldest_fd)
+                    except OSError:
+                        pass
                 path = self._base / f"trace_{key}.jsonl"
                 # Cached descriptor is owned by this writer and released by close().
                 # codeql[py/file-not-closed]
                 fd = os.open(str(path), os.O_APPEND | os.O_CREAT | os.O_WRONLY, 0o600)
                 self._fds[key] = fd
+            return fd
 
     def append_record(self, record: dict[str, Any]) -> None:
         """Append one JSONL record to the shard keyed by ``trace_id[:2]``.
@@ -121,13 +140,34 @@ class ShardedAppendSink:
         rec = _cap_large(record, self._cap) if self._cap else record
         key = str(rec.get("trace_id", ""))[:2].lower() or "00"
         data = (json.dumps(rec, ensure_ascii=False, default=str) + "\n").encode("utf-8")
-        self._ensure_fd(key)
-        fd = self._fds[key]
-        mv = memoryview(data)
-        # Retry partial writes; a whole record may require multiple writes.
-        while mv:
-            n = os.write(fd, mv)
-            mv = mv[n:]
+        with self._write_lock:
+            fd = self._ensure_fd(key)
+            if fd is None:
+                return
+            mv = memoryview(data)
+            # Multiple Ray workers append to the same shard with independent
+            # O_APPEND descriptors. A record larger than one write can interleave
+            # with another process's record, so serialize the whole record with an
+            # advisory lock (POSIX). Windows has no fcntl; there the best available
+            # guarantee remains a single O_APPEND write per ``os.write`` call.
+            try:
+                if fcntl is not None:
+                    fcntl.flock(fd, fcntl.LOCK_EX)
+                try:
+                    # Retry partial writes; a whole record may require multiple writes.
+                    while mv:
+                        n = os.write(fd, mv)
+                        mv = mv[n:]
+                finally:
+                    if fcntl is not None:
+                        fcntl.flock(fd, fcntl.LOCK_UN)
+            except OSError:
+                # Observability must never abort an agent step or tool call.
+                import logging
+
+                logging.getLogger(__name__).debug(
+                    "Dropped trace record after write failure", exc_info=True
+                )
 
     def flush(self) -> None:
         """No-op: writes are unbuffered (raw ``os.write`` to the page cache)."""
@@ -135,7 +175,12 @@ class ShardedAppendSink:
 
     def close(self) -> None:
         """Close all open shard file descriptors."""
-        for fd in self._fds.values():
+        with self._write_lock:
+            with self._lock:
+                self._closed = True
+                fds = list(self._fds.values())
+                self._fds.clear()
+        for fd in fds:
             try:
                 os.close(fd)
             except OSError:
@@ -144,7 +189,6 @@ class ShardedAppendSink:
                 logging.getLogger(__name__).debug(
                     "Failed to close shard fd", exc_info=True
                 )
-        self._fds.clear()
 
 
 def build_local_sink(trace_proxy: Any) -> ShardedAppendSink | None:

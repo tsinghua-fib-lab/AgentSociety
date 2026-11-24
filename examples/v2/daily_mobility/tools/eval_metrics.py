@@ -31,7 +31,6 @@ import numpy as np
 from scipy.spatial.distance import jensenshannon
 
 # NPY label encoding used by the official benchmark (confirmed via data analysis).
-# The groundtruth README has this mapping WRONG (swaps 3↔4 and 7).
 # Correct encoding:
 #   1 = sleep
 #   2 = home activity
@@ -107,7 +106,9 @@ def load_intentions(
         for p in sorted(artifacts_dir.glob("questionnaire*.json")):
             try:
                 data = json.loads(p.read_text())
-            except Exception:
+            except (OSError, ValueError):
+                continue
+            if not isinstance(data, dict):
                 continue
             qid = str(data.get("questionnaire_id", ""))
             if "daily_mobility_intention_slot_" not in qid:

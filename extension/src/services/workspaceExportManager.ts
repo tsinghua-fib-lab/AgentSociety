@@ -291,6 +291,7 @@ export class WorkspaceExportManager implements vscode.Disposable {
           candidate.archivePath,
           candidate.allowedRoot,
           summary,
+          new Set<string>(),
         );
         rootRecords.push({
           archivePath: candidate.archivePath,
@@ -496,7 +497,18 @@ export class WorkspaceExportManager implements vscode.Disposable {
     dirPath: string,
     relativePath = '',
     allowedRoot = dirPath,
+    ancestorRealPaths: Set<string> = new Set<string>(),
   ): number {
+    let realDir: string;
+    try {
+      realDir = fs.realpathSync(dirPath);
+    } catch {
+      return 0;
+    }
+    if (ancestorRealPaths.has(realDir)) {
+      return 0;
+    }
+    const nextAncestors = new Set(ancestorRealPaths).add(realDir);
     try {
       let totalSize = 0;
       const entries = fs.readdirSync(dirPath, { withFileTypes: true });
@@ -507,13 +519,36 @@ export class WorkspaceExportManager implements vscode.Disposable {
           continue;
         }
         if (entry.isDirectory()) {
-          totalSize += this.getDirectorySize(fullPath, childRelative, allowedRoot);
+          totalSize += this.getDirectorySize(fullPath, childRelative, allowedRoot, nextAncestors);
         } else if (entry.isFile()) {
           totalSize += this.getFileSize(fullPath);
         } else if (entry.isSymbolicLink()) {
           const resolved = resolveSafeExportSymlink(fullPath, allowedRoot);
-          if (resolved && fs.statSync(resolved).isFile()) {
-            totalSize += this.getFileSize(resolved);
+          if (!resolved) {
+            continue;
+          }
+          try {
+            const resolvedStats = fs.statSync(resolved);
+            if (resolvedStats.isDirectory()) {
+              const resolvedReal = fs.realpathSync(resolved);
+              if (nextAncestors.has(resolvedReal)) {
+                continue;
+              }
+              const linkParentReal = fs.realpathSync(path.dirname(fullPath));
+              if (this.isAncestorPath(resolvedReal, linkParentReal)) {
+                continue;
+              }
+              totalSize += this.getDirectorySize(
+                resolved,
+                childRelative,
+                allowedRoot,
+                nextAncestors,
+              );
+            } else if (resolvedStats.isFile()) {
+              totalSize += this.getFileSize(resolved);
+            }
+          } catch {
+            continue;
           }
         }
       }
@@ -624,6 +659,11 @@ export class WorkspaceExportManager implements vscode.Disposable {
     return undefined;
   }
 
+  private isAncestorPath(candidate: string, descendant: string): boolean {
+    const relative = path.relative(candidate, descendant);
+    return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+  }
+
   private formatSize(bytes: number): string {
     if (bytes === 0) {
       return '0 B';
@@ -641,6 +681,7 @@ export class WorkspaceExportManager implements vscode.Disposable {
     relativePath: string,
     workspaceRoot: string,
     summary: ExportSummary,
+    ancestorRealPaths: Set<string>,
   ): void {
     const normalizedPath = this.normalizeRelativePath(relativePath);
     let stats: fs.Stats;
@@ -672,7 +713,35 @@ export class WorkspaceExportManager implements vscode.Disposable {
         return;
       }
       if (resolvedStats.isDirectory()) {
-        this.log(`Skipped directory symlink: ${normalizedPath}`);
+        let resolvedReal: string;
+        try {
+          resolvedReal = fs.realpathSync(resolvedPath);
+        } catch {
+          this.log(`Skipped unreadable symlink target: ${normalizedPath}`);
+          return;
+        }
+        if (ancestorRealPaths.has(resolvedReal)) {
+          this.log(`Skipped symlink cycle: ${normalizedPath}`);
+          return;
+        }
+        let linkParentReal: string;
+        try {
+          linkParentReal = fs.realpathSync(path.dirname(sourcePath));
+        } catch {
+          linkParentReal = path.dirname(sourcePath);
+        }
+        if (this.isAncestorPath(resolvedReal, linkParentReal)) {
+          this.log(`Skipped symlink to its own ancestor: ${normalizedPath}`);
+          return;
+        }
+        this.copyDirectory(
+          resolvedPath,
+          targetPath,
+          normalizedPath,
+          workspaceRoot,
+          summary,
+          ancestorRealPaths,
+        );
       } else if (resolvedStats.isFile()) {
         this.copyFile(resolvedPath, targetPath, summary);
       } else {
@@ -682,7 +751,14 @@ export class WorkspaceExportManager implements vscode.Disposable {
     }
 
     if (stats.isDirectory()) {
-      this.copyDirectory(sourcePath, targetPath, normalizedPath, workspaceRoot, summary);
+      this.copyDirectory(
+        sourcePath,
+        targetPath,
+        normalizedPath,
+        workspaceRoot,
+        summary,
+        ancestorRealPaths,
+      );
       return;
     }
 
@@ -699,7 +775,21 @@ export class WorkspaceExportManager implements vscode.Disposable {
     relativeDir: string,
     workspaceRoot: string,
     summary: ExportSummary,
+    ancestorRealPaths: Set<string>,
   ): void {
+    let realDir: string;
+    try {
+      realDir = fs.realpathSync(sourceDir);
+    } catch {
+      this.log(`Skipped unreadable directory: ${relativeDir}`);
+      return;
+    }
+    if (ancestorRealPaths.has(realDir)) {
+      this.log(`Skipped symlink cycle: ${relativeDir}`);
+      return;
+    }
+    const nextAncestors = new Set(ancestorRealPaths).add(realDir);
+
     fs.mkdirSync(targetDir, { recursive: true });
 
     const entries = fs.readdirSync(sourceDir, { withFileTypes: true })
@@ -708,7 +798,14 @@ export class WorkspaceExportManager implements vscode.Disposable {
       const childRelativePath = this.normalizeRelativePath(path.posix.join(relativeDir, entry.name));
       const childSourcePath = path.join(sourceDir, entry.name);
       const childTargetPath = path.join(targetDir, entry.name);
-      this.copyEntry(childSourcePath, childTargetPath, childRelativePath, workspaceRoot, summary);
+      this.copyEntry(
+        childSourcePath,
+        childTargetPath,
+        childRelativePath,
+        workspaceRoot,
+        summary,
+        nextAncestors,
+      );
     }
   }
 
@@ -751,7 +848,14 @@ export class WorkspaceExportManager implements vscode.Disposable {
     if (destinationUri.scheme === 'file') {
       const destPath = destinationUri.fsPath;
       await fs.promises.mkdir(path.dirname(destPath), { recursive: true });
-      await fs.promises.copyFile(sourceZipPath, destPath);
+      const stagingPath = `${destPath}.tmp-${process.pid}-${Date.now()}`;
+      try {
+        await fs.promises.copyFile(sourceZipPath, stagingPath);
+        await fs.promises.rename(stagingPath, destPath);
+      } catch (error) {
+        await fs.promises.rm(stagingPath, { force: true }).catch(() => undefined);
+        throw error;
+      }
     } else {
       const zipContent = await fs.promises.readFile(sourceZipPath);
       await vscode.workspace.fs.writeFile(destinationUri, zipContent);
@@ -765,18 +869,10 @@ export class WorkspaceExportManager implements vscode.Disposable {
       workspacePath,
       extensionPath: extension?.extensionPath,
     });
-    const candidates = resolved ? [resolved] : [];
-    const defaults = process.platform === 'win32'
-      ? ['python', 'py']
-      : ['python3', 'python'];
-
-    for (const candidate of defaults) {
-      if (!candidates.includes(candidate)) {
-        candidates.push(candidate);
-      }
+    if (resolved) {
+      return [resolved];
     }
-
-    return candidates;
+    return process.platform === 'win32' ? ['python', 'py'] : ['python3', 'python'];
   }
 
   private readConfiguredPythonPath(): string | null {
@@ -807,11 +903,7 @@ export class WorkspaceExportManager implements vscode.Disposable {
     }
 
     const absolutePath = path.join(workspacePath, relativePath);
-    if (!fs.existsSync(absolutePath)) {
-      return false;
-    }
-
-    return !this.shouldExclude(this.normalizeRelativePath(relativePath));
+    return fs.existsSync(absolutePath);
   }
 
   private getClaudeConversationCandidate(workspacePath: string): ExportCandidate | null {
@@ -913,6 +1005,7 @@ export class WorkspaceExportManager implements vscode.Disposable {
     sourceDir: string,
     relativeDir: string,
     workspaceRoot: string,
+    ancestorRealPaths: Set<string> = new Set<string>(),
   ): number {
     if (!fs.existsSync(sourceDir)) {
       return 0;
@@ -929,7 +1022,24 @@ export class WorkspaceExportManager implements vscode.Disposable {
         return 0;
       }
       try {
-        return fs.statSync(resolved).isFile() &&
+        const resolvedStats = fs.statSync(resolved);
+        if (resolvedStats.isDirectory()) {
+          const resolvedReal = fs.realpathSync(resolved);
+          if (ancestorRealPaths.has(resolvedReal)) {
+            return 0;
+          }
+          const linkParentReal = fs.realpathSync(path.dirname(sourceDir));
+          if (this.isAncestorPath(resolvedReal, linkParentReal)) {
+            return 0;
+          }
+          return this.countExportableFiles(
+            resolved,
+            relativeDir,
+            workspaceRoot,
+            ancestorRealPaths,
+          );
+        }
+        return resolvedStats.isFile() &&
           !this.shouldExclude(this.normalizeRelativePath(relativeDir))
           ? 1
           : 0;
@@ -944,13 +1054,29 @@ export class WorkspaceExportManager implements vscode.Disposable {
         : 0;
     }
 
+    let realDir: string;
+    try {
+      realDir = fs.realpathSync(sourceDir);
+    } catch {
+      return 0;
+    }
+    if (ancestorRealPaths.has(realDir)) {
+      return 0;
+    }
+    const nextAncestors = new Set(ancestorRealPaths).add(realDir);
+
     let total = 0;
     const entries = fs.readdirSync(sourceDir, { withFileTypes: true });
     for (const entry of entries) {
       const childRelativePath = this.normalizeRelativePath(path.posix.join(relativeDir, entry.name));
       const childSourcePath = path.join(sourceDir, entry.name);
       if (entry.isSymbolicLink() || entry.isDirectory()) {
-        total += this.countExportableFiles(childSourcePath, childRelativePath, workspaceRoot);
+        total += this.countExportableFiles(
+          childSourcePath,
+          childRelativePath,
+          workspaceRoot,
+          nextAncestors,
+        );
       } else if (entry.isFile() && !this.shouldExclude(childRelativePath)) {
         total += 1;
       }

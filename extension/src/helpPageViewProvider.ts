@@ -89,7 +89,7 @@ export class HelpPageViewProvider {
     if (isZh) {
       return `# AI Social Scientist 使用指南
 
-当前无法加载在线文档。完整说明见 [ReadTheDocs](${rtdUrl})。
+完整文档见 [ReadTheDocs](${rtdUrl})。
 
 ## 快速入口
 
@@ -102,7 +102,7 @@ export class HelpPageViewProvider {
     }
     return `# AI Social Scientist User Guide
 
-Online documentation is unavailable. See the full guide on [ReadTheDocs](${rtdUrl}).
+Read the full guide on [ReadTheDocs](${rtdUrl}).
 
 ## Quick Links
 
@@ -182,7 +182,7 @@ Online documentation is unavailable. See the full guide on [ReadTheDocs](${rtdUr
 </head>
 <body>
     <div id="root"></div>
-    <script nonce="${nonce}">window.HELP_CONTENT = ${jsonHelpContent};</script>
+    <script nonce="${nonce}">window.__AS_LANG__ = ${JSON.stringify(htmlLang)}; window.HELP_CONTENT = ${jsonHelpContent};</script>
     <script nonce="${nonce}">window.RTD_URL = ${jsonRtdUrl};</script>
     <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>

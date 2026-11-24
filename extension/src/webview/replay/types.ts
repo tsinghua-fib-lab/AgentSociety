@@ -142,7 +142,6 @@ export interface InitData {
   workspacePath: string;
   hypothesisId: string;
   experimentId: string;
-  backendUrl: string;
 }
 
 /** Message types from webview to extension */

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass, field
 from html.parser import HTMLParser
 from pathlib import Path
 
@@ -14,7 +15,7 @@ from agentsociety2.skills.analysis.harness.validators._helpers import (
     passed,
 )
 
-MIN_REPORT_WORDS = 25
+MIN_REPORT_WORDS = 25  # word-equivalent units; two CJK characters count as one
 MIN_LIMITATIONS_CHARS = 8
 MIN_SECTION_HEADERS = 3
 MIN_KEY_FINDING_CHARS = 12
@@ -26,7 +27,10 @@ FLUFF_PATTERNS = (
     re.compile(r"呈现出(一定|较为)?(的)?(多样|复杂|丰富)", re.IGNORECASE),
 )
 
-FIGURE_LINE_RE = re.compile(r"!\[[^\]]*\]\(assets/([^)]+)\)")
+FIGURE_LINE_RE = re.compile(r"!\[[^\]]*\]\((?:\./)?assets/([^)]+)\)")
+HTML_FIGURE_RE = re.compile(
+    r"""<img[^>]*\ssrc=["'](?:\./)?assets/([^"']+)["']""", re.IGNORECASE
+)
 SECTION_RE = re.compile(r"^##\s+.+", re.MULTILINE)
 MARKDOWN_HEADING_RE = re.compile(r"^##\s+(.+?)\s*$", re.MULTILINE)
 MARKDOWN_TABLE_SEPARATOR_RE = re.compile(
@@ -39,6 +43,19 @@ EMPTY_EDA_MESSAGES = (
 )
 
 
+@dataclass
+class _HTMLImageAudit:
+    src: str
+    alt: str
+    in_figure: bool
+
+
+@dataclass
+class _HTMLFigureAudit:
+    caption: list[str] = field(default_factory=list)
+    images: list[str] = field(default_factory=list)
+
+
 class _ReportHTMLAuditParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
@@ -47,6 +64,11 @@ class _ReportHTMLAuditParser(HTMLParser):
         self.data_section_depth = 0
         self.data_text: list[str] = []
         self.data_table_count = 0
+        self.asset_images: list[_HTMLImageAudit] = []
+        self.figures: list[_HTMLFigureAudit] = []
+        self._figure_depth = 0
+        self._current_figure: _HTMLFigureAudit | None = None
+        self._figcaption_depth = 0
         self._ignored_depth = 0
 
     def handle_starttag(
@@ -60,6 +82,23 @@ class _ReportHTMLAuditParser(HTMLParser):
             self.id_counts[element_id] = self.id_counts.get(element_id, 0) + 1
 
         normalized_tag = tag.lower()
+        if normalized_tag == "figure":
+            if not self._figure_depth:
+                self._current_figure = _HTMLFigureAudit()
+            self._figure_depth += 1
+        elif normalized_tag == "figcaption" and self._current_figure is not None:
+            self._figcaption_depth += 1
+        elif normalized_tag == "img":
+            source = attributes.get("src") or ""
+            if re.match(r"^(?:\./)?assets/", source, re.IGNORECASE):
+                alt = attributes.get("alt") or ""
+                in_figure = self._figure_depth > 0
+                self.asset_images.append(
+                    _HTMLImageAudit(src=source, alt=alt, in_figure=in_figure)
+                )
+                if self._current_figure is not None:
+                    self._current_figure.images.append(source)
+
         if normalized_tag == "section":
             if self.data_section_depth:
                 self.data_section_depth += 1
@@ -75,6 +114,13 @@ class _ReportHTMLAuditParser(HTMLParser):
 
     def handle_endtag(self, tag: str) -> None:
         normalized_tag = tag.lower()
+        if normalized_tag == "figcaption" and self._figcaption_depth:
+            self._figcaption_depth -= 1
+        if normalized_tag == "figure" and self._figure_depth:
+            self._figure_depth -= 1
+            if not self._figure_depth and self._current_figure is not None:
+                self.figures.append(self._current_figure)
+                self._current_figure = None
         if self.data_section_depth and normalized_tag in {"script", "style"}:
             self._ignored_depth = max(0, self._ignored_depth - 1)
         if self.data_section_depth and normalized_tag == "section":
@@ -83,6 +129,8 @@ class _ReportHTMLAuditParser(HTMLParser):
                 self._ignored_depth = 0
 
     def handle_data(self, data: str) -> None:
+        if self._figcaption_depth and self._current_figure is not None:
+            self._current_figure.caption.append(data)
         if self.data_section_depth and not self._ignored_depth:
             self.data_text.append(data)
 
@@ -95,8 +143,15 @@ def _audit_html(text: str) -> _ReportHTMLAuditParser:
 
 
 def _word_count(text: str) -> int:
-    tokens = re.findall(r"[\w\u4e00-\u9fff]+", text)
-    return len(tokens)
+    """\u6309\u8bcd\u5f53\u91cf\u8ba1\u6570\uff1a\u62c9\u4e01\u8bcd 1 \u4e2a\u3001CJK \u5b57\u7b26 2 \u4e2a\u8bb0 1 \u4e2a\u3002
+
+    :param text: \u62a5\u544a\u6b63\u6587\u3002
+    :returns: \u7528\u4e8e\u957f\u5ea6\u95e8\u69db\u7684\u8bcd\u5f53\u91cf\u3002
+    """
+
+    latin_words = len(re.findall(r"[A-Za-z0-9_]+", text))
+    cjk_chars = len(re.findall(r"[\u4e00-\u9fff]", text))
+    return latin_words + (cjk_chars + 1) // 2
 
 
 def _figure_refs(text: str) -> list[str]:
@@ -265,6 +320,38 @@ def validate_report_quality(
                     fix_hint="Regenerate the HTML data section from the Markdown, then embed EDA only inside the child markers",
                 )
             )
+        audit = _audit_html(report_html)
+        for image in audit.asset_images:
+            source = image.src
+            if not image.alt.strip():
+                issues.append(
+                    issue(
+                        "html_image_alt_missing",
+                        phase="produce",
+                        message=f"{label}: {source} has empty alt text",
+                        fix_hint="Describe the figure content in the img alt attribute",
+                    )
+                )
+            if not image.in_figure:
+                issues.append(
+                    issue(
+                        "html_figure_wrapper_missing",
+                        phase="produce",
+                        message=f'{label}: {source} is not wrapped in <figure class="figure-block">',
+                        fix_hint="Wrap each report figure in a figure block with caption",
+                    )
+                )
+        for figure in audit.figures:
+            caption = "".join(figure.caption).strip()
+            if figure.images and not caption:
+                issues.append(
+                    issue(
+                        "html_figure_caption_missing",
+                        phase="produce",
+                        message=f"{label}: a figure block has no non-empty <figcaption>",
+                        fix_hint="Add a one-line figcaption with sample scope and takeaway",
+                    )
+                )
 
     zh_figs = set(_figure_refs(zh_text))
     en_figs = set(_figure_refs(en_text))
@@ -278,7 +365,47 @@ def validate_report_quality(
             )
         )
 
-    if summary_path.exists():
+    zh_html_figs = set(HTML_FIGURE_RE.findall(zh_html_text))
+    en_html_figs = set(HTML_FIGURE_RE.findall(en_html_text))
+    if zh_html_figs != en_html_figs:
+        issues.append(
+            issue(
+                "bilingual_html_figure_mismatch",
+                phase="produce",
+                message="Chinese and English HTML reports reference different asset sets",
+                fix_hint="Mirror figure embeds across report_zh.html and report_en.html",
+            )
+        )
+    for markdown_figs, html_figs, label in (
+        (zh_figs, zh_html_figs, "report_zh.html"),
+        (en_figs, en_html_figs, "report_en.html"),
+    ):
+        if markdown_figs == html_figs:
+            continue
+        details: list[str] = []
+        if missing := sorted(markdown_figs - html_figs):
+            details.append("missing from HTML: " + ", ".join(missing))
+        if extra := sorted(html_figs - markdown_figs):
+            details.append("absent from Markdown: " + ", ".join(extra))
+        issues.append(
+            issue(
+                "report_figure_parity",
+                phase="produce",
+                message=f"{label} figure set differs from its Markdown source ({'; '.join(details)})",
+                fix_hint="Mirror the Markdown figure embeds into the HTML report",
+            )
+        )
+
+    if not summary_path.exists():
+        issues.append(
+            issue(
+                "analysis_summary_missing",
+                phase="produce",
+                message="data/analysis_summary.json is required",
+                fix_hint="Write presentation/hypothesis_{id}/data/analysis_summary.json",
+            )
+        )
+    else:
         try:
             summary = load_model_from_file(summary_path, AnalysisSummary)
             if len((summary.limitations or "").strip()) < MIN_LIMITATIONS_CHARS:
@@ -318,17 +445,23 @@ def validate_report_quality(
         confirmatory = [
             c for c in claims_doc.claims if c.mode == ClaimMode.confirmatory
         ]
-        for claim in confirmatory[:8]:
+        for claim in confirmatory:
             needle = (claim.statement or claim.claim_id or "").strip()
-            if needle and needle[:12] not in zh_text and claim.claim_id not in zh_text:
-                issues.append(
-                    issue(
-                        "confirmatory_claim_not_in_report",
-                        phase="produce",
-                        message=f"Confirmatory claim not reflected in report_zh.md: {claim.claim_id or needle[:40]}",
-                        fix_hint="Add a findings subsection per claim; see claims.json",
+            if not needle:
+                continue
+            for text, label in ((zh_text, "report_zh.md"), (en_text, "report_en.md")):
+                if needle[:12] not in text and claim.claim_id not in text:
+                    issues.append(
+                        issue(
+                            "confirmatory_claim_not_in_report",
+                            phase="produce",
+                            message=(
+                                f"Confirmatory claim not reflected in {label}: "
+                                f"{claim.claim_id or needle[:40]}"
+                            ),
+                            fix_hint="Add a findings subsection per claim in both languages; see claims.json",
+                        )
                     )
-                )
 
     if issues:
         return blocked(

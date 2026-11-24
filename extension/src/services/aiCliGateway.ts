@@ -2,7 +2,7 @@ import * as http from 'http';
 import type { ClientRequest, IncomingMessage, ServerResponse } from 'http';
 import * as https from 'https';
 import { URL } from 'url';
-import { findAvailablePortFrom } from '../portUtils';
+import { once } from 'events';
 import {
   inferOpenAiApiFormat,
   isCodexResponsesPath,
@@ -400,6 +400,7 @@ function applyUpstreamAuth(
  */
 export class AiCliGateway {
   private server: http.Server | null = null;
+  private starting?: Promise<void>;
   private port: number | null = null;
   /** Active upstream for Anthropic/Claude routes. */
   private upstream: AiCliGatewayUpstream | null = null;
@@ -691,23 +692,35 @@ export class AiCliGateway {
     if (this.server) {
       return this.getStatus();
     }
-    const port = await findAvailablePortFrom(DEFAULT_GATEWAY_PORT_START, DEFAULT_GATEWAY_PORT_END);
-    this.lastError = undefined;
-
-    const server = http.createServer((req, res) => {
-      void this.handleRequest(req, res);
-    });
-    await new Promise<void>((resolve, reject) => {
-      server.once('error', reject);
-      server.listen(port, '127.0.0.1', () => resolve());
-    });
-    this.server = server;
-    this.port = port;
-    this.statsTracker.reset();
+    this.starting ??= this.listen().finally(() => { this.starting = undefined; });
+    await this.starting;
     return this.getStatus();
   }
 
+  private async listen(): Promise<void> {
+    const server = http.createServer((req, res) => { void this.handleRequest(req, res); });
+    for (let port = DEFAULT_GATEWAY_PORT_START; port <= DEFAULT_GATEWAY_PORT_END; port++) {
+      try {
+        server.listen(port, '127.0.0.1');
+        await once(server, 'listening');
+      } catch (error) {
+        const code = (error as NodeJS.ErrnoException).code;
+        if (code === 'EADDRINUSE' || code === 'EACCES') { continue; }
+        throw error;
+      }
+      this.server = server;
+      this.port = port;
+      this.lastError = undefined;
+      this.statsTracker.reset();
+      return;
+    }
+    throw new Error(`No available port found from ${DEFAULT_GATEWAY_PORT_START} to ${DEFAULT_GATEWAY_PORT_END}`);
+  }
+
   async stop(): Promise<void> {
+    if (this.starting) {
+      await this.starting.catch(() => undefined);
+    }
     this.outboundProxyAgent?.destroy();
     this.outboundProxyAgent = undefined;
     this.directHttpAgent?.destroy();

@@ -312,7 +312,7 @@ results = await service.batch_recommend([1, 2, 3], n=5)
 
 **示例**:
 ```python
-await service.save_model("/data/model.pkl")
+await service.save_model("model.pkl")
 ```
 
 ---
@@ -326,7 +326,7 @@ await service.save_model("/data/model.pkl")
 
 **示例**:
 ```python
-await service.load_model("/data/model.pkl")
+await service.load_model("model.pkl")
 ```
 
 ---

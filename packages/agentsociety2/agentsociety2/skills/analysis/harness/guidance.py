@@ -235,9 +235,10 @@ PAYLOAD_TEMPLATES: dict[str, dict[str, Any]] = {
         "overall_score": 4,
         "dimensions": {
             "evidence_traceability": 4,
-            "claim_discipline": 4,
-            "limitations": 4,
-            "bilingual_consistency": 4,
+            "narrative_clarity": 4,
+            "limitations_honesty": 4,
+            "bilingual_parity": 4,
+            "chart_integration": 4,
         },
         "blocking_issues": [],
         "revision_instructions": [],
@@ -307,14 +308,18 @@ def list_payload_templates() -> list[str]:
 def get_payload_template(name: str) -> dict[str, Any]:
     key = name.strip().replace("-", "_")
     if key not in PAYLOAD_TEMPLATES:
-        raise KeyError(key)
+        raise ValueError(
+            f"Unknown payload template {name!r}; available: {list_payload_templates()}"
+        )
     return deepcopy(PAYLOAD_TEMPLATES[key])
 
 
 def get_harness_guidance(topic: str = "workflow") -> dict[str, Any]:
     topic = (topic or "workflow").strip().lower()
     if topic not in GUIDANCE_TOPICS:
-        raise KeyError(topic)
+        raise ValueError(
+            f"Unknown guidance topic {topic!r}; available: {sorted(GUIDANCE_TOPICS)}"
+        )
 
     common = {
         "topic": topic,

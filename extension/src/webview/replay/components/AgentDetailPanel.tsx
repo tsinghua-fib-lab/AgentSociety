@@ -3,6 +3,7 @@
  */
 
 import * as React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button, Divider, Empty, Flex, Modal, Pagination, Select, Spin, Table, Tooltip, Typography } from 'antd';
 import { CloseOutlined, DatabaseOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useReplay } from '../store';
@@ -35,11 +36,12 @@ const DatasetRowCard: React.FC<{
   dataset: ReplayDatasetInfo;
   row: Record<string, any> | null | undefined;
 }> = ({ dataset, row }) => {
+  const { t } = useTranslation();
   if (!row) {
     return (
       <div className="left-info-history-card" style={{ marginTop: '8px' }}>
         <div className="left-info-history-inner" style={{ color: 'var(--as-muted-text)' }}>
-          No current row at this step
+          {t('replay.rows.noCurrent')}
         </div>
       </div>
     );
@@ -72,6 +74,7 @@ const DatasetRowCard: React.FC<{
 };
 
 export const AgentDetailPanel: React.FC = () => {
+  const { t } = useTranslation();
   const { state, actions, sendMessage } = useReplay();
   const {
     selectedAgentId,
@@ -162,7 +165,7 @@ export const AgentDetailPanel: React.FC = () => {
     <Flex vertical justify="flex-start" align="center" className={rootClass}>
       <Flex gap="small" align="center" style={{ marginTop: '8px', width: '100%' }}>
         <img src={PANEL_ICONS.info} width="32" height="32" alt="info" />
-        <Title level={4} style={{ margin: 0, flex: 1 }}>Agent Info</Title>
+        <Title level={4} style={{ margin: 0, flex: 1 }}>{t('replay.left.agentInfo')}</Title>
         <Button
           shape="circle"
           icon={<CloseOutlined />}
@@ -176,7 +179,7 @@ export const AgentDetailPanel: React.FC = () => {
         <>
           <Flex wrap justify="left" style={{ width: '100%', marginTop: '8px' }}>
             <Flex className="left-info-block" justify="space-between">
-              <span style={{ fontWeight: 400, color: 'var(--as-muted-text)' }}>Name:&nbsp;&nbsp;</span>
+              <span style={{ fontWeight: 400, color: 'var(--as-muted-text)' }}>{t('replay.left.name')}  </span>
               <Tooltip title={<span>ID = {profile.id}</span>}>
                 <span style={{ fontWeight: 600, color: 'var(--as-accent-text)' }}>{profile.name}</span>
               </Tooltip>
@@ -199,12 +202,12 @@ export const AgentDetailPanel: React.FC = () => {
 
           <Flex gap="small" align="center" style={{ width: '100%' }}>
             <img src={PANEL_ICONS.status} width="32" height="32" alt="status" />
-            <Title level={4} style={{ margin: 0 }}>Current Per-Agent State</Title>
+            <Title level={4} style={{ margin: 0 }}>{t('replay.rows.current')}</Title>
           </Flex>
 
           <div style={{ width: '100%', marginTop: '8px' }}>
             {currentRows.length === 0 ? (
-              <div className="left-info-empty">No per-agent state datasets</div>
+              <div className="left-info-empty">{t('replay.rows.noStates')}</div>
             ) : (
               currentRows.map(({ dataset, row }) => (
                 <DatasetRowCard key={dataset.dataset_id} dataset={dataset} row={row} />
@@ -216,7 +219,7 @@ export const AgentDetailPanel: React.FC = () => {
 
           <Flex gap="small" align="center" style={{ width: '100%' }}>
             <img src={PANEL_ICONS.history} width="32" height="32" alt="history" />
-            <Title level={4} style={{ margin: 0, flex: 1 }}>State History</Title>
+            <Title level={4} style={{ margin: 0, flex: 1 }}>{t('replay.rows.history')}</Title>
           </Flex>
 
           {agentStateDatasets.length > 0 && (
@@ -233,7 +236,7 @@ export const AgentDetailPanel: React.FC = () => {
 
           <Flex vertical className="w-full" style={{ marginTop: '8px', minHeight: '48px', width: '100%' }}>
             {!historyDataset ? (
-              <div className="left-info-empty">No state history dataset selected</div>
+              <div className="left-info-empty">{t('replay.rows.noHistory')}</div>
             ) : (
               <div
                 className="left-info-history-card"
@@ -254,7 +257,7 @@ export const AgentDetailPanel: React.FC = () => {
                       icon={<DatabaseOutlined />}
                       onClick={() => openHistoryRawTable(1)}
                     >
-                      Raw
+                      {t('replay.rows.raw')}
                     </Button>
                   </Flex>
 
@@ -265,7 +268,7 @@ export const AgentDetailPanel: React.FC = () => {
                   ) : null}
 
                   <div style={{ fontSize: '11px', color: 'var(--as-muted-text)' }}>
-                    Agent {selectedAgentId} · {currentStepNumber !== null ? `Rows up to step ${currentStepNumber}` : 'All rows'}
+                    {t('replay.rows.agentId', { id: selectedAgentId })} · {currentStepNumber !== null ? t('replay.rows.upToStep', { step: currentStepNumber }) : t('replay.rows.all')}
                   </div>
                 </div>
               </div>
@@ -273,7 +276,7 @@ export const AgentDetailPanel: React.FC = () => {
           </Flex>
 
           <Modal
-            title={historyDataset ? `State History · ${historyDataset.title || historyDataset.dataset_id}` : 'State History'}
+            title={historyDataset ? `${t('replay.rows.history')} · ${historyDataset.title || historyDataset.dataset_id}` : t('replay.rows.history')}
             open={historyModalOpen}
             onCancel={() => setHistoryModalOpen(false)}
             footer={null}
@@ -285,7 +288,7 @@ export const AgentDetailPanel: React.FC = () => {
                 historyTableRows.rows.length === 0 ? (
                   <Empty
                     image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    description="No rows for this agent in the selected dataset"
+                    description={t('replay.rows.noAgentRows')}
                   />
                 ) : (
                   <>
@@ -313,7 +316,7 @@ export const AgentDetailPanel: React.FC = () => {
                         icon={<ReloadOutlined />}
                         onClick={() => openHistoryRawTable(historyPage)}
                       >
-                        Refresh
+                        {t('replay.timeline.refresh')}
                       </Button>
                       <Flex align="center" gap={12}>
                         <span style={{ fontSize: '11px', color: 'var(--as-muted-text)' }}>
@@ -333,7 +336,7 @@ export const AgentDetailPanel: React.FC = () => {
                 )
               ) : (
                 <div style={{ textAlign: 'center', padding: 40 }}>
-                  {historyLoading ? <Spin tip="Loading raw rows..." /> : 'Waiting for dataset rows...'}
+                  {historyLoading ? <Spin tip={t('replay.rows.loading')} /> : t('replay.rows.waiting')}
                 </div>
               )}
             </div>
@@ -341,7 +344,7 @@ export const AgentDetailPanel: React.FC = () => {
         </>
       ) : (
         <div className="left-info-empty" style={{ marginTop: '20px', color: 'var(--as-muted-text)' }}>
-          Select an agent from the scene
+          {t('replay.left.selectAgent')}
         </div>
       )}
     </Flex>

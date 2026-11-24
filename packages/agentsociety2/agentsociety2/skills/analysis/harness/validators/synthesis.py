@@ -3,9 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 
 from agentsociety2.skills.analysis.harness.json_io import load_model_from_file
-from agentsociety2.skills.analysis.harness.models import ValidationResult
+from agentsociety2.skills.analysis.harness.models import ReleaseStatus, ValidationResult
 from agentsociety2.skills.analysis.harness.paths import hypothesis_report_review_path
+from agentsociety2.skills.analysis.harness.review import validate_report_review
 from agentsociety2.skills.analysis.harness.schemas import SynthesisBrief
+from agentsociety2.skills.analysis.harness.state import load_hypothesis_state
 from agentsociety2.skills.analysis.harness.validators._helpers import (
     blocked,
     issue,
@@ -98,9 +100,35 @@ def validate_synthesis(
                         fix_hint="Align synthesis_brief.scope_hypothesis_ids with gate-status synthesis scope",
                     )
                 )
+        workspace_root = workspace.resolve()
         for rel in brief.source_artifacts:
-            path = workspace / rel if not Path(rel).is_absolute() else Path(rel)
-            if not path.exists():
+            rel_path = Path(rel)
+            if rel_path.is_absolute() or ".." in rel_path.parts:
+                issues.append(
+                    issue(
+                        "source_artifact_unsafe",
+                        phase="synthesis",
+                        message=f"source_artifacts must stay inside the workspace: {rel}",
+                        fix_hint="Use relative paths under presentation/ or synthesis/",
+                    )
+                )
+                continue
+            path = workspace / rel_path
+            try:
+                resolved = path.resolve()
+            except OSError:
+                resolved = path
+            if not resolved.is_relative_to(workspace_root):
+                issues.append(
+                    issue(
+                        "source_artifact_unsafe",
+                        phase="synthesis",
+                        message=f"source_artifacts points outside the workspace: {rel}",
+                        fix_hint="Use relative paths under presentation/ or synthesis/",
+                    )
+                )
+                continue
+            if not path.is_file():
                 issues.append(
                     issue(
                         "source_artifact_missing",
@@ -114,15 +142,32 @@ def validate_synthesis(
             if (
                 not (pres / "report_zh.md").exists()
                 or not (pres / "report_zh.html").exists()
+                or not (pres / "report_en.md").exists()
+                or not (pres / "report_en.html").exists()
             ):
                 issues.append(
                     issue(
                         "scope_hypothesis_no_report",
                         phase="synthesis",
-                        message=f"No presentation outputs for hypothesis {hid}",
+                        message=f"Incomplete bilingual presentation outputs for hypothesis {hid}",
                         fix_hint="Complete validate-release for each scoped hypothesis first",
                     )
                 )
+            state = load_hypothesis_state(workspace, hid)
+            if state.hypothesis_release != ReleaseStatus.ready:
+                issues.append(
+                    issue(
+                        "scope_hypothesis_not_released",
+                        phase="synthesis",
+                        message=(
+                            f"Hypothesis {hid} release is "
+                            f"{state.hypothesis_release.value}, expected ready"
+                        ),
+                        fix_hint="Run validate-release for this hypothesis",
+                    )
+                )
+            review_result = validate_report_review(workspace, hid, pres)
+            issues.extend(review_result.issues)
             for required in (
                 pres / "data" / "analysis_summary.json",
                 pres / "data" / "evidence_index.json",

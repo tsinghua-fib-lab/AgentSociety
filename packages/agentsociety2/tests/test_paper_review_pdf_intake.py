@@ -10,15 +10,16 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SCRIPT_PATH = (
     REPO_ROOT
-    / "extension/skills/agentsociety-paper-review/v1.0.0/scripts/prepare_pdf_review.py"
+    / "extension/skills/agentsociety-paper-review/scripts/prepare_pdf_review.py"
 )
 
 
 FAKE_POPPLER = r"""#!/usr/bin/env python3
 import os
-import struct
 import sys
 from pathlib import Path
+
+from PIL import Image
 
 
 tool = Path(sys.argv[0]).name
@@ -50,9 +51,10 @@ elif tool == "pdftotext":
         output.write_text(text, encoding="utf-8")
 elif tool == "pdftoppm":
     prefix = Path(args[-1])
-    header = b"\x89PNG\r\n\x1a\n" + struct.pack(">I", 13) + b"IHDR" + struct.pack(">II", 1200, 1600)
     for page in (1, 2):
-        prefix.with_name(f"{prefix.name}-{page}.png").write_bytes(header)
+        Image.new("RGB", (1200, 1600), "white").save(
+            prefix.with_name(f"{prefix.name}-{page}.png")
+        )
 elif tool == "pdfimages":
     print("page num type width height color comp bpc enc interp object ID x-ppi y-ppi size ratio")
 else:
@@ -65,7 +67,10 @@ def install_fake_poppler(tmp_path: Path) -> Path:
     bin_dir.mkdir()
     for tool in ("pdfinfo", "pdftotext", "pdftoppm", "pdfimages"):
         tool_path = bin_dir / tool
-        tool_path.write_text(FAKE_POPPLER, encoding="utf-8")
+        tool_path.write_text(
+            FAKE_POPPLER.replace("#!/usr/bin/env python3", f"#!{sys.executable}", 1),
+            encoding="utf-8",
+        )
         tool_path.chmod(0o755)
     return bin_dir
 

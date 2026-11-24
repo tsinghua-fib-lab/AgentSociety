@@ -5,7 +5,7 @@
 #   git-cliff                           # generate changelog from all tags
 #   git-cliff --latest                  # generate changelog for the latest tag only
 #   git-cliff --unreleased              # generate changelog for unreleased changes
-#   git-cliff --unreleased -o /tmp/as2-changelog-draft.md  # review a draft; keep curated history
+#   git-cliff --unreleased  # review a draft; keep curated history
 #   git-cliff --tag agentsociety2-v2.4.0 --unreleased  # preview a specific version
 
 [changelog]

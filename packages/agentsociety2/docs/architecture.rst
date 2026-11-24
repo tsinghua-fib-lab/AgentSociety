@@ -117,7 +117,7 @@ actor 的 ``max_concurrency`` 取决于挂载模块是否全部声明 ``is_concu
    * - ``SearchToolRouter``
      - 以搜索/检索方式选择工具。
 
-生成代码的执行后端由 ``AGENTSOCIETY_CODE_EXEC_BACKEND`` 选择：默认 ``inprocess`` 在环境进程内直接执行（协作式期限）；设为 ``process`` 时进入独立计算进程，获得硬期限与内存上限。详见
+生成代码的执行后端由 ``AGENTSOCIETY_CODE_EXEC_BACKEND`` 选择：Linux 默认 ``process``（独立计算进程，硬期限与内存上限）；其他平台默认 ``inprocess``（环境进程内协作式期限）。详见
 :doc:`codegen_execution`。
 
 环境模块与 ``@tool`` 装饰器见 :doc:`env_modules` 与 :doc:`concepts`。

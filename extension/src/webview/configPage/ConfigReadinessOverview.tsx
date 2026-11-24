@@ -226,7 +226,7 @@ export function ConfigReadinessOverview({
             ? undefined
             : backendStarting
               ? t('configPage.starting')
-              : t('configPage.overview.backendStoppedHint')
+              : (backendStatus.error ?? t('configPage.overview.backendStoppedHint'))
         }
         footer={
           backendStatus.isRunning && backendStatus.url ? (

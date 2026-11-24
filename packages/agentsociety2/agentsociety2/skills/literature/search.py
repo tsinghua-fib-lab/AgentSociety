@@ -84,8 +84,8 @@ async def search_literature_and_save(
             "articles": [],
             "total": 0,
             "query": query,
-            "content": f"No articles found related to '{query}'.",
-            "error": "No results found",
+            "content": f"Literature search could not complete for '{query}'.",
+            "error": "Literature search failed. Check the MCP connection, credentials and search logs.",
         }
 
     articles = result.get("articles", [])

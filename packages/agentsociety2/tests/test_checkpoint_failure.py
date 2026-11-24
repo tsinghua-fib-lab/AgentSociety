@@ -8,7 +8,6 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 
 from agentsociety2.env.router_base import RouterBase
-from agentsociety2.society.society import AgentSociety
 
 
 @pytest.mark.asyncio
@@ -26,29 +25,21 @@ async def test_router_reports_failure_after_other_modules_finish(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_failed_environment_save_preserves_society_checkpoint(tmp_path):
-    checkpoint = tmp_path / "SOCIETY_STEP.json"
-    checkpoint.write_text('{"step_count": 3}')
-    soc = object.__new__(AgentSociety)
-    soc._run_dir = tmp_path
-    soc._env_router = SimpleNamespace(
-        to_workspaces=AsyncMock(side_effect=OSError("disk full"))
-    )
-    soc._write_society_step_json = Mock()
-    with pytest.raises(OSError, match="disk full"):
-        await soc.to_workspace()
-    soc._write_society_step_json.assert_not_called()
-    assert json.loads(checkpoint.read_text()) == {"step_count": 3}
-
-
-@pytest.mark.asyncio
-async def test_cli_stops_on_step_failure_and_records_failed(tmp_path, monkeypatch):
+async def test_cli_records_failure_before_stats_and_recreates_artifacts(
+    tmp_path, monkeypatch
+):
     from agentsociety2.society import cli
 
     runner = cli.ExperimentRunner(tmp_path / "run")
+    runner.artifacts_dir.mkdir()
+    (runner.artifacts_dir / "old.md").write_text("old", encoding="utf-8")
+
+    def check_stats_order():
+        assert json.loads(runner.pid_file.read_text())["status"] == "failed"
+
     monkeypatch.setattr(runner, "_validate_environment", lambda: None)
     monkeypatch.setattr(runner, "_update_progress", lambda: None)
-    monkeypatch.setattr(runner, "_log_llm_stats", lambda: None)
+    monkeypatch.setattr(runner, "_log_llm_stats", check_stats_order)
     monkeypatch.setattr(runner, "_build_agent_specs", lambda args: ([], "PersonAgent"))
     config = SimpleNamespace(
         env_modules=[],
@@ -58,10 +49,14 @@ async def test_cli_stops_on_step_failure_and_records_failed(tmp_path, monkeypatc
     monkeypatch.setattr(runner, "_load_config", lambda path: config)
     steps = tmp_path / "steps.yaml"
     steps.write_text(
-        'start_t: "2018-06-13T23:30:00"\nsteps:\n  - type: run\n    num_steps: 1\n    tick: 900\n  - type: run\n    num_steps: 1\n    tick: 900\n'
+        'start_t: "2018-06-13T23:30:00"\nsteps:\n'
+        '  - type: ask\n    question: "How are things?"\n'
+        "  - type: run\n    num_steps: 1\n    tick: 900\n"
+        "  - type: run\n    num_steps: 1\n    tick: 900\n"
     )
     soc = SimpleNamespace(
         init=AsyncMock(),
+        ask=AsyncMock(return_value="Fine"),
         run=AsyncMock(side_effect=OSError("checkpoint unavailable")),
         close=AsyncMock(),
         mark_step_completed=Mock(),
@@ -82,11 +77,22 @@ async def test_cli_stops_on_step_failure_and_records_failed(tmp_path, monkeypatc
         "agentsociety2.config.llm_dispatcher.build_client_for_role", Mock()
     )
     monkeypatch.setattr("agentsociety2.agent.service_proxy.build_service_proxy", Mock())
+    replay = SimpleNamespace(close=AsyncMock())
+    monkeypatch.setattr(
+        "agentsociety2.storage.replay_proxy.ReplayProxy", Mock(return_value=replay)
+    )
+    config_path = tmp_path / "config.json"
+    config_path.write_text("{}", encoding="utf-8")
     with pytest.raises(OSError, match="checkpoint unavailable"):
-        await runner.run(tmp_path / "config.json", steps)
+        await runner.run(config_path, steps, overwrite=True)
     soc.run.assert_awaited_once()
     soc.close.assert_awaited_once()
-    soc.mark_step_completed.assert_not_called()
+    replay.close.assert_awaited_once()
+    soc.mark_step_completed.assert_called_once_with(0)
+    artifacts = list(runner.artifacts_dir.iterdir())
+    assert len(artifacts) == 1
+    assert artifacts[0].name.startswith("ask_step_0_")
+    assert "Fine" in artifacts[0].read_text(encoding="utf-8")
     status = json.loads(runner.pid_file.read_text())
     assert status["status"] == "failed"
     assert "checkpoint unavailable" in status["error"]

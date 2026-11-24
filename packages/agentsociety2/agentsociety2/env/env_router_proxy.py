@@ -14,9 +14,64 @@ router 的 Ray actor,因此 env 代码生成执行(及其原先的 ``_execute_lo
 
 from __future__ import annotations
 
+import asyncio
+import math
+import os
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any, TypeVar
+
+from agentsociety2.logger import get_logger
+
+if TYPE_CHECKING:
+    from ray import ObjectRef
+
+logger = get_logger()
+_T = TypeVar("_T")
+
+
+def _env_call_timeout(name: str, default: float) -> float:
+    """读取 actor 调用超时（秒）。
+
+    :param name: 环境变量名。
+    :param default: 未设置时的默认超时。
+    :returns: 有限的正数超时秒数。
+    """
+    try:
+        value = float(os.getenv(name, ""))
+    except ValueError:
+        return default
+    return value if math.isfinite(value) and value > 0 else default
+
+
+def _cancel_actor_call(ref: ObjectRef[Any]) -> None:
+    """尽力取消远端调用；不等待 actor 响应，也不回滚已发生的副作用。"""
+    import ray
+
+    try:
+        ray.cancel(ref, force=False)
+    except Exception:
+        logger.debug("Failed to cancel env router RPC", exc_info=True)
+
+
+async def _await_actor_call(
+    ref: ObjectRef[_T], *, operation: str, timeout: float
+) -> _T:
+    """为本地等待设置期限，并在放弃等待时显式取消 Ray 任务。"""
+    deadline = asyncio.timeout(timeout)
+    try:
+        async with deadline:
+            return await ref
+    except asyncio.CancelledError:
+        _cancel_actor_call(ref)
+        raise
+    except TimeoutError as exc:
+        if not deadline.expired():
+            raise  # 远端自己抛出的超时不是本地等待期限到期。
+        _cancel_actor_call(ref)
+        raise TimeoutError(
+            f"Env router RPC {operation} timed out after {timeout:g}s"
+        ) from exc
 
 
 class EnvRouterProxy:
@@ -30,6 +85,7 @@ class EnvRouterProxy:
     在 ``env_modules`` 之外还会读取该属性,因此无论 agent 看到的是真实
     router 还是本 proxy,env skill 都可见。该属性是纯 JSON 可序列化数据
     (``list[(str, str)]``),proxy 仍能干净地跨越 Ray 边界。
+    worker 借用句柄发起请求；只有拥有本轮运行的调用方才应调用 ``close`` 。
     """
 
     def __init__(
@@ -40,6 +96,7 @@ class EnvRouterProxy:
         env_module_types: list[str] | None = None,
     ) -> None:
         self._actor = actor_handle
+        self._closed = False
         self.run_dir = run_dir
         self.env_skill_dirs: list[tuple[str, str]] = _resolve_env_skill_dirs(
             env_module_types or []
@@ -71,42 +128,80 @@ class EnvRouterProxy:
         template_mode: bool = False,
         trace_id: str | None = None,
         parent_span_id: str | None = None,
-    ):
+    ) -> tuple[dict, str]:
         """把 env ask 转发给 actor 并等待 ``(ctx, answer)`` 结果。"""
-        return await self._actor.ask.remote(
-            ctx, instruction, readonly, template_mode, trace_id, parent_span_id
+        return await _await_actor_call(
+            self._actor.ask.remote(
+                ctx, instruction, readonly, template_mode, trace_id, parent_span_id
+            ),
+            operation="ask",
+            timeout=_env_call_timeout("AGENTSOCIETY_ENV_ASK_TIMEOUT", 900),
         )
 
     async def get_world_description(self) -> str:
-        return await self._actor.get_world_description.remote()
+        return await _await_actor_call(
+            self._actor.get_world_description.remote(),
+            operation="get_world_description",
+            timeout=_env_call_timeout("AGENTSOCIETY_ENV_ASK_TIMEOUT", 900),
+        )
 
     async def init(self, start_datetime: datetime) -> bool:
-        return await self._actor.init.remote(start_datetime)
+        return await _await_actor_call(
+            self._actor.init.remote(start_datetime),
+            operation="init",
+            timeout=_env_call_timeout("AGENTSOCIETY_ENV_INIT_TIMEOUT", 300),
+        )
 
     async def step(self, tick: int, t: datetime) -> None:
-        return await self._actor.step.remote(tick, t)
+        await _await_actor_call(
+            self._actor.step.remote(tick, t),
+            operation="step",
+            timeout=_env_call_timeout("AGENTSOCIETY_ENV_STEP_TIMEOUT", 900),
+        )
 
     async def to_workspaces(self) -> None:
         """转发每步 env 状态持久化到 actor。"""
-        return await self._actor.to_workspaces.remote()
+        await _await_actor_call(
+            self._actor.to_workspaces.remote(),
+            operation="to_workspaces",
+            timeout=_env_call_timeout("AGENTSOCIETY_ENV_STATE_TIMEOUT", 300),
+        )
 
     async def from_workspaces(self) -> bool:
         """转发 env 状态恢复（resume）到 actor。"""
-        return await self._actor.from_workspaces.remote()
+        return await _await_actor_call(
+            self._actor.from_workspaces.remote(),
+            operation="from_workspaces",
+            timeout=_env_call_timeout("AGENTSOCIETY_ENV_STATE_TIMEOUT", 300),
+        )
 
     async def close(self) -> None:
-        return await self._actor.close.remote()
+        """由运行所有者限时执行模块清理，随后终止 actor 且不重启。"""
+        if self._closed:
+            return
+
+        import ray
+
+        try:
+            await _await_actor_call(
+                self._actor.close.remote(),
+                operation="close",
+                timeout=_env_call_timeout("AGENTSOCIETY_ENV_CLOSE_TIMEOUT", 60),
+            )
+        finally:
+            ray.kill(self._actor, no_restart=True)
+            self._closed = True
 
     def get_token_usages(self) -> dict[str, Any]:
-        """返回 env router(coder/summary)token 用量快照。"""
-        return ray_get_token_usages(self._actor)
+        """Fetch diagnostic statistics without blocking experiment teardown."""
+        import ray
 
-
-def ray_get_token_usages(actor_handle: Any) -> dict[str, Any]:
-    """阻塞式从 env actor 拉取 token 用量(仅 driver 侧)。"""
-    import ray
-
-    return ray.get(actor_handle.get_token_usages.remote())
+        ref = self._actor.get_token_usages.remote()
+        try:
+            return ray.get(ref, timeout=2)
+        except ray.exceptions.GetTimeoutError:
+            _cancel_actor_call(ref)
+            raise
 
 
 async def create_env_router_proxy(

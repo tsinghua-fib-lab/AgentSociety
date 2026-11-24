@@ -29,17 +29,15 @@ Legacy packages (`packages/agentsociety`, `agentsociety-community`, `agentsociet
 
 ## Development setup
 
-- **Python**: 3.11+
+- **Python**: 3.11.5 through 3.13
 - **Package manager**: [uv](https://docs.astral.sh/uv/)
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Workspace root (optional: set UV_INDEX_URL to your preferred PyPI mirror)
-uv sync
-
-cd packages/agentsociety2
-uv sync --extra dev
+# From the workspace root, install the locked SDK development environment
+uv sync --locked --package agentsociety2 --no-default-groups --extra dev
+# Include --extra docs in the same command when building Sphinx
 ```
 
 ### Extension
@@ -62,6 +60,14 @@ npm run lint
 npm run build
 npm audit --audit-level=high
 ```
+
+## Maintainer triage
+
+In a repository session, invoke `$agentsociety-maintain` to review bot PRs and CodeQL findings, validate targeted fixes in a new local branch, and prepare the changes for review. The skill includes commands for read-only GitHub intake, image smoke tests and before/after measurements. [Maintenance skill](.agents/skills/agentsociety-maintain/SKILL.md)
+
+Treat mirror PRs as review inputs. Start a local maintenance branch from `develop`. After local tests and diff review, integrate the verified changes into `develop`, the branch for online packaging and testing. Check the GitLab pipeline for the candidate commit and, for image changes, test its build in the Coder test workspace. Once the candidate passes online verification, open a GitLab MR from `develop` into `main`. [CI and Coder testing](scripts/ci/README.md)
+
+The SDK manifest and root `uv.lock` form one workspace. Run `uv lock --check` before using a frozen CI install.
 
 ## Pull request checklist
 
@@ -108,7 +114,7 @@ Only bump a component when it changes. SDK versions must match in `packages/agen
 
 ```bash
 python scripts/ci/release.py check
-python scripts/ci/release.py notes --tag agentsociety2-vX.Y.Z --output /tmp/as2-release-notes.md
+python scripts/ci/release.py notes --tag agentsociety2-vX.Y.Z
 ```
 
 ## Release process
@@ -120,7 +126,7 @@ python scripts/ci/release.py notes --tag agentsociety2-vX.Y.Z --output /tmp/as2-
 
    ```bash
    python scripts/ci/release.py check --tag agentsociety2-vX.Y.Z
-   python scripts/ci/release.py notes --tag agentsociety2-vX.Y.Z --output /tmp/as2-release-notes.md
+   python scripts/ci/release.py notes --tag agentsociety2-vX.Y.Z
    ```
 
 5. After review and merging the release changes to `main`, create an annotated tag and push it to the primary GitLab remote:
@@ -178,4 +184,4 @@ uv run ruff format .
 uv run mypy tests/ --follow-imports=skip
 ```
 
-Pre-commit hooks (optional): `pre-commit install` — `ruff` is scoped to `packages/agentsociety2/`.
+Install the optional hooks with `pre-commit install`. Ruff checks the SDK, CI scripts, and Daily Mobility example with the version pinned in `uv.lock`.

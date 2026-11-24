@@ -19,6 +19,7 @@ import json
 import os
 import sys
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 
 import yaml
 
@@ -33,7 +34,7 @@ TMP_RUN_DIR = TMP_DIR / "run"
 if str(EXP_DIR) not in sys.path:
     sys.path.insert(0, str(EXP_DIR))
 
-from daily_mobility_intentions import (
+from daily_mobility.intentions import (
     INTENTION_CHOICES,
     build_primary_intention_prompt,
 )
@@ -117,6 +118,17 @@ def build_steps_smoke(tick: int) -> list[dict]:
     return [{"type": "run", "num_steps": 2, "tick": tick}]
 
 
+def input_file(variable: str, defaults: list[Path]) -> Path:
+    configured = os.environ.get(variable)
+    candidates = [Path(configured).expanduser()] if configured else defaults
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate.resolve()
+    raise FileNotFoundError(
+        f"Set {variable} to an existing file (tried {', '.join(map(str, candidates))})"
+    )
+
+
 def main() -> None:
     preset = os.environ.get("DAILY_MOBILITY_PRESET", "benchmark").strip().lower()
     start_t = os.environ.get("DAILY_MOBILITY_START_T", "2018-06-13T00:00:00").strip()
@@ -124,39 +136,24 @@ def main() -> None:
     slot_minutes = int(os.environ.get("DAILY_MOBILITY_SLOT_MINUTES", "30"))
     duration_hours = int(os.environ.get("DAILY_MOBILITY_DURATION_HOURS", "24"))
 
-    # profiles.json 是本地大文件，默认不进入 git。
-    profiles_path = Path(os.environ.get("DAILY_MOBILITY_PROFILES_PATH", "")).resolve()
-    if not profiles_path or not profiles_path.is_file():
-        for candidate in [
+    profiles_path = input_file(
+        "DAILY_MOBILITY_PROFILES_PATH",
+        [
             REPO_ROOT / "profiles.json",
-            REPO_ROOT / "packages" / "agentsociety2" / "profiles.json",
-        ]:
-            candidate = candidate.resolve()
-            if candidate.is_file():
-                profiles_path = candidate
-                break
-
-    # 地图文件较大，优先从环境变量或 agentsociety_data 查找。
-    _home = Path(
-        os.environ.get("AGENTSOCIETY_HOME_DIR", "./agentsociety_data")
-    ).resolve()
-    map_path = Path(os.environ.get("DAILY_MOBILITY_MAP_PATH", "")).resolve()
-    if not map_path or not map_path.is_file():
-        for candidate in [
-            _home / "beijing.pb",
-            _home / "agentsociety_beijing.pb",
-            REPO_ROOT / "agentsociety_data" / "beijing.pb",
-            REPO_ROOT / "agentsociety_data" / "agentsociety_beijing.pb",
-        ]:
-            candidate = candidate.resolve()
-            if candidate.is_file():
-                map_path = candidate
-                break
-
-    if not profiles_path.is_file():
-        raise FileNotFoundError(f"找不到 profiles: {profiles_path}")
-    if not map_path.is_file():
-        raise FileNotFoundError(f"找不到地图: {map_path}")
+            REPO_ROOT / "packages/agentsociety2/profiles.json",
+        ],
+    )
+    data_dir = Path(
+        os.environ.get("AGENTSOCIETY_HOME_DIR") or "agentsociety_data"
+    ).expanduser()
+    map_path = input_file(
+        "DAILY_MOBILITY_MAP_PATH",
+        [
+            directory / name
+            for directory in (data_dir, REPO_ROOT / "agentsociety_data")
+            for name in ("beijing.pb", "agentsociety_beijing.pb")
+        ],
+    )
 
     with open(profiles_path, encoding="utf-8") as f:
         profiles: list[dict] = json.load(f)
@@ -180,7 +177,6 @@ def main() -> None:
 
     actual_ids = [p["id"] for p in use]
     TMP_INIT_DIR.mkdir(parents=True, exist_ok=True)
-    TMP_RUN_DIR.mkdir(parents=True, exist_ok=True)
     run_dir = Path(os.environ.get("DAILY_MOBILITY_RUN_DIR", str(TMP_RUN_DIR))).resolve()
     mobility_home = (run_dir / "mobility_workspace").resolve()
     mobility_home.mkdir(parents=True, exist_ok=True)
@@ -200,8 +196,11 @@ def main() -> None:
         aid = p["id"]
         agent_kwargs = {
             "id": aid,
-            "profile": _profile_block(p, tick),
-            "max_react_turns": 6 if len(use) > 20 else 8,
+            "profile": {"description": _profile_block(p, tick)},
+            "max_react_turns": int(
+                os.environ.get("DAILY_MOBILITY_MAX_TOOL_ROUNDS")
+                or (6 if len(use) > 20 else 8)
+            ),
             "default_activated_skill_ids": [
                 "built-in@daily-guidance",
                 "env:MobilitySpace@mobility",
@@ -233,9 +232,18 @@ def main() -> None:
 
     out_cfg = TMP_INIT_DIR / "init_config.json"
     out_steps = TMP_INIT_DIR / "steps.yaml"
-    out_cfg.write_text(
-        json.dumps(init_cfg, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
+    # The simulator reads this JSON directly. Keep profile data owner-readable
+    # even when replacing an existing config with broader permissions.
+    with NamedTemporaryFile(
+        mode="w", encoding="utf-8", dir=TMP_INIT_DIR, delete=False
+    ) as temp:
+        private_config = Path(temp.name)
+        try:
+            json.dump(init_cfg, temp, ensure_ascii=False, indent=2)
+            temp.close()
+            private_config.replace(out_cfg)
+        finally:
+            private_config.unlink(missing_ok=True)
     out_steps.write_text(
         yaml.safe_dump(steps_yaml, allow_unicode=True, sort_keys=False),
         encoding="utf-8",

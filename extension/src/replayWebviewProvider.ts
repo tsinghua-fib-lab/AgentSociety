@@ -13,8 +13,8 @@
 
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { getBackendAccessUrl } from './runtimeConfig';
-import { fetchCompat } from './shared/fetchCompat';
+import { getCurrentLanguageCode, localize, syncWebviewLanguage } from './i18n';
+import { BackendAccessError, type BackendService } from './services/backendService';
 import type {
   AgentProfile,
   ExperimentInfo,
@@ -26,8 +26,6 @@ import type {
   TimelinePoint,
   WebviewMessage,
 } from './webview/replay/types';
-
-const fetch = fetchCompat as unknown as typeof globalThis.fetch;
 
 export class ReplayWebviewProvider {
   private readonly panel: vscode.WebviewPanel;
@@ -44,13 +42,14 @@ export class ReplayWebviewProvider {
    */
   public static create(
     context: vscode.ExtensionContext,
+    backend: BackendService,
     workspacePath: string,
     hypothesisId: string,
     experimentId: string
   ): ReplayWebviewProvider {
     const panel = vscode.window.createWebviewPanel(
       'aiSocialScientistReplay',
-      `Replay: ${experimentId}`,
+      localize('replay.panelTitle', experimentId),
       vscode.ViewColumn.One,
       {
         enableScripts: true,
@@ -62,6 +61,7 @@ export class ReplayWebviewProvider {
     return new ReplayWebviewProvider(
       panel,
       context,
+      backend,
       workspacePath,
       hypothesisId,
       experimentId
@@ -71,6 +71,7 @@ export class ReplayWebviewProvider {
   private constructor(
     panel: vscode.WebviewPanel,
     context: vscode.ExtensionContext,
+    private readonly backend: BackendService,
     workspacePath: string,
     hypothesisId: string,
     experimentId: string
@@ -82,6 +83,7 @@ export class ReplayWebviewProvider {
     this.experimentId = experimentId;
 
     // Set webview content
+    syncWebviewLanguage(this.panel, () => localize('replay.panelTitle', this.experimentId));
     this.panel.webview.html = this.getHtmlForWebview();
 
     // Register event listeners
@@ -92,10 +94,6 @@ export class ReplayWebviewProvider {
       null,
       this.disposables
     );
-  }
-
-  private get backendUrl(): string {
-    return getBackendAccessUrl();
   }
 
   /**
@@ -160,13 +158,12 @@ export class ReplayWebviewProvider {
       workspacePath: this.workspacePath,
       hypothesisId: this.hypothesisId,
       experimentId: this.experimentId,
-      backendUrl: this.backendUrl,
     };
 
     this.postMessage({ type: 'init', data: initData });
   }
 
-  private buildReplayUrl(pathname: string, query: Record<string, string | number | boolean | undefined>): string {
+  private buildReplayRoute(pathname: string, query: Record<string, string | number | boolean | undefined>): string {
     const params = new URLSearchParams({
       workspace_path: this.workspacePath,
     });
@@ -176,7 +173,9 @@ export class ReplayWebviewProvider {
       }
       params.set(key, String(value));
     });
-    return `${this.backendUrl}/api/v1/replay/${this.hypothesisId}/${this.experimentId}${pathname}?${params.toString()}`;
+    const hypothesis = encodeURIComponent(this.hypothesisId);
+    const experiment = encodeURIComponent(this.experimentId);
+    return `/api/v1/replay/${hypothesis}/${experiment}${pathname}?${params}`;
   }
 
   private startLatestRequest(group: string): { signal: AbortSignal; version: number } {
@@ -194,22 +193,14 @@ export class ReplayWebviewProvider {
 
   private async fetchJson<T>(
     resource: string,
-    url: string,
+    route: string,
     options?: { latestGroup?: string }
   ): Promise<T | undefined> {
     const latestGroup = options?.latestGroup;
     const latestRequest = latestGroup ? this.startLatestRequest(latestGroup) : null;
 
     try {
-      const response = await fetch(url, {
-        signal: latestRequest?.signal,
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data = await response.json() as T;
+      const data = await this.backend.requestJson<T>(route, { signal: latestRequest?.signal });
       if (latestGroup && latestRequest && !this.isLatestRequest(latestGroup, latestRequest.version)) {
         return undefined;
       }
@@ -227,8 +218,8 @@ export class ReplayWebviewProvider {
    * Fetch experiment info from backend
    */
   private async fetchExperimentInfo(): Promise<void> {
-    const url = this.buildReplayUrl('/info', {});
-    const data = await this.fetchJson<ExperimentInfo>('experiment info', url);
+    const route = this.buildReplayRoute('/info', {});
+    const data = await this.fetchJson<ExperimentInfo>('experiment info', route);
     if (data) {
       this.postMessage({ type: 'experimentInfo', data });
     }
@@ -238,8 +229,8 @@ export class ReplayWebviewProvider {
    * Fetch timeline from backend
    */
   private async fetchTimeline(): Promise<void> {
-    const url = this.buildReplayUrl('/timeline', {});
-    const data = await this.fetchJson<TimelinePoint[]>('timeline', url);
+    const route = this.buildReplayRoute('/timeline', {});
+    const data = await this.fetchJson<TimelinePoint[]>('timeline', route);
     if (data) {
       this.postMessage({ type: 'timeline', data });
     }
@@ -249,24 +240,27 @@ export class ReplayWebviewProvider {
    * Fetch agent profiles from backend
    */
   private async fetchAgentProfiles(): Promise<void> {
-    const url = this.buildReplayUrl('/agents/profiles', {});
-    const data = await this.fetchJson<AgentProfile[]>('agent profiles', url);
+    const route = this.buildReplayRoute('/agents/profiles', {});
+    const data = await this.fetchJson<AgentProfile[]>('agent profiles', route);
     if (data) {
       this.postMessage({ type: 'agentProfiles', data });
     }
   }
 
   private async fetchPanelSchema(): Promise<void> {
-    const url = this.buildReplayUrl('/panel-schema', {});
-    const data = await this.fetchJson<ReplayPanelSchema>('panel schema', url);
+    const route = this.buildReplayRoute('/panel-schema', {});
+    const data = await this.fetchJson<ReplayPanelSchema>('panel schema', route);
     if (data) {
       this.postMessage({ type: 'panelSchema', data });
     }
   }
 
   private async fetchStepBundle(step: number): Promise<void> {
-    const url = this.buildReplayUrl(`/steps/${step}/bundle`, {});
-    const data = await this.fetchJson<ReplayStepBundle>('step bundle', url, { latestGroup: 'stepBundle' });
+    if (!Number.isSafeInteger(step)) {
+      return;
+    }
+    const route = this.buildReplayRoute(`/steps/${step}/bundle`, {});
+    const data = await this.fetchJson<ReplayStepBundle>('step bundle', route, { latestGroup: 'stepBundle' });
     if (data) {
       this.postMessage({ type: 'stepBundle', data });
     }
@@ -291,7 +285,7 @@ export class ReplayWebviewProvider {
       latestPerEntity?: boolean;
     }
   ): Promise<void> {
-    const url = this.buildReplayUrl(`/datasets/${encodeURIComponent(datasetId)}/rows`, {
+    const route = this.buildReplayRoute(`/datasets/${encodeURIComponent(datasetId)}/rows`, {
       page,
       page_size: pageSize,
       step: options?.step,
@@ -304,7 +298,7 @@ export class ReplayWebviewProvider {
       latest_per_entity: options?.latestPerEntity,
     });
     const latestGroup = requestKey ? `replayDatasetRows:${requestKey}` : 'replayDatasetRows:default';
-    const data = await this.fetchJson<ReplayDatasetRows>('replay dataset rows', url, { latestGroup });
+    const data = await this.fetchJson<ReplayDatasetRows>('replay dataset rows', route, { latestGroup });
     if (data) {
       this.postMessage({ type: 'replayDatasetRows', data, requestKey });
     }
@@ -314,9 +308,13 @@ export class ReplayWebviewProvider {
    * Handle fetch errors
    */
   private handleFetchError(resource: string, error: unknown): void {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error(`Failed to fetch ${resource}:`, error);
-    this.postMessage({ type: 'error', message: `Failed to fetch ${resource}: ${message}` });
+    if (error instanceof BackendAccessError) {
+      this.postMessage({ type: 'error', message: error.message });
+      return;
+    }
+    const message = `Failed to fetch ${resource}: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    console.error(message);
+    this.postMessage({ type: 'error', message });
   }
 
   /**
@@ -334,26 +332,18 @@ export class ReplayWebviewProvider {
       vscode.Uri.file(path.join(this.extensionUri.fsPath, 'out', 'webview', 'replay.js'))
     );
 
-    // Generate icon URIs for agent avatars
-    const iconNames = ['agent', 'boy1', 'boy2', 'boy3', 'girl1', 'girl2', 'girl3'];
-    const iconUris: Record<string, string> = {};
-    for (const name of iconNames) {
-      iconUris[name] = this.panel.webview.asWebviewUri(
-        vscode.Uri.file(path.join(this.extensionUri.fsPath, 'media', 'icons', `${name}.png`))
-      ).toString();
-    }
     const csp = [
       "default-src 'none'",
       `img-src ${this.panel.webview.cspSource} https://*.mapbox.com https://*.tiles.mapbox.com data: blob:`,
       `style-src ${this.panel.webview.cspSource} 'unsafe-inline' https://api.mapbox.com`,
       `script-src ${this.panel.webview.cspSource}`,
-      `connect-src ${this.panel.webview.cspSource} https://*.mapbox.com https://*.tiles.mapbox.com http://127.0.0.1:* http://localhost:* ${this.backendUrl} data: blob:`,
+      `connect-src ${this.panel.webview.cspSource} https://*.mapbox.com https://*.tiles.mapbox.com data: blob:`,
       `worker-src ${this.panel.webview.cspSource} blob:`,
       `font-src ${this.panel.webview.cspSource} https://api.mapbox.com https://*.mapbox.com data:`,
     ].join('; ');
 
     return `<!DOCTYPE html>
-<html lang="en">
+<html lang="${getCurrentLanguageCode()}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -922,9 +912,6 @@ export class ReplayWebviewProvider {
 </head>
 <body>
     <div id="root"></div>
-    <script>
-        window.__AGENT_ICON_URIS__ = ${JSON.stringify(iconUris)};
-    </script>
     <script src="${scriptUri}"></script>
 </body>
 </html>`;

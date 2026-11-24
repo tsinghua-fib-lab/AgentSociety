@@ -19,6 +19,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
+import { parseEnv } from 'node:util';
 import { getMainOutputChannel } from './shared/outputChannels';
 
 export interface EnvConfig {
@@ -61,6 +62,23 @@ export interface EnvConfig {
   // Literature Search
   literatureSearchMcpUrl?: string;
   literatureSearchApiKey?: string;
+}
+
+export interface BackendEnvConfig extends Pick<EnvConfig, 'backendHost' | 'backendPort'> {
+  backendUrl?: string;
+  backendToken?: string;
+  backendTokenOrigin?: string;
+}
+
+function parseBackendEnv(content: string): BackendEnvConfig {
+  const { BACKEND_HOST, BACKEND_PORT, BACKEND_URL, BACKEND_TOKEN, BACKEND_TOKEN_ORIGIN } = parseEnv(content);
+  return {
+    backendHost: BACKEND_HOST,
+    backendPort: BACKEND_PORT?.trim() ? Number(BACKEND_PORT) : undefined,
+    backendUrl: BACKEND_URL,
+    backendToken: BACKEND_TOKEN,
+    backendTokenOrigin: BACKEND_TOKEN_ORIGIN,
+  };
 }
 
 /**
@@ -175,17 +193,27 @@ export class EnvManager {
     return envPath ? fs.existsSync(envPath) : false;
   }
 
+  private readEnvFile(): string {
+    const envPath = this.getEnvPath();
+    return envPath && fs.existsSync(envPath) ? fs.readFileSync(envPath, 'utf-8') : '';
+  }
+
+  /** Read host-only connection settings separately from the webview's EnvConfig. */
+  readBackendEnv(): BackendEnvConfig {
+    return parseBackendEnv(this.readEnvFile());
+  }
+
   /**
    * Read .env file and parse into EnvConfig
    */
   readEnv(): EnvConfig {
-    const envPath = this.getEnvPath();
-    if (!envPath || !fs.existsSync(envPath)) {
-      return { ...DEFAULT_ENV_CONFIG };
-    }
-
-    const config: EnvConfig = { ...DEFAULT_ENV_CONFIG };
-    const content = fs.readFileSync(envPath, 'utf-8');
+    const content = this.readEnvFile();
+    const { backendHost, backendPort } = parseBackendEnv(content);
+    const config: EnvConfig = {
+      ...DEFAULT_ENV_CONFIG,
+      backendHost: backendHost ?? DEFAULT_ENV_CONFIG.backendHost,
+      backendPort: backendPort ?? DEFAULT_ENV_CONFIG.backendPort,
+    };
     const lines = content.split('\n');
 
     for (const line of lines) {
@@ -203,11 +231,13 @@ export class EnvManager {
 
       const [, key, value] = match;
       const envVar = key.trim();
+      if (envVar === ENV_KEY_MAP.backendHost || envVar === ENV_KEY_MAP.backendPort) {
+        continue;
+      }
 
       for (const [configKey, envName] of Object.entries(ENV_KEY_MAP)) {
         if (envName === envVar) {
           const numericKeys: (keyof EnvConfig)[] = [
-            'backendPort',
             'backendPid',
             'embeddingDims',
           ];

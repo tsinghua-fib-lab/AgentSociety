@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import inspect
 import os
+import threading
 from importlib import import_module
 from pathlib import Path
-from typing import Any, Self
+from typing import Any, Self, cast
 
 from agentsociety2.agent.base import AgentBase
-from agentsociety2.backend.path_security import resolve_workspace_root
 from agentsociety2.env.base import EnvBase
 from agentsociety2.logger import get_logger
 
@@ -28,26 +28,32 @@ class ModuleRegistry:
     """
 
     _instance: ModuleRegistry | None = None
+    _instance_lock = threading.Lock()
 
     def __new__(cls) -> Self:
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._initialized = False
-        return cls._instance
+        with cls._instance_lock:
+            if cls._instance is None:
+                cls._instance = super().__new__(cls)
+                cls._instance._initialized = False
+            return cast(Self, cls._instance)
 
     def __init__(self):
-        if self._initialized:
-            return
+        with self._instance_lock:
+            if self._initialized:
+                return
+            self._initialized = True
+            self._env_modules: dict[str, type[EnvBase]] = {}
+            self._agent_modules: dict[str, type[AgentBase]] = {}
+            self._workspace_path: Path | None = None
+            # Ray workers are reused across batches; guard lazy discovery and
+            # workspace switches so concurrent tasks cannot interleave
+            # half-loaded registries.
+            self._lock = threading.RLock()
 
-        self._initialized = True
-        self._env_modules: dict[str, type[EnvBase]] = {}
-        self._agent_modules: dict[str, type[AgentBase]] = {}
-        self._workspace_path: Path | None = None
-
-        # Lazy loading flags
-        self._builtin_loaded: bool = False
-        self._custom_loaded: bool = False
-        self._lazy_enabled: bool = True  # Can be disabled to force eager loading
+            # Lazy loading flags
+            self._builtin_loaded: bool = False
+            self._custom_loaded: bool = False
+            self._lazy_enabled: bool = True  # Can be disabled to force eager loading
 
         logger.info("ModuleRegistry initialized (lazy loading enabled)")
 
@@ -81,8 +87,9 @@ class ModuleRegistry:
 
     def _ensure_loaded(self) -> None:
         """确保内置与自定义模块都已加载（惰性加载触发点）。"""
-        self._ensure_builtin_loaded()
-        self._ensure_custom_loaded()
+        with self._lock:
+            self._ensure_builtin_loaded()
+            self._ensure_custom_loaded()
 
     @property
     def env_modules(self) -> dict[str, type[EnvBase]]:
@@ -105,11 +112,14 @@ class ModuleRegistry:
         :param module_class: 环境模块类。
         :param is_custom: 是否为自定义模块。
         """
-        if module_type in self._env_modules and not is_custom:
-            logger.debug(f"Env module '{module_type}' already registered, skipping")
-            return
+        with self._lock:
+            if module_type in self._env_modules and not is_custom:
+                logger.debug(
+                    f"Env module '{module_type}' already registered, skipping"
+                )
+                return
 
-        self._env_modules[module_type] = module_class
+            self._env_modules[module_type] = module_class
         logger.debug(f"Registered env module: {module_type} -> {module_class.__name__}")
 
     def register_agent_module(
@@ -121,49 +131,119 @@ class ModuleRegistry:
         :param agent_class: agent 类。
         :param is_custom: 是否为自定义 agent。
         """
-        if agent_type in self._agent_modules and not is_custom:
-            logger.debug(f"Agent '{agent_type}' already registered, skipping")
-            return
+        with self._lock:
+            if agent_type in self._agent_modules and not is_custom:
+                logger.debug(f"Agent '{agent_type}' already registered, skipping")
+                return
 
-        self._agent_modules[agent_type] = agent_class
+            self._agent_modules[agent_type] = agent_class
         logger.debug(f"Registered agent: {agent_type} -> {agent_class.__name__}")
+
+    @staticmethod
+    def _normalize_module_key(key: str) -> str:
+        """把模块标识归一化为大小写/分隔符不敏感的形式。
+
+        :param key: 原始模块标识。
+        :returns: 仅保留字母数字的小写字符串。
+        """
+        return "".join(ch for ch in str(key).lower() if ch.isalnum())
+
+    def _lookup_module(
+        self, modules: dict[str, type], module_type: str
+    ) -> type | None:
+        """先精确匹配，再按归一化标识匹配。
+
+        :param modules: 已注册模块映射。
+        :param module_type: 用户提供的模块标识。
+        :returns: 匹配到的模块类；未找到或存在歧义时返回 ``None`` 。
+        """
+        key = self._resolve_module_key(modules, module_type)
+        return modules[key] if key is not None else None
+
+    def _resolve_module_key(
+        self, modules: dict[str, type], module_type: str
+    ) -> str | None:
+        """把模块标识解析为注册表中的规范键。
+
+        :param modules: 已注册模块映射。
+        :param module_type: 用户提供的模块标识。
+        :returns: 规范键；未找到或存在歧义时返回 ``None`` 。
+        """
+        if module_type in modules:
+            return module_type
+        wanted = self._normalize_module_key(module_type)
+        matches = [
+            key for key in modules if self._normalize_module_key(key) == wanted
+        ]
+        return matches[0] if len(matches) == 1 else None
+
+    def resolve_env_module_key(self, module_type: str) -> str | None:
+        """把环境模块标识解析为规范注册键。
+
+        :param module_type: 用户提供的模块标识。
+        :returns: 规范键；未找到或存在歧义时返回 ``None`` 。
+        """
+        self._ensure_loaded()
+        with self._lock:
+            return self._resolve_module_key(self._env_modules, module_type)
+
+    def resolve_agent_module_key(self, agent_type: str) -> str | None:
+        """把 agent 模块标识解析为规范注册键。
+
+        :param agent_type: 用户提供的模块标识。
+        :returns: 规范键；未找到或存在歧义时返回 ``None`` 。
+        """
+        self._ensure_loaded()
+        with self._lock:
+            return self._resolve_module_key(self._agent_modules, agent_type)
 
     def get_env_module(self, module_type: str) -> type[EnvBase] | None:
         """按 type 获取环境模块类（会触发惰性加载）。
+
+        除精确类名外，也接受 ``snake_case`` 等归一化形式
+        （``simple_social_space`` ↔ ``SimpleSocialSpace``）。
 
         :param module_type: type identifier。
         :returns: 环境模块类；未找到返回 ``None`` 。
         """
         self._ensure_loaded()
-        return self._env_modules.get(module_type)
+        with self._lock:
+            return self._lookup_module(self._env_modules, module_type)
 
     def get_agent_module(self, agent_type: str) -> type[AgentBase] | None:
         """按 type 获取 agent 类（会触发惰性加载）。
+
+        除精确类名外，也接受 ``snake_case`` 等归一化形式
+        （``person_agent`` ↔ ``PersonAgent``）。
 
         :param agent_type: type identifier。
         :returns: agent 类；未找到返回 ``None`` 。
         """
         self._ensure_loaded()
-        return self._agent_modules.get(agent_type)
+        with self._lock:
+            return self._lookup_module(self._agent_modules, agent_type)
 
     def list_env_modules(self) -> list[tuple[str, type[EnvBase]]]:
         """返回已注册环境模块列表，并在访问时触发惰性加载。"""
         self._ensure_loaded()
-        return list(self._env_modules.items())
+        with self._lock:
+            return list(self._env_modules.items())
 
     def list_agent_modules(self) -> list[tuple[str, type[AgentBase]]]:
         """返回已注册 agent 列表，并在访问时触发惰性加载。"""
         self._ensure_loaded()
-        return list(self._agent_modules.items())
+        with self._lock:
+            return list(self._agent_modules.items())
 
     def set_workspace(self, workspace_path: Path) -> None:
         """设置 workspace 路径（用于 custom 模块发现）。
 
         :param workspace_path: workspace 目录。
         """
-        self._workspace_path = resolve_workspace_root(str(workspace_path))
-        # Reset custom loaded flag so modules will be discovered on next access
-        self._custom_loaded = False
+        with self._lock:
+            self._workspace_path = Path(workspace_path).expanduser().resolve()
+            # Reset custom loaded flag so modules will be discovered on next access
+            self._custom_loaded = False
         logger.debug(f"Registry workspace set to: {self._workspace_path}")
 
     def _resolve_workspace_path(self) -> Path | None:
@@ -174,7 +254,7 @@ class ModuleRegistry:
 
         env_workspace = os.getenv("WORKSPACE_PATH")
         if env_workspace:
-            self._workspace_path = resolve_workspace_root(env_workspace)
+            self._workspace_path = Path(env_workspace).expanduser().resolve()
             logger.debug(
                 f"Registry workspace inferred from WORKSPACE_PATH: {self._workspace_path}"
             )

@@ -632,6 +632,12 @@ class AgentSkillRuntime:
                 )
 
         env = {k: v for k, v in os.environ.items() if k in ALLOWED_ENV_VARS}
+        # 需要额外变量的自定义 skill 必须显式声明，避免默认继承宿主环境中的
+        # API key 等凭证（自定义 skill 可能来自上传/市场，按不可信代码处理）。
+        for extra_name in os.getenv("AGENTSOCIETY_SKILL_ENV_ALLOW", "").split(","):
+            extra_name = extra_name.strip()
+            if extra_name and extra_name in os.environ:
+                env[extra_name] = os.environ[extra_name]
         env.update(
             {
                 "SKILL_ID": info.skill_id,
@@ -670,9 +676,8 @@ class AgentSkillRuntime:
         )
         try:
             if isolated_callable:
-                # 自定义函数原先可读取宿主环境；保留其 SDK、代理等配置，
-                # 再叠加本次技能上下文。普通脚本仍使用原有环境白名单。
-                env = {**os.environ, **env}
+                # 自定义 callable 同样只继承白名单环境；需要额外变量时由
+                # AGENTSOCIETY_SKILL_ENV_ALLOW 显式放行，避免凭证外泄。
                 request = json.dumps(
                     {
                         "path": str(script_path),

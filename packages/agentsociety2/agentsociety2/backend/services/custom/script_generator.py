@@ -66,9 +66,6 @@ class SafeModuleTester:
 
     def __init__(self, workspace_path: str):
         self.workspace_path = resolve_workspace_root(workspace_path)
-        workspace_str = str(self.workspace_path)
-        if workspace_str not in sys.path:
-            sys.path.insert(0, workspace_str)
 
     def _validate_module_path(self, module_path: str) -> bool:
         clean_path = module_path.replace(".py", "").replace("/", ".")
@@ -94,8 +91,21 @@ class SafeModuleTester:
                 if spec is None or spec.loader is None:
                     raise ImportError(f"无法为 {file_path} 创建导入 spec")
                 module = importlib.util.module_from_spec(spec)
-                sys.modules[module_name] = module
-                spec.loader.exec_module(module)
+                # 仅在执行该模块期间临时加入 workspace 根，避免全局 sys.path
+                # 被永久污染、影响后续惰性 import。
+                workspace_str = str(self.workspace_path)
+                inserted = workspace_str not in sys.path
+                if inserted:
+                    sys.path.insert(0, workspace_str)
+                try:
+                    sys.modules[module_name] = module
+                    spec.loader.exec_module(module)
+                finally:
+                    if inserted:
+                        try:
+                            sys.path.remove(workspace_str)
+                        except ValueError:
+                            pass
             else:
                 importlib.invalidate_caches()
                 module = importlib.import_module(module_import_path)

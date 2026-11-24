@@ -9,7 +9,7 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SCRIPT_PATH = (
     REPO_ROOT
-    / "extension/skills/agentsociety-research-pipeline/v1.0.0/scripts/progress.py"
+    / "extension/skills/agentsociety-research-pipeline/scripts/progress.py"
 )
 STAGES = [
     "literature_search",

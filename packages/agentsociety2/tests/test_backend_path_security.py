@@ -1,4 +1,5 @@
 import os
+import zipfile
 from io import BytesIO
 from pathlib import Path
 from zipfile import ZipFile
@@ -181,3 +182,13 @@ def test_log_path_auto_fallback_and_explicit_selection(tmp_path: Path) -> None:
     output.write_text("stdout")
     assert _resolve_experiment_log_path(tmp_path, "auto") == output
     assert _resolve_experiment_log_path(tmp_path, "stderr.log") == stderr
+
+
+def test_zip_extract_rejects_too_many_entries(tmp_path: Path) -> None:
+    archive = tmp_path / "bomb.zip"
+    with zipfile.ZipFile(archive, "w") as zf:
+        for index in range(2001):
+            zf.writestr(f"a/f{index}.txt", "")
+    with zipfile.ZipFile(archive) as zf:
+        with pytest.raises(HTTPException):
+            extract_zip_under(tmp_path / "out", zf)

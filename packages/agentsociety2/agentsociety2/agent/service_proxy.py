@@ -155,7 +155,6 @@ def build_service_proxy(
     trace_dir: Path | str | None = None,
     replay: bool | Any = True,
     replay_db_path: Path | str | None = None,
-    replay_sample_rate: float = 1.0,
 ) -> ServiceProxy:
     """由本地 LLM client 与可选 actor 组装一个 :class:`ServiceProxy` 。
 
@@ -193,9 +192,6 @@ def build_service_proxy(
     :param replay_db_path: 旧参数名,现在覆盖 replay 输出目录(默认
         ``run_dir / "replay"``)。当 ``replay`` 是
         :class:`~agentsociety2.storage.replay_proxy.ReplayProxy` 时被忽略。
-    :param replay_sample_rate: replay 写入的采样率(1.0 = 全量)。当
-        ``replay`` 是 :class:`~agentsociety2.storage.replay_proxy.ReplayProxy`
-        时被忽略。
     :returns: 接线完备的 :class:`ServiceProxy` 。
     """
     from agentsociety2.config.llm_dispatcher import build_client_for_role

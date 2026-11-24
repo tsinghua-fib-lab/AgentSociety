@@ -26,6 +26,9 @@
 benchmark_results/
 optimization/
 packages/agentsociety2/benchmarks/
+packages/agentsociety2/examples/VALIDATION.md
+packages/agentsociety2/agentsociety_data/
+packages/agentsociety2/argv.json
 packages/agentsociety2/run_*/
 packages/agentsociety2/docs/
 packages/agentsociety2/tests/

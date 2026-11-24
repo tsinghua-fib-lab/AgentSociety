@@ -30,6 +30,7 @@ FastAPI 应用
 ~~~~~~~~
 
 .. automodule:: agentsociety2.backend.routers.experiments
+   :exclude-members: type
    :members:
    :undoc-members:
 

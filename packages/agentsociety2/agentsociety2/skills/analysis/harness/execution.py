@@ -509,12 +509,6 @@ def _related_run_receipts(
 
 def _normalize_status(result: Mapping[str, Any]) -> OutcomeStatus:
     raw_status = str(result.get("status", "")).upper()
-    if (
-        raw_status == "BLOCKED"
-        and result.get("structural_pass") is True
-        and not result.get("error")
-    ):
-        return "SUCCEEDED"
     if raw_status in _RESULT_STATUS_MAP:
         return _RESULT_STATUS_MAP[raw_status]
     if result.get("error"):

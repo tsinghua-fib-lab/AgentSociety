@@ -13,6 +13,7 @@ from agentsociety2.skills.literature.full_text import (
     download_open_access_pdfs,
     entry_extra_fields,
     nested_dict,
+    safe_output_name,
 )
 from agentsociety2.skills.literature.search import search_literature_and_save
 
@@ -124,3 +125,9 @@ def test_download_open_access_pdfs_skips_already_downloaded(tmp_path: Path):
     stats = download_open_access_pdfs(tmp_path)
     assert stats["skipped"] == 1
     assert stats["downloaded"] == 0
+
+
+def test_safe_output_name_rejects_traversal() -> None:
+    with pytest.raises(ValueError):
+        safe_output_name("../escape.pdf", {})
+    assert safe_output_name("paper.pdf", {}) == "paper.pdf"

@@ -1037,6 +1037,13 @@ Generate the final answer as XML:"""
                             a.id,
                             exc_info=True,
                         )
+                    finally:
+                        try:
+                            await a.close()
+                        except Exception:
+                            get_logger().debug(
+                                "Failed to close agent %s", a.id, exc_info=True
+                            )
             for a, ans in zip(agents, results, strict=False):
                 try:
                     if str(ans).strip().lower() == target_norm:
@@ -1075,7 +1082,7 @@ Generate the final answer as XML:"""
                 )
             )
         finally:
-            # Persist any state changes back to workspaces.
+            # Persist any state changes back to workspaces, then release trace fds.
             for a in agents:
                 try:
                     await a.to_workspace(self._society._workspace_for(a.id))
@@ -1086,6 +1093,13 @@ Generate the final answer as XML:"""
                         a.id,
                         exc_info=True,
                     )
+                finally:
+                    try:
+                        await a.close()
+                    except Exception:
+                        get_logger().debug(
+                            "Failed to close agent %s", a.id, exc_info=True
+                        )
         answers: dict[str, Any] = {}
         for a, ans in zip(agents, results, strict=False):
             answers[str(a.id)] = ans

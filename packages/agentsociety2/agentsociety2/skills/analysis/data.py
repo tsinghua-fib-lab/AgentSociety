@@ -404,7 +404,7 @@ class DataReader:
                     table_stats[name] = {
                         "min": reader.min_value(dataset, name),
                         "max": reader.max_value(dataset, name),
-                        "avg": None,
+                        "avg": reader.avg_value(dataset, name),
                         "count": schema.row_counts.get(table, 0),
                     }
                 if table_stats:
@@ -440,10 +440,9 @@ class DataReader:
                     ):
                         continue
                     name = col["name"]
-                    values = reader.distinct_values(dataset, name)[:5]
                     table_stats[name] = {
                         "unique_count": reader.count_distinct(dataset, name),
-                        "top_values": [(value, None) for value in values],
+                        "top_values": reader.value_counts(dataset, name, limit=5),
                     }
                 if table_stats:
                     result[table] = table_stats

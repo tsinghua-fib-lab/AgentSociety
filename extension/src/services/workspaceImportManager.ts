@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
-import * as os from 'os';
 import * as path from 'path';
 import { localize } from '../i18n';
 import { getMainOutputChannel } from '../shared/outputChannels';
@@ -41,34 +40,29 @@ export class WorkspaceImportManager implements vscode.Disposable {
       return;
     }
 
-    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-social-scientist-import-'));
+    let stagingRoot: string | null = null;
     try {
-      const extractedRoot = path.join(tempRoot, 'extracted');
-      fs.mkdirSync(extractedRoot, { recursive: true });
-      const parsed = await vscode.window.withProgress(
+      const pythonCommand = this.resolvePython();
+      const manifest = await vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
           title: localize('workspaceImport.progress'),
           cancellable: false,
         },
         async () => {
-          const pythonCommand = this.resolvePython();
-          await runPythonArchiveCommand(pythonCommand, 'extract', zipPath, extractedRoot);
-          const manifestPath = path.join(extractedRoot, WORKSPACE_EXPORT_MANIFEST_RELATIVE_PATH);
-          if (!fs.existsSync(manifestPath)) {
-            throw new Error(localize('workspaceImport.invalidManifest'));
-          }
-          const result = parseExportManifest(JSON.parse(fs.readFileSync(manifestPath, 'utf-8')));
+          const inspected = await runPythonArchiveCommand(
+            pythonCommand,
+            'inspect',
+            zipPath,
+            '',
+          );
+          const result = parseExportManifest(inspected.manifest);
           if (!result.ok) {
             throw new Error(localize(
               result.error === 'unsupported_version'
                 ? 'workspaceImport.unsupportedVersion'
                 : 'workspaceImport.invalidManifest',
             ));
-          }
-          const actualHash = canonicalizeContentHash(collectContentDigests(extractedRoot));
-          if (actualHash !== result.manifest.contentHash) {
-            throw new Error(localize('workspaceImport.hashMismatch'));
           }
           return result.manifest;
         },
@@ -90,8 +84,8 @@ export class WorkspaceImportManager implements vscode.Disposable {
       const projectName = await vscode.window.showInputBox({
         title: localize('workspaceImport.projectNameTitle'),
         prompt: localize('workspaceImport.projectNamePrompt', parentPath),
-        value: parsed.workspaceName,
-        valueSelection: [0, parsed.workspaceName.length],
+        value: manifest.workspaceName,
+        valueSelection: [0, manifest.workspaceName.length],
         ignoreFocusOut: true,
         validateInput: (value) => {
           const plan = planImportTarget(parentPath, value);
@@ -109,7 +103,7 @@ export class WorkspaceImportManager implements vscode.Disposable {
         throw new Error(localize(`workspaceImport.target.${targetPlan.error}`));
       }
       const targetRoot = targetPlan.targetPath;
-      const rootSummary = formatExportRootSummary(parsed.roots)
+      const rootSummary = formatExportRootSummary(manifest.roots)
         || localize('workspaceImport.successRootsFallback');
 
       const confirm = localize('workspaceImport.noticeConfirm');
@@ -133,26 +127,57 @@ export class WorkspaceImportManager implements vscode.Disposable {
         return;
       }
 
-      try {
-        fs.mkdirSync(targetRoot);
-      } catch (error: unknown) {
-        if (
-          error instanceof Error &&
-          'code' in error &&
-          error.code === 'EEXIST'
-        ) {
-          throw new Error(localize('workspaceImport.target.target_exists'));
-        }
-        throw error;
+      // Extract beside the final target so a verified install is a single rename
+      // on the same filesystem; no second full copy and no partial target tree.
+      stagingRoot = path.join(
+        parentPath,
+        `.${path.basename(targetRoot)}.import-${process.pid}-${Date.now()}`,
+      );
+      if (fs.existsSync(stagingRoot)) {
+        throw new Error(localize('workspaceImport.target.target_exists'));
       }
+      fs.mkdirSync(stagingRoot, { recursive: true });
 
-      let skipped: string[];
-      try {
-        skipped = this.copyExtractedTree(extractedRoot, targetRoot, '');
-      } catch (error) {
-        fs.rmSync(targetRoot, { recursive: true, force: true });
-        throw error;
-      }
+      let skipped: string[] = [];
+      await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: localize('workspaceImport.progress'),
+          cancellable: false,
+        },
+        async () => {
+          await runPythonArchiveCommand(pythonCommand, 'extract', zipPath, stagingRoot!);
+          const manifestPath = path.join(
+            stagingRoot!,
+            WORKSPACE_EXPORT_MANIFEST_RELATIVE_PATH,
+          );
+          if (!fs.existsSync(manifestPath)) {
+            throw new Error(localize('workspaceImport.invalidManifest'));
+          }
+          const extracted = parseExportManifest(
+            JSON.parse(fs.readFileSync(manifestPath, 'utf-8')),
+          );
+          if (!extracted.ok) {
+            throw new Error(localize('workspaceImport.invalidManifest'));
+          }
+          if (
+            extracted.manifest.contentHash !== manifest.contentHash ||
+            extracted.manifest.workspaceName !== manifest.workspaceName
+          ) {
+            throw new Error(localize('workspaceImport.hashMismatch'));
+          }
+          const actualHash = canonicalizeContentHash(
+            collectContentDigests(stagingRoot!),
+          );
+          if (actualHash !== extracted.manifest.contentHash) {
+            throw new Error(localize('workspaceImport.hashMismatch'));
+          }
+          skipped = this.removeSkippedPaths(stagingRoot!);
+        },
+      );
+
+      fs.renameSync(stagingRoot, targetRoot);
+      stagingRoot = null;
       this.log(`Imported workspace into ${targetRoot}`);
       if (skipped.length > 0) {
         this.log(`Skipped sensitive or non-portable paths: ${skipped.join(', ')}`);
@@ -185,7 +210,9 @@ export class WorkspaceImportManager implements vscode.Disposable {
         this.outputChannel.show(true);
       }
     } finally {
-      fs.rmSync(tempRoot, { recursive: true, force: true });
+      if (stagingRoot) {
+        fs.rmSync(stagingRoot, { recursive: true, force: true });
+      }
     }
   }
 
@@ -193,28 +220,26 @@ export class WorkspaceImportManager implements vscode.Disposable {
     return;
   }
 
-  private copyExtractedTree(sourceDir: string, targetDir: string, relativeDir: string): string[] {
+  private removeSkippedPaths(root: string): string[] {
     const skipped: string[] = [];
-    fs.mkdirSync(targetDir, { recursive: true });
-    for (const entry of fs.readdirSync(sourceDir, { withFileTypes: true })) {
-      const relativePath = relativeDir ? `${relativeDir}/${entry.name}` : entry.name;
-      if (shouldSkipImportPath(relativePath)) {
-        skipped.push(relativePath);
-        continue;
+    const walk = (dir: string, relativeDir: string) => {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const relativePath = relativeDir ? `${relativeDir}/${entry.name}` : entry.name;
+        const absolutePath = path.join(dir, entry.name);
+        if (shouldSkipImportPath(relativePath)) {
+          skipped.push(relativePath);
+          fs.rmSync(absolutePath, { recursive: true, force: true });
+          continue;
+        }
+        if (entry.isDirectory()) {
+          walk(absolutePath, relativePath);
+        } else if (!entry.isFile()) {
+          skipped.push(relativePath);
+          fs.rmSync(absolutePath, { recursive: true, force: true });
+        }
       }
-      const from = path.join(sourceDir, entry.name);
-      const to = path.join(targetDir, entry.name);
-      if (fs.existsSync(to) && !entry.isDirectory()) {
-        throw new Error(localize('workspaceImport.targetConflict', entry.name));
-      }
-      if (entry.isDirectory()) {
-        skipped.push(...this.copyExtractedTree(from, to, relativePath));
-      } else if (entry.isFile()) {
-        fs.copyFileSync(from, to);
-      } else {
-        skipped.push(relativePath);
-      }
-    }
+    };
+    walk(root, '');
     return skipped;
   }
 

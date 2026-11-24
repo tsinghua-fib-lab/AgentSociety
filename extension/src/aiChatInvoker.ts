@@ -1,178 +1,71 @@
-/**
- * AI Chat Invoker - 支持 Claude Code、Codex、Cursor 和 VSCode Chat
- *
- * 当有多个 AI Chat 提供商可用时，弹出 QuickPick 让用户选择，
- * 并可选"记住"选择到 VSCode 设置中。
- */
-
 import * as vscode from 'vscode';
+import { localize } from './i18n';
 import { getMainOutputChannel } from './shared/outputChannels';
 
-export type AIChatType = 'claude-code' | 'codex' | 'cursor' | 'vscode-chat' | 'none';
+const providers = [
+  { id: 'claude-code', extensionId: 'anthropic.claude-code', label: 'Claude Code', command: 'claude-vscode.editor.open' },
+  { id: 'codex', extensionId: 'openai.chatgpt', label: 'Codex', command: 'chatgpt.openSidebar' },
+  { id: 'cursor', label: 'Cursor Chat', command: 'cursor.chat' },
+  { id: 'vscode-chat', label: 'VS Code Chat', command: 'workbench.action.chat.open' },
+] as const;
 
-const CHAT_LABELS: Record<Exclude<AIChatType, 'none'>, string> = {
-  'claude-code': 'Claude Code',
-  'codex': 'Codex',
-  'cursor': 'Cursor Chat',
-  'vscode-chat': 'VSCode Chat',
-};
-
-const CHAT_DESCRIPTIONS: Record<Exclude<AIChatType, 'none'>, string> = {
-  'claude-code': 'Anthropic Claude Code extension',
-  'codex': 'OpenAI Codex extension',
-  'cursor': 'Cursor built-in chat',
-  'vscode-chat': 'VSCode built-in chat panel',
-};
-
-const OPEN_COMMANDS: Record<Exclude<AIChatType, 'none'>, string> = {
-  'claude-code': 'claude-vscode.editor.open',
-  'codex': 'chatgpt.openSidebar',
-  'cursor': 'cursor.chat',
-  'vscode-chat': 'workbench.action.chat.open',
-};
+type ChatProvider = typeof providers[number];
 
 export class AIChatInvoker {
-  private outputChannel: vscode.OutputChannel;
-
-  constructor() {
-    this.outputChannel = getMainOutputChannel();
+  private async availableProviders(): Promise<ChatProvider[]> {
+    const commands = new Set(await vscode.commands.getCommands(true));
+    return providers.filter(provider => {
+      if (commands.has(provider.command)) { return true; }
+      // 冷启动时，助手的命令可能尚待首次调用激活。
+      if (!('extensionId' in provider)) { return false; }
+      const manifest = vscode.extensions.getExtension(provider.extensionId)?.packageJSON;
+      return manifest?.contributes?.commands?.some((entry: { command: string }) => entry.command === provider.command);
+    });
   }
 
-  private log(message: string): void {
-    this.outputChannel.appendLine(`${new Date().toISOString()} [Chat] ${message}`);
+  private preferredId(): string {
+    return vscode.workspace.getConfiguration('aiSocialScientist').get<string>('preferredAiChat', '');
   }
 
-  /**
-   * Detect all available AI chat providers.
-   */
-  getAvailableChats(): Exclude<AIChatType, 'none'>[] {
-    const available: Exclude<AIChatType, 'none'>[] = [];
-
-    if (vscode.extensions.getExtension('anthropic.claude-code')) {
-      available.push('claude-code');
+  private async choose(available: ChatProvider[], title: string): Promise<ChatProvider | undefined> {
+    if (!available.length) {
+      void vscode.window.showInformationMessage(localize('extension.aiChat.unavailable'));
+      return undefined;
     }
-    if (vscode.extensions.getExtension('openai.chatgpt')) {
-      available.push('codex');
-    }
-    if (typeof (vscode.env as any).appHost === 'string'
-      && ((vscode.env as any).appHost as string).includes('cursor')) {
-      available.push('cursor');
-    }
-    try {
-      if (vscode.chat) {
-        available.push('vscode-chat');
-      }
-    } catch {
-      // chat API 不存在
-    }
-
-    return available;
+    const preferred = this.preferredId();
+    const choice = await vscode.window.showQuickPick(available.map(provider => ({
+      label: provider.label,
+      description: provider.id === preferred ? localize('extension.aiChat.currentDefault') : undefined,
+      provider,
+    })), { title });
+    return choice?.provider;
   }
 
-  private getPreferredFromConfig(): AIChatType | undefined {
-    const config = vscode.workspace.getConfiguration('aiSocialScientist');
-    const saved = config.get<string>('preferredAiChat', '');
-    if (saved && saved !== 'none' && saved in OPEN_COMMANDS) {
-      return saved as AIChatType;
-    }
-    return undefined;
-  }
-
+  /** 打开默认助手；有多个可用助手且未设置默认值时，仅为本次对话选取。 */
   async invokeChat(): Promise<boolean> {
-    const available = this.getAvailableChats();
-
-    if (available.length === 0) {
-      vscode.window.showInformationMessage(
-        'Install Claude Code: https://claude.ai/code or Codex: https://marketplace.visualstudio.com/items?itemName=openai.chatgpt'
-      );
+    const available = await this.availableProviders();
+    const preferred = this.preferredId();
+    const provider = available.find(entry => entry.id === preferred)
+      ?? (available.length === 1 ? available[0] : await this.choose(available, localize('extension.aiChat.chooseOnce')));
+    if (!provider) { return false; }
+    try {
+      await vscode.commands.executeCommand(provider.command);
+      return true;
+    } catch (error) {
+      getMainOutputChannel().appendLine(`[Chat] ${provider.command}: ${error}`);
+      void vscode.window.showErrorMessage(localize('extension.aiChat.openFailed', provider.label));
       return false;
     }
-
-    // If only one provider, use it directly
-    if (available.length === 1) {
-      return this._openChat(available[0]);
-    }
-
-    // Check for saved preference
-    const preferred = this.getPreferredFromConfig();
-    if (preferred && available.includes(preferred as Exclude<AIChatType, 'none'>)) {
-      return this._openChat(preferred as Exclude<AIChatType, 'none'>);
-    }
-
-    // Multiple available, no preference — show QuickPick
-    return this._pickAndOpen(available);
   }
 
-  /**
-   * Show the provider picker regardless of saved preference (for "change provider" command).
-   */
-  async pickProvider(): Promise<boolean> {
-    const available = this.getAvailableChats();
-
-    if (available.length === 0) {
-      vscode.window.showInformationMessage(
-        'No AI Chat provider available. Install Claude Code or Codex.'
-      );
-      return false;
-    }
-
-    return this._pickAndOpen(available);
-  }
-
-  private async _pickAndOpen(available: Exclude<AIChatType, 'none'>[]): Promise<boolean> {
-    const items = available.map((type) => {
-      const isSaved = this.getPreferredFromConfig() === type;
-      return {
-        label: (isSaved ? '$(bookmark) ' : '') + CHAT_LABELS[type],
-        description: isSaved ? '当前默认' : '',
-        detail: CHAT_DESCRIPTIONS[type],
-        type,
-      };
-    });
-
-    const selected = await vscode.window.showQuickPick(items, {
-      placeHolder: '选择要打开的 AI Chat',
-      title: 'AI Chat 提供商',
-    });
-
-    if (!selected) {
-      return false;
-    }
-
-    // Ask if they want to remember
-    const remember = await vscode.window.showInformationMessage(
-      `记住「${CHAT_LABELS[selected.type]}」为默认 AI Chat？`,
-      '记住', '仅本次'
-    );
-
-    if (remember === '记住') {
+  /** 保存下一次左键打开的助手，保留当前对话。 */
+  async pickProvider(): Promise<void> {
+    const provider = await this.choose(await this.availableProviders(), localize('extension.aiChat.chooseDefault'));
+    if (provider) {
       const config = vscode.workspace.getConfiguration('aiSocialScientist');
-      await config.update('preferredAiChat', selected.type, vscode.ConfigurationTarget.Global);
+      const target = config.inspect<string>('preferredAiChat')?.workspaceValue === undefined
+        ? vscode.ConfigurationTarget.Global : vscode.ConfigurationTarget.Workspace;
+      await config.update('preferredAiChat', provider.id, target);
     }
-
-    return this._openChat(selected.type);
-  }
-
-  private async _openChat(type: Exclude<AIChatType, 'none'>): Promise<boolean> {
-    const command = OPEN_COMMANDS[type];
-    this.log(`Invoking ${type}...`);
-
-    const success = await vscode.commands.executeCommand(command).then(
-      () => true,
-      (err) => {
-        this.log(`Failed: ${err}`);
-        return false;
-      }
-    );
-
-    if (!success) {
-      vscode.window.showInformationMessage(
-        `Failed to open ${CHAT_LABELS[type]}. Make sure the extension is installed and enabled.`
-      );
-    }
-    return success;
-  }
-
-  dispose(): void {
   }
 }

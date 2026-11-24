@@ -9,8 +9,9 @@
 version: 2
 
 updates:
-  - package-ecosystem: pip
-    directory: /packages/agentsociety2
+  # The root lockfile includes the AS2 workspace member.
+  - package-ecosystem: uv
+    directory: /
     schedule:
       interval: weekly
     open-pull-requests-limit: 5

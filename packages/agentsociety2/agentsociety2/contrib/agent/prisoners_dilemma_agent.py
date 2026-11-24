@@ -115,7 +115,9 @@ This agent participates in a 10-round Prisoner's Dilemma game where two players 
             encoding="utf-8",
         )
 
-    async def ask(self, message: str, readonly: bool = True) -> str:
+    async def ask(
+        self, message: str, readonly: bool = True, *, t: datetime | None = None
+    ) -> str:
         """Answer questions"""
         profile_str = self._build_profile_string()
         prompt = f"{profile_str}\n\n{message}"

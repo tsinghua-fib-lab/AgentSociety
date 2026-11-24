@@ -142,10 +142,7 @@ def _brand_icon_candidates() -> tuple[Path, ...]:
     # as the standalone-install fallback after those explicit locations.
     roots.append(here.parent)
     candidates = [root / "assets" / BRAND_ICON_NAME for root in roots]
-    candidates.extend(
-        base / "static" / BRAND_ICON_NAME
-        for base in (here.parents[5], here.parents[4], here.parents[3])
-    )
+    candidates.extend(base / "static" / BRAND_ICON_NAME for base in here.parents)
 
     deduplicated: list[Path] = []
     seen: set[Path] = set()

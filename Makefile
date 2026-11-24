@@ -91,13 +91,13 @@ DOCS_PORT ?= 8000
 .PHONY: ci-python-lint ci-python-test ci-extension ci-frontend check-frontend ci-docs-build ci-docs-browser ci-package ci-config ci-release-check docs-live
 
 ci-python-lint:
-	$(AS2_PYTHON) -m ruff check scripts/ci
+	$(AS2_PYTHON) -m ruff check scripts/ci examples/v2/daily_mobility
 	cd packages/agentsociety2 && $(AS2_PYTHON_ABS) -m ruff check .
 	cd packages/agentsociety2 && $(AS2_PYTHON_ABS) -m ruff check --select D100,D101,D102,D103,D107,D205,D209,D210,D211,D300,D419 agentsociety2/storage/replay_reader.py
 	cd packages/agentsociety2 && $(AS2_PYTHON_ABS) -m mypy tests/ --follow-imports=skip
 
 ci-python-test:
-	cd packages/agentsociety2 && MEM0_TELEMETRY=False ANONYMIZED_TELEMETRY=False $(AS2_PYTHON_ABS) -m pytest -m "not network" $(AS2_PYTEST_ARGS)
+	cd packages/agentsociety2 && MEM0_TELEMETRY=False ANONYMIZED_TELEMETRY=False $(AS2_PYTHON_ABS) -m pytest -c pyproject.toml tests ../../examples/v2/daily_mobility/tests -m "not network" $(AS2_PYTEST_ARGS)
 
 ci-extension:
 	npm --prefix extension run check
@@ -137,6 +137,7 @@ ci-release-check:
 	$(AS2_PYTHON) scripts/ci/release.py check --release
 
 ci-config:
+	$(AS2_PYTHON) scripts/ci/check_repo_paths.py
 	$(AS2_PYTHON) scripts/ci/check_config.py
 	$(AS2_PYTHON) scripts/ci/release.py check
 
@@ -183,6 +184,8 @@ gettext:
 	$(SPHINXBUILD) -b gettext $(SPHINXOPTS) $(SOURCEDIR) $(BUILDDIR)/gettext
 
 # 更新翻译文件
+# Keep committed source locations relative to docs/_build/gettext.
+update-po: override BUILDDIR := $(SOURCEDIR)/_build
 update-po: gettext
 	@echo "更新翻译文件..."
 	$(SPHINXINTL) update -p $(BUILDDIR)/gettext -d $(SOURCEDIR)/locale -l en

@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import os
+import tempfile
 from pathlib import Path
 
 __all__ = [
@@ -17,10 +18,11 @@ __all__ = [
 
 
 def atomic_write_text(path: Path, content: str, *, encoding: str = "utf-8") -> None:
-    """原子地写入文本文件：写 ``path.tmp`` 再 ``os.replace`` 。
+    """原子地写入文本文件：写唯一临时文件再 ``os.replace`` 。
 
     ``os.replace`` 在同一文件系统内是原子的，故进程在写盘中途被杀死也只会留下
-    完整的旧文件或完整的新文件，不会出现截断的 checkpoint。
+    完整的旧文件或完整的新文件，不会出现截断的 checkpoint。临时文件名唯一，
+    并发写同一路径时不会互相截断。
 
     :param path: 目标文件路径（父目录会自动创建）。
     :param content: 文本内容。
@@ -28,6 +30,18 @@ def atomic_write_text(path: Path, content: str, *, encoding: str = "utf-8") -> N
     """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(content, encoding=encoding)
-    os.replace(tmp, path)
+    fd, tmp_name = tempfile.mkstemp(
+        prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
+    )
+    try:
+        with os.fdopen(fd, "w", encoding=encoding) as handle:
+            handle.write(content)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp_name, path)
+    except BaseException:
+        try:
+            os.unlink(tmp_name)
+        except OSError:
+            pass
+        raise

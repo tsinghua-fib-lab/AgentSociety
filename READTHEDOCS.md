@@ -75,7 +75,7 @@ cd packages/agentsociety2/docs
 make update-po
 ```
 
-这会在 `packages/agentsociety2/docs/locale/en/LC_MESSAGES/` 目录下创建或更新 `.po` 文件。
+这会在 `packages/agentsociety2/docs/locale/en/LC_MESSAGES/` 目录下创建或更新 `.po` 文件。更新要提交的翻译时，使用默认的 `_build/gettext/` 输出目录。Sphinx 以它为基准生成 `#:` 源文件引用，使用仓库外的临时目录会把构建机路径带入翻译文件。
 
 ### 4. 翻译文档
 

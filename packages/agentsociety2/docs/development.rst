@@ -12,9 +12,7 @@
 
 .. code-block:: bash
 
-   uv sync
-   cd packages/agentsociety2
-   uv sync --extra dev --extra docs
+   uv sync --locked --package agentsociety2 --no-default-groups --extra dev --extra docs
 
 运行测试与检查
 ------------------

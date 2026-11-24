@@ -7,7 +7,7 @@ AgentSociety 2
 
    * `PyPI <https://pypi.org/project/agentsociety2/>`_
 
-   * Python 3.11–3.13
+   * Python 3.11.5–3.13
 
    * `Apache 2.0 <https://github.com/tsinghua-fib-lab/AgentSociety/blob/main/LICENSE>`_
 

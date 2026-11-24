@@ -49,7 +49,7 @@ pip install agentsociety2
 
 ### Requirements
 
-- Python 3.11–3.13
+- Python 3.11.5–3.13
 - An LLM API key (OpenAI, Anthropic, or any provider supported by LiteLLM)
 
 ## Quick Start

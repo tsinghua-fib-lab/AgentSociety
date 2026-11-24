@@ -27,20 +27,6 @@ LITERATURE_TOOL_BY_KIND: dict[LiteratureMcpTool, str] = {
     "ingest": "literature_ingest_text",
 }
 
-LITERATURE_MCP_TOOL_SUFFIXES: tuple[str, ...] = tuple(LITERATURE_TOOL_BY_KIND.values())
-
-
-def is_literature_mcp_tool(name: str) -> bool:
-    """判断某个 MCP 工具名是否属于文献检索服务。
-
-    :param name: 网关返回的工具名（可能带 ``Server-`` 前缀）。
-    :returns: 与某个文献工具后缀匹配时返回 ``True`` 。
-    """
-    return any(
-        name == suffix or name.endswith(f"-{suffix}")
-        for suffix in LITERATURE_MCP_TOOL_SUFFIXES
-    )
-
 
 def normalize_literature_mcp_url(mcp_url: str) -> str:
     """规范化并校验文献 MCP 网关 URL。
@@ -62,41 +48,37 @@ def normalize_literature_mcp_url(mcp_url: str) -> str:
     return url
 
 
-def resolve_literature_tool_name(
+def _resolve_literature_tool_name(
     tool_names: list[str],
     *,
     kind: LiteratureMcpTool,
 ) -> str:
-    """为指定的文献操作类型选出网关工具名。
+    """从网关工具名中选出指定文献操作对应的工具。
 
-    :param tool_names: ``list_tools`` 返回的工具名列表（可能包含非文献工具）。
-    :param kind: 逻辑操作类型：``search`` 、``status`` 或 ``ingest`` 。
-    :returns: 解析出的、可传给 ``call_tool`` 的工具名。
-    :raises ValueError: 找不到匹配的文献工具时抛出。
+    :param tool_names: ``list_tools`` 返回的工具名列表。
+    :param kind: 逻辑操作类型。
+    :returns: 可传给 ``call_tool`` 的工具名。
+    :raises ValueError: 找不到匹配工具时抛出。
     """
     preferred = LITERATURE_TOOL_BY_KIND[kind]
     for name in tool_names:
-        if not is_literature_mcp_tool(name):
-            continue
         if name == preferred or name.endswith(f"-{preferred}"):
             return name
-    literature_only = [n for n in tool_names if is_literature_mcp_tool(n)]
     raise ValueError(
         f"Literature MCP tool {preferred!r} not found. "
-        f"Literature tools visible: {literature_only}"
+        f"Tools visible: {tool_names}"
     )
 
 
-async def list_literature_mcp_tools(*, mcp_url: str, api_key: str) -> list[str]:
-    """列出网关上可用的文献 MCP 工具名。
+async def _list_literature_tool_names(*, mcp_url: str, api_key: str) -> list[str]:
+    """列出网关上可用的全部 MCP 工具名。
 
     :param mcp_url: MCP 网关 URL。
-    :param api_key: Bearer 令牌（``sk-...`` ）。
-    :returns: 被识别为文献工具的工具名列表。
+    :param api_key: Bearer 令牌。
+    :returns: 工具名列表。
     """
     url = normalize_literature_mcp_url(mcp_url)
     headers = _auth_headers(api_key)
-
     async with (
         httpx2.AsyncClient(
             headers=headers, timeout=httpx2.Timeout(30, read=300)
@@ -106,9 +88,7 @@ async def list_literature_mcp_tools(*, mcp_url: str, api_key: str) -> list[str]:
         async with ClientSession(read, write) as session:
             await session.initialize()
             tools = await session.list_tools()
-            return [
-                tool.name for tool in tools.tools if is_literature_mcp_tool(tool.name)
-            ]
+            return [tool.name for tool in tools.tools]
 
 
 async def call_literature_mcp_tool(
@@ -130,8 +110,8 @@ async def call_literature_mcp_tool(
     :raises RuntimeError: 工具报告错误时抛出。
     :raises ValueError: 响应为空或不是 JSON 时抛出。
     """
-    tools = await list_literature_mcp_tools(mcp_url=mcp_url, api_key=api_key)
-    tool_name = resolve_literature_tool_name(tools, kind=kind)
+    tool_names = await _list_literature_tool_names(mcp_url=mcp_url, api_key=api_key)
+    tool_name = _resolve_literature_tool_name(tool_names, kind=kind)
     url = normalize_literature_mcp_url(mcp_url)
     headers = _auth_headers(api_key)
     payload = arguments or {}
@@ -176,28 +156,6 @@ async def call_literature_search_mcp(
         api_key=api_key,
         kind="search",
         arguments=arguments,
-        timeout=timeout,
-    )
-
-
-async def call_literature_status_mcp(
-    *,
-    mcp_url: str,
-    api_key: str,
-    timeout: int = 30,
-) -> dict[str, Any]:
-    """调用文献状态 MCP 工具（健康状态与数据源）。
-
-    :param mcp_url: MCP 网关 URL。
-    :param api_key: Bearer 令牌（``sk-...`` ）。
-    :param timeout: 请求超时时间（秒）。
-    :returns: 解析出的状态 JSON（可用时包含 ``sources`` ）。
-    """
-    return await call_literature_mcp_tool(
-        mcp_url=mcp_url,
-        api_key=api_key,
-        kind="status",
-        arguments={},
         timeout=timeout,
     )
 

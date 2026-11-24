@@ -14,7 +14,7 @@ _SAFE_SEGMENT_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$")
 _SAFE_PATH_PART_RE = re.compile(
     r"^(?:[A-Za-z0-9_]|[.][A-Za-z0-9_])(?:[A-Za-z0-9_-]|[.][A-Za-z0-9_-])*$"
 )
-_ARTIFACT_NAME_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.-]*\.md$")
+_ARTIFACT_NAME_RE = re.compile(r"^(?:[a-zA-Z0-9][a-zA-Z0-9_.-]*\.md|questionnaire_step_[0-9]+_[0-9]{8}_[0-9]{6}\.json)$")
 
 
 def _configured_workspace_root() -> str:
@@ -183,9 +183,12 @@ def custom_skills_root(workspace_path: str) -> Path:
 
 
 def skill_install_dir(workspace_path: str, skill_name: str) -> Path:
-    return resolve_under_root(
-        custom_skills_root(workspace_path), require_safe_skill_name(skill_name)
-    )
+    root = custom_skills_root(workspace_path)
+    name = require_safe_skill_name(skill_name)
+    target = resolve_under_root(root, name)
+    if target != root / name:
+        raise HTTPException(400, "Skill destination must not be a symbolic link")
+    return target
 
 
 def resolve_skill_relative(skill_dir: Path, relative: str) -> Path:
@@ -221,10 +224,35 @@ def require_disjoint_copy_paths(source: Path, destination: Path) -> None:
         raise HTTPException(status_code=400, detail="Source and destination overlap")
 
 
+MAX_ZIP_ENTRIES = 2000
+MAX_ZIP_UNCOMPRESSED_BYTES = 128 * 1024 * 1024
+
+
 def extract_zip_under(dest_dir: Path, zf: zipfile.ZipFile) -> None:
+    """把 zip 解压到 ``dest_dir``，并限制条目数与解压总量。
+
+    :param dest_dir: 解压目标目录。
+    :param zf: 已打开的 zip 文件。
+    :raises HTTPException: 条目数或解压总量超过上限时抛出。
+    """
     dest_root = Path(os.path.realpath(os.fspath(dest_dir)))
     dest_root.mkdir(parents=True, exist_ok=True)
-    for member in zf.infolist():
+    infos = zf.infolist()
+    if len(infos) > MAX_ZIP_ENTRIES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Zip contains too many entries (>{MAX_ZIP_ENTRIES})",
+        )
+    total_uncompressed = sum(max(0, info.file_size) for info in infos)
+    if total_uncompressed > MAX_ZIP_UNCOMPRESSED_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=(
+                "Zip uncompressed size exceeds the "
+                f"{MAX_ZIP_UNCOMPRESSED_BYTES}-byte limit"
+            ),
+        )
+    for member in infos:
         target = resolve_under_root(dest_root, member.filename)
         if member.is_dir():
             target.mkdir(parents=True, exist_ok=True)

@@ -14,6 +14,36 @@ SDK 与扩展各自遵循 [语义化版本](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+### Added
+
+- **研究工作台** 在“AI 对话”的右键菜单中可以设置默认助手。在命令面板搜索“Swagger”可打开当前工作区的 API 文档。
+- **维护工具** 新增 `$agentsociety-maintain`，用于审查依赖更新和安全告警，以及合并前的检查。
+
+### Changed
+
+- **升级与续跑** 检查点格式升至 v2。需要从 v1 检查点续跑的实验，请用原版本完成。已有回放仍可读取。
+- **Python 版本** SDK 支持 Python 3.11.5 至 3.13。使用 3.11.0–3.11.4 的工作区需升级 Python 并重建环境。构建文档需要 Soup Sieve 4.0.0 或更高版本。
+- **Daily Mobility** 从示例根目录启动实验和看板，命令行工具位于 `tools/`。启动新实验前会检查输出目录，防止覆盖已有回放。
+- **实验进度** 展开侧栏顶部的进度可以看到未完成的实验，失败的排在最前。右键实验可打开回放或查看起止时间、耗时和步数。
+- **研究侧栏** 左键打开或预览文件，右键可编辑源文件、复制路径或引用、定位文件。视图的更多操作菜单提供快速入门和工作区导入、导出。配置分组首次展开时才读取，短时间内再次展开会复用结果。
+- **语言与帮助** 配置、技能、实验编辑器和回放随插件切换语言，并保留正在编辑的参数。内置指南可离线阅读，打开在线文档时才加载网页。
+- **回放查询** 实验概览优先读取仿真时间线，旧回放仍可从快照读取。按步分页时复用查询结果，减少重复读取。
+- **API 文档** Swagger 和 ReDoc 的页面资源随 SDK 安装，可通过 Coder 端口代理访问。OpenAPI 文档补充了后端鉴权、问卷 JSON 响应和 4 MiB 内联读取上限。
+- **分析报告** 发布前逐条核对中英文报告中的主张、证据和图表，列出待补内容，并保留手写的探索性分析。
+
+### Fixed
+
+- **Daily Mobility** 修复人物档案格式错误导致的智能体初始化失败。看板会跳过仍在写入的问卷文件，继续显示其他回放数据。
+- **开发检查** 修复提交钩子的安装和发布脚本的 Ruff 检查，将 Daily Mobility 纳入同一套检查。
+- **实验运行** 修复智能体配置传递、检查点恢复和运行状态追踪。后端可以列出并读取问卷答卷，也能查询空回放分片。
+- **文件预览** 侧栏可直接打开论文 PDF、图表和回放。JSON 预览保留原文，点击普通文件时保留剪贴板内容。没有 Markdown 说明的假设和实验也可展开。
+- **工作区** 更新内置技能时保留自定义技能。修复并发启动 CLI 网关时争用监听端口的问题。
+
+### Security
+
+- **Daily Mobility** 看板限制可访问的文件，并对 HTML 属性进行转义。生成的人物配置仅允许当前用户读写。CodeQL 扫描覆盖示例、SDK 维护脚本和扩展文档工具。
+- **工作区访问** 后端访问令牌绑定到目标地址。技能安装和自定义模块扫描限制在工作区内。导入共享包时，先在暂存目录校验清单和文件哈希，校验通过后再安装。
+
 ## [2.11.0] - 2026-11-11
 
 - **agentsociety2** `2.11.0` · **extension** `1.9.0` · 标签 `agentsociety2-v2.11.0`
@@ -887,7 +917,7 @@ See [Version 1.3](https://agentsociety.readthedocs.io/en/latest/02-version-1.3/0
 
 ### Security
 - N/A
-  
+
 ## [1.2.5] - 2025-03-07
 
 ### Added
@@ -1118,7 +1148,7 @@ See [Version 1.3](https://agentsociety.readthedocs.io/en/latest/02-version-1.3/0
 - N/A
 
 ### Fixed
-- Inconsistency of python 3.12 and current pydantic version. 
+- Inconsistency of python 3.12 and current pydantic version.
 
 ### Security
 - N/A
@@ -1243,7 +1273,7 @@ See [Version 1.3](https://agentsociety.readthedocs.io/en/latest/02-version-1.3/0
 
 ### Security
 - N/A
-  
+
 ## [1.0.8] - 2024-02-19
 
 ### Added
@@ -1263,7 +1293,7 @@ See [Version 1.3](https://agentsociety.readthedocs.io/en/latest/02-version-1.3/0
 
 ### Security
 - N/A
- 
+
 ## [1.0.7] - 2024-02-18
 
 ### Added
@@ -1283,7 +1313,7 @@ See [Version 1.3](https://agentsociety.readthedocs.io/en/latest/02-version-1.3/0
 
 ### Security
 - N/A
-  
+
 ## [1.0.6] - 2024-02-18
 
 ### Added
@@ -1303,7 +1333,7 @@ See [Version 1.3](https://agentsociety.readthedocs.io/en/latest/02-version-1.3/0
 
 ### Security
 - N/A
-  
+
 ## [1.0.5] - 2024-02-15
 
 ### Added
@@ -1359,7 +1389,7 @@ See [Version 1.3](https://agentsociety.readthedocs.io/en/latest/02-version-1.3/0
 - N/A
 
 ### Fixed
-- 
+-
 
 ### Security
 - N/A

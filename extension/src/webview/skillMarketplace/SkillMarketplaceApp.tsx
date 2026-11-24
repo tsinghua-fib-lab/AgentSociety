@@ -364,12 +364,10 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
     handleRefreshMarketplace();
   };
   const handleUpdateExtensionSkills = () => vscode.postMessage({ type: 'updateExtensionSkills' });
-  const handleSwitchSkillVersion = () =>
-    vscode.postMessage({ type: 'invokeSwitchSkillVersionCommand' });
-  const handleEditSkillPresets = () =>
-    vscode.postMessage({ type: 'invokeEditSkillPresetsCommand' });
   const handleSnapshotSkill = (name?: string) =>
     vscode.postMessage({ type: 'invokeSnapshotSkillCommand', payload: { skillName: name } });
+  const handleRestoreSkillSnapshot = (name?: string) =>
+    vscode.postMessage({ type: 'invokeRestoreSkillSnapshotCommand', payload: { skillName: name } });
 
   const handleSyncOneBundledClaudeSkill = (name: string) => {
     setVsixSyncLoading((prev) => new Set(prev).add(name));
@@ -887,15 +885,6 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
         tags={
           <>
             <Tag color="purple" style={{ margin: 0 }}>{t('skillManagement.vsixTemplateTag')}</Tag>
-            {skill.isVersioned && skill.activeVersion
-              ? skill.activeVersion.source === 'snapshot'
-                ? (
-                  <Tag color="orange" style={{ margin: 0 }}>
-                    {t('skillManagement.versionSnapshotTag', { id: skill.activeVersion.id })}
-                  </Tag>
-                )
-                : versionTag(skill.activeVersion.id)
-              : null}
             {workspaceSynced ? (
               wsActive ? (
                 <Tag color="success" style={{ margin: 0 }}>{t('skillManagement.vsixWorkspaceSynced')}</Tag>
@@ -931,17 +920,19 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
                   ...(skill.isVersioned
                     ? [
                       {
-                        key: 'switch',
-                        label: t('skillManagement.switchSkillVersion'),
-                        icon: <SyncOutlined />,
-                        onClick: () => handleSwitchSkillVersion(),
-                      },
-                      {
                         key: 'snapshot',
                         label: t('skillManagement.snapshotSkill'),
                         icon: <InboxOutlined />,
                         onClick: () => handleSnapshotSkill(skill.name),
                       },
+                      ...((skill.snapshotCount ?? 0) > 0
+                        ? [{
+                          key: 'restore-snapshot',
+                          label: t('skillManagement.restoreSkillSnapshot'),
+                          icon: <SyncOutlined />,
+                          onClick: () => handleRestoreSkillSnapshot(skill.name),
+                        }]
+                        : []),
                     ]
                     : []),
                   ...(skill.hasSkillMd
@@ -1214,12 +1205,6 @@ export const SkillMarketplaceApp: React.FC<SkillManagementAppProps> = ({ vscode 
         label: t('skillManagement.syncExtensionSkills'),
         icon: <CloudSyncOutlined />,
         onClick: () => handleUpdateExtensionSkills(),
-      },
-      {
-        key: 'presets',
-        label: t('skillManagement.editSkillPresets'),
-        icon: <SettingOutlined />,
-        onClick: () => handleEditSkillPresets(),
       },
     ];
 

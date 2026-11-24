@@ -30,8 +30,13 @@ from agentsociety2.backend.services.custom.models import (
 class CustomModuleScanner:
     """自定义模块扫描服务"""
 
-    def __init__(self, workspace_path: str):
-        self.workspace_path = resolve_workspace_root(workspace_path)
+    def __init__(
+        self, workspace_path: str | Path, *, validate_workspace_root: bool = True
+    ):
+        if validate_workspace_root:
+            self.workspace_path = resolve_workspace_root(str(workspace_path))
+        else:
+            self.workspace_path = Path(workspace_path).expanduser().resolve()
         self.custom_dir = resolve_under_root(self.workspace_path, "custom")
 
     def scan_all(self) -> dict[str, Any]:
@@ -81,7 +86,9 @@ class CustomModuleScanner:
         for py_file in agents_dir.rglob("*.py"):
             if py_file.name.startswith("__"):
                 continue
-            if skip_examples and "examples" in py_file.parts:
+            if skip_examples and "examples" in py_file.relative_to(
+                self.workspace_path
+            ).parts:
                 continue
 
             module_path = str(py_file.relative_to(self.workspace_path))
@@ -158,7 +165,9 @@ class CustomModuleScanner:
         for py_file in envs_dir.rglob("*.py"):
             if py_file.name.startswith("__"):
                 continue
-            if skip_examples and "examples" in py_file.parts:
+            if skip_examples and "examples" in py_file.relative_to(
+                self.workspace_path
+            ).parts:
                 continue
 
             module_path = str(py_file.relative_to(self.workspace_path))

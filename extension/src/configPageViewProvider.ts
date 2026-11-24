@@ -37,8 +37,8 @@ import { inferApiKindFromBaseUrl } from './aiCli/officialEndpoints';
 import type { AiCliGatewayManager, AiCliProviderConfig } from './services/aiCliGatewayManager';
 import type { ClaudeCodeConfigValues } from './webview/configPage/claudeCodeTypes';
 import type { WebImportGatewayProviderDraft } from './services/webConfigGatewayImport';
-import { getCurrentLanguageCode, localize } from './i18n';
-import type { ConfigValues, WorkspaceInfo, EasyPaperConfigValues } from './webview/configPage/types';
+import { getCurrentLanguageCode, localize, syncWebviewLanguage } from './i18n';
+import type { BackendStatus, ConfigValues, WorkspaceInfo, EasyPaperConfigValues } from './webview/configPage/types';
 import { EnvManager } from './envManager';
 import { LLMValidator, PythonValidator, LLMType } from './services/llmValidator';
 import { fetchCompat, createTimeoutSignal } from './shared/fetchCompat';
@@ -50,7 +50,6 @@ import {
   resolveAgentsocietyPython,
 } from './services/agentsocietyPythonResolver';
 import { ONBOARDING_KEYS, type DefaultLlmValidationCache } from './onboardingState';
-import { getBackendAccessUrl } from './runtimeConfig';
 import {
   readEasyPaperConfig,
   writeEasyPaperConfig,
@@ -129,6 +128,7 @@ export class ConfigPageViewProvider {
       String(context.extension.packageJSON.version)
     );
 
+    syncWebviewLanguage(this._panel, () => localize('configPage.title'));
     this._panel.webview.html = this._getHtmlForWebview(this._panel.webview);
 
     this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
@@ -377,6 +377,9 @@ export class ConfigPageViewProvider {
               message.config as EasyPaperConfigValues | undefined
             );
             break;
+          case 'openBackendInBrowser':
+            await vscode.commands.executeCommand('aiSocialScientist.openBackendInBrowser');
+            break;
           case 'openUrl':
             if (message.url) {
               await vscode.env.openExternal(vscode.Uri.parse(message.url));
@@ -501,18 +504,8 @@ export class ConfigPageViewProvider {
     void this._postOverviewStatus();
   }
 
-  /** 语言切换后重建 webview，使 `__AS_LANG__` 与标题生效。 */
-  public reloadForLanguage(): void {
-    this._panel.title = localize('configPage.title');
-    this._panel.webview.html = this._getHtmlForWebview(this._panel.webview);
-  }
-
   public static refreshBackendStatusIfOpen(): void {
     void ConfigPageViewProvider.currentPanel?.refreshBackendStatus();
-  }
-
-  public static reloadLanguageIfOpen(): void {
-    ConfigPageViewProvider.currentPanel?.reloadForLanguage();
   }
 
   private async _sendClaudeInitialConfig(): Promise<void> {
@@ -1309,42 +1302,12 @@ export class ConfigPageViewProvider {
   }
 
   private async _postOverviewStatus(): Promise<void> {
-    const backendStatus = await this._getBackendStatus();
+    const backendStatus = await vscode.commands.executeCommand<BackendStatus>('aiSocialScientist.getBackendStatus');
     this._panel.webview.postMessage({
       command: 'backendStatus',
       backendStatus,
       claudeCodeCustomized: isClaudeCodeEnvCustomized(),
     });
-  }
-
-  /**
-   * 获取后端状态信息
-   */
-  private async _getBackendStatus(): Promise<{ isRunning: boolean; port?: number; url?: string }> {
-    const envConfig = this._envManager.readEnv();
-    const fallbackUrl = getBackendAccessUrl(envConfig);
-
-    try {
-      const status = await vscode.commands.executeCommand<{ isRunning: boolean; port?: number }>(
-        'aiSocialScientist.getBackendStatus'
-      );
-      if (status?.isRunning) {
-        const port = status.port ?? envConfig.backendPort ?? 8001;
-        return {
-          isRunning: true,
-          port,
-          url: getBackendAccessUrl({ ...envConfig, backendPort: port }),
-        };
-      }
-    } catch {
-      // 命令不存在或执行失败，忽略
-    }
-
-    return {
-      isRunning: false,
-      port: envConfig.backendPort ?? 8001,
-      url: fallbackUrl,
-    };
   }
 
   private async _handleSaveConfig(config: Partial<ConfigValues>): Promise<void> {

@@ -37,6 +37,9 @@
   "extensionKind": [
     "workspace"
   ],
+  "extensionPack": [
+    "mathematic.vscode-pdf"
+  ],
   "activationEvents": [
     "onStartupFinished",
     "onView:projectStructureView",
@@ -47,7 +50,6 @@
     "onCommand:aiSocialScientist.selectAiChat",
     "onCommand:aiSocialScientist.deleteLiterature",
     "onCommand:aiSocialScientist.renameLiterature",
-    "onCommand:aiSocialScientist.openMarkdownInEditor",
     "onCommand:aiSocialScientist.openTreeFileInEditor",
     "onCommand:agentsociety.viewPrefillParams",
     "onCommand:aiSocialScientist.openReplay",
@@ -55,6 +57,7 @@
     "onCommand:aiSocialScientist.stopBackend",
     "onCommand:aiSocialScientist.restartBackend",
     "onCommand:aiSocialScientist.showBackendLogs",
+    "onCommand:aiSocialScientist.openApiDocs",
     "onCommand:aiSocialScientist.openConfigPage",
     "onCommand:aiSocialScientist.openHelpPage",
     "onCommand:aiSocialScientist.openClaudeCodeConfig",
@@ -63,7 +66,6 @@
     "onCommand:aiSocialScientist.openSkillSourcesSettings",
     "onCommand:aiSocialScientist.openClaudeSkillSourcesSettings",
     "onCommand:aiSocialScientist.refreshProjectView",
-    "onCommand:aiSocialScientist.formatJsonFile",
     "onCommand:aiSocialScientist.viewLiteratureIndex",
     "onCommand:aiSocialScientist.syncLiteratureLibrary",
     "onCommand:aiSocialScientist.exportLiteratureBibCopy",
@@ -208,206 +210,246 @@
     "commands": [
       {
         "command": "aiSocialScientist.initProject",
+        "category": "AI Social Scientist",
         "title": "%command.aiSocialScientist.initProject.title%",
         "icon": "$(add)"
       },
       {
         "command": "aiSocialScientist.openChat",
+        "category": "AI Social Scientist",
         "title": "%command.aiSocialScientist.openChat.title%",
         "icon": "$(comment-discussion)"
       },
       {
         "command": "aiSocialScientist.selectAiChat",
+        "category": "AI Social Scientist",
         "title": "%command.aiSocialScientist.selectAiChat.title%",
         "icon": "$(comment-discussion)"
       },
       {
         "command": "aiSocialScientist.deleteLiterature",
+        "category": "AI Social Scientist",
         "title": "%command.aiSocialScientist.deleteLiterature.title%",
         "icon": "$(trash)"
       },
       {
         "command": "aiSocialScientist.renameLiterature",
+        "category": "AI Social Scientist",
         "title": "%command.aiSocialScientist.renameLiterature.title%",
         "icon": "$(edit)"
       },
       {
         "command": "aiSocialScientist.viewLiteratureIndex",
+        "category": "AI Social Scientist",
         "title": "%command.aiSocialScientist.viewLiteratureIndex.title%",
         "icon": "$(library)"
       },
       {
         "command": "aiSocialScientist.syncLiteratureLibrary",
+        "category": "AI Social Scientist",
         "title": "%command.aiSocialScientist.syncLiteratureLibrary.title%",
         "icon": "$(sync)"
       },
       {
         "command": "aiSocialScientist.exportLiteratureBibCopy",
+        "category": "AI Social Scientist",
         "title": "%command.aiSocialScientist.exportLiteratureBibCopy.title%",
         "icon": "$(copy)"
       },
       {
         "command": "aiSocialScientist.exportLiteratureBibFile",
+        "category": "AI Social Scientist",
         "title": "%command.aiSocialScientist.exportLiteratureBibFile.title%",
         "icon": "$(export)"
       },
       {
         "command": "aiSocialScientist.importLiteratureBib",
+        "category": "AI Social Scientist",
         "title": "%command.aiSocialScientist.importLiteratureBib.title%",
         "icon": "$(desktop-download)"
       },
       {
         "command": "aiSocialScientist.openPdfPreview",
+        "category": "AI Social Scientist",
         "title": "%command.aiSocialScientist.openPdfPreview.title%",
         "icon": "$(file-pdf)"
       },
       {
         "command": "aiSocialScientist.openHtmlReport",
+        "category": "AI Social Scientist",
         "title": "%command.aiSocialScientist.openHtmlReport.title%",
         "icon": "$(open-preview)"
       },
       {
         "command": "aiSocialScientist.openTreeFileInEditor",
+        "category": "AI Social Scientist",
         "title": "%command.aiSocialScientist.openTreeFileInEditor.title%",
         "icon": "$(go-to-file)"
       },
       {
-        "command": "aiSocialScientist.openMarkdownInEditor",
-        "title": "%command.aiSocialScientist.openMarkdownInEditor.title%",
-        "icon": "$(markdown)"
-      },
-      {
         "command": "agentsociety.viewPrefillParams",
+        "category": "AI Social Scientist",
         "title": "%command.agentsociety.viewPrefillParams.title%",
         "icon": "$(settings)"
       },
       {
         "command": "aiSocialScientist.openReplay",
+        "category": "AI Social Scientist",
         "title": "%command.aiSocialScientist.openReplay.title%",
         "icon": "$(play-circle)"
       },
       {
+        "command": "aiSocialScientist.viewPidStatus",
+        "category": "AI Social Scientist",
+        "title": "%command.aiSocialScientist.viewPidStatus.title%",
+        "icon": "$(info)"
+      },
+      {
         "command": "aiSocialScientist.startBackend",
+        "category": "AI Social Scientist",
         "title": "%command.aiSocialScientist.startBackend.title%",
         "icon": "$(play)"
       },
       {
         "command": "aiSocialScientist.stopBackend",
+        "category": "AI Social Scientist",
         "title": "%command.aiSocialScientist.stopBackend.title%",
         "icon": "$(stop)"
       },
       {
         "command": "aiSocialScientist.restartBackend",
+        "category": "AI Social Scientist",
         "title": "%command.aiSocialScientist.restartBackend.title%",
         "icon": "$(refresh)"
       },
       {
         "command": "aiSocialScientist.showBackendLogs",
+        "category": "AI Social Scientist",
         "title": "%command.aiSocialScientist.showBackendLogs.title%",
         "icon": "$(output)"
       },
       {
+        "command": "aiSocialScientist.openApiDocs",
+        "category": "AI Social Scientist",
+        "title": "%command.aiSocialScientist.openApiDocs.title%"
+      },
+      {
         "command": "aiSocialScientist.openConfigPage",
+        "category": "AI Social Scientist",
         "title": "%command.aiSocialScientist.openConfigPage.title%",
         "icon": "$(settings)"
       },
       {
         "command": "aiSocialScientist.openHelpPage",
+        "category": "AI Social Scientist",
         "title": "%command.aiSocialScientist.openHelpPage.title%",
         "icon": "$(book)"
       },
       {
         "command": "aiSocialScientist.openClaudeCodeConfig",
+        "category": "AI Social Scientist",
         "title": "%command.aiSocialScientist.openClaudeCodeConfig.title%",
         "icon": "$(key)"
       },
       {
         "command": "aiSocialScientist.openWalkthrough",
+        "category": "AI Social Scientist",
         "title": "%command.aiSocialScientist.openWalkthrough.title%",
         "icon": "$(map)"
       },
       {
         "command": "aiSocialScientist.openSkillMarketplace",
+        "category": "AI Social Scientist",
         "title": "%command.aiSocialScientist.openSkillMarketplace.title%",
         "icon": "$(extensions)"
       },
       {
         "command": "aiSocialScientist.openSkillSourcesSettings",
+        "category": "AI Social Scientist",
         "title": "%command.aiSocialScientist.openSkillSourcesSettings.title%",
         "icon": "$(repo)"
       },
       {
         "command": "aiSocialScientist.openClaudeSkillSourcesSettings",
+        "category": "AI Social Scientist",
         "title": "%command.aiSocialScientist.openClaudeSkillSourcesSettings.title%",
         "icon": "$(repo)"
       },
       {
         "command": "aiSocialScientist.refreshProjectView",
+        "category": "AI Social Scientist",
         "title": "%command.aiSocialScientist.refreshProjectView.title%",
         "icon": "$(refresh)"
       },
       {
-        "command": "aiSocialScientist.formatJsonFile",
-        "title": "%command.aiSocialScientist.formatJsonFile.title%",
-        "icon": "$(json)"
-      },
-      {
         "command": "aiSocialScientist.viewStepsYaml",
+        "category": "AI Social Scientist",
         "title": "%command.aiSocialScientist.viewStepsYaml.title%",
         "icon": "$(list-ordered)"
       },
       {
         "command": "aiSocialScientist.copyFilePath",
+        "category": "AI Social Scientist",
         "title": "%command.aiSocialScientist.copyFilePath.title%",
         "icon": "$(copy)"
       },
       {
         "command": "aiSocialScientist.copyAtReference",
+        "category": "AI Social Scientist",
         "title": "%command.aiSocialScientist.copyAtReference.title%",
         "icon": "$(quote)"
       },
       {
         "command": "aiSocialScientist.viewJsonFile",
+        "category": "AI Social Scientist",
         "title": "%command.aiSocialScientist.viewJsonFile.title%",
         "icon": "$(json)"
       },
       {
         "command": "aiSocialScientist.viewCsvFile",
+        "category": "AI Social Scientist",
         "title": "%command.aiSocialScientist.viewCsvFile.title%",
         "icon": "$(table)"
       },
       {
         "command": "aiSocialScientist.viewPaperReview",
+        "category": "AI Social Scientist",
         "title": "%command.aiSocialScientist.viewPaperReview.title%",
         "icon": "$(feedback)"
       },
       {
         "command": "aiSocialScientist.viewYamlFile",
+        "category": "AI Social Scientist",
         "title": "%command.aiSocialScientist.viewYamlFile.title%",
         "icon": "$(file-code)"
       },
       {
         "command": "aiSocialScientist.viewAnalysisHarnessStatus",
+        "category": "AI Social Scientist",
         "title": "%command.aiSocialScientist.viewAnalysisHarnessStatus.title%",
         "icon": "$(list-tree)"
       },
       {
         "command": "aiSocialScientist.openInExplorer",
+        "category": "AI Social Scientist",
         "title": "%command.aiSocialScientist.openInExplorer.title%",
         "icon": "$(folder)"
       },
       {
         "command": "aiSocialScientist.exportWorkspaceZip",
+        "category": "AI Social Scientist",
         "title": "%command.aiSocialScientist.exportWorkspaceZip.title%",
         "icon": "$(cloud-download)"
       },
       {
         "command": "aiSocialScientist.importWorkspaceZip",
+        "category": "AI Social Scientist",
         "title": "%command.aiSocialScientist.importWorkspaceZip.title%",
         "icon": "$(cloud-upload)"
       },
       {
         "command": "aiSocialScientist.toggleLanguage",
+        "category": "AI Social Scientist",
         "title": "%command.aiSocialScientist.toggleLanguage.title%",
         "icon": "$(globe)"
       }
@@ -424,14 +466,6 @@
         },
         {
           "command": "aiSocialScientist.openTreeFileInEditor",
-          "when": "false"
-        },
-        {
-          "command": "aiSocialScientist.openMarkdownInEditor",
-          "when": "false"
-        },
-        {
-          "command": "aiSocialScientist.formatJsonFile",
           "when": "false"
         },
         {
@@ -485,6 +519,42 @@
         {
           "command": "aiSocialScientist.openClaudeCodeConfig",
           "when": "false"
+        },
+        {
+          "command": "aiSocialScientist.openHtmlReport",
+          "when": "false"
+        },
+        {
+          "command": "aiSocialScientist.syncLiteratureLibrary",
+          "when": "workspaceFolderCount > 0"
+        },
+        {
+          "command": "aiSocialScientist.exportLiteratureBibCopy",
+          "when": "workspaceFolderCount > 0"
+        },
+        {
+          "command": "aiSocialScientist.exportLiteratureBibFile",
+          "when": "workspaceFolderCount > 0"
+        },
+        {
+          "command": "aiSocialScientist.importLiteratureBib",
+          "when": "workspaceFolderCount > 0"
+        },
+        {
+          "command": "aiSocialScientist.exportWorkspaceZip",
+          "when": "workspaceFolderCount > 0"
+        },
+        {
+          "command": "aiSocialScientist.refreshProjectView",
+          "when": "workspaceFolderCount > 0"
+        },
+        {
+          "command": "aiSocialScientist.openApiDocs",
+          "when": "workspaceFolderCount > 0"
+        },
+        {
+          "command": "aiSocialScientist.viewPidStatus",
+          "when": "false"
         }
       ],
       "view/title": [
@@ -501,17 +571,17 @@
         {
           "command": "aiSocialScientist.openWalkthrough",
           "when": "view == projectStructureView && workspaceFolderCount > 0",
-          "group": "navigation@2"
+          "group": "help@1"
         },
         {
           "command": "aiSocialScientist.exportWorkspaceZip",
           "when": "view == projectStructureView && workspaceFolderCount > 0",
-          "group": "navigation@3"
+          "group": "workspace@1"
         },
         {
           "command": "aiSocialScientist.importWorkspaceZip",
           "when": "view == projectStructureView",
-          "group": "navigation@4"
+          "group": "workspace@2"
         },
         {
           "command": "aiSocialScientist.toggleLanguage",
@@ -521,9 +591,19 @@
       ],
       "view/item/context": [
         {
-          "command": "aiSocialScientist.openReplay",
-          "when": "view == projectStructureView && viewItem == experiment",
+          "command": "aiSocialScientist.selectAiChat",
+          "when": "view == projectStructureView && viewItem == aiChat",
           "group": "1_actions"
+        },
+        {
+          "command": "aiSocialScientist.openReplay",
+          "when": "view == projectStructureView && viewItem =~ /^experiment\\b/",
+          "group": "1_actions"
+        },
+        {
+          "command": "aiSocialScientist.viewPidStatus",
+          "when": "view == projectStructureView && viewItem =~ /\\bhasRunStatus\\b/",
+          "group": "1_actions@2"
         },
         {
           "command": "aiSocialScientist.deleteLiterature",
@@ -537,7 +617,7 @@
         },
         {
           "command": "aiSocialScientist.viewLiteratureIndex",
-          "when": "view == projectStructureView && (viewItem =~ /literatureRoot/ || viewItem =~ /literatureIndex/)",
+          "when": "view == projectStructureView && viewItem =~ /literatureRoot/",
           "group": "1_literature@1"
         },
         {
@@ -561,73 +641,23 @@
           "group": "1_literature@5"
         },
         {
-          "command": "aiSocialScientist.openHtmlReport",
-          "when": "view == projectStructureView && (viewItem =~ /^reportHtml/ || viewItem =~ / html$/)",
-          "group": "1_view@1"
-        },
-        {
-          "command": "aiSocialScientist.openPdfPreview",
-          "when": "view == projectStructureView && viewItem =~ / pdf$/",
-          "group": "1_view@1"
-        },
-        {
-          "command": "aiSocialScientist.viewJsonFile",
-          "when": "view == projectStructureView && (viewItem =~ / json$/ || viewItem =~ /^json / || viewItem == pidJson)",
-          "group": "1_view@2"
-        },
-        {
-          "command": "aiSocialScientist.viewCsvFile",
-          "when": "view == projectStructureView && viewItem =~ / tabular$/",
-          "group": "1_view@2"
-        },
-        {
-          "command": "aiSocialScientist.viewYamlFile",
-          "when": "view == projectStructureView && viewItem =~ / yaml$/",
-          "group": "1_view@2"
-        },
-        {
-          "command": "aiSocialScientist.viewStepsYaml",
-          "when": "view == projectStructureView && viewItem =~ /stepsYaml/",
-          "group": "1_view@2"
-        },
-        {
-          "command": "aiSocialScientist.viewAnalysisHarnessStatus",
-          "when": "view == projectStructureView && (viewItem == analysisPhaseStep || viewItem == analysisPhaseGroup || viewItem == synthesisPhaseGroup)",
-          "group": "1_view@1"
-        },
-        {
-          "command": "aiSocialScientist.viewPaperReview",
-          "when": "view == projectStructureView && (viewItem == paperReviewRound || viewItem == paperReviewer)",
-          "group": "1_view@1"
-        },
-        {
           "command": "aiSocialScientist.openTreeFileInEditor",
-          "when": "view == projectStructureView && (viewItem == file || viewItem =~ /^file / || viewItem =~ /^literatureFile/ || viewItem =~ /^reportHtml/ || viewItem =~ /^reportMd/ || viewItem =~ /^paperArtifact/ || viewItem == paperReviewer) && !(viewItem =~ / tabular$/)",
+          "when": "view == projectStructureView && viewItem =~ /\\bsourceFile\\b/",
           "group": "2_actions@1"
         },
         {
-          "command": "aiSocialScientist.openMarkdownInEditor",
-          "when": "view == projectStructureView && viewItem =~ /markdown/ && viewItem != 'experiment markdown'",
-          "group": "2_actions@2"
-        },
-        {
-          "command": "aiSocialScientist.formatJsonFile",
-          "when": "view == projectStructureView && (viewItem =~ / json$/ || viewItem =~ /^json / || viewItem == pidJson)",
-          "group": "2_actions@3"
-        },
-        {
           "command": "aiSocialScientist.openInExplorer",
-          "when": "view == projectStructureView && (viewItem == paperFolder || viewItem =~ /^literatureFile/ || viewItem == file || viewItem =~ /^file / || viewItem =~ / tabular$/ || viewItem == pidJson || viewItem == replayableDatabase || viewItem == experiment || viewItem =~ /markdown/ || viewItem =~ / yaml$/ || viewItem =~ /stepsYaml/ || viewItem =~ /literatureIndex/ || viewItem =~ / json$/ || viewItem =~ /^json / || viewItem =~ /^reportHtml/ || viewItem =~ /^reportMd/ || viewItem =~ /^paperArtifact/ || viewItem =~ / pdf$/ || viewItem =~ / html$/ || viewItem =~ / tex$/ || viewItem == paperReviewRound || viewItem == paperReviewer)",
+          "when": "view == projectStructureView && viewItem =~ /\\bhasPath\\b/",
           "group": "3_system"
         },
         {
           "command": "aiSocialScientist.copyFilePath",
-          "when": "view == projectStructureView && (viewItem == paperFolder || viewItem =~ /^literatureFile/ || viewItem == file || viewItem =~ /^file / || viewItem =~ / tabular$/ || viewItem == pidJson || viewItem == replayableDatabase || viewItem == experiment || viewItem =~ /markdown/ || viewItem =~ / yaml$/ || viewItem =~ /stepsYaml/ || viewItem =~ /literatureIndex/ || viewItem =~ / json$/ || viewItem =~ /^json / || viewItem =~ /^reportHtml/ || viewItem =~ /^reportMd/ || viewItem =~ /^paperArtifact/ || viewItem =~ / pdf$/ || viewItem =~ / html$/ || viewItem =~ / tex$/ || viewItem == paperReviewRound || viewItem == paperReviewer)",
+          "when": "view == projectStructureView && viewItem =~ /\\bhasPath\\b/",
           "group": "0_copy@1"
         },
         {
           "command": "aiSocialScientist.copyAtReference",
-          "when": "view == projectStructureView && (viewItem == paperFolder || viewItem =~ /^literatureFile/ || viewItem == file || viewItem =~ /^file / || viewItem =~ / tabular$/ || viewItem == pidJson || viewItem == replayableDatabase || viewItem == experiment || viewItem =~ /markdown/ || viewItem =~ / yaml$/ || viewItem =~ /stepsYaml/ || viewItem =~ /literatureIndex/ || viewItem =~ / json$/ || viewItem =~ /^json / || viewItem =~ /^reportHtml/ || viewItem =~ /^reportMd/ || viewItem =~ /^paperArtifact/ || viewItem =~ / pdf$/ || viewItem =~ / html$/ || viewItem =~ / tex$/ || viewItem == paperReviewRound || viewItem == paperReviewer)",
+          "when": "view == projectStructureView && viewItem =~ /\\bhasPath\\b/",
           "group": "0_copy@2"
         }
       ]
@@ -681,13 +711,13 @@
             "vscode-chat"
           ],
           "enumDescriptions": [
-            "未设置（自动检测或每次选择）",
+            "%settings.preferredAiChat.auto%",
             "Claude Code (anthropic.claude-code)",
             "Codex (openai.chatgpt)",
             "Cursor Chat",
-            "VSCode 内置 Chat"
+            "VS Code Chat"
           ],
-          "description": "默认 AI Chat 提供商。留空时自动检测；检测到多个时弹出选择。"
+          "description": "%settings.preferredAiChat.description%"
         },
         "aiSocialScientist.language": {
           "type": "string",
@@ -887,15 +917,15 @@
     "@ant-design/icons": "^6.3.4",
     "@ant-design/x": "^2.9.0",
     "@ant-design/x-markdown": "^2.9.0",
-    "@deck.gl/core": "^9.4.0",
+    "@deck.gl/core": "^9.4.1",
     "@deck.gl/layers": "^9.4.0",
     "@deck.gl/react": "^9.4.0",
     "@deck.gl/widgets": "^9.4.0",
     "@luma.gl/webgpu": "^9.4.1",
-    "antd": "~6.6.8",
+    "antd": "~6.7.0",
     "dayjs": "^1.11.23",
     "https-proxy-agent": "^9.1.0",
-    "i18next": "~26.5.12",
+    "i18next": "~27.0.1",
     "js-yaml": "^5.4.2",
     "mapbox-gl": "^3.30.0",
     "react": "^19.3.1",

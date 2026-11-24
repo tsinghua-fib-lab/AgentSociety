@@ -15,7 +15,7 @@ import { hasConfiguredLlmApiKey } from './runtimeConfig';
 import * as path from 'path';
 import * as fs from 'fs';
 import { execFileSync } from 'child_process';
-import { SkillVersionManager } from './skillVersionManager';
+import { BundledSkillManager } from './bundledSkillManager';
 import { getMainOutputChannel } from './shared/outputChannels';
 
 export interface WorkspaceInitOptions {
@@ -35,19 +35,19 @@ export class WorkspaceManager {
   private skillsSourcePath: string;
   private pluginsSourcePath: string;
   private runtimeSourcePath: string;
-  private versionManager: SkillVersionManager;
+  private skillManager: BundledSkillManager;
 
   constructor(context: vscode.ExtensionContext) {
     this.outputChannel = getMainOutputChannel();
     this.skillsSourcePath = path.join(context.extensionPath, 'skills');
     this.pluginsSourcePath = path.join(context.extensionPath, 'plugins');
     this.runtimeSourcePath = path.join(context.extensionPath, 'runtime');
-    this.versionManager = new SkillVersionManager(context, this.outputChannel);
+    this.skillManager = new BundledSkillManager(context, this.outputChannel);
   }
 
   /** Expose version manager for callers (commands, webview provider). */
-  public getVersionManager(): SkillVersionManager {
-    return this.versionManager;
+  public getBundledSkillManager(): BundledSkillManager {
+    return this.skillManager;
   }
 
   private log(message: string): void {
@@ -446,8 +446,8 @@ export class WorkspaceManager {
     }
 
     for (const item of fs.readdirSync(this.skillsSourcePath)) {
-      // agentsociety-* skills are version-managed; applyPreset handles them below.
-      if (SkillVersionManager.isVersioned(item)) {
+      // agentsociety-* skills are synced as real copies below.
+      if (BundledSkillManager.isManaged(item)) {
         continue;
       }
       const sourcePath = path.join(this.skillsSourcePath, item);
@@ -476,21 +476,13 @@ export class WorkspaceManager {
       }
     }
 
-    // Apply the active version preset to materialize agentsociety-* skills as symlinks.
-    const applyResult = this.versionManager.applyPreset(workspacePath);
-    for (const a of applyResult.applied) {
-      synced.push(a.skill);
-    }
-    if (applyResult.errors.length > 0) {
-      this.log(
-        `applyPreset[${applyResult.preset}] reported ${applyResult.errors.length} error(s): ` +
-        applyResult.errors.map((e) => `${e.skill}: ${e.message}`).join('; '),
-      );
-    }
-    if (applyResult.fallbacks.length > 0) {
-      this.log(
-        `applyPreset[${applyResult.preset}] fell back to defaults for: ${applyResult.fallbacks.join(', ')}`,
-      );
+    // Materialize agentsociety-* skills as real directory copies.
+    const syncResult = this.skillManager.syncBundledSkills(workspacePath);
+    synced.push(...syncResult.applied);
+    if (syncResult.errors.length > 0) {
+      const message = syncResult.errors.map((e) => `${e.skill}: ${e.message}`).join('; ');
+      this.log(`Failed to sync bundled skills: ${message}`);
+      return { success: false, message, created, synced };
     }
 
     this.pruneLegacyAnalysisSkillLayouts(workspacePath);
@@ -714,15 +706,11 @@ export class WorkspaceManager {
       return { success: false, message: `扩展技能目录不存在: ${this.skillsSourcePath}` };
     }
 
-    // agentsociety-* skills go through the version manager (active preset → symlink).
-    if (SkillVersionManager.isVersioned(trimmed)) {
-      const result = this.versionManager.applyPreset(workspacePath);
-      const applied = result.applied.find((a) => a.skill === trimmed);
-      if (applied) {
-        return {
-          success: true,
-          message: `已应用 preset「${result.preset}」中的 ${trimmed}（${applied.mode}）`,
-        };
+    // agentsociety-* skills are synced as real directory copies.
+    if (BundledSkillManager.isManaged(trimmed)) {
+      const result = this.skillManager.syncBundledSkill(workspacePath, trimmed);
+      if (result.applied.includes(trimmed)) {
+        return { success: true, message: `已同步 ${trimmed} 到 .claude/skills/` };
       }
       const errored = result.errors.find((e) => e.skill === trimmed);
       if (errored) {
@@ -902,7 +890,11 @@ export class WorkspaceManager {
     }
 
     const desiredMarketplace = {
-      source: { source: 'github', repo: 'Yokumii/paper-toolkit' },
+      source: {
+        source: 'github',
+        repo: 'Yokumii/paper-toolkit',
+        ref: 'v0.1.2',
+      },
     };
     const marketplaces =
       (settings.extraKnownMarketplaces as Record<string, any>) || {};
@@ -954,26 +946,17 @@ export class WorkspaceManager {
   }
 
   /**
-   * Recursively copy a directory tree.
+   * Recursively copy a directory tree with Node's built-in copy.
    */
   private copyDirectoryRecursive(source: string, target: string): void {
-    // Create target directory (recursive mkdir is idempotent)
-    fs.mkdirSync(target, { recursive: true });
-
-    for (const item of fs.readdirSync(source)) {
-      if (item === '__pycache__' || item.endsWith('.pyc')) {
-        continue;
-      }
-      const sourcePath = path.join(source, item);
-      const targetPath = path.join(target, item);
-      const stat = fs.statSync(sourcePath);
-
-      if (stat.isDirectory()) {
-        this.copyDirectoryRecursive(sourcePath, targetPath);
-      } else if (stat.isFile()) {
-        fs.copyFileSync(sourcePath, targetPath);
-      }
-    }
+    fs.cpSync(source, target, {
+      recursive: true,
+      force: true,
+      filter: (src) => {
+        const name = path.basename(src);
+        return name !== '__pycache__' && !name.endsWith('.pyc');
+      },
+    });
   }
 
   /**

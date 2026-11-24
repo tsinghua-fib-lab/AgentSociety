@@ -24,6 +24,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import tempfile
 import threading
 import zlib
 from collections.abc import Iterable
@@ -108,7 +109,7 @@ class ReplaySink:
         self._dir = Path(replay_dir)
         self._enabled = bool(enabled)
         self._fds: dict[tuple[str, int], int] = {}
-        self._lock_fds: dict[tuple[str, int], int] = {}
+        self._lock_fds: dict[str, int] = {}
         self._lock = threading.Lock()
         self._schema_path = self._dir / _SCHEMA_FILENAME
         if self._enabled:
@@ -135,22 +136,23 @@ class ReplaySink:
                 fd = os.open(str(path), os.O_APPEND | os.O_CREAT | os.O_WRONLY, 0o600)
                 self._fds[key] = fd
 
-    def _ensure_lock_fd(self, table: str, shard: int) -> None:
-        key = (table, shard)
-        if key in self._lock_fds:
+    def _ensure_lock_fd(self, table: str) -> None:
+        if table in self._lock_fds:
             return
         with self._lock:
-            if key not in self._lock_fds:
-                path = self._dir / f".{table}.{shard:02x}.lock"
+            if table not in self._lock_fds:
+                path = self._dir / f".{table}.lock"
                 # Cached descriptor is owned by this sink and released by close().
                 # codeql[py/file-not-closed]
                 fd = os.open(str(path), os.O_RDWR | os.O_CREAT, 0o600)
-                self._lock_fds[key] = fd
+                self._lock_fds[table] = fd
 
     @contextmanager
     def _shard_lock(self, table: str, shard: int):
-        self._ensure_lock_fd(table, shard)
-        fd = self._lock_fds[(table, shard)]
+        # One lock per table keeps the fd budget bounded (256 shards per table
+        # would otherwise need 256 lock fds in addition to 256 data fds).
+        self._ensure_lock_fd(table)
+        fd = self._lock_fds[table]
         with _file_lock(fd):
             yield
 
@@ -213,37 +215,56 @@ class ReplaySink:
         )
 
     def _merge_schema(self, patch: dict[str, Any]) -> None:
-        """在旁路 fd 的 flock 保护下对 ``_schema.json`` 做读-合并-写。"""
+        """在独立 lock 文件保护下原子更新 ``_schema.json``。
+
+        原实现直接 truncate 后原地写 schema，读端可能看到空/半截文件；
+        解析失败还会把旧目录静默重置为空。这里改为 lock 文件 + temp +
+        ``os.replace``，并把损坏文件备份后继续。
+        """
         self._dir.mkdir(parents=True, exist_ok=True)
-        fd = os.open(str(self._schema_path), os.O_RDWR | os.O_CREAT, 0o600)
+        lock_path = self._dir / ".schema.lock"
+        lock_fd = os.open(str(lock_path), os.O_RDWR | os.O_CREAT, 0o600)
         try:
-            with _file_lock(fd):
-                os.lseek(fd, 0, os.SEEK_SET)
-                existing = b""
-                while True:
-                    chunk = os.read(fd, 65536)
-                    if not chunk:
-                        break
-                    existing += chunk
+            with _file_lock(lock_fd):
                 data: dict[str, Any] = {}
-                if existing.strip():
-                    try:
-                        data = json.loads(existing.decode("utf-8"))
-                    except json.JSONDecodeError:
-                        data = {}
+                if self._schema_path.is_file():
+                    existing = self._schema_path.read_bytes()
+                    if existing.strip():
+                        try:
+                            data = json.loads(existing.decode("utf-8"))
+                        except json.JSONDecodeError:
+                            import logging
+                            import time
+
+                            backup = self._dir / (
+                                f"{_SCHEMA_FILENAME}.corrupt-{int(time.time())}"
+                            )
+                            self._schema_path.replace(backup)
+                            logging.getLogger(__name__).warning(
+                                "Replay schema was corrupt; backed up to %s", backup
+                            )
+                            data = {}
                 for section, entries in patch.items():
                     bucket = data.setdefault(section, {})
                     bucket.update(entries)
                 payload = json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8")
-                os.lseek(fd, 0, os.SEEK_SET)
-                os.ftruncate(fd, 0)
-                mv = memoryview(payload)
-                while mv:
-                    n = os.write(fd, mv)
-                    mv = mv[n:]
-                os.fsync(fd)
+                fd, tmp_name = tempfile.mkstemp(
+                    prefix=f".{_SCHEMA_FILENAME}.", suffix=".tmp", dir=self._dir
+                )
+                try:
+                    with os.fdopen(fd, "wb") as handle:
+                        handle.write(payload)
+                        handle.flush()
+                        os.fsync(handle.fileno())
+                    os.replace(tmp_name, self._schema_path)
+                except BaseException:
+                    try:
+                        os.unlink(tmp_name)
+                    except OSError:
+                        pass
+                    raise
         finally:
-            os.close(fd)
+            os.close(lock_fd)
 
     # ------------------------------------------------------------------
     # Lifecycle

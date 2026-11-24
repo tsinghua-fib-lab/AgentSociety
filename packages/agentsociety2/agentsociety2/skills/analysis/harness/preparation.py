@@ -201,11 +201,6 @@ def _canonical_report_html(text: str) -> str:
         re.DOTALL,
     )
     canonical = marker_pattern.sub("", text, count=1)
-    generated_section_pattern = re.compile(
-        r'<section\s+[^>]*data-eda-generated-section="true"[^>]*>.*?</section>',
-        re.DOTALL | re.IGNORECASE,
-    )
-    canonical = generated_section_pattern.sub("", canonical, count=1)
     return re.sub(r"\n[ \t]*\n+", "\n", canonical)
 
 

@@ -19,19 +19,19 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:2
+#: ../../agents.rst:2
 msgid "使用智能体"
 msgstr "Using Agents"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:17
+#: ../../agents/configuration.rst:7
 msgid "类继承层次"
 msgstr "Class hierarchy"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:19
+#: ../../agents/configuration.rst:9
 msgid "当前智能体体系的类继承关系："
 msgstr "Inheritance in the current agent stack:"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:20
+#: ../../agents/configuration.rst:11
 msgid ""
 "AgentBase (ABC)          # agent/base/agent.py — 所有智能体的基类\n"
 "  └── PersonAgent        # agent/person.py — 面向人物仿真的默认智能体（薄编排器）"
@@ -39,7 +39,7 @@ msgstr ""
 "AgentBase (ABC)          # agent/base/agent.py: base class for all agents\n"
 "  └── PersonAgent        # agent/person.py: default agent for person simulations"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:26
+#: ../../agents/configuration.rst:16
 msgid ""
 "``AgentBase`` **直接拥有** 所有通用能力：workspace 绑定、技能运行时（``AgentSkillRuntime``）、 ReAct "
 "工具循环、LLM 调用、TODO 状态、trace、``AGENT.json`` 持久化。它**没有 mixin、没有多继承**。"
@@ -49,123 +49,123 @@ msgstr ""
 "trace, and ``AGENT.json`` persistence. It has **no mixins and no multiple "
 "inheritance**."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:28
+#: ../../agents/configuration.rst:18
 msgid "``PersonAgent`` 只实现面向人物的逻辑（memory、person prompt、daily-guidance 等行为），其余全部继承自基类。"
 msgstr ""
 "``PersonAgent`` only implements person-specific logic, such as memory, the person "
 "prompt, and daily-guidance behavior; everything else is inherited from the base "
 "class."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:29
+#: ../../agents/configuration.rst:19
 msgid "``contrib/agent/`` 下提供若干实验性 Agent（如博弈论场景），核心框架只依赖 ``AgentBase`` 和 ``PersonAgent``。"
 msgstr ""
 "AgentSociety 2 also ships experimental agents under ``contrib/agent/`` (e.g. game-"
 "theory scenarios), but the core framework relies on ``AgentBase`` and ``PersonAgent``"
 " only."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:33
+#: ../../agents/configuration.rst:25
 msgid "构造模型（workspace 绑定的无状态 record）"
 msgstr "Construction Model: Workspace-Bound Stateless Records"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:35
+#: ../../agents/configuration.rst:27
 msgid "智能体通过 workspace 入口构造。``AgentBase`` 提供两个类方法入口 + 一个无参 ``__init__``："
 msgstr ""
 "Agents are constructed through workspace entry points. ``AgentBase`` provides two "
 "classmethod factories plus an argument-free ``__init__``:"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:42
+#: ../../agents/configuration.rst:34
 msgid "入口"
 msgstr "Entry point"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:43
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:115
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:192
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:251
+#: ../../agents/behavior.rst:18
+#: ../../agents/configuration.rst:35
+#: ../../agents/configuration.rst:106
+#: ../../agents/customization.rst:26
 msgid "说明"
 msgstr "Description"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:44
+#: ../../agents/configuration.rst:36
 msgid "``AgentBase.create(workspace_path, profile, config)``"
 msgstr "``AgentBase.create(workspace_path, profile, config)``"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:45
+#: ../../agents/configuration.rst:37
 msgid "**静态写一次**：把 ``config.json`` + 初始 ``AGENT.json`` + 标准空目录写入 workspace。**不返回** agent 实例。"
 msgstr ""
 "**Static one-time write**: writes ``config.json``, the initial ``AGENT.json``, and "
 "the standard empty directories into the workspace. It **does not return** an agent "
 "instance."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:46
+#: ../../agents/configuration.rst:38
 msgid "``await AgentBase.from_workspace(workspace_path, service_proxy)``"
 msgstr "``await AgentBase.from_workspace(workspace_path, service_proxy)``"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:47
+#: ../../agents/configuration.rst:39
 msgid "重建 ready agent：``agent = cls()``（无参）→ ``await agent.restore(ws, proxy)`` → 返回。"
 msgstr ""
 "Rebuilds a ready agent: ``agent = cls()`` (no arguments) -> ``await agent.restore(ws,"
 " proxy)`` -> return."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:48
+#: ../../agents/configuration.rst:40
 msgid "``AgentBase.__init__(self)``"
 msgstr "``AgentBase.__init__(self)``"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:49
+#: ../../agents/configuration.rst:41
 msgid "无参。只设置空 slot，不做任何 profile 解析、不要求 id。真正初始化发生在 ``restore()``。"
 msgstr ""
 "No arguments. It only initializes empty slots, does not parse a profile, and does not"
 " require an id. Real initialization happens in ``restore()``."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:78
+#: ../../agents/configuration.rst:70
 msgid "服务注入：ServiceProxy"
 msgstr "Service Injection: ServiceProxy"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:80
+#: ../../agents/configuration.rst:72
 msgid "``from_workspace`` 内部调用 ``_bind_services(service_proxy)``，把一个共享服务容器注入 agent："
 msgstr ""
 "Inside ``from_workspace``, ``_bind_services(service_proxy)`` injects a shared service"
 " container into the agent:"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:86
+#: ../../agents/configuration.rst:78
 msgid "slot"
 msgstr "Slot"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:87
+#: ../../agents/configuration.rst:79
 msgid "来源 / 用途"
 msgstr "Source / purpose"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:88
+#: ../../agents/configuration.rst:80
 msgid "``self._service_proxy``"
 msgstr "``self._service_proxy``"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:89
+#: ../../agents/configuration.rst:81
 msgid "原始容器，持有 ``env`` / ``llm`` / ``trace`` / ``replay`` 句柄。"
 msgstr "Raw container holding ``env`` / ``llm`` / ``trace`` / ``replay`` handles."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:90
+#: ../../agents/configuration.rst:82
 msgid "``self._env``"
 msgstr "``self._env``"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:91
+#: ../../agents/configuration.rst:83
 msgid "环境 router（``RouterBase``），经 ``ask_env`` 访问。"
 msgstr "Environment router (``RouterBase``), accessed through ``ask_env``."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:92
+#: ../../agents/configuration.rst:84
 msgid "``self._dispatcher``"
 msgstr "``self._dispatcher``"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:93
+#: ../../agents/configuration.rst:85
 msgid "默认 LLM dispatcher（``service_proxy.llm.default``）。"
 msgstr "Default LLM dispatcher (``service_proxy.llm.default``)."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:94
+#: ../../agents/configuration.rst:86
 msgid "``self._model_name``"
 msgstr "``self._model_name``"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:95
+#: ../../agents/configuration.rst:87
 msgid "默认 LLM 模型名。"
 msgstr "Default LLM model name."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:97
+#: ../../agents/configuration.rst:89
 msgid ""
 "``ServiceProxy`` 把 env / LLM clients / trace / replay 收口为单一对象，是 Ray Task 并行执行的关键。 LLM"
 " client 只携带连接参数，worker 在本地事件循环中按需创建 litellm Router。"
@@ -174,11 +174,11 @@ msgstr ""
 "is key to Ray Task parallelism. LLM clients only carry connection parameters, and "
 "workers create litellm Routers on demand in their local event loop."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:102
+#: ../../agents/behavior.rst:7
 msgid "ReAct 工具循环"
 msgstr "ReAct Tool Loop"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:101
+#: ../../agents/behavior.rst:9
 msgid ""
 "``PersonAgent.step()`` / ``ask()`` 的核心是基类提供的 "
 "``run_react_loop``：每轮让模型提交一个结构化工具决策，运行时校验、执行并把结果写回上下文，循环直至 ``finish`` 或回合上限。这把 LLM "
@@ -189,69 +189,69 @@ msgstr ""
 "writes the result back into context, looping until ``finish`` or the turn limit. This constrains "
 "free-form LLM generation to auditable tool results and also makes replay review easier."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:108
+#: ../../agents/behavior.rst:11
 msgid "基类 ``dispatch_react_tool`` 处理以下工具（``PersonAgent`` 在此之上按需追加 ``memory_*`` 等前缀）："
 msgstr ""
 "The base ``dispatch_react_tool`` handles these tools; ``PersonAgent`` adds prefixes "
 "such as ``memory_*`` on top as needed:"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:114
+#: ../../agents/behavior.rst:17
 msgid "工具"
 msgstr "Tool"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:116
+#: ../../agents/behavior.rst:19
 msgid "``read`` / ``write`` / ``append`` / ``list`` / ``grep``"
 msgstr "``read`` / ``write`` / ``append`` / ``list`` / ``grep``"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:117
+#: ../../agents/behavior.rst:20
 msgid "读写 agent 工作区文件（带越界保护）。"
 msgstr "Read and write agent workspace files (with out-of-bounds protection)."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:118
+#: ../../agents/behavior.rst:21
 msgid "``activate_skill`` / ``deactivate_skill``"
 msgstr "``activate_skill`` / ``deactivate_skill``"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:119
+#: ../../agents/behavior.rst:22
 msgid "把某 skill 的 ``SKILL.md`` 注入 / 移出上下文。"
 msgstr "Inject or remove a skill's ``SKILL.md`` from the context."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:120
+#: ../../agents/behavior.rst:23
 msgid "``read_skill_file``"
 msgstr "``read_skill_file``"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:121
+#: ../../agents/behavior.rst:24
 msgid "读取 skill 目录内文件（渐进式披露）。"
 msgstr "Read files inside a skill directory for progressive disclosure."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:122
+#: ../../agents/behavior.rst:25
 msgid "``execute_skill_script``"
 msgstr "``execute_skill_script``"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:124
+#: ../../agents/behavior.rst:27
 msgid "``ask_env``"
 msgstr "``ask_env``"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:125
+#: ../../agents/behavior.rst:28
 msgid "向环境 router 发请求（查询或修改环境），返回 ``(ctx, answer)`` 二元组。"
 msgstr ""
 "Send a request to the environment router (querying or modifying the environment) and "
 "return the ``(ctx, answer)`` pair."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:126
+#: ../../agents/behavior.rst:29
 msgid "``finish``"
 msgstr "``finish``"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:127
+#: ../../agents/behavior.rst:30
 msgid "结束当前仿真步（可附 summary）。"
 msgstr "End the current simulation step, optionally with a summary."
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:124
+#: ../../agents/behavior.rst:32
 msgid "模型每轮的输出被解析为一个结构化决策（工具名 + 参数 + 是否结束）。无效工具名会被纠正或返回可恢复错误，不会直接崩溃。"
 msgstr ""
 "Each model turn is parsed into a structured decision: tool name, arguments, and whether to "
 "finish. Invalid tool names are corrected or returned as recoverable errors instead of crashing."
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:126
+#: ../../agents/behavior.rst:34
 msgid ""
 "一次 ``run_react_loop`` 只构建**一个** thread：首条消息由 ``build_react_messages`` 产出（system + 含各上下文档的 "
 "user），之后每轮的 assistant 工具调用与其结果**追加**到末尾，不再重建。这样每个请求都是上一个的严格前缀扩展，provider 的 prompt "
@@ -269,11 +269,11 @@ msgstr ""
 "activated skills append a refresh block rather than rerendering the thread (see "
 "``AgentBase.build_context_refresh_message``). Tool results are also written to JSONL for replay."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:147
+#: ../../agents/behavior.rst:49
 msgid "TODO 状态"
 msgstr "TODO State"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:141
+#: ../../agents/behavior.rst:51
 msgid ""
 "基类内置一组 TODO 工具（``todo_list`` / ``todo_add`` / ``todo_update`` / ``todo_start`` / "
 "``todo_complete`` / ``todo_defer`` / ``todo_clear_completed``），让 agent 可以显式维护待办清单。 TODO 条目用 UUID "
@@ -285,15 +285,15 @@ msgstr ""
 "dispatched through ``dispatch_todo_tool``. The goal is to make multi-step plans traceable and "
 "recoverable across ticks."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:156
+#: ../../agents/behavior.rst:59
 msgid "工作区布局"
 msgstr "Workspace Layout"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:158
+#: ../../agents/behavior.rst:61
 msgid "每个 agent 拥有独立工作区，是它的唯一持久状态来源："
 msgstr "Each agent has an independent workspace, which is its only source of persistent state:"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:151
+#: ../../agents/behavior.rst:63
 msgid ""
 "<run_dir>/agents/agent_XXXX/\n"
 "├── config.json            # 静态配置（create 时写一次，不再重写）\n"
@@ -317,7 +317,7 @@ msgstr ""
 "│   └── state.json         # Memory runtime state\n"
 "└── custom/skills/         # Custom skill directory, hot-loaded"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:164
+#: ../../agents/behavior.rst:76
 msgid ""
 "``config.json`` 是静态的；``AGENT.json`` 由 ``persist_agent_json``（调 ``build_agent_json``）在 "
 "``to_workspace`` 时写回，是 agent 对自己的自描述快照（含 ``world_description`` 等字段，供 Ray 重建时从磁盘恢复；注入 prompt 的 "
@@ -331,53 +331,53 @@ msgstr ""
 "are written to ``<run_dir>/trace/trace_<xx>.jsonl`` shards. Cross-step runtime summaries are "
 "stored in ``MEMORY.md``."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:183
+#: ../../agents/configuration.rst:97
 msgid "智能体配置（AgentConfig）"
 msgstr "Agent Configuration (AgentConfig)"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:185
+#: ../../agents/configuration.rst:99
 msgid "实验级的智能体配置由 :class:`~agentsociety2.society.models.AgentConfig` 描述，字段如下："
 msgstr ""
 "Experiment-level configuration uses "
 ":class:`~agentsociety2.society.models.AgentConfig` with the following fields:"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:191
+#: ../../agents/configuration.rst:105
 msgid "字段"
 msgstr "Field"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:193
+#: ../../agents/configuration.rst:107
 msgid "``agent_id`` (int)"
 msgstr "``agent_id`` (int)"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:194
+#: ../../agents/configuration.rst:108
 msgid "智能体唯一标识符。"
 msgstr "Unique identifier of the agent."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:195
+#: ../../agents/configuration.rst:109
 msgid "``agent_type`` (str)"
 msgstr "``agent_type`` (str)"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:196
+#: ../../agents/configuration.rst:110
 msgid "智能体类型（注册表中的类名，如 ``PersonAgent``）。"
 msgstr "Agent type, the registered class name such as ``PersonAgent``."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:197
+#: ../../agents/configuration.rst:111
 msgid "``kwargs`` (dict)"
 msgstr "``kwargs`` (dict)"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:198
+#: ../../agents/configuration.rst:112
 msgid "传给该 agent 的所有初始化参数，包含 ``profile`` 等。"
 msgstr "All initialization parameters for this agent, including ``profile``."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:204
+#: ../../agents/behavior.rst:83
 msgid "与智能体交互"
 msgstr "Interacting with Agents"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:207
+#: ../../agents/behavior.rst:88
 msgid "``ask()`` 方法"
 msgstr "``ask()`` Method"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:198
+#: ../../agents/behavior.rst:90
 msgid ""
 "response = await agent.ask(\n"
 "    \"What's your opinion on renewable energy?\",\n"
@@ -389,25 +389,26 @@ msgstr ""
 "    readonly=True,   # Query only; environment write tools are prohibited\n"
 ")"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:220
+#: ../../agents/behavior.rst:103
 msgid "``step()`` 方法"
 msgstr "``step()`` Method"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:222
+#: ../../agents/behavior.rst:105
 msgid "``AgentSociety`` 在仿真期间自动调用（``tick`` 为本步时间跨度秒，``t`` 为本步开始时的仿真时间）："
 msgstr ""
 "``AgentSociety`` calls this during simulation (``tick`` is the step duration in "
 "seconds and ``t`` is the simulation time at the start of the step):"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:213
+#: ../../agents/behavior.rst:107
 msgid "action_description = await agent.step(tick=3600, t=datetime.now())"
 msgstr "action_description = await agent.step(tick=3600, t=datetime.now())"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:233
+#: ../../agents.rst:26
+#: ../../agents/customization.rst:7
 msgid "自定义智能体"
 msgstr "Custom Agents"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:240
+#: ../../agents/customization.rst:13
 msgid ""
 "要创建自定义智能体，继承 ``AgentBase`` 并实现抽象方法，覆盖 ``restore`` 追加业务状态。不要重写 ``__init__``；状态在 "
 "``restore`` 里设。"
@@ -416,83 +417,83 @@ msgstr ""
 " and override ``restore`` to add business state. **Do not** override ``__init__``; "
 "set state in ``restore``."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:244
+#: ../../agents/customization.rst:19
 msgid "AgentBase 抽象 / 推荐覆盖的方法"
 msgstr "AgentBase Abstract Methods"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:250
+#: ../../agents/customization.rst:25
 msgid "方法"
 msgstr "Method"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:252
+#: ../../agents/customization.rst:27
 msgid "``ask(self, message, readonly=True, *, t=None)``"
 msgstr "``ask(self, message, readonly=True, *, t=None)``"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:253
+#: ../../agents/customization.rst:28
 msgid "**必须实现**。通过 agent 的推理流程回答外部问题。"
 msgstr "**Required**. Answer external questions through the agent's reasoning flow."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:254
+#: ../../agents/customization.rst:29
 msgid "``step(self, tick, t)``"
 msgstr "``step(self, tick, t)``"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:255
+#: ../../agents/customization.rst:30
 msgid "**必须实现**。执行一个仿真步。"
 msgstr "**Required**. Execute one simulation step."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:256
+#: ../../agents/customization.rst:31
 msgid "``to_workspace(self, workspace_path)``"
 msgstr "``to_workspace(self, workspace_path)``"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:257
+#: ../../agents/customization.rst:32
 msgid "**必须实现**。把当前动态状态写回 workspace。"
 msgstr "**Required**. Write current dynamic state back to the workspace."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:258
+#: ../../agents/customization.rst:33
 msgid "``restore(self, workspace_path, service_proxy)``"
 msgstr "``restore(self, workspace_path, service_proxy)``"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:259
+#: ../../agents/customization.rst:34
 msgid "推荐覆盖：在 ``await super().restore(...)`` 之后追加业务状态恢复。"
 msgstr ""
 "Recommended override: after ``await super().restore(...)``, restore additional "
 "business state."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:260
+#: ../../agents/customization.rst:35
 msgid "``build_react_messages(...)``"
 msgstr "``build_react_messages(...)``"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:261
+#: ../../agents/customization.rst:36
 msgid "复用基类 ``run_react_loop`` 时**必须覆盖**：构造 ReAct 提示词（chat messages）。"
 msgstr ""
 "Required when reusing the base ``run_react_loop``: construct the ReAct prompt (chat "
 "messages)."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:262
+#: ../../agents/customization.rst:37
 msgid "``build_agent_json(*, tick, t)``"
 msgstr "``build_agent_json(*, tick, t)``"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:263
+#: ../../agents/customization.rst:38
 msgid "推荐覆盖：扩展 ``AGENT.json`` 字段（先 ``data = super().build_agent_json(...)`` 再追加）。"
 msgstr ""
 "Recommended override: extend ``AGENT.json`` fields by calling ``data = "
 "super().build_agent_json(...)`` first and then appending fields."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:264
+#: ../../agents/customization.rst:39
 msgid "``dispatch_react_tool(action, args, *, readonly=False)``"
 msgstr "``dispatch_react_tool(action, args, *, readonly=False)``"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:265
+#: ../../agents/customization.rst:40
 msgid "推荐覆盖：增加工具前缀（如 ``memory_*`` / ``todo_*``），未命中转发给 ``super()``。"
 msgstr ""
 "Recommended override: add tool prefixes such as ``memory_*`` / ``todo_*`` and forward"
 " misses to ``super()``."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:267
+#: ../../agents/customization.rst:42
 msgid "最小子类示例："
 msgstr "Minimal subclass example:"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:256
+#: ../../agents/customization.rst:44
 #, python-brace-format
 msgid ""
 "from datetime import datetime\n"
@@ -582,7 +583,7 @@ msgstr ""
 "        self._custom_counter += 1\n"
 "        return await self.run_react_loop(tick=tick, t=t)"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:313
+#: ../../agents/customization.rst:88
 msgid ""
 "子类可直接调用的基类公开 API 还包括：``run_react_loop``、``acompletion``、``run_lifecycle_hooks``、 "
 "``discover_skill_sources``、``persist_agent_json``、``trace_span``、``ask_env``、``get_profile``、"
@@ -596,21 +597,21 @@ msgstr ""
 "``self.logger``. For the full list, see :doc:`/api/agent` and the source file "
 "``agent/base/README.md``."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:320
+#: ../../agents/behavior.rst:117
 msgid "智能体记忆"
 msgstr "Agent Memory"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:322
+#: ../../agents/behavior.rst:119
 msgid "``PersonAgent`` 的记忆分几层："
 msgstr "``PersonAgent`` memory is organized in several layers:"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:324
+#: ../../agents/behavior.rst:121
 msgid "**Thread（对话线程）**：短期上下文，维护最近工具调用与 LLM 交互，过长时压缩。"
 msgstr ""
 "**Thread**: short-term context that keeps recent tool calls and LLM interactions, "
 "with automatic compression when it grows too long."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:325
+#: ../../agents/behavior.rst:122
 msgid ""
 "**AgentMemory（运行时持久化记忆）**：跨 step 的运行时摘要，位于 ``MEMORY.md``，由 thread 压缩与显式 handoff "
 "更新，主要服务长线程压缩、恢复与错误连续性。"
@@ -619,7 +620,7 @@ msgstr ""
 " in ``MEMORY.md`` and updated by thread compression and explicit handoffs. It mainly "
 "serves long-thread compression, recovery, and error continuity."
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:314
+#: ../../agents/behavior.rst:124
 msgid ""
 "**Event memory**：``PersonMemoryRuntime`` 根据 step-mode ``finish`` 携带的 ``memories`` 写入 "
 "``memory/episodes.jsonl`` ，保存社会关系、地点、承诺、计划结果等可检索事实（是否写入由工具循环决定，不是每步固定）。"
@@ -629,13 +630,13 @@ msgstr ""
 " commitments, and plan outcomes. Whether to write is decided by the tool loop and is not fixed "
 "for every step."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:330
+#: ../../agents/behavior.rst:126
 msgid "Workspace 状态文件：skill 脚本写入的 ``state/*.json``，例如情绪、意图、计划等。"
 msgstr ""
 "Workspace state files: ``state/*.json`` written by skill scripts, such as emotion, "
 "intention, and plan state."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:332
+#: ../../agents/behavior.rst:128
 msgid ""
 "``MEMORY.md`` 与 ``memory/episodes.jsonl`` 不是一回事：前者是压缩后的长期背景摘要，后者是 append-only "
 "事件流。要替换/扩展记忆策略，优先扩展 ``PersonMemoryRuntime`` 或相关工具边界，而不是恢复旧的 ``memory`` 内置 skill。"
@@ -646,24 +647,24 @@ msgstr ""
 "``PersonMemoryRuntime`` or related tool boundaries instead of restoring the old "
 "built-in ``memory`` skill."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:338
+#: ../../agents/behavior.rst:136
 msgid "参考"
 msgstr "References"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:343
+#: ../../agents/behavior.rst:141
 msgid "源码 ``agentsociety2/agent/base/README.md`` - AgentBase 子类开发指南（最权威）"
 msgstr ""
 "Source ``agentsociety2/agent/base/README.md`` - the authoritative guide for "
 "developing AgentBase subclasses"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:4
+#: ../../agents.rst:4
 msgid "智能体是仿真实验中的参与者。默认的 ``PersonAgent`` 将人物画像、记忆和技能接入工具决策循环；环境模块负责提供可查询、可修改的外部状态。"
 msgstr ""
 "Agents are participants in simulation experiments. The default ``PersonAgent`` connects profiles,"
 " memory and skills to a tool-based decision loop; environment modules provide external state that"
 " can be queried or modified."
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:6
+#: ../../agents.rst:6
 msgid ""
 "首次运行通常只需配置 ``PersonAgent``，由 :doc:`/quickstart` 中的编排器创建。需要增加行为时先考虑 "
 ":doc:`/agent_skills`；需要不同的决策流程时再编写自定义类。工作台研究助手的职责见 :doc:`/research_workflow`。"
@@ -673,39 +674,39 @@ msgstr ""
 "different decision process is needed. For the workbench research assistant, see "
 ":doc:`/research_workflow`."
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:11
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents/configuration.rst:2
+#: ../../agents.rst:12
+#: ../../agents/configuration.rst:2
 msgid "智能体配置与构造"
 msgstr "Agent configuration and construction"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:15
+#: ../../agents.rst:17
 msgid "选择智能体类型，设置画像与参数，理解工作区和服务的绑定方式。"
 msgstr "Choose an agent type, set profiles and parameters, and understand workspace and service binding."
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:17
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents/behavior.rst:2
+#: ../../agents.rst:19
+#: ../../agents/behavior.rst:2
 msgid "决策、交互与记忆"
 msgstr "Decisions, interaction and memory"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:21
+#: ../../agents.rst:24
 msgid "了解每步决策、环境交互、只读问答，以及记忆与状态的保存位置。"
 msgstr ""
 "Learn about step decisions, environment interaction, read-only questions, and where memory and "
 "state are stored."
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents.rst:27
+#: ../../agents.rst:31
 msgid "确定何时需要自定义类，并实现恢复、问答、仿真步和状态写回。"
 msgstr ""
 "Decide when a custom class is needed and implement restoration, questions, simulation steps and "
 "state persistence."
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents/behavior.rst:26
+#: ../../agents/behavior.rst:26
 msgid "执行 skill 脚本（内置技能进程内直调，自定义技能在子进程执行，见 :doc:`/agent_skills` ）。"
 msgstr ""
 "Execute a skill script (built-in skills run in-process; custom skills run in subprocesses; see "
 ":doc:`/agent_skills`)."
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents/behavior.rst:42
+#: ../../agents/behavior.rst:42
 msgid ""
 "agent 层**没有** ``bash`` / ``glob`` / ``codegen`` / ``batch`` 这类工具。环境交互统一走 ``ask_env``，由环境侧的 "
 "router（如 ``CodeGenRouter``）决定如何调用环境模块工具（见 :doc:`/env_modules`）。"
@@ -714,7 +715,7 @@ msgstr ""
 "Environment interaction always goes through ``ask_env``; the environment-side router, such as "
 "``CodeGenRouter``, decides how to call environment module tools (see :doc:`/env_modules`)."
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents/behavior.rst:111
+#: ../../agents/behavior.rst:111
 msgid ""
 "在编排器层面，``AgentSociety.step(tick)`` / ``run(num_steps, tick)`` 会驱动所有 agent 的 ``step``，并支持以 Ray "
 "Task 批式并行（见 :doc:`/architecture`）。外部问答/干预则经 ``AgentSociety.ask(question)`` 与 "
@@ -725,21 +726,21 @@ msgstr ""
 "/ interventions go through ``AgentSociety.ask(question)`` and "
 "``AgentSociety.intervene(instruction)``."
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents/behavior.rst:138
+#: ../../agents/behavior.rst:138
 msgid ":doc:`/agent_skills` - Agent Skills 子系统（发现、entrypoint 执行、生命周期 hook）"
 msgstr ""
 ":doc:`/agent_skills` - Agent Skills subsystem: discovery, entrypoint execution, and lifecycle "
 "hooks"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents/behavior.rst:139
+#: ../../agents/behavior.rst:139
 msgid ":doc:`/architecture` - Ray 执行模型、``ServiceProxy``、trace、路由器"
 msgstr ":doc:`/architecture` - Ray execution model, ``ServiceProxy``, trace, and routers"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents/behavior.rst:140
+#: ../../agents/behavior.rst:140
 msgid ":doc:`/api/agent` - ``AgentBase`` / ``PersonAgent`` API 参考"
 msgstr ":doc:`/api/agent` - ``AgentBase`` / ``PersonAgent`` API reference"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents/configuration.rst:43
+#: ../../agents/configuration.rst:43
 msgid ""
 "跨 tick 的动态状态全部落在 workspace；``step()`` 每次都从 workspace 重建上下文，因此 agent 本身是**无状态的 record**，可以被 Ray "
 "Task 当作数据流式调度到任意 worker（见 :doc:`/architecture`）。"
@@ -748,7 +749,7 @@ msgstr ""
 "the workspace, so the agent itself is a **stateless record** that Ray Tasks can stream to any "
 "worker as data (see :doc:`/architecture`)."
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents/configuration.rst:45
+#: ../../agents/configuration.rst:45
 msgid ""
 "绝大多数研究者并不直接调 ``create`` / ``from_workspace``，而是通过 ``AgentSociety`` + ``InitConfig`` 声明 "
 "agent，由编排器在实验启动时批量创建（见下方 :ref:`agent-config` 与 :doc:`/cli`）。下面仅展示底层契约，便于理解与扩展："
@@ -758,7 +759,7 @@ msgstr ""
 "when the experiment starts (see :ref:`agent-config` and :doc:`/cli` below). The following only "
 "shows the low-level contract for understanding and extension:"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents/configuration.rst:48
+#: ../../agents/configuration.rst:48
 #, python-brace-format
 msgid ""
 "from pathlib import Path\n"
@@ -793,7 +794,7 @@ msgstr ""
 "# 2) Rebuild a ready agent with ServiceProxy for env/llm/trace/replay\n"
 "agent = await PersonAgent.from_workspace(workspace, service_proxy)"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents/configuration.rst:114
+#: ../../agents/configuration.rst:114
 msgid ""
 "它出现在 ``InitConfig.agents`` 列表里，由 CLI 的 ``--config`` JSON 提供。模型 / LLM 的选择走全局 ``config``，见 "
 ":doc:`/installation` 的环境变量与 :doc:`/api/config`。"
@@ -802,11 +803,11 @@ msgstr ""
 "/ LLM selection uses global ``config`` (see the environment variables in :doc:`/installation` and"
 " :doc:`/api/config`)."
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents/configuration.rst:118
+#: ../../agents/configuration.rst:118
 msgid "画像、运行参数与动态状态"
 msgstr "Profiles, runtime parameters and dynamic state"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents/configuration.rst:120
+#: ../../agents/configuration.rst:120
 msgid ""
 "``profile`` 描述仿真参与者，例如标识、姓名和背景；``config`` 保存该智能体的静态运行参数。实验配置中的 ``AgentConfig.kwargs`` "
 "是编排器创建工作区时使用的输入，具体字段应与所选智能体类匹配。"
@@ -816,7 +817,7 @@ msgstr ""
 "experiment configuration provides input for workspace creation and must match the selected agent "
 "class."
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents/configuration.rst:122
+#: ../../agents/configuration.rst:122
 msgid ""
 "动态状态在运行后由 workspace 保存。恢复已有实验时，检查 ``AGENT.json`` "
 "与状态文件；修改初始配置后需要明确是启动新实验，还是继续原实验，避免误以为恢复操作会重新应用所有初始值。"
@@ -826,11 +827,11 @@ msgstr ""
 "new experiment or resume the existing one; restoration does not necessarily reapply every initial"
 " value."
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents/customization.rst:2
+#: ../../agents/customization.rst:2
 msgid "编写自定义智能体"
 msgstr "Writing a custom agent"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/agents/customization.rst:11
+#: ../../agents/customization.rst:11
 msgid "扩展 ``PersonAgent`` 的认知能力，优先使用 Agent Skills（见 :doc:`/agent_skills`）。只有需要完全不同的智能体架构时，才创建自定义智能体类。"
 msgstr ""
 "When extending ``PersonAgent`` cognitive capabilities, prefer Agent Skills (see "

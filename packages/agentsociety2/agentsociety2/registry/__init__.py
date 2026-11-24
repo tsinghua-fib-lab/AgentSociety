@@ -39,6 +39,8 @@ from agentsociety2.registry.modules import (
     list_all_modules,
     register_scanned_custom_modules,
     reload_modules,
+    resolve_agent_module_key,
+    resolve_env_module_key,
     scan_and_register_custom_modules,
 )
 
@@ -60,5 +62,7 @@ __all__ = [
     "list_all_modules",
     "register_scanned_custom_modules",
     "reload_modules",
+    "resolve_agent_module_key",
+    "resolve_env_module_key",
     "scan_and_register_custom_modules",
 ]

@@ -55,7 +55,7 @@ AI Social Scientist 将社会科学研究组织成七个可检查、可回退的
 </details>
 
 <details>
-<summary>MCP 市场：外部注册源浏览与一键添加</summary>
+<summary>MCP 市场：外部注册源浏览与添加</summary>
 
 </details>
 
@@ -80,7 +80,7 @@ AI Social Scientist 将社会科学研究组织成七个可检查、可回退的
 - **EasyPaper**：为多智能体论文生成系统配置 LLM / VLM，生成工作区 `easypaper_config.yaml`
 - **回放与分析**：实验回放 Webview、分析 harness 状态、论文评审与论文产物查看器
 - **内置研究技能**：文献检索、假设、实验配置与运行、分析，以及论文评审（`agentsociety-paper-review`）与研究管线（`agentsociety-research-pipeline`）等技能
-- **查看器与语言**：JSON / YAML / Steps / PID 状态 / 文献索引 / CSV 表格等专用查看器；界面中英文一键切换
+- **查看器与语言**：JSON / YAML / Steps / PID 状态 / 文献索引 / CSV 表格等专用查看器；界面中英文切换
 
 ## 安装
 

@@ -9,6 +9,7 @@ Only these paths are in active CI, security scanning, and Dependabot scope:
 | Path | Role |
 | ---- | ---- |
 | `packages/agentsociety2/` | Python SDK (primary) |
+| `examples/v2/daily_mobility/` | Daily Mobility simulation and dashboard |
 | `extension/` | VS Code extension |
 | `frontend/` | React web UI |
 
@@ -30,12 +31,15 @@ AgentSociety/
 
 Primary remote is GitLab (`git.fiblab.net`); GitHub is a public mirror with Dependabot / CodeQL.
 
+## Maintainer workflow
+
+For dependency-bot and CodeQL triage, use [$agentsociety-maintain](.agents/skills/agentsociety-maintain/SKILL.md). Create a dedicated local branch before editing. Review mirror PRs locally, validate the changes, and prepare an MR only after verification.
+
 ## Setup
 
 ```bash
-# Python (workspace root)
-uv sync
-cd packages/agentsociety2 && uv sync --extra dev
+# Python 3.11.5 through 3.13, from the workspace root
+uv sync --locked --package agentsociety2 --no-default-groups --extra dev
 
 # Extension
 cd extension && npm ci && npm run lint && npm run build

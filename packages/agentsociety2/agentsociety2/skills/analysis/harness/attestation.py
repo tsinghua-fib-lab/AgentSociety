@@ -29,6 +29,27 @@ PHASE_RUBRIC_KEYS: dict[str, list[str]] = {
     ],
 }
 
+# Booleans must be literally true; text/list fields must contain non-empty text.
+BOOLEAN_RUBRIC_KEYS: frozenset[str] = frozenset(
+    {
+        "research_question_confirmed",
+        "claims_user_approved",
+        "bilingual_reports_reviewed",
+        "independent_review_pass",
+    }
+)
+
+
+def _rubric_value_valid(key: str, value: object) -> bool:
+    """Return True when a rubric value carries a real affirmative judgment."""
+    if key in BOOLEAN_RUBRIC_KEYS:
+        return value is True
+    if isinstance(value, str):
+        return bool(value.strip())
+    if isinstance(value, (list, tuple)):
+        return any(isinstance(item, str) and item.strip() for item in value)
+    return value is not None and bool(value)
+
 
 def validate_attestation(att: PhaseAttestation) -> ValidationResult:
     issues: list[ValidationIssue] = []
@@ -60,23 +81,30 @@ def validate_attestation(att: PhaseAttestation) -> ValidationResult:
             or "",
         )
 
-    if not att.key_findings:
+    if not any(
+        isinstance(item, str) and item.strip() for item in att.key_findings
+    ):
         issues.append(
             issue(
                 "key_findings_required",
                 phase=phase,
-                message="At least one key_finding is required in phase attestation",
+                message="At least one non-empty key_finding is required",
                 fix_hint="Summarize what this phase established before advancing",
             )
         )
 
     for key in PHASE_RUBRIC_KEYS[phase]:
-        if key not in att.rubric or att.rubric[key] in (None, "", []):
+        value = att.rubric.get(key)
+        if key not in att.rubric or not _rubric_value_valid(key, value):
             issues.append(
                 issue(
                     "rubric_field_missing",
                     phase=phase,
-                    message=f"Attestation rubric missing: {key}",
+                    message=(
+                        f"Attestation rubric missing or false: {key}"
+                        if key in BOOLEAN_RUBRIC_KEYS
+                        else f"Attestation rubric missing or empty: {key}"
+                    ),
                     fix_hint=f"Set rubric.{key} in record-attestation payload (LLM judgment)",
                 )
             )

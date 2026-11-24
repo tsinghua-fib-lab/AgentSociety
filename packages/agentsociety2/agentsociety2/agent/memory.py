@@ -266,9 +266,11 @@ class AgentMemoryStore:
         :returns: 无返回值。
         """
         (self.root / MEMORY_DIR).mkdir(parents=True, exist_ok=True)
-        self.state_path.write_text(
+        from agentsociety2.storage.workspace_state import atomic_write_text
+
+        atomic_write_text(
+            self.state_path,
             json.dumps(state, ensure_ascii=False, indent=2, default=str),
-            encoding="utf-8",
         )
 
     def read_memory_md(self, *, max_chars: int | None = None) -> str:

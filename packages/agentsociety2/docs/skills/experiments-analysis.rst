@@ -94,8 +94,8 @@
    env_modules = get_available_env_modules()
    agent_modules = get_available_agent_modules()
 
-   # 启动实验
-   await start_experiment(
+   # 校验启动输入并返回配置文件和运行路径
+   run_inputs = await start_experiment(
        workspace_path=Path("./workspace"),
        hypothesis_id="1",
        experiment_id="1"
@@ -134,7 +134,7 @@
    reader.close()
 
 跨实验对比不再使用独立综合 skill，而是作为
-``agentsociety-analysis`` 的 Stage 5 在 Claude Code 中完成。
+``agentsociety-analysis`` 的 Stage 6 在 Claude Code 中完成。
 
 .. _skills-experiments-analysis-10:
 

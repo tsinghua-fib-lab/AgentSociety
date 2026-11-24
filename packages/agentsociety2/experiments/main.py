@@ -4,6 +4,7 @@ import logging
 import os
 import pickle
 from datetime import datetime
+from pathlib import Path
 
 import numpy as np
 from dotenv import load_dotenv
@@ -129,7 +130,15 @@ async def main(
     # ==================== 加载 Profiles ====================
     logger.info("\n【步骤1/4】加载 profiles.json...")
 
-    profiles_path = os.path.join(os.path.dirname(__file__), "profiles.json")
+    profiles_path = Path(
+        os.environ.get("DAILY_MOBILITY_PROFILES_PATH")
+        or Path(__file__).with_name("profiles.json")
+    ).expanduser()
+    if (
+        not os.environ.get("DAILY_MOBILITY_PROFILES_PATH")
+        and not profiles_path.is_file()
+    ):
+        profiles_path = Path(__file__).resolve().parents[1] / "profiles.json"
     if not os.path.exists(profiles_path):
         logger.error(f"  ❌ profiles.json 文件不存在: {profiles_path}")
         return
@@ -384,7 +393,15 @@ async def main_social(
     # ==================== 加载 Profiles ====================
     logger.info("\n【步骤1/4】加载 profiles.json...")
 
-    profiles_path = os.path.join(os.path.dirname(__file__), "profiles.json")
+    profiles_path = Path(
+        os.environ.get("DAILY_MOBILITY_PROFILES_PATH")
+        or Path(__file__).with_name("profiles.json")
+    ).expanduser()
+    if (
+        not os.environ.get("DAILY_MOBILITY_PROFILES_PATH")
+        and not profiles_path.is_file()
+    ):
+        profiles_path = Path(__file__).resolve().parents[1] / "profiles.json"
     if not os.path.exists(profiles_path):
         logger.error(f"  ❌ profiles.json 文件不存在: {profiles_path}")
         return

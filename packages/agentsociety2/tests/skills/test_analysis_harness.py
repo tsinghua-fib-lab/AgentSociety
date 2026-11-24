@@ -1566,3 +1566,36 @@ def test_capability_probe_distinguishes_unhealthy_dependency(monkeypatch) -> Non
 
     assert statuses["eda.quick-stats"].state == "unhealthy"
     assert "invalid module spec" in statuses["eda.quick-stats"].detail
+
+
+def test_validate_synthesis_rejects_source_artifacts_outside_workspace(
+    workspace: Path,
+) -> None:
+    syn_dir = workspace / "synthesis"
+    syn_dir.mkdir()
+    for name in (
+        "synthesis_report_zh.md",
+        "synthesis_report_en.md",
+        "synthesis_report_zh.html",
+        "synthesis_report_en.html",
+    ):
+        content = "<html>ok</html>" if name.endswith(".html") else "ok"
+        (syn_dir / name).write_text(content, encoding="utf-8")
+    (workspace.parent / "outside.md").write_text("outside", encoding="utf-8")
+    (syn_dir / "synthesis_brief.json").write_text(
+        json.dumps(
+            {
+                "synthesis_question": "What holds across hypotheses?",
+                "scope_hypothesis_ids": [],
+                "source_artifacts": ["../outside.md"],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = validate_synthesis(
+        workspace, synthesis_dir=syn_dir, scope_hypothesis_ids=[]
+    )
+
+    assert result.status == "BLOCKED"
+    assert any(i.code == "source_artifact_unsafe" for i in result.issues)

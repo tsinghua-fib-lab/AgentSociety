@@ -14,7 +14,7 @@ pip install agentsociety2
 
 要求：
 
-- Python 3.11–3.13
+- Python 3.11.5–3.13
 - 一个 LiteLLM 支持的 LLM API Key
 
 ## 快速开始

@@ -36,15 +36,27 @@ class CodeExecutionTimeout(TimeoutError):
         self.write_attempted = write_attempted
 
 
-def _reap(process, directory):
+def _reap(process, directory, stderr_file):
     if process.poll() is None:
         try:
             os.killpg(process.pid, signal.SIGKILL)
         except ProcessLookupError:
             pass
-    process.wait(timeout=5)
-    process.stdin.close()
-    process.stdout.close()
+    try:
+        process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        pass
+    for stream in (process.stdin, process.stdout):
+        if stream is not None:
+            try:
+                stream.close()
+            except OSError:
+                pass
+    if stderr_file is not None:
+        try:
+            stderr_file.close()
+        except OSError:
+            pass
     directory.cleanup()
 
 
@@ -71,11 +83,15 @@ class Worker:
             "MKL_NUM_THREADS": "1",
             "NUMEXPR_NUM_THREADS": "1",
         }
+        # The file must outlive __init__ for the worker's lifetime.
+        self.stderr_file = tempfile.TemporaryFile(  # noqa: SIM115
+            prefix="as2-codegen-stderr-"
+        )
         self.process = subprocess.Popen(
             command,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
+            stderr=self.stderr_file,
             env=environment,
             cwd=directory.name,
             start_new_session=True,
@@ -85,7 +101,9 @@ class Worker:
         os.set_blocking(self.process.stdout.fileno(), False)
         self.buffer = bytearray()
         self.programs = OrderedDict()
-        self.finalizer = weakref.finalize(self, _reap, self.process, directory)
+        self.finalizer = weakref.finalize(
+            self, _reap, self.process, directory, self.stderr_file
+        )
 
     async def _readable(self, fd, writing=False):
         loop = asyncio.get_running_loop()
@@ -129,8 +147,18 @@ class Worker:
                 await self._readable(fd)
                 continue
             if not part:
+                diagnostics = ""
+                if self.process.poll() is not None and self.stderr_file is not None:
+                    try:
+                        self.stderr_file.seek(0)
+                        diagnostics = self.stderr_file.read(4096).decode(
+                            "utf-8", errors="replace"
+                        )
+                    except OSError:
+                        diagnostics = ""
                 raise RuntimeError(
                     f"Code worker closed its channel (exit={self.process.poll()})"
+                    + (f": {diagnostics}" if diagnostics else "")
                 )
             self.buffer.extend(part)
 

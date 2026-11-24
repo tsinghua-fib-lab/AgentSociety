@@ -363,9 +363,11 @@ class TodoStateStore:
         if archived:
             self._append_archive(archived)
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.path.write_text(
+        from agentsociety2.storage.workspace_state import atomic_write_text
+
+        atomic_write_text(
+            self.path,
             json.dumps(normalized, ensure_ascii=False, indent=2),
-            encoding="utf-8",
         )
         return normalized
 

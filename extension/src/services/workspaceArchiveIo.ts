@@ -17,7 +17,6 @@ const ZIP_SCRIPT = [
   'MAX_ENTRIES = 100_000',
   'MAX_FILE_BYTES = 4 * 1024 ** 3',
   'MAX_TOTAL_BYTES = 8 * 1024 ** 3',
-  'MAX_COMPRESSION_RATIO = 500',
   'COPY_CHUNK_BYTES = 1024 * 1024',
   '',
   'action, source, destination = sys.argv[1], sys.argv[2], sys.argv[3]',
@@ -34,6 +33,16 @@ const ZIP_SCRIPT = [
   '                relative_path = os.path.relpath(absolute_path, source).replace(os.sep, "/")',
   '                zf.write(absolute_path, relative_path)',
   '    print(json.dumps({"ok": True}))',
+  'elif action == "inspect":',
+  '    with zipfile.ZipFile(source) as zf:',
+  '        try:',
+  '            info = zf.getinfo("_agentsociety/export-manifest.json")',
+  '        except KeyError:',
+  '            raise SystemExit("export manifest is missing")',
+  '        if info.file_size > 1024 * 1024:',
+  '            raise SystemExit("export manifest is too large")',
+  '        manifest = json.loads(zf.read(info).decode("utf-8"))',
+  '    print(json.dumps({"ok": True, "manifest": manifest}))',
   'elif action == "extract":',
   '    dest_root = os.path.abspath(destination)',
   '    os.makedirs(dest_root, exist_ok=True)',
@@ -54,8 +63,6 @@ const ZIP_SCRIPT = [
   '            declared_total += item.file_size',
   '            if declared_total > MAX_TOTAL_BYTES:',
   '                raise SystemExit("archive expands beyond the allowed size")',
-  '            if item.file_size and (item.compress_size == 0 or item.file_size / item.compress_size > MAX_COMPRESSION_RATIO):',
-  '                raise SystemExit("archive entry compression ratio is too high: " + name)',
   '        extracted_total = 0',
   '        for item in items:',
   '            name = item.filename.replace("\\\\", "/")',
@@ -81,10 +88,10 @@ const ZIP_SCRIPT = [
 
 export function runPythonArchiveCommand(
   pythonCommand: string,
-  action: 'create' | 'extract',
+  action: 'create' | 'extract' | 'inspect',
   source: string,
   destination: string,
-): Promise<{ ok: true }> {
+): Promise<{ ok: true; manifest?: unknown }> {
   return new Promise((resolve, reject) => {
     const child = spawn(pythonCommand, ['-c', ZIP_SCRIPT, action, source, destination], {
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -117,7 +124,7 @@ export function runPythonArchiveCommand(
         return;
       }
       try {
-        resolve(JSON.parse(stdout.trim()) as { ok: true });
+        resolve(JSON.parse(stdout.trim()) as { ok: true; manifest?: unknown });
       } catch {
         reject(new Error('Archive command returned invalid output'));
       }

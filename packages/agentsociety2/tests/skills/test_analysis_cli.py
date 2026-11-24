@@ -11,7 +11,13 @@ import pytest
 from agentsociety2.skills.analysis.harness import cli as harness_cli
 from agentsociety2.skills.analysis.harness import state as harness_state
 from agentsociety2.skills.analysis.harness.capabilities import EDA_PROFILE_MODULES
-from agentsociety2.skills.analysis.harness.models import AnalysisPhase, PhaseCheckpoint
+from agentsociety2.skills.analysis.harness.models import (
+    AnalysisPhase,
+    HypothesisAnalysisState,
+    PhaseCheckpoint,
+    ReleaseStatus,
+    SynthesisAnalysisState,
+)
 from agentsociety2.skills.analysis.harness.operations import operation_registry
 from agentsociety2.skills.analysis.harness.preflight import OperationAvailability
 from agentsociety2.skills.analysis.models import ReportAsset
@@ -24,7 +30,6 @@ def _load_analysis_cli_module():
         / "extension"
         / "skills"
         / "agentsociety-analysis"
-        / "v1.0.0"
         / "scripts"
         / "analysis.py"
     )
@@ -45,7 +50,6 @@ def _analysis_skill_root() -> Path:
         / "extension"
         / "skills"
         / "agentsociety-analysis"
-        / "v1.0.0"
     )
 
 
@@ -570,7 +574,15 @@ def test_cli_local_mutating_preflight_block_writes_receipt(
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     spec_path = tmp_path / "figure.json"
-    spec_path.write_text("{}", encoding="utf-8")
+    spec_path.write_text(
+        json.dumps(
+            {
+                "output": "figure.png",
+                "panels": [{"source": "chart.png"}],
+            }
+        ),
+        encoding="utf-8",
+    )
 
     def must_not_execute(_args):
         raise AssertionError("blocked local handler must not run")
@@ -838,9 +850,9 @@ def test_filter_assets_with_companions_keeps_same_stem_vector_exports():
             self.file_path = file_path
 
     assets = [
-        Asset("/tmp/chart_01_growth.png"),
-        Asset("/tmp/chart_01_growth.svg"),
-        Asset("/tmp/chart_02_other.png"),
+        Asset("chart_01_growth.png"),
+        Asset("chart_01_growth.svg"),
+        Asset("chart_02_other.png"),
     ]
 
     filtered = analysis_cli._filter_assets_with_companions(
@@ -1076,6 +1088,38 @@ def test_analysis_experience_memory_cli_smoke(tmp_path, capsys):
     )
     assert loop["memory_context"]["active"] is True
     assert loop["recommended_next_step"].startswith("0. Memory:")
+
+
+def test_run_loop_stops_recommending_work_after_synthesis_release(tmp_path):
+    harness_state.save_hypothesis_state(
+        tmp_path,
+        "1",
+        HypothesisAnalysisState(
+            hypothesis_id="1",
+            hypothesis_release=ReleaseStatus.ready,
+        ),
+    )
+    harness_state.save_synthesis_state(
+        tmp_path,
+        SynthesisAnalysisState(workspace_release=ReleaseStatus.ready),
+    )
+
+    loop = harness_cli.cmd_run_loop(tmp_path, "1", "1")
+
+    assert loop["workspace_release"] == "ready"
+    assert loop["recommended_next_step"].startswith("Analysis complete:")
+    assert loop["recommended_operations"] == []
+    assert loop["suggested_next_operation"] is None
+
+    validation = harness_cli.cmd_validate_synthesis(tmp_path)
+    assert validation["workspace_release"] == "blocked"
+
+
+def test_advance_rejects_synthesis_with_allowed_phase_list(tmp_path):
+    result = harness_cli.cmd_advance(tmp_path, "1", "1", "synthesis")
+
+    assert "unknown phase: synthesis" in result["error"]
+    assert "allowed: frame, explore, claims, refine, produce" in result["error"]
 
 
 def test_feedback_and_review_guard_preference_promotion(tmp_path, capsys):
@@ -1404,7 +1448,7 @@ def test_synthetic_analysis_workflow_evolves_memory(tmp_path, capsys):
                 "contract_id": "f1",
                 "claim_id": "c1",
                 "core_finding": "Treatment raises simulated value",
-                "output_files": [str(chart_path)],
+                "output_files": ["charts/chart_01_treatment_value.png"],
             }
         ),
     )

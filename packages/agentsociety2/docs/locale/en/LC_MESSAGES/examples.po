@@ -19,28 +19,28 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:2
+#: ../../examples.rst:2
 msgid "示例"
 msgstr "Examples"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:4
+#: ../../examples.rst:4
 msgid "本部分包含演示 AgentSociety 2 功能的示例代码。"
 msgstr ""
 "This section contains example code demonstrating AgentSociety 2's "
 "capabilities."
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:7
+#: ../../examples.rst:7
 msgid "先离线检查配置"
 msgstr "Validate configuration offline first"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:9
+#: ../../examples.rst:9
 msgid "下面的示例验证初始化配置和时间步参数，不启动 Ray 或调用模型。配置校验能发现缺失字段和无效步数；模块是否可用、模型能否连接仍需运行时检查。"
 msgstr ""
 "This example validates initialization configuration and time-step parameters without starting Ray"
 " or calling a model. Validation catches missing fields and invalid step counts; module "
 "availability and model connectivity still require runtime checks."
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:11
+#: ../../examples.rst:11
 #, python-brace-format
 msgid ""
 "from pydantic import ValidationError\n"
@@ -85,22 +85,22 @@ msgstr ""
 "else:\n"
 "    raise AssertionError(\"Expected a validation error\")"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:34
+#: ../../examples.rst:34
 msgid "Invalid step count rejected."
 msgstr "Invalid step count rejected."
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:38
+#: ../../examples.rst:38
 msgid "这个代码块由文档 CI 直接执行。需要付费模型的完整仿真另见 :doc:`quickstart`；记录输入、模型与结果的建议见下方复现说明。"
 msgstr ""
 "Documentation CI executes this code block directly. See :doc:`quickstart` for a full simulation "
 "using a paid model, and the reproducibility notes below for recording inputs, models, and "
 "results."
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:41
+#: ../../examples.rst:50
 msgid "记录可复现的实验"
 msgstr "Record a reproducible experiment"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:43
+#: ../../examples.rst:52
 msgid "分享示例时，一起提供配置文件、输入数据来源、随机种子（适用时）、模型供应商与模型 ID、关键参数、SDK 版本和代码提交。结果中保留运行日志、回放目录及评价方法，避免只有一张结论截图。"
 msgstr ""
 "When sharing an example, include configuration files, input data sources, random seeds where "
@@ -108,7 +108,7 @@ msgstr ""
 "Preserve run logs, the replay directory, and evaluation methods alongside results, rather than "
 "providing only a screenshot of a conclusion."
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:45
+#: ../../examples.rst:54
 msgid ""
 "LLM 采样、服务端模型更新和并发调度都可能影响行为结果；固定配置有助于比较，但不保证逐字或逐步相同。比较实验应说明重复次数、测量口径与差异范围。工作区产物见 "
 ":doc:`results`，外部数据说明见 :doc:`datasets`。"
@@ -118,27 +118,27 @@ msgstr ""
 "counts, measurement definitions, and variation when comparing experiments. See :doc:`results` for"
 " workspace artifacts and :doc:`datasets` for external data documentation."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:7
+#: ../../examples.rst:57
 msgid "运行示例"
 msgstr "Running Examples"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:11
+#: ../../examples.rst:61
 msgid "**前提条件：**"
 msgstr "**Prerequisites:**"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:13
+#: ../../examples.rst:63
 msgid "安装 AgentSociety 2: ``pip install agentsociety2``"
 msgstr "Install AgentSociety 2: ``pip install agentsociety2``"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:14
+#: ../../examples.rst:64
 msgid "配置 LLM API 凭证（参见 :doc:`installation`）"
 msgstr "Configure LLM API credentials (see :doc:`installation`)"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:15
+#: ../../examples.rst:65
 msgid "导航到示例目录"
 msgstr "Navigate to the examples directory"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:58
+#: ../../examples.rst:67
 msgid ""
 "cd packages/agentsociety2/examples\n"
 "python basics/01_hello_agent.py"
@@ -146,157 +146,157 @@ msgstr ""
 "cd packages/agentsociety2/examples\n"
 "python basics/01_hello_agent.py"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:23
+#: ../../examples.rst:73
 msgid "基本示例"
 msgstr "Basic Examples"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:25
+#: ../../examples.rst:75
 msgid "这些示例演示 AgentSociety 2 的基本概念："
 msgstr "These examples demonstrate basic AgentSociety 2 concepts:"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:27
+#: ../../examples.rst:77
 msgid "**Hello Agent** (``basics/01_hello_agent.py``)"
 msgstr "**Hello Agent** (``basics/01_hello_agent.py``)"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:29
+#: ../../examples.rst:79
 msgid "一个最小示例，展示："
 msgstr "A minimal example showing:"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:31
+#: ../../examples.rst:81
 msgid "创建具有个性配置文件的单个智能体"
 msgstr "Creating a single agent with personality profile"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:32
+#: ../../examples.rst:82
 msgid "设置 SimpleSocialSpace 环境"
 msgstr "Setting up a SimpleSocialSpace environment"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:33
+#: ../../examples.rst:83
 msgid "使用 AgentSociety 协调智能体-环境交互"
 msgstr "Using AgentSociety to coordinate agent-environment interactions"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:66
+#: ../../examples.rst:92
 msgid "**自定义环境模块** (``basics/02_custom_env_module.py``)"
 msgstr "**Custom Environment Module** (``basics/02_custom_env_module.py``)"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:68
+#: ../../examples.rst:94
 msgid "演示用 contrib 环境模块跑通 Ray 发现与干预："
 msgstr ""
 "Demonstrates Ray discovery and intervention with a contrib environment "
 "module:"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:70
+#: ../../examples.rst:96
 msgid "使用内置 ``WeatherEnvironment``（``agentsociety2.contrib.env``），无需手写注册"
 msgstr ""
 "Use the built-in ``WeatherEnvironment`` (``agentsociety2.contrib.env``); "
 "no manual registration needed"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:71
+#: ../../examples.rst:97
 msgid "通过 ``create_env_router_proxy`` 挂载环境（与 CLI / 生产路径一致）"
 msgstr ""
 "Mount the environment via ``create_env_router_proxy`` (same as the CLI / "
 "production path)"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:72
+#: ../../examples.rst:98
 msgid "``intervene`` 改天气后 ``ask`` 读回温度"
 msgstr ""
 "Change the weather with ``intervene``, then read the temperature back "
 "with ``ask``"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:74
+#: ../../examples.rst:100
 msgid "**回放系统** (``basics/03_replay_system.py``)"
 msgstr "**Replay System** (``basics/03_replay_system.py``)"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:76
+#: ../../examples.rst:102
 msgid "展示 replay 数据记录与读取："
 msgstr "Demonstrates replay data recording and reading:"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:78
+#: ../../examples.rst:104
 msgid "为环境模块启用 ReplayWriter"
 msgstr "Enabling ReplayWriter for environment modules"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:79
+#: ../../examples.rst:105
 msgid "生成 replay catalog 和环境 replay dataset"
 msgstr "Generating replay catalog and environment replay dataset"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:80
+#: ../../examples.rst:106
 msgid "结合 agent workspace 文件检查本地 thread / 工具日志"
 msgstr "Inspecting local threads and tool logs alongside agent workspace files"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:83
+#: ../../examples.rst:109
 msgid "博弈论示例"
 msgstr "Game Theory Examples"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:126
+#: ../../examples.rst:111
 msgid "这些示例使用 contrib 下的博弈 agent / env，并通过 ``society.step()`` 推进回合。需要配置 LLM 凭证（参见 :doc:`installation`）。"
 msgstr ""
 "These examples use game agents/envs from contrib and advance rounds via ``society.step()``. LLM "
 "credentials are required (see :doc:`installation`)."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:88
+#: ../../examples.rst:113
 msgid "**囚徒困境** (``games/01_prisoners_dilemma.py``)"
 msgstr "**Prisoner's Dilemma** (``games/01_prisoners_dilemma.py``)"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:90
+#: ../../examples.rst:115
 msgid "``PrisonersDilemmaAgent`` + ``PrisonersDilemmaEnv``"
 msgstr "``PrisonersDilemmaAgent`` + ``PrisonersDilemmaEnv``"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:91
+#: ../../examples.rst:116
 msgid "多轮同时决策（Cooperate / Defect）"
 msgstr "Multi-round simultaneous decisions (Cooperate / Defect)"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:92
+#: ../../examples.rst:117
 msgid "结果写入 ``run_dir`` （含 env state 与 replay）"
 msgstr "Results written under ``run_dir`` (env state and replay)"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:94
+#: ../../examples.rst:119
 msgid "**公共物品博弈** (``games/02_public_goods.py``)"
 msgstr "**Public Goods Game** (``games/02_public_goods.py``)"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:96
+#: ../../examples.rst:121
 msgid "``PublicGoodsAgent`` + ``PublicGoodsEnv``"
 msgstr "``PublicGoodsAgent`` + ``PublicGoodsEnv``"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:97
+#: ../../examples.rst:122
 msgid "多名智能体多轮贡献决策"
 msgstr "Multi-agent multi-round contribution decisions"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:99
+#: ../../examples.rst:124
 msgid "**声誉博弈** (``games/reputation_game.py``)"
 msgstr "**Reputation Game** (``games/reputation_game.py``)"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:101
+#: ../../examples.rst:126
 msgid "``LLMDonorAgent`` + ``ReputationGameEnv``"
 msgstr "``LLMDonorAgent`` + ``ReputationGameEnv``"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:102
+#: ../../examples.rst:127
 msgid "基于声誉的捐赠决策短跑示例"
 msgstr "Short reputation-based donation example"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:104
+#: ../../examples.rst:129
 msgid "完整批量实验脚本见 ``packages/agentsociety2/experiments/env_main_*_v2.py``。"
 msgstr ""
 "Full batch experiment scripts live under "
 "``packages/agentsociety2/experiments/env_main_*_v2.py``."
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:107
+#: ../../examples.rst:132
 msgid "高级示例"
 msgstr "Advanced Examples"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:109
+#: ../../examples.rst:134
 msgid "**自定义智能体** (``advanced/01_custom_agent.py``)"
 msgstr "**Custom Agent** (``advanced/01_custom_agent.py``)"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:111
+#: ../../examples.rst:136
 msgid "使用 contrib 智能体类型扩展 AgentSociety 2："
 msgstr "Extend AgentSociety 2 with contrib agent types:"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:113
+#: ../../examples.rst:138
 msgid "使用内置 ``SpecialistAgent``（``agentsociety2.contrib.agent``），Ray worker 可自动发现"
 msgstr ""
 "Use the built-in ``SpecialistAgent`` (``agentsociety2.contrib.agent``); "
 "Ray workers discover it automatically"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:114
+#: ../../examples.rst:139
 msgid ""
 "以 ``agent_class_name=\"SpecialistAgent\"`` 交给 ``AgentSociety``（无需手写 "
 "``register_agent_module``）"
@@ -304,58 +304,58 @@ msgstr ""
 "Pass it to ``AgentSociety`` via ``agent_class_name=\"SpecialistAgent\"`` "
 "(no manual ``register_agent_module`` needed)"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:115
+#: ../../examples.rst:140
 msgid "通过 ``AgentSocietyHelper`` 的 ``get_agent_profile`` / ``ask_agents`` 查询与提问"
 msgstr ""
 "Query and question agents through ``AgentSocietyHelper``'s "
 "``get_agent_profile`` / ``ask_agents``"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:117
+#: ../../examples.rst:142
 msgid "**多路由器比较** (``advanced/02_multi_router.py``)"
 msgstr "**Multi-Router Comparison** (``advanced/02_multi_router.py``)"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:119
+#: ../../examples.rst:144
 msgid "比较不同的推理策略："
 msgstr "Compare different reasoning strategies:"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:121
+#: ../../examples.rst:146
 msgid "ReActRouter: 迭代推理和行动"
 msgstr "ReActRouter: Iterative reasoning and action"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:122
+#: ../../examples.rst:147
 msgid "PlanExecuteRouter: 计划优先执行"
 msgstr "PlanExecuteRouter: Plan-first execution"
 
-#: ../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:123
+#: ../../examples.rst:148
 msgid "CodeGenRouter: 生成代码执行（推荐）"
 msgstr "CodeGenRouter: Generate code to execute (recommended)"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:41
+#: ../../examples.rst:41
 msgid "离线回放示例"
 msgstr "Offline replay example"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:43
+#: ../../examples.rst:43
 msgid "只想先确认回放写入、目录元数据和读取接口是否可用时，可运行 :doc:`storage` 中的独立脚本。该示例不需要模型凭据，也不会访问网络。"
 msgstr ""
 "To check replay writing, catalog metadata and reading before running a simulation, use the "
 "standalone script in :doc:`storage`. This example requires no model credentials or network "
 "access."
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:45
+#: ../../examples.rst:45
 msgid "python packages/agentsociety2/examples/offline/replay_round_trip.py"
 msgstr "python packages/agentsociety2/examples/offline/replay_round_trip.py"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:59
+#: ../../examples.rst:59
 msgid "示例位于 ``packages/agentsociety2/examples/``。``offline/`` 中的示例无需模型凭据；以下涉及智能体决策的示例需要配置模型服务。"
 msgstr ""
 "Examples are in ``packages/agentsociety2/examples/``. The ``offline/`` examples require no model "
 "credentials; the agent-decision examples below need a configured model service."
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:85
+#: ../../examples.rst:85
 msgid "``basics/01_hello_agent.py``"
 msgstr "``basics/01_hello_agent.py``"
 
-#: ../../../data2/home/huanghaoyu/AgentSociety/agentsociety2/agentsociety/packages/agentsociety2/docs/examples.rst:85
+#: ../../examples.rst:85
 #, python-brace-format
 msgid ""
 "agent_specs = [\n"

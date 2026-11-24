@@ -16,18 +16,15 @@ import type {
   AgentSkill,
   ClaudeCodeSkill,
   BuiltinSkill,
-  BuiltinSkillVersionInfo,
   BundledPlugin,
   BundledPluginCommand,
-  SkillPreset,
-  SkillVersionRef,
   MarketplaceLoadError,
 } from './webview/skillMarketplace/types';
 import { ApiClient } from './apiClient';
 import type { ProjectStructureProvider } from './projectStructureProvider';
-import { SkillVersionManager } from './skillVersionManager';
+import { BundledSkillManager } from './bundledSkillManager';
 import { getPlatformAdapter, type SkillSource } from './platforms';
-import { getCurrentLanguageCode, localize } from './i18n';
+import { getCurrentLanguageCode, localize, syncWebviewLanguage } from './i18n';
 import {
   CLAUDE_DISABLED_VAULT,
   CATEGORY_MAP,
@@ -131,6 +128,7 @@ export class SkillMarketplacePanel {
       enableScripts: true,
       localResourceRoots: [this._extensionUri]
     };
+    syncWebviewLanguage(this._panel, () => localize('skillMarketplace.title'));
     this._webview.html = this._getHtmlForWebview(this._webview);
 
     this._webview.onDidReceiveMessage(
@@ -141,7 +139,7 @@ export class SkillMarketplacePanel {
         switch (data.type) {
           case 'ready':
             // Installed skills, plugins and MCP servers have independent list requests.
-            await Promise.all([this._loadSkillPresets(), this._loadMarketplaceSkills()]);
+            await this._loadMarketplaceSkills();
             break;
 
           // Agent Skills
@@ -247,16 +245,7 @@ export class SkillMarketplacePanel {
             break;
           }
 
-          // Skill Versioning
-          case 'listSkillPresets':
-            await this._loadSkillPresets();
-            break;
-          case 'applySkillPreset': {
-            const pl = data.payload as { name?: string } | undefined;
-            const name = typeof pl?.name === 'string' ? pl.name : '';
-            await this._applySkillPreset(name);
-            break;
-          }
+          // Skill snapshots
           case 'createSkillSnapshot': {
             const pl = data.payload as { skill?: string; tag?: string } | undefined;
             const skill = typeof pl?.skill === 'string' ? pl.skill : '';
@@ -264,26 +253,15 @@ export class SkillMarketplacePanel {
             await this._createSkillSnapshot(skill, tag);
             break;
           }
-          case 'savePreset': {
-            const pl = data.payload as { name?: string; mapping?: Record<string, SkillVersionRef> } | undefined;
-            const name = typeof pl?.name === 'string' ? pl.name : '';
-            const mapping = pl?.mapping && typeof pl.mapping === 'object' ? pl.mapping : {};
-            await this._savePreset(name, mapping);
-            break;
-          }
-          case 'deletePreset': {
-            const pl = data.payload as { name?: string } | undefined;
-            const name = typeof pl?.name === 'string' ? pl.name : '';
-            await this._deletePreset(name);
+          case 'restoreSkillSnapshot': {
+            const pl = data.payload as { skill?: string; tag?: string } | undefined;
+            const skill = typeof pl?.skill === 'string' ? pl.skill : '';
+            const tag = typeof pl?.tag === 'string' ? pl.tag : '';
+            await this._restoreSkillSnapshot(skill, tag);
             break;
           }
 
           // Direct command-bridge from webview
-          case 'invokeSwitchSkillVersionCommand':
-            await vscode.commands.executeCommand('aiSocialScientist.switchSkillVersion');
-            await this._loadBuiltinSkills();
-            await this._loadSkillPresets();
-            break;
           case 'invokeSnapshotSkillCommand': {
             const payload = data.payload as { skillName?: string } | undefined;
             await vscode.commands.executeCommand(
@@ -293,9 +271,15 @@ export class SkillMarketplacePanel {
             await this._loadBuiltinSkills();
             break;
           }
-          case 'invokeEditSkillPresetsCommand':
-            await vscode.commands.executeCommand('aiSocialScientist.editSkillPresets');
+          case 'invokeRestoreSkillSnapshotCommand': {
+            const payload = data.payload as { skillName?: string } | undefined;
+            await vscode.commands.executeCommand(
+              'aiSocialScientist.restoreSkillSnapshot',
+              payload?.skillName
+            );
+            await this._loadBuiltinSkills();
             break;
+          }
 
           // Marketplace sources & GitHub token (from main)
           case 'getSkillSources': {
@@ -457,20 +441,11 @@ export class SkillMarketplacePanel {
     );
   }
 
-  public reloadForLanguage(): void {
-    this._panel.title = localize('skillMarketplace.title');
-    this._webview.html = this._getHtmlForWebview(this._webview);
-  }
 
-  public static reloadLanguageIfOpen(): void {
-    SkillMarketplacePanel.current?.reloadForLanguage();
-  }
 
   private _log(message: string): void {
     appendSharedOutputLine(OUTPUT_CHANNEL_MAIN, message);
   }
-
-
 
 
   // ============ Agent Skills ============
@@ -518,9 +493,7 @@ export class SkillMarketplacePanel {
 
   private async _loadBuiltinSkills(): Promise<void> {
     const skills: BuiltinSkill[] = [];
-    const versionManager = this._projectStructureProvider.getSkillVersionManager();
-    const wf = vscode.workspace.workspaceFolders?.[0];
-    const presetMap = wf ? versionManager.getActivePreset(wf.uri.fsPath).map : {};
+    const skillManager = this._projectStructureProvider.getBundledSkillManager();
 
     const skillsDir = path.join(this._extensionUri.fsPath, 'skills');
     if (fs.existsSync(skillsDir)) {
@@ -530,71 +503,32 @@ export class SkillMarketplacePanel {
           if (!fs.statSync(skillPath).isDirectory()) {
             return false;
           }
-          // Versioned skill: must have manifest.json
-          if (SkillVersionManager.isVersioned(name)) {
-            return fs.existsSync(path.join(skillPath, 'manifest.json'));
-          }
-          // Legacy/office skill: must have SKILL.md at top level
           return skillMdPathInDir(skillPath) !== null;
         });
 
         for (const name of names) {
           const skillPath = path.join(skillsDir, name);
-
-          if (SkillVersionManager.isVersioned(name)) {
-            const versions: BuiltinSkillVersionInfo[] = [
-              ...versionManager.listBundledVersions(name),
-              ...versionManager.listSnapshots(name),
-            ];
-            const ref = presetMap[name] ?? {
-              source: 'bundled' as const,
-              version: versionManager.defaultVersion(name) || undefined,
-            };
-            const activeId = ref.source === 'bundled' ? ref.version : ref.tag;
-
-            // Use SKILL.md from active version dir for description preview
-            const activePath =
-              ref.source === 'bundled' && ref.version
-                ? path.join(skillPath, ref.version)
-                : skillPath;
-            const mdPath = skillMdPathInDir(activePath);
-            let description: string | undefined;
-            if (mdPath) {
-              try {
-                const content = fs.readFileSync(mdPath, 'utf-8');
-                const fm = parseFrontmatter(content);
-                description = typeof fm.description === 'string' ? fm.description : undefined;
-              } catch {
-                /* ignore */
-              }
+          const mdPath = skillMdPathInDir(skillPath);
+          let description: string | undefined;
+          if (mdPath) {
+            try {
+              const content = fs.readFileSync(mdPath, 'utf-8');
+              const fm = parseFrontmatter(content);
+              description = typeof fm.description === 'string' ? fm.description : undefined;
+            } catch {
+              /* ignore */
             }
-
-            skills.push({
-              name,
-              path: skillPath,
-              hasSkillMd: mdPath !== null,
-              description,
-              isVersioned: true,
-              activeVersion: activeId
-                ? { source: ref.source, id: activeId }
-                : undefined,
-              availableVersions: versions,
-              snapshotCount: versionManager.countSnapshots(name),
-            });
-          } else {
-            // Legacy/office skill — flat layout
-            const mdPath = skillMdPathInDir(skillPath)!;
-            const content = fs.readFileSync(mdPath, 'utf-8');
-            const frontmatter = parseFrontmatter(content);
-            skills.push({
-              name,
-              path: skillPath,
-              hasSkillMd: true,
-              description:
-                typeof frontmatter.description === 'string' ? frontmatter.description : undefined,
-              isVersioned: false,
-            });
           }
+
+          const managed = BundledSkillManager.isManaged(name);
+          skills.push({
+            name,
+            path: skillPath,
+            hasSkillMd: mdPath !== null,
+            description,
+            isVersioned: managed,
+            snapshotCount: managed ? skillManager.countSnapshots(name) : 0,
+          });
         }
       } catch (error: any) {
         this._log(`[SkillManagement] Failed to load extension skills: ${error.message}`);
@@ -1258,8 +1192,6 @@ export class SkillMarketplacePanel {
     return 0;
   }
 
-
-
   /**
    * 统一的技能安装逻辑
    */
@@ -1789,53 +1721,6 @@ export class SkillMarketplacePanel {
     }
   }
 
-  // ============ Skill Versioning ============
-
-  private async _loadSkillPresets(): Promise<void> {
-    const wf = vscode.workspace.workspaceFolders?.[0];
-    if (!wf) {
-      await this._postMessage({ type: 'skillPresetsLoaded', payload: { active: '', presets: [] } });
-      return;
-    }
-    const versionManager = this._projectStructureProvider.getSkillVersionManager();
-    const file = versionManager.ensureDefaultPresetExists(wf.uri.fsPath);
-    const presets: SkillPreset[] = Object.entries(file.presets).map(([name, mapping]) => ({
-      name,
-      active: name === file.active,
-      mapping: mapping as Record<string, SkillVersionRef>,
-    }));
-    await this._postMessage({
-      type: 'skillPresetsLoaded',
-      payload: { active: file.active, presets },
-    });
-  }
-
-  private async _applySkillPreset(name: string): Promise<void> {
-    const wf = vscode.workspace.workspaceFolders?.[0];
-    if (!wf) {
-      vscode.window.showErrorMessage('请先打开工作区文件夹');
-      return;
-    }
-    if (!name.trim()) {
-      return;
-    }
-    const versionManager = this._projectStructureProvider.getSkillVersionManager();
-    const result = versionManager.applyPreset(wf.uri.fsPath, name);
-    const summary =
-      `已切换到 preset「${result.preset}」：` +
-      `应用 ${result.applied.length} 个，` +
-      `回退 ${result.fallbacks.length} 个，` +
-      `错误 ${result.errors.length} 个`;
-    if (result.errors.length === 0) {
-      vscode.window.showInformationMessage(summary);
-    } else {
-      vscode.window.showWarningMessage(summary);
-    }
-    await this._postMessage({ type: 'skillPresetApplied', payload: { name, summary } });
-    await this._loadBuiltinSkills();
-    await this._loadClaudeCodeSkills();
-    await this._loadSkillPresets();
-  }
 
   private async _createSkillSnapshot(skill: string, tag: string): Promise<void> {
     const wf = vscode.workspace.workspaceFolders?.[0];
@@ -1843,8 +1728,8 @@ export class SkillMarketplacePanel {
       vscode.window.showErrorMessage('请先打开工作区文件夹');
       return;
     }
-    const versionManager = this._projectStructureProvider.getSkillVersionManager();
-    const result = versionManager.createSnapshot(wf.uri.fsPath, skill, tag);
+    const skillManager = this._projectStructureProvider.getBundledSkillManager();
+    const result = skillManager.createSnapshot(wf.uri.fsPath, skill, tag);
     if (result.success) {
       vscode.window.showInformationMessage(result.message);
       await this._postMessage({
@@ -1857,56 +1742,21 @@ export class SkillMarketplacePanel {
     }
   }
 
-  private async _savePreset(name: string, mapping: Record<string, SkillVersionRef>): Promise<void> {
+  private async _restoreSkillSnapshot(skill: string, tag: string): Promise<void> {
     const wf = vscode.workspace.workspaceFolders?.[0];
     if (!wf) {
       vscode.window.showErrorMessage('请先打开工作区文件夹');
       return;
     }
-    const trimmed = name.trim();
-    if (!trimmed) {
-      vscode.window.showErrorMessage('preset 名称为空');
-      return;
+    const skillManager = this._projectStructureProvider.getBundledSkillManager();
+    const result = skillManager.restoreSnapshot(wf.uri.fsPath, skill, tag);
+    if (result.success) {
+      vscode.window.showInformationMessage(result.message);
+      await this._loadBuiltinSkills();
+      await this._loadClaudeCodeSkills();
+    } else {
+      vscode.window.showErrorMessage(result.message);
     }
-    const versionManager = this._projectStructureProvider.getSkillVersionManager();
-    const file = versionManager.ensureDefaultPresetExists(wf.uri.fsPath);
-    file.presets[trimmed] = mapping;
-    const r = versionManager.savePresets(wf.uri.fsPath, file);
-    if (!r.success) {
-      vscode.window.showErrorMessage(r.message);
-      return;
-    }
-    vscode.window.showInformationMessage(`已保存 preset「${trimmed}」`);
-    await this._loadSkillPresets();
-  }
-
-  private async _deletePreset(name: string): Promise<void> {
-    const wf = vscode.workspace.workspaceFolders?.[0];
-    if (!wf) {
-      vscode.window.showErrorMessage('请先打开工作区文件夹');
-      return;
-    }
-    if (name === 'default') {
-      vscode.window.showErrorMessage('不能删除 default preset');
-      return;
-    }
-    const versionManager = this._projectStructureProvider.getSkillVersionManager();
-    const file = versionManager.ensureDefaultPresetExists(wf.uri.fsPath);
-    if (!file.presets[name]) {
-      return;
-    }
-    delete file.presets[name];
-    if (file.active === name) {
-      file.active = 'default';
-    }
-    const r = versionManager.savePresets(wf.uri.fsPath, file);
-    if (!r.success) {
-      vscode.window.showErrorMessage(r.message);
-      return;
-    }
-    vscode.window.showInformationMessage(`已删除 preset「${name}」`);
-    await this._loadSkillPresets();
-    await this._loadBuiltinSkills();
   }
 
   private async _loadMcpServers(): Promise<void> {

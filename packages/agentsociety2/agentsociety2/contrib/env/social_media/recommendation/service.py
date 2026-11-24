@@ -87,7 +87,6 @@ class RecommendationService:
         self,
         user_id: int,
         n: int = 20,
-        exclude_rated: bool = True,
         exclude_ids: set[int] | None = None,
     ) -> list[tuple[int, float]]:
         """
@@ -95,14 +94,15 @@ class RecommendationService:
 
         :param user_id: 用户ID
         :param n: 推荐数量
-        :param exclude_rated: 是否排除已评分物品 (暂未实现,保留接口)
         :param exclude_ids: 额外要排除的物品ID集合
 
         :returns: [(item_id, score), ...] 按 score 降序排列
         """
-        # 检查缓存
+        # 检查缓存；key 必须包含完整的排除集合，否则同样大小的不同集合
+        # 会命中错误缓存并推荐已排除物品。
         exclude_set = exclude_ids or set()
-        cache_key = f"{user_id}:{n}:{len(exclude_set)}"
+        exclude_token = ",".join(str(item) for item in sorted(exclude_set))
+        cache_key = f"{user_id}:{n}:{exclude_token}"
 
         if cache_key in self._cache:
             timestamp, cached_result = self._cache[cache_key]

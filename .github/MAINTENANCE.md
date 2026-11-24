@@ -20,6 +20,10 @@ GitHub workflows use path filters. Making every workflow a required check can le
 
 Keep legacy tag rules separate from the AS2 release namespace. Consider enabling secret-scanning push protection and deleting merged PR branches automatically; these are repository settings, not effects of these JSON files.
 
+## Maintenance inbox
+
+The maintainer skill reads open bot PRs, CodeQL alerts and dependency advisories from this mirror. Compare each finding with the target GitLab branch, including all interpreter markers in the workspace lockfile. Dependabot monitors the root uv workspace and its SDK member. [Local maintenance workflow](../.agents/skills/agentsociety-maintain/SKILL.md)
+
 ## Checks and templates
 
 - SDK CI runs lint, type checking, tests, and package builds with frozen project dependencies. SDK and documentation installs use official PyPI on GitHub runners; local index configuration is unchanged.

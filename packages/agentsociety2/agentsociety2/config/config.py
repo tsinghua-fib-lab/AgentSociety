@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import sys
 from functools import cache
 from typing import Any, Literal
 
@@ -38,17 +39,48 @@ __all__ = [
 
 logger = get_logger()
 
+_CONFIG_ERRORS: list[str] = []
+
+
+def _record_config_error(message: str) -> None:
+    """Record a configuration error without breaking ``--help``.
+
+    :param message: Human-readable error.
+    """
+    _CONFIG_ERRORS.append(message)
+
 
 def _env_int(name: str, default: int) -> int:
-    """读取整型环境变量；未设置或为空时回退到 ``default`` 。"""
+    """读取整型环境变量；未设置或为空时回退到 ``default`` 。
+
+    :param name: 环境变量名。
+    :param default: 环境变量缺失时的默认值。
+    :returns: 解析后的整数；非法值记录错误并回退默认值。
+    """
     raw = os.getenv(name)
-    return int(raw) if raw and raw.strip() else default
+    if not raw or not raw.strip():
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        _record_config_error(f"{name} must be an integer, got {raw!r}")
+        return default
 
 
 def _env_int_or_cpu(name: str) -> int:
-    """读取整型环境变量；未设置或为空时回退到机器逻辑 CPU 核数。"""
+    """读取整型环境变量；未设置或为空时回退到机器逻辑 CPU 核数。
+
+    :param name: 环境变量名。
+    :returns: 解析后的整数；非法值记录错误并回退 CPU 核数。
+    """
     raw = os.getenv(name)
-    return int(raw) if raw and raw.strip() else (os.cpu_count() or 1)
+    if not raw or not raw.strip():
+        return os.cpu_count() or 1
+    try:
+        return int(raw)
+    except ValueError:
+        _record_config_error(f"{name} must be an integer, got {raw!r}")
+        return os.cpu_count() or 1
 
 
 def _env_str(name: str) -> str | None:
@@ -427,8 +459,12 @@ class Config:
     环境变量：``AGENTSOCIETY_CODE_EXEC_TIMEOUT``
     """
 
-    CODE_EXEC_BACKEND: str = os.getenv("AGENTSOCIETY_CODE_EXEC_BACKEND", "inprocess")
-    """完整 Python 执行后端：默认 inprocess；process 启用 worker 隔离。
+    CODE_EXEC_BACKEND: str = os.getenv(
+        "AGENTSOCIETY_CODE_EXEC_BACKEND",
+        "process" if sys.platform.startswith("linux") else "inprocess",
+    )
+    """完整 Python 执行后端：Linux 默认 process（硬超时 + 地址空间隔离），
+    其他平台默认 inprocess（协作式 Python 截止时间）。
 
     Inprocess 使用协作式 Python 截止时间与部署级资源限制。环境变量：``AGENTSOCIETY_CODE_EXEC_BACKEND``
     """
@@ -674,17 +710,25 @@ class Config:
         return cls.get_router("default")
 
 
-# Validate required configuration at module load time
-if not Config.LLM_API_KEY:
-    raise ValueError(
-        "AGENTSOCIETY_LLM_API_KEY is required. "
-        "Please set this environment variable before running AgentSociety2."
-    )
-if not Config.LLM_API_BASE:
-    raise ValueError(
-        "AGENTSOCIETY_LLM_API_BASE is required. "
-        "Please set this environment variable before running AgentSociety2."
-    )
+    @classmethod
+    def validate_required(cls) -> None:
+        """Validate required LLM configuration and recorded env errors.
+
+        :raises ValueError: With every missing/invalid setting listed.
+        """
+        errors = list(_CONFIG_ERRORS)
+        if not cls.LLM_API_KEY:
+            errors.append(
+                "AGENTSOCIETY_LLM_API_KEY is required; set it in the environment "
+                "or in .env before running an experiment."
+            )
+        if not cls.LLM_API_BASE:
+            errors.append(
+                "AGENTSOCIETY_LLM_API_BASE is required; set it in the environment "
+                "or in .env before running an experiment."
+            )
+        if errors:
+            raise ValueError("; ".join(errors))
 
 
 # Global router instances (lazy initialization)

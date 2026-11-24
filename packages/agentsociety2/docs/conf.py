@@ -318,6 +318,7 @@ nitpick_ignore_regex = [
     (r"py:class", r"starlette\.requests\.Request"),
     (r"py:class", r"starlette\.responses\.PlainTextResponse"),
     (r"py:exc", r"HTTPException"),
+    (r"py:exc", r"duckdb\.ConversionException"),
     (r"py:class", r"agentsociety2\.(?:agent\.base|env\.router_base)\.T"),
     (r"py:class", r"agentsociety2\.env\.base\.F"),
     (r"py:class", r"datetime"),

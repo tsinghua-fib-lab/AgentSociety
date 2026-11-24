@@ -19,9 +19,10 @@ import marshal
 import os
 import pickle
 import re
+import threading
 import time
 import types
-from contextlib import nullcontext
+from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass, field
 from datetime import datetime
 from functools import lru_cache
@@ -30,6 +31,11 @@ from typing import TYPE_CHECKING, Any, ClassVar, Optional, Protocol
 
 if TYPE_CHECKING:
     from agentsociety2.storage import ReplayWriter
+
+try:  # POSIX-only; Windows falls back to no cross-process lock.
+    import fcntl
+except ImportError:  # pragma: no cover - Windows
+    fcntl = None  # type: ignore[assignment]
 
 import faiss
 import numpy as np
@@ -736,7 +742,30 @@ class TemplateCacheDB:
         self._cache_path = cache_path
         self._embedding_dims = embedding_dims
         self._max_size_per_env = max_size_per_env
+        self._lock_path = f"{cache_path}.lock"
         os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+
+    @contextmanager
+    def _locked(self):
+        """跨进程串行化缓存的 read-modify-write。
+
+        模板缓存默认位于用户 HOME、被多个 env-router actor/实验共享；没有
+        文件锁时并发写入会互相覆盖条目。
+
+        :returns: 上下文管理器；POSIX 下持有 ``flock``，其他平台退化为进程内。
+        """
+        if fcntl is None:
+            self._process_lock = getattr(self, "_process_lock", threading.Lock())
+            with self._process_lock:
+                yield
+            return
+        fd = os.open(self._lock_path, os.O_RDWR | os.O_CREAT, 0o600)
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX)
+            yield
+        finally:
+            fcntl.flock(fd, fcntl.LOCK_UN)
+            os.close(fd)
 
     def _load_data(self) -> dict:
         """从带完整性校验的缓存文件加载数据。
@@ -777,7 +806,7 @@ class TemplateCacheDB:
             + hmac.new(_cache_secret(), payload, hashlib.sha256).digest()
             + payload
         )
-        tmp = self._cache_path + ".tmp"
+        tmp = f"{self._cache_path}.{os.getpid()}.{time.time_ns()}.tmp"
         with open(tmp, "wb") as f:
             f.write(frame)
         os.replace(tmp, self._cache_path)
@@ -820,20 +849,21 @@ class TemplateCacheDB:
         entry: CacheEntry,
     ) -> int:
         """新增缓存条目并持久化。返回新条目的 id。"""
-        data = self._load_data()
-        next_id = data.get("next_id", 1)
-        by_env = data.setdefault("by_env", {})
-        lst = by_env.setdefault(env_class_type, [])
+        with self._locked():
+            data = self._load_data()
+            next_id = data.get("next_id", 1)
+            by_env = data.setdefault("by_env", {})
+            lst = by_env.setdefault(env_class_type, [])
 
-        entry.entry_id = next_id
-        entry.env_class_type = env_class_type
-        lst.append(entry)
-        lst.sort(key=lambda e: e.last_used, reverse=True)
-        by_env[env_class_type] = lst[: self._max_size_per_env]
+            entry.entry_id = next_id
+            entry.env_class_type = env_class_type
+            lst.append(entry)
+            lst.sort(key=lambda e: e.last_used, reverse=True)
+            by_env[env_class_type] = lst[: self._max_size_per_env]
 
-        data["next_id"] = next_id + 1
-        self._save_data(data)
-        return next_id
+            data["next_id"] = next_id + 1
+            self._save_data(data)
+            return next_id
 
     def update_entry(
         self,
@@ -843,24 +873,26 @@ class TemplateCacheDB:
         code: str,
     ) -> None:
         """更新已有条目的统计和代码。"""
-        data = self._load_data()
-        lst = data.get("by_env", {}).get(env_class_type, [])
-        for e in lst:
-            if e.entry_id == entry_id:
-                e.last_used = datetime.now()
-                e.code = code
-                if success:
-                    e.success_count += 1
-                else:
-                    e.failure_count += 1
-                break
-        self._save_data(data)
+        with self._locked():
+            data = self._load_data()
+            lst = data.get("by_env", {}).get(env_class_type, [])
+            for e in lst:
+                if e.entry_id == entry_id:
+                    e.last_used = datetime.now()
+                    e.code = code
+                    if success:
+                        e.success_count += 1
+                    else:
+                        e.failure_count += 1
+                    break
+            self._save_data(data)
 
     def clear_env_cache(self, env_class_type: str) -> None:
         """清空指定 ``env_class_type`` 的所有缓存条目。"""
-        data = self._load_data()
-        data.setdefault("by_env", {}).pop(env_class_type, None)
-        self._save_data(data)
+        with self._locked():
+            data = self._load_data()
+            data.setdefault("by_env", {}).pop(env_class_type, None)
+            self._save_data(data)
 
     def find_by_instruction(
         self,

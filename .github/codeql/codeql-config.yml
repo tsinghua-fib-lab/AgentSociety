@@ -2,6 +2,10 @@ name: "AgentSociety CodeQL config"
 
 # Scan only AgentSociety2 active code (see .github/agentsociety2-scope.yml).
 paths:
+  - examples/v2/daily_mobility
+  - extension/skills/docx/scripts
+  - packages/agentsociety2/scripts
+  - packages/agentsociety2/experiments
   - extension/src
   - frontend/src
   - packages/agentsociety2/agentsociety2

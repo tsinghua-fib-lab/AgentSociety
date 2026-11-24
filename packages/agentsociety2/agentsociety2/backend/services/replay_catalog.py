@@ -1,15 +1,48 @@
-"""Replay metadata catalog access helpers backed by ``ReplayReader``."""
+"""为 HTTP 回放接口读取数据集目录、执行查询并转换响应。"""
 
 from __future__ import annotations
 
 import asyncio
 import json
+from collections.abc import Iterator
+from pathlib import Path
 from typing import Any
 
 from fastapi import HTTPException
 from fastapi.encoders import jsonable_encoder
 
+from agentsociety2.storage.replay_metadata import SIMULATION_TIMELINE_DATASET_ID
 from agentsociety2.storage.replay_reader import ReplayReader
+
+
+def open_http_replay_reader(replay_dir: Path) -> ReplayReader:
+    """创建请求专用读取器，限制并发短查询各自占用的线程数。"""
+    return ReplayReader(replay_dir, threads=2)
+
+
+def iter_timeline_datasets(datasets: list[dict[str, Any]]) -> Iterator[dict[str, Any]]:
+    """先返回仿真时间线，再返回旧回放使用的智能体或环境快照。"""
+    fallback = []
+    for dataset in datasets:
+        if not (dataset.get("step_key") and dataset.get("time_key")):
+            continue
+        if dataset["dataset_id"] == SIMULATION_TIMELINE_DATASET_ID:
+            yield dataset
+            continue
+        capabilities = dataset.get("capabilities", [])
+        if (
+            dataset.get("kind") == "entity_snapshot"
+            and dataset.get("entity_key")
+            and "agent_snapshot" in capabilities
+        ):
+            priority = 1 if "geo_point" in capabilities else 0
+        elif dataset.get("kind") == "env_snapshot" and "env_snapshot" in capabilities:
+            priority = 2
+        else:
+            continue
+        fallback.append((priority, dataset["dataset_id"], dataset))
+    if fallback:
+        yield min(fallback, key=lambda item: (item[0], item[1]))[2]
 
 
 def _loads_json(raw: Any, default: Any) -> Any:
@@ -45,7 +78,7 @@ def _normalize_dataset_value(column: dict[str, Any] | None, value: Any) -> Any:
 def normalize_dataset_row(
     dataset: dict[str, Any], row: dict[str, Any]
 ) -> dict[str, Any]:
-    """Normalize a raw dataset row into a JSON-safe dict."""
+    """按列定义将一行记录转换为可编码的 JSON 字典。"""
 
     column_map = _get_column_map(dataset)
     return {
@@ -74,12 +107,13 @@ async def _to_thread_http(func, *args, **kwargs):
 
 
 async def load_dataset_catalog(reader: ReplayReader) -> list[dict[str, Any]]:
-    """Load all replay datasets with column metadata."""
+    """读取数据集目录及列定义。"""
 
     return await _to_thread_http(reader.load_dataset_catalog)
 
 
 async def get_dataset_by_id(reader: ReplayReader, dataset_id: str) -> dict[str, Any]:
+    """按标识查找数据集，未注册时返回 HTTP 404。"""
     try:
         return await asyncio.to_thread(reader.get_dataset_by_id, dataset_id)
     except KeyError as e:
@@ -94,6 +128,7 @@ async def find_dataset_by_capability(
     *,
     kind: str | None = None,
 ) -> dict[str, Any]:
+    """查找支持指定能力的数据集，可进一步限定数据集类型。"""
     try:
         return await asyncio.to_thread(
             reader.find_dataset_by_capability, capability, kind=kind
@@ -121,7 +156,7 @@ async def fetch_dataset_rows(
     limit: int | None = None,
     offset: int = 0,
 ) -> dict[str, Any]:
-    """Fetch dataset rows with metadata-driven filtering and JSON-safe values."""
+    """根据筛选条件读取数据行并转换为 JSON 可编码的值。"""
 
     return await _to_thread_http(
         reader.fetch_dataset_rows,
@@ -151,7 +186,7 @@ async def count_dataset_rows(
     max_step: int | None = None,
     latest_per_entity: bool = False,
 ) -> int:
-    """Count dataset rows using the same filtering semantics as fetch_dataset_rows."""
+    """按与行查询相同的筛选条件统计记录数。"""
 
     return await _to_thread_http(
         reader.count_dataset_rows,
@@ -181,7 +216,7 @@ async def query_dataset_rows(
     columns: list[str] | None = None,
     latest_per_entity: bool = False,
 ) -> dict[str, Any]:
-    """Query rows from a dataset using metadata-driven filtering."""
+    """读取一页记录，并返回筛选后的总行数。"""
 
     return await _to_thread_http(
         reader.query_dataset_rows,
@@ -207,22 +242,33 @@ async def distinct_dataset_values(
     *,
     order: bool = True,
 ) -> list[Any]:
+    """列出去重后的非空列值，可选择是否排序。"""
     return await _to_thread_http(reader.distinct_values, dataset, column, order=order)
 
 
 async def count_dataset_distinct(
     reader: ReplayReader, dataset: dict[str, Any], column: str
 ) -> int:
+    """统计该列不同非空值的数量。"""
     return await _to_thread_http(reader.count_distinct, dataset, column)
 
 
 async def min_dataset_value(
     reader: ReplayReader, dataset: dict[str, Any], column: str
 ) -> Any:
+    """读取列最小值；没有非空值时返回空值。"""
     return await _to_thread_http(reader.min_value, dataset, column)
 
 
 async def max_dataset_value(
     reader: ReplayReader, dataset: dict[str, Any], column: str
 ) -> Any:
+    """读取列最大值；没有非空值时返回空值。"""
     return await _to_thread_http(reader.max_value, dataset, column)
+
+
+async def dataset_timeline_summary(
+    reader: ReplayReader, dataset: dict[str, Any]
+) -> tuple[int, Any, Any]:
+    """在线程池中读取步数与时间范围，沿用回放查询的 HTTP 错误处理。"""
+    return await _to_thread_http(reader.timeline_summary, dataset)

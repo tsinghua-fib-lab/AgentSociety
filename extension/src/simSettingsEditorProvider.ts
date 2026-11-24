@@ -31,7 +31,9 @@
 
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { ApiClient } from './apiClient';
+import { getCurrentLanguageCode, syncWebviewLanguage } from './i18n';
+import type { ApiClient } from './apiClient';
+import { BackendAccessError } from './services/backendService';
 
 /**
  * SIM Settings 编辑器提供者类
@@ -68,9 +70,9 @@ export class SimSettingsEditorProvider implements vscode.CustomTextEditorProvide
    * 
    * @param context - VSCode扩展上下文，包含扩展的配置、状态等信息
    */
-  constructor(context: vscode.ExtensionContext) {
+  constructor(context: vscode.ExtensionContext, apiClient: ApiClient) {
     this._context = context;
-    this._apiClient = new ApiClient(context);
+    this._apiClient = apiClient;
   }
 
   /**
@@ -139,6 +141,7 @@ export class SimSettingsEditorProvider implements vscode.CustomTextEditorProvide
 
     // 步骤4: 设置Webview的HTML内容
     // 这会加载React构建的HTML和JS文件
+    syncWebviewLanguage(webviewPanel);
     webviewPanel.webview.html = this._getHtmlForWebview(
       webviewPanel.webview,
       scriptUri,
@@ -225,6 +228,7 @@ export class SimSettingsEditorProvider implements vscode.CustomTextEditorProvide
     // 初始化数据对象
     let agentClasses: Record<string, any> = {};
     let envModules: Record<string, any> = {};
+    let accessError: BackendAccessError | undefined;
 
     // 步骤1: 获取agent classes列表
     // 调用后端API获取所有可用的agent类
@@ -234,21 +238,31 @@ export class SimSettingsEditorProvider implements vscode.CustomTextEditorProvide
         agentClasses = agentsResponse.agents;
       }
     } catch (error) {
-      // 如果API调用失败，记录错误但继续执行
-      // Webview会显示空列表，用户可以重试
-      console.error('Failed to load agent classes:', error);
+      if (error instanceof BackendAccessError) {
+        accessError = error;
+      } else {
+        console.error('Failed to load agent classes:', error);
+      }
     }
 
     // 步骤2: 获取env modules列表
     // 调用后端API获取所有可用的environment模块类
-    try {
-      const envModulesResponse = await this._apiClient.getEnvModules();
-      if (envModulesResponse.success) {
-        envModules = envModulesResponse.modules;
+    if (!accessError) {
+      try {
+        const envModulesResponse = await this._apiClient.getEnvModules();
+        if (envModulesResponse.success) {
+          envModules = envModulesResponse.modules;
+        }
+      } catch (error) {
+        if (error instanceof BackendAccessError) {
+          accessError = error;
+        } else {
+          console.error('Failed to load env modules:', error);
+        }
       }
-    } catch (error) {
-      // 如果API调用失败，记录错误但继续执行
-      console.error('Failed to load env modules:', error);
+    }
+    if (accessError) {
+      void vscode.window.showErrorMessage(accessError.message);
     }
 
     // 步骤3: 发送初始数据到Webview
@@ -288,7 +302,7 @@ export class SimSettingsEditorProvider implements vscode.CustomTextEditorProvide
     initialSettings: any
   ): string {
     return `<!DOCTYPE html>
-<html lang="en">
+<html lang="${getCurrentLanguageCode()}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">

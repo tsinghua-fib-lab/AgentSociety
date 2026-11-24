@@ -10,6 +10,7 @@
 paths:
   python:
     - packages/agentsociety2
+    - examples/v2/daily_mobility
     - scripts/ci
     - pyproject.toml
     - uv.lock
@@ -18,6 +19,7 @@ paths:
   frontend:
     - frontend
   workflows:
+    - .github/workflows/repository-paths.yml
     - .github/workflows/ci.yml
     - .github/workflows/extension-ci.yml
     - .github/workflows/frontend-ci.yml

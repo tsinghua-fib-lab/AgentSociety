@@ -7,6 +7,33 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field
 
+#: Agent ``kwargs`` keys split into the static runtime config record.
+#: Shared by the CLI, experiment-config checks, and agent tooling.
+AGENT_CONFIG_KEYS: frozenset[str] = frozenset(
+    {
+        "max_react_turns",
+        "enable_memory",
+        "enable_todo_list",
+        "idle_skip_enabled",
+        "disabled_skill_ids",
+        "default_activated_skill_ids",
+        "extra_skill_paths",
+    }
+)
+
+
+def split_agent_kwargs(agent_id: int, kwargs: dict) -> tuple[dict, dict]:
+    """Build workspace records from flat or explicitly nested agent settings."""
+    fields = dict(kwargs)
+    profile = fields.pop("profile", {})
+    config = fields.pop("config", {})
+    if not isinstance(profile, dict) or not isinstance(config, dict):
+        raise ValueError("Agent profile and config must be objects")
+    if any(int(record.get("id", agent_id)) != agent_id for record in (fields, profile)):
+        raise ValueError(f"agent_id ({agent_id}) and profile/kwargs.id must match")
+    flat_config = {key: fields.pop(key) for key in AGENT_CONFIG_KEYS if key in fields}
+    return {**fields, **profile, "id": agent_id}, {**flat_config, **config}
+
 
 class ExperimentConfig(BaseModel):
     """实验配置模型

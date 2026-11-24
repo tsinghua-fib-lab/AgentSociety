@@ -12,7 +12,7 @@ import mapboxgl from 'mapbox-gl';
 // @ts-ignore
 import MapboxWorker from 'mapbox-gl/dist/mapbox-gl-csp-worker';
 import { useReplay } from '../store';
-import { AGENT_ICONS, getAgentIconUrl } from '../icons';
+import { getAgentIconUrl } from '../icons';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 // Public Mapbox token for client-side map rendering. This is a pk.* token
@@ -46,25 +46,6 @@ const INITIAL_ORTHO_VIEW_STATE = {
   target: [0, 0, 0] as [number, number, number],
   zoom: 1,
 };
-
-declare global {
-  interface Window {
-    __AGENT_ICON_URIS__?: Record<string, string>;
-  }
-}
-
-const getIconUris = () => {
-  const injected = window.__AGENT_ICON_URIS__;
-  if (injected && Object.keys(injected).length > 0) {
-    return injected;
-  }
-  return AGENT_ICONS;
-};
-
-function getAvatarUrl(profile: Record<string, any> | undefined): string {
-  const icons = getIconUris();
-  return getAgentIconUrl(profile) || icons.agent || '';
-}
 
 function getAgentColor(profile: Record<string, any> | undefined): [number, number, number, number] {
   if (!profile) return [22, 119, 255, 255];
@@ -165,7 +146,7 @@ export const AgentMap: React.FC<AgentMapProps> = ({ mapboxToken = MAPBOX_ACCESS_
       return {
         id: agentId,
         name: profile?.name || `Agent ${agentId}`,
-        avatarUrl: getAvatarUrl(profile?.profile),
+        avatarUrl: getAgentIconUrl(profile?.profile),
         profile: profile?.profile,
         hasGeo,
         coordinate,
@@ -209,56 +190,30 @@ export const AgentMap: React.FC<AgentMapProps> = ({ mapboxToken = MAPBOX_ACCESS_
     const showIcons = isCartesian ? currentZoom > 0.5 : currentZoom > 10;
 
     if (showIcons) {
-      const icons = getIconUris();
-      const hasIcons = Object.keys(icons).length > 0;
-
-      if (hasIcons) {
-        result.push(new IconLayer({
-          id: 'agent-icons',
-          data: agentList.map((agent) => ({
-            id: agent.id,
-            coordinate: agent.coordinate,
-            avatarUrl: agent.avatarUrl,
-            isSelected: agent.id === selectedAgentId,
-          })),
-          pickable: true,
-          billboard: true,
-          getIcon: (item: any) => ({
-            url: item.avatarUrl,
-            width: 128,
-            height: 128,
-            anchorX: 64,
-            anchorY: 64,
-          }),
-          getSize: (item: any) => item.isSelected ? 40 : 32,
-          getPosition: (item: any) => item.coordinate,
-          sizeScale: 1,
-          sizeMinPixels: 24,
-          sizeMaxPixels: 56,
-          parameters: { depthTest: false },
-        }));
-      } else {
-        result.push(new ScatterplotLayer({
-          id: 'agent-circles',
-          data: agentList.map((agent) => ({
-            id: agent.id,
-            coordinate: agent.coordinate,
-            color: agent.id === selectedAgentId ? [255, 99, 132, 255] : getAgentColor(agent.profile),
-          })),
-          pickable: true,
-          stroked: true,
-          filled: true,
-          lineWidthMinPixels: 2,
-          getPosition: (item: any) => item.coordinate,
-          radiusUnits: isCartesian ? 'pixels' : 'meters',
-          getRadius: (item: any) => item.id === selectedAgentId ? 18 : 14,
-          getFillColor: (item: any) => item.color,
-          getLineColor: [255, 255, 255, 220],
-          getLineWidth: 3,
-          radiusMinPixels: 12,
-          radiusMaxPixels: 24,
-        }));
-      }
+      result.push(new IconLayer({
+        id: 'agent-icons',
+        data: agentList.map((agent) => ({
+          id: agent.id,
+          coordinate: agent.coordinate,
+          avatarUrl: agent.avatarUrl,
+          isSelected: agent.id === selectedAgentId,
+        })),
+        pickable: true,
+        billboard: true,
+        getIcon: (item: any) => ({
+          url: item.avatarUrl,
+          width: 128,
+          height: 128,
+          anchorX: 64,
+          anchorY: 64,
+        }),
+        getSize: (item: any) => item.isSelected ? 40 : 32,
+        getPosition: (item: any) => item.coordinate,
+        sizeScale: 1,
+        sizeMinPixels: 24,
+        sizeMaxPixels: 56,
+        parameters: { depthTest: false },
+      }));
 
       result.push(new TextLayer({
         id: 'agent-labels',

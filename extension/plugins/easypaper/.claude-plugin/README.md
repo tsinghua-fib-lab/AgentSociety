@@ -179,7 +179,7 @@ powershell -ExecutionPolicy Bypass -File scripts\install_plugin.ps1 -Global
 powershell -ExecutionPolicy Bypass -File scripts\install_plugin.ps1 -Project
 
 # Specific project with symlinks (requires Developer Mode or admin)
-powershell -ExecutionPolicy Bypass -File scripts\install_plugin.ps1 -ProjectPath D:\research -Symlink
+powershell -ExecutionPolicy Bypass -File scripts\install_plugin.ps1 -ProjectPath .\research -Symlink
 
 # Dry-run
 powershell -ExecutionPolicy Bypass -File scripts\install_plugin.ps1 -Global -DryRun
