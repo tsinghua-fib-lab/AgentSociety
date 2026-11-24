@@ -31,7 +31,7 @@
     "react-i18next": "^17.1.9",
     "react-map-gl": "^8.1.1",
     "react-plotly.js": "^4.0.0",
-    "react-router": "^8.3.0",
+    "react-router": "^8.5.2",
     "@deck.gl/core": "^9.4.0",
     "@deck.gl/react": "^9.4.0",
     "@deck.gl/aggregation-layers": "^9.4.0",
