@@ -14,6 +14,10 @@ SDK 与扩展各自遵循 [语义化版本](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+## [2.12.0] - 2026-11-24
+
+- **agentsociety2** `2.12.0` · **extension** `1.10.0` · 标签 `agentsociety2-v2.12.0`
+
 ### Added
 
 - **研究工作台** 在“AI 对话”的右键菜单中可以设置默认助手。在命令面板搜索“Swagger”可打开当前工作区的 API 文档。
@@ -21,15 +25,19 @@ SDK 与扩展各自遵循 [语义化版本](https://semver.org/spec/v2.0.0.html)
 
 ### Changed
 
-- **升级与续跑** 检查点格式升至 v2。需要从 v1 检查点续跑的实验，请用原版本完成。已有回放仍可读取。
-- **Python 版本** SDK 支持 Python 3.11.5 至 3.13。使用 3.11.0–3.11.4 的工作区需升级 Python 并重建环境。构建文档需要 Soup Sieve 4.0.0 或更高版本。
+- **Breaking:** 检查点格式升至 v2。旧版创建的实验如需从中断处继续，请使用原版本恢复。新版仍可查看旧实验的回放。
+- **Breaking:** SDK 支持 Python 3.11.5 至 3.13。使用 3.11.0–3.11.4 的工作区需升级 Python 并重建环境。构建文档需要 Soup Sieve 4.0.0 或更高版本。
 - **Daily Mobility** 从示例根目录启动实验和看板，命令行工具位于 `tools/`。启动新实验前会检查输出目录，防止覆盖已有回放。
 - **实验进度** 展开侧栏顶部的进度可以看到未完成的实验，失败的排在最前。右键实验可打开回放或查看起止时间、耗时和步数。
 - **研究侧栏** 左键打开或预览文件，右键可编辑源文件、复制路径或引用、定位文件。视图的更多操作菜单提供快速入门和工作区导入、导出。配置分组首次展开时才读取，短时间内再次展开会复用结果。
 - **语言与帮助** 配置、技能、实验编辑器和回放随插件切换语言，并保留正在编辑的参数。内置指南可离线阅读，打开在线文档时才加载网页。
-- **回放查询** 实验概览优先读取仿真时间线，旧回放仍可从快照读取。按步分页时复用查询结果，减少重复读取。
+- **回放查询** 实验概览优先读取仿真时间线，旧回放仍可从快照读取。按步分页时复用查询结果，减少重复读取。在 1,024 个智能体、128 步的回放上，实验概览 P95 从 180.6 ms 降到 85.0 ms，四个并发回放概览请求的 P95 从 454.2 ms 降到 114.1 ms。
 - **API 文档** Swagger 和 ReDoc 的页面资源随 SDK 安装，可通过 Coder 端口代理访问。OpenAPI 文档补充了后端鉴权、问卷 JSON 响应和 4 MiB 内联读取上限。
 - **分析报告** 发布前逐条核对中英文报告中的主张、证据和图表，列出待补内容，并保留手写的探索性分析。
+
+### Removed
+
+- **Breaking:** 分析 SDK 移除 `ExecutionResult`、`ToolInfo` 和 `ToolResult` 三个公开导出。依赖这些类型的调用方请先调整导入，再升级 SDK。
 
 ### Fixed
 
@@ -42,6 +50,7 @@ SDK 与扩展各自遵循 [语义化版本](https://semver.org/spec/v2.0.0.html)
 ### Security
 
 - **Daily Mobility** 看板限制可访问的文件，并对 HTML 属性进行转义。生成的人物配置仅允许当前用户读写。CodeQL 扫描覆盖示例、SDK 维护脚本和扩展文档工具。
+- **Breaking:** 远程后端现在需要设置 `BACKEND_TOKEN`，客户端请求需携带对应的 Bearer 令牌。
 - **工作区访问** 后端访问令牌绑定到目标地址。技能安装和自定义模块扫描限制在工作区内。导入共享包时，先在暂存目录校验清单和文件哈希，校验通过后再安装。
 
 ## [2.11.0] - 2026-11-11
@@ -1454,7 +1463,8 @@ See [Version 1.3](https://agentsociety.readthedocs.io/en/latest/02-version-1.3/0
 ### Security
 - N/A
 
-[Unreleased]: https://github.com/tsinghua-fib-lab/AgentSociety/compare/agentsociety2-v2.11.0...HEAD
+[Unreleased]: https://github.com/tsinghua-fib-lab/AgentSociety/compare/agentsociety2-v2.12.0...HEAD
+[2.12.0]: https://github.com/tsinghua-fib-lab/AgentSociety/compare/agentsociety2-v2.11.0...agentsociety2-v2.12.0
 [2.11.0]: https://github.com/tsinghua-fib-lab/AgentSociety/compare/agentsociety2-v2.10.1...agentsociety2-v2.11.0
 [2.10.1]: https://github.com/tsinghua-fib-lab/AgentSociety/compare/agentsociety2-v2.10.0...agentsociety2-v2.10.1
 [2.10.0]: https://github.com/tsinghua-fib-lab/AgentSociety/compare/agentsociety2-v2.9.3...agentsociety2-v2.10.0
